@@ -278,7 +278,7 @@ if (bot) {
 
       const prompt = `Extraé los datos de este mensaje: "${text}"`;
       const result = await genAI.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction: `Actuá como un extractor de datos financieros para el mercado argentino.
@@ -425,8 +425,14 @@ app.get("/api/health", (req, res) => {
 
 const SYSTEM_PROMPT = `Actuá como un extractor de datos financieros para el mercado argentino.
 ENTENDÉ JERGA: "lucas/k" (1000), "gamba" (100), "palo" (1.000.000), "pe" (pesos).
-OBTENÉ: items (monto, tipo: ingreso/egreso, moneda: ARS/USD, categoria, empresa, descripcion).
-Retorná JSON puro.`;
+
+INTENCIONES:
+- "REGISTRAR": Para gastos o ingresos.
+- "GESTIONAR_EMPRESA": Para crear empresas (ej: "agregar empresa X").
+- "ELIMINAR_MOVIMIENTO": Para borrar el último registro.
+
+Retorná SIEMPRE un objeto JSON con:
+{ "intent": "REGISTRAR"|"GESTIONAR_EMPRESA"|"ELIMINAR_MOVIMIENTO", "items": [{monto, tipo: "ingreso"|"egreso", moneda: "ARS"|"USD", categoria, empresa, descripcion}], "action": "ADD", "companyName": "...", "target": "last" }`;
 
 app.post("/api/extract", async (req, res) => {
   try {
@@ -435,7 +441,7 @@ app.post("/api/extract", async (req, res) => {
 
     const catList = categories?.map((c: any) => c.nombre).join(", ") || "Otros";
     const result = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: text,
       config: {
         systemInstruction: `${SYSTEM_PROMPT}\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,

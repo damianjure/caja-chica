@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS public.movimientos (
     tenant_id TEXT DEFAULT 'default'
 );
 
--- Enable Realtime (optional but good for future)
+-- 3. Categories Table
+CREATE TABLE IF NOT EXISTS public.categorias (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    nombre TEXT NOT NULL UNIQUE,
+    tenant_id TEXT DEFAULT 'default'
+);
+
+-- Enable Realtime
 alter publication supabase_realtime add table public.movimientos;
 alter publication supabase_realtime add table public.empresas;
+alter publication supabase_realtime add table public.categorias;

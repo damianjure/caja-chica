@@ -17,60 +17,72 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { extractFinancialData, ExtractedData } from './services/gemini';
-
-interface ExtractionItem extends ExtractedData {
-  id: string;
-  originalText: string;
-  timestamp: string;
-}
+import { extractFinancialData, ExtractedItem, GeminiResponse } from './services/gemini';
+import { dbService, Movimiento, Empresa } from './services/db';
 
 export default function App() {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [history, setHistory] = useState<ExtractionItem[]>([]);
-  const [pendingItem, setPendingItem] = useState<ExtractionItem | null>(null);
-  const [customCompanies, setCustomCompanies] = useState<string[]>([]);
+  const [history, setHistory] = useState<Movimiento[]>([]);
+  const [pendingItem, setPendingItem] = useState<ExtractedItem & { id?: string, originalText: string } | null>(null);
+  const [customCompanies, setCustomCompanies] = useState<Empresa[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'warning'} | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string>('all');
+  const [isConfigured, setIsConfigured] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   // List of unique companies for the filter
-  const companies = [
+  const companiesList = [
     'all', 
     ...Array.from(new Set([
-      ...customCompanies,
-      ...history.map(item => item.empresa).filter(Boolean)
+      ...customCompanies.map(c => c.nombre),
+      ...history.map(item => item.empresa_nombre).filter(Boolean)
     ])) as string[]
   ];
 
   // Totals calculation
   const stats = history.reduce((acc, item) => {
-    if (selectedCompany !== 'all' && item.empresa !== selectedCompany) return acc;
+    if (selectedCompany !== 'all' && item.empresa_nombre !== selectedCompany) return acc;
     
     const key = `${item.moneda}_${item.tipo}`;
-    acc[key] = (acc[key] || 0) + (item.monto || 0);
+    acc[key] = (acc[key] || 0) + Number(item.monto || 0);
     return acc;
   }, {} as Record<string, number>);
 
   const filteredHistory = selectedCompany === 'all' 
     ? history 
-    : history.filter(item => item.empresa === selectedCompany);
+    : history.filter(item => item.empresa_nombre === selectedCompany);
 
-  // Load from localStorage
+  // Initial load
   useEffect(() => {
-    const savedHistory = localStorage.getItem('financial_history');
-    const savedCompanies = localStorage.getItem('financial_companies');
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
-    if (savedCompanies) setCustomCompanies(JSON.parse(savedCompanies));
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        const url = (import.meta as any).env.VITE_SUPABASE_URL;
+        if (!url || url.includes('placeholder')) {
+          setIsConfigured(false);
+          setIsLoading(false);
+          return;
+        }
+
+        const [movs, emps] = await Promise.all([
+          dbService.getMovimientos(),
+          dbService.getEmpresas()
+        ]);
+        setHistory(movs);
+        setCustomCompanies(emps);
+        setIsConfigured(true);
+      } catch (err) {
+        console.error('Failed to load data', err);
+        setIsConfigured(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
   }, []);
-
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('financial_history', JSON.stringify(history));
-    localStorage.setItem('financial_companies', JSON.stringify(customCompanies));
-  }, [history, customCompanies]);
 
   const showNotification = (message: string, type: 'success' | 'warning' = 'success') => {
     setNotification({ message, type });
@@ -86,68 +98,88 @@ export default function App() {
       const result = await extractFinancialData(inputText);
       
       if ('error' in result) {
-        setError(result.error === 'no_data_found' ? 'No se entendió el comando o datos.' : result.error);
-      } else if ('command' in result) {
-        if (result.command === 'ADD_COMPANY') {
-          if (!customCompanies.includes(result.companyName)) {
-            setCustomCompanies(prev => [...prev, result.companyName]);
-            showNotification(`Empresa "${result.companyName}" agregada.`);
-          } else {
-            showNotification(`La empresa "${result.companyName}" ya existe.`, 'warning');
-          }
-          setInputText('');
-        }
-      } else if ('items' in result) {
-        const extracted = result.items.map(item => ({
-          ...item,
-          id: crypto.randomUUID(),
-          originalText: inputText,
-          timestamp: new Date().toLocaleString('es-AR'),
-        }));
+        setError(result.error === 'no_data_found' ? 'No se entendió el comando.' : result.error);
+      } else {
+        switch (result.intent) {
+          case 'GESTIONAR_EMPRESA':
+            if (result.action === 'ADD') {
+              const exists = customCompanies.some(c => c.nombre.toLowerCase() === result.companyName.toLowerCase());
+              if (!exists) {
+                const newEmp = await dbService.addEmpresa(result.companyName);
+                setCustomCompanies(prev => [...prev, newEmp]);
+                showNotification(`Empresa "${result.companyName}" creada.`);
+              } else {
+                showNotification(`La empresa "${result.companyName}" ya existe.`, 'warning');
+              }
+            }
+            break;
 
-        // Filter items that need company assignment
-        const withCompany = extracted.filter(item => item.empresa !== null);
-        const withoutCompany = extracted.filter(item => item.empresa === null);
+          case 'ELIMINAR_MOVIMIENTO':
+            if (result.target === 'last') {
+              const deletedId = await dbService.deleteLastMovimiento();
+              if (deletedId) {
+                setHistory(prev => prev.filter(m => m.id !== deletedId));
+                showNotification('Último movimiento eliminado.');
+              }
+            }
+            break;
 
-        if (withCompany.length > 0) {
-          setHistory(prev => [...withCompany as ExtractionItem[], ...prev]);
-          if (withoutCompany.length === 0) {
-            showNotification(`${withCompany.length} transacciones registradas.`);
-            setInputText('');
-          }
-        }
+          case 'REGISTRAR':
+            const items = result.items;
+            const toAdd = items.filter(i => i.empresa !== null);
+            const toPending = items.filter(i => i.empresa === null);
 
-        if (withoutCompany.length > 0) {
-          // For simplicity, we handle one at a time if multiple are missing
-          setPendingItem(withoutCompany[0] as ExtractionItem);
-          setInputText('');
+            for (const item of toAdd) {
+              const saved = await dbService.addMovimiento(item, inputText);
+              setHistory(prev => [saved, ...prev]);
+            }
+
+            if (toPending.length > 0) {
+              setPendingItem({ ...toPending[0], originalText: inputText });
+            } else if (toAdd.length > 0) {
+              showNotification(`${toAdd.length} transacciones registradas.`);
+            }
+            break;
+          
+          default:
+            setError('Intención no soportada todavía.');
         }
+        if (!pendingItem) setInputText('');
       }
     } catch (err) {
-      setError('Error de conexión.');
+      setError('Error al conectar con la base de datos o IA.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const deleteItem = (id: string) => {
+  const deleteItem = async (id: string) => {
     if (window.confirm('¿Borrar este movimiento?')) {
-      const item = history.find(h => h.id === id);
-      setHistory(prev => prev.filter(i => i.id !== id));
-      showNotification('Movimiento eliminado.', 'warning');
+      try {
+        await dbService.deleteMovimiento(id);
+        setHistory(prev => prev.filter(i => i.id !== id));
+        showNotification('Movimiento eliminado.', 'warning');
+      } catch (e) {
+        showNotification('Error al eliminar.', 'warning');
+      }
     }
   };
 
-  const deleteCompany = (name: string) => {
-    if (window.confirm(`¿Borrar empresa "${name}"? Los gastos asociados seguirán existiendo.`)) {
-      setCustomCompanies(prev => prev.filter(c => c !== name));
-      if (selectedCompany === name) setSelectedCompany('all');
-      showNotification(`Empresa "${name}" eliminada de la lista.`, 'warning');
+  const deleteCompany = async (id: string, name: string) => {
+    if (window.confirm(`¿Borrar empresa "${name}"?`)) {
+      try {
+        await dbService.deleteEmpresa(id);
+        setCustomCompanies(prev => prev.filter(c => c.id !== id));
+        if (selectedCompany === name) setSelectedCompany('all');
+        showNotification(`Empresa "${name}" eliminada.`, 'warning');
+      } catch (e) {
+        showNotification('Error: Posible empresa con movimientos.', 'warning');
+      }
     }
   };
 
-  const copyJson = (item: ExtractionItem) => {
-    const { id, originalText, timestamp, ...cleanData } = item;
+  const copyJson = (item: Movimiento) => {
+    const { id, original_text, created_at, ...cleanData } = item;
     navigator.clipboard.writeText(JSON.stringify(cleanData, null, 2));
     setCopiedId(item.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -162,6 +194,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
+        {/* Connection Warning */}
+        {!isConfigured && (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p>
+              <strong>Supabase no configurado:</strong> Los datos no se guardarán permanentemente. 
+              Configurá las variables <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>.
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -172,9 +215,13 @@ export default function App() {
               Convertí jerga rioplatense (lucas, palos, gambas) en JSON estructurado.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Gemini Engine Active
+          
+          <div className="flex items-center gap-6">
+            {isLoading && <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />}
+            <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Gemini Engine Active
+            </div>
           </div>
         </header>
 
@@ -230,11 +277,12 @@ export default function App() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {companies.filter(c => c !== 'all').map(company => (
+                      {companiesList.filter(c => c !== 'all').map(company => (
                         <button
                           key={company}
-                          onClick={() => {
-                            setHistory(prev => [{ ...pendingItem, empresa: company }, ...prev]);
+                          onClick={async () => {
+                            const saved = await dbService.addMovimiento({ ...pendingItem, empresa: company }, pendingItem.originalText);
+                            setHistory(prev => [saved, ...prev]);
                             setPendingItem(null);
                             showNotification(`Asignado a ${company}`);
                           }}
@@ -244,8 +292,9 @@ export default function App() {
                         </button>
                       ))}
                       <button
-                        onClick={() => {
-                          setHistory(prev => [{ ...pendingItem, empresa: 'Personal' }, ...prev]);
+                        onClick={async () => {
+                          const saved = await dbService.addMovimiento({ ...pendingItem, empresa: 'Personal' }, pendingItem.originalText);
+                          setHistory(prev => [saved, ...prev]);
                           setPendingItem(null);
                           showNotification('Asignado a Personal');
                         }}
@@ -314,28 +363,31 @@ export default function App() {
               </h2>
               
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-                {companies.map(company => (
-                  <div key={company} className="relative group">
-                    <button
-                      onClick={() => setSelectedCompany(company)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                        selectedCompany === company 
-                          ? 'bg-neutral-900 text-white shadow-md' 
-                          : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-400'
-                      }`}
-                    >
-                      {company === 'all' ? 'Todas las Empresas' : company}
-                    </button>
-                    {company !== 'all' && customCompanies.includes(company) && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); deleteCompany(company); }}
-                        className="absolute -top-1 -right-1 bg-white border border-neutral-200 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm text-neutral-400 hover:text-red-500"
+                {companiesList.map(company => {
+                  const empObj = customCompanies.find(c => c.nombre === company);
+                  return (
+                    <div key={company} className="relative group">
+                      <button
+                        onClick={() => setSelectedCompany(company)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                          selectedCompany === company 
+                            ? 'bg-neutral-900 text-white shadow-md' 
+                            : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                        }`}
                       >
-                        <Trash2 className="w-2.5 h-2.5" />
+                        {company === 'all' ? 'Todas las Empresas' : company}
                       </button>
-                    )}
-                  </div>
-                ))}
+                      {empObj && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deleteCompany(empObj.id, empObj.nombre); }}
+                          className="absolute -top-1 -right-1 bg-white border border-neutral-200 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm text-neutral-400 hover:text-red-500"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <AnimatePresence>
@@ -433,9 +485,9 @@ export default function App() {
                         </p>
                         
                         <div className="flex flex-wrap gap-2">
-                          {item.empresa && (
+                          {item.empresa_nombre && (
                             <span className="text-[11px] font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md">
-                              🏢 {item.empresa}
+                              🏢 {item.empresa_nombre}
                             </span>
                           )}
                           <span className="text-[11px] font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md">
@@ -445,7 +497,7 @@ export default function App() {
 
                         <div className="pt-3 border-t border-neutral-50 flex justify-between items-center">
                           <span className="text-[10px] text-neutral-400 font-mono">
-                            {item.timestamp}
+                            {new Date(item.created_at).toLocaleString('es-AR')}
                           </span>
                           <span className={`text-[10px] font-bold uppercase tracking-tight ${
                             item.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'

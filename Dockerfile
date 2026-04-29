@@ -7,7 +7,7 @@ RUN npm ci --omit=dev
 
 COPY server.ts ./
 
-EXPOSE 3000
+EXPOSE 8080
 
 ENV NODE_ENV=production
 CMD ["npx", "tsx", "server.ts"]

@@ -1,9 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Send, 
@@ -17,24 +12,32 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { extractFinancialData, ExtractedItem, GeminiResponse } from './services/gemini';
-import { dbService, Movimiento, Empresa } from './services/db';
+import { api, ExtractedItem, Movimiento, Empresa, Categoria, GeminiResponse } from './services/api';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
 export default function App() {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<Movimiento[]>([]);
-  const [pendingItem, setPendingItem] = useState<ExtractedItem & { id?: string, originalText: string } | null>(null);
+  const [pendingItem, setPendingItem] = useState<ExtractedItem & { originalText: string } | null>(null);
   const [customCompanies, setCustomCompanies] = useState<Empresa[]>([]);
-  const [categories, setCategories] = useState<{id: string, nombre: string}[]>([]);
+  const [categories, setCategories] = useState<Categoria[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'warning'} | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string>('all');
   const [isConfigured, setIsConfigured] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const oldestDate = useRef<string | null>(null);
 
-  // List of unique companies for the filter
   const companiesList = [
     'all', 
     ...Array.from(new Set([
@@ -43,10 +46,8 @@ export default function App() {
     ])) as string[]
   ];
 
-  // Totals calculation
   const stats = history.reduce((acc, item) => {
     if (selectedCompany !== 'all' && item.empresa_nombre !== selectedCompany) return acc;
-    
     const key = `${item.moneda}_${item.tipo}`;
     acc[key] = (acc[key] || 0) + Number(item.monto || 0);
     return acc;
@@ -56,35 +57,104 @@ export default function App() {
     ? history 
     : history.filter(item => item.empresa_nombre === selectedCompany);
 
-  // Initial load
-  useEffect(() => {
-    const init = async () => {
+  const loadData = async (append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
       setIsLoading(true);
-      try {
-        const url = (import.meta as any).env.VITE_SUPABASE_URL;
-        if (!url || url.includes('placeholder')) {
-          setIsConfigured(false);
-          setIsLoading(false);
-          return;
-        }
-
-        const [movs, emps, cats] = await Promise.all([
-          dbService.getMovimientos(),
-          dbService.getEmpresas(),
-          dbService.getCategorias()
-        ]);
-        setHistory(movs);
-        setCustomCompanies(emps);
-        setCategories(cats);
-        setIsConfigured(true);
-      } catch (err) {
-        console.error('Failed to load data', err);
+    }
+    try {
+      const url = (import.meta as any).env.VITE_SUPABASE_URL;
+      if (!url || url.includes('placeholder')) {
         setIsConfigured(false);
-      } finally {
         setIsLoading(false);
+        return;
       }
+
+      const limit = 50;
+      const [movs, emps, cats] = await Promise.all([
+        api.getMovimientos(limit),
+        api.getEmpresas(),
+        api.getCategorias()
+      ]);
+
+      if (append && oldestDate.current) {
+        const filtered = movs.filter((m: Movimiento) => m.created_at < oldestDate.current);
+        setHistory(prev => [...prev, ...filtered]);
+        if (filtered.length < limit) setHasMore(false);
+        if (filtered.length > 0) oldestDate.current = filtered[filtered.length - 1].created_at;
+      } else {
+        setHistory(movs);
+        setHasMore(movs.length >= limit);
+        if (movs.length > 0) oldestDate.current = movs[movs.length - 1].created_at;
+      }
+
+      setCustomCompanies(emps);
+      setCategories(cats);
+      setIsConfigured(true);
+    } catch (err) {
+      console.error('Failed to load data', err);
+      setIsConfigured(false);
+    } finally {
+      setIsLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('realtime-movimientos')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'movimientos' },
+        (payload) => {
+          const newMov = payload.new as Movimiento;
+          setHistory(prev => {
+            if (prev.some(m => m.id === newMov.id)) return prev;
+            return [newMov, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'movimientos' },
+        (payload) => {
+          setHistory(prev => prev.filter(m => m.id !== payload.old.id));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'empresas' },
+        (payload) => {
+          const newEmp = payload.new as Empresa;
+          setCustomCompanies(prev => {
+            if (prev.some(e => e.id === newEmp.id)) return prev;
+            return [...prev, newEmp];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'categorias' },
+        (payload) => {
+          const newCat = payload.new as Categoria;
+          setCategories(prev => {
+            if (prev.some(c => c.id === newCat.id)) return prev;
+            return [...prev, newCat];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    init();
   }, []);
 
   const showNotification = (message: string, type: 'success' | 'warning' = 'success') => {
@@ -98,59 +168,54 @@ export default function App() {
     setError(null);
 
     try {
-      const result = await extractFinancialData(inputText);
+      const result = await api.extract(inputText, categories);
       
       if ('error' in result) {
         setError(result.error === 'no_data_found' ? 'No se entendió el comando.' : result.error);
       } else {
-        switch (result.intent) {
-          case 'GESTIONAR_EMPRESA':
-            if (result.action === 'ADD') {
-              const exists = customCompanies.some(c => c.nombre.toLowerCase() === result.companyName.toLowerCase());
+        switch ((result as GeminiResponse).intent) {
+          case 'GESTIONAR_EMPRESA': {
+            const r = result as { action: string; companyName: string };
+            if (r.action === 'ADD') {
+              const exists = customCompanies.some(c => c.nombre.toLowerCase() === r.companyName.toLowerCase());
               if (!exists) {
-                const newEmp = await dbService.addEmpresa(result.companyName);
+                const newEmp = await api.addEmpresa(r.companyName);
                 setCustomCompanies(prev => [...prev, newEmp]);
-                showNotification(`Empresa "${result.companyName}" creada.`);
+                showNotification(`Empresa "${r.companyName}" creada.`);
               } else {
-                showNotification(`La empresa "${result.companyName}" ya existe.`, 'warning');
+                showNotification(`La empresa "${r.companyName}" ya existe.`, 'warning');
               }
             }
             break;
+          }
 
-          case 'ELIMINAR_MOVIMIENTO':
-            if (result.target === 'last') {
-              const deletedId = await dbService.deleteLastMovimiento();
-              if (deletedId) {
-                setHistory(prev => prev.filter(m => m.id !== deletedId));
+          case 'ELIMINAR_MOVIMIENTO': {
+            const r = result as { target: string };
+            if (r.target === 'last') {
+              const res = await api.deleteLastMovimiento();
+              if (res.id) {
+                setHistory(prev => prev.filter(m => m.id !== res.id));
                 showNotification('Último movimiento eliminado.');
               }
             }
             break;
+          }
 
-          case 'REGISTRAR':
-            const items = result.items;
-            const toAdd = items.filter(i => i.empresa !== null);
-            const toPending = items.filter(i => i.empresa === null);
-
-            for (const item of toAdd) {
-              const saved = await dbService.addMovimiento(item, inputText);
-              setHistory(prev => [saved, ...prev]);
-            }
-
-            if (toPending.length > 0) {
-              setPendingItem({ ...toPending[0], originalText: inputText });
-            } else if (toAdd.length > 0) {
-              showNotification(`${toAdd.length} transacciones registradas.`);
-            }
+          case 'REGISTRAR': {
+            const r = result as { items: ExtractedItem[] };
+            const saved = await api.saveMovimientos(r.items, inputText);
+            setHistory(prev => [...saved, ...prev]);
+            showNotification(`${saved.length} transacciones registradas.`);
             break;
+          }
           
           default:
             setError('Intención no soportada todavía.');
         }
-        if (!pendingItem) setInputText('');
+        setInputText('');
       }
     } catch (err) {
-      setError('Error al conectar con la base de datos o IA.');
+      setError(err instanceof Error ? err.message : 'Error al procesar.');
     } finally {
       setIsProcessing(false);
     }
@@ -159,10 +224,10 @@ export default function App() {
   const deleteItem = async (id: string) => {
     if (window.confirm('¿Borrar este movimiento?')) {
       try {
-        await dbService.deleteMovimiento(id);
+        await api.deleteMovimiento(id);
         setHistory(prev => prev.filter(i => i.id !== id));
         showNotification('Movimiento eliminado.', 'warning');
-      } catch (e) {
+      } catch {
         showNotification('Error al eliminar.', 'warning');
       }
     }
@@ -171,11 +236,11 @@ export default function App() {
   const deleteCompany = async (id: string, name: string) => {
     if (window.confirm(`¿Borrar empresa "${name}"?`)) {
       try {
-        await dbService.deleteEmpresa(id);
+        await api.deleteEmpresa(id);
         setCustomCompanies(prev => prev.filter(c => c.id !== id));
         if (selectedCompany === name) setSelectedCompany('all');
         showNotification(`Empresa "${name}" eliminada.`, 'warning');
-      } catch (e) {
+      } catch {
         showNotification('Error: Posible empresa con movimientos.', 'warning');
       }
     }
@@ -184,10 +249,10 @@ export default function App() {
   const deleteCategory = async (id: string, name: string) => {
     if (window.confirm(`¿Borrar categoría "${name}"?`)) {
       try {
-        await dbService.deleteCategoria(id);
+        await api.deleteCategoria(id);
         setCategories(prev => prev.filter(c => c.id !== id));
         showNotification(`Categoría "${name}" eliminada.`, 'warning');
-      } catch (e) {
+      } catch {
         showNotification('Error: Posible categoría en uso.', 'warning');
       }
     }
@@ -200,16 +265,26 @@ export default function App() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const clearHistory = () => {
+  const clearHistory = async () => {
     if (window.confirm('¿Seguro que querés borrar todo el historial?')) {
-      setHistory([]);
+      try {
+        await api.deleteAllMovimientos();
+        setHistory([]);
+        showNotification('Historial borrado.', 'warning');
+      } catch {
+        showNotification('Error al borrar historial.', 'warning');
+      }
     }
+  };
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    await loadData(true);
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Connection Warning */}
         {!isConfigured && (
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -220,14 +295,13 @@ export default function App() {
           </div>
         )}
 
-        {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">
               Extractor Financiero Argento
             </h1>
             <p className="text-neutral-500 mt-1">
-              Convertí jerga rioplatense (lucas, palos, gambas) en JSON estructurado.
+              Convertí jerga rioplatense (lucas, palos, gambas) en datos estructurados.
             </p>
           </div>
           
@@ -235,13 +309,12 @@ export default function App() {
             {isLoading && <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />}
             <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Gemini Engine Active
+              Realtime Active
             </div>
           </div>
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Dashboard Section */}
           <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-sm">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1 text-green-600">Ingresos ARS</span>
@@ -269,7 +342,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Input Section */}
           <div className="lg:col-span-12 space-y-4">
             <AnimatePresence mode="wait">
               {pendingItem ? (
@@ -296,8 +368,8 @@ export default function App() {
                         <button
                           key={company}
                           onClick={async () => {
-                            const saved = await dbService.addMovimiento({ ...pendingItem, empresa: company }, pendingItem.originalText);
-                            setHistory(prev => [saved, ...prev]);
+                            const saved = await api.saveMovimientos([{ ...pendingItem, empresa: company }], pendingItem.originalText);
+                            setHistory(prev => [...saved, ...prev]);
                             setPendingItem(null);
                             showNotification(`Asignado a ${company}`);
                           }}
@@ -308,8 +380,8 @@ export default function App() {
                       ))}
                       <button
                         onClick={async () => {
-                          const saved = await dbService.addMovimiento({ ...pendingItem, empresa: 'Personal' }, pendingItem.originalText);
-                          setHistory(prev => [saved, ...prev]);
+                          const saved = await api.saveMovimientos([{ ...pendingItem, empresa: 'Personal' }], pendingItem.originalText);
+                          setHistory(prev => [...saved, ...prev]);
                           setPendingItem(null);
                           showNotification('Asignado a Personal');
                         }}
@@ -369,7 +441,6 @@ export default function App() {
             )}
           </div>
 
-          {/* History Section */}
           <div className="lg:col-span-12 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 id="history-title" className="text-xl font-semibold flex items-center gap-2">
@@ -387,7 +458,7 @@ export default function App() {
                         className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                           selectedCompany === company 
                             ? 'bg-neutral-900 text-white shadow-md' 
-                             : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                            : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-400'
                         }`}
                       >
                         {company === 'all' ? 'Todas las Empresas' : company}
@@ -405,8 +476,7 @@ export default function App() {
                 })}
               </div>
 
-               {/* Categories Management View */}
-               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-100 pt-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-100 pt-4">
                 <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mr-2">Categorías:</span>
                 {categories.map(cat => (
                   <div key={cat.id} className="group relative">
@@ -467,7 +537,6 @@ export default function App() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="group bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
                     >
-                      {/* Badge Background */}
                       <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-[0.03] pointer-events-none ${
                         item.tipo === 'ingreso' ? 'bg-green-500' : 'bg-red-500'
                       }`} />
@@ -514,7 +583,7 @@ export default function App() {
 
                       <div className="space-y-3">
                         <p className="text-sm text-neutral-600 italic line-clamp-2">
-                          "{item.originalText}"
+                          "{item.original_text}"
                         </p>
                         
                         <div className="flex flex-wrap gap-2">
@@ -544,6 +613,20 @@ export default function App() {
                 </AnimatePresence>
               </div>
             )}
+
+            {hasMore && filteredHistory.length > 0 && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-600 hover:border-neutral-400 disabled:opacity-50 transition-colors"
+                >
+                  {loadingMore ? (
+                    <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</span>
+                  ) : 'Cargar más'}
+                </button>
+              </div>
+            )}
           </div>
         </main>
 
@@ -556,4 +639,3 @@ export default function App() {
     </div>
   );
 }
-

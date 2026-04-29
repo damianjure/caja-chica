@@ -400,8 +400,170 @@ if (bot) {
 const app = express();
 const PORT = parseInt(process.env.PORT || "8080", 10);
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://balancediario.web.app").split(",");
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
+app.use(express.json());
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", botActive: !!bot });
+});
+
+const SYSTEM_PROMPT = `Actuá como un extractor de datos financieros para el mercado argentino.
+ENTENDÉ JERGA: "lucas/k" (1000), "gamba" (100), "palo" (1.000.000), "pe" (pesos).
+OBTENÉ: items (monto, tipo: ingreso/egreso, moneda: ARS/USD, categoria, empresa, descripcion).
+Retorná JSON puro.`;
+
+app.post("/api/extract", async (req, res) => {
+  try {
+    const { text, categories } = req.body;
+    if (!text) return res.status(400).json({ error: "text is required" });
+
+    const catList = categories?.map((c: any) => c.nombre).join(", ") || "Otros";
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: `${SYSTEM_PROMPT}\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,
+    });
+
+    const result = await model.generateContent(text);
+    const rawResponse = result.response.text().replace(/```json|```/g, "").trim();
+    const extracted = JSON.parse(rawResponse);
+    res.json(extracted);
+  } catch (err) {
+    console.error("Extract error:", err);
+    res.status(500).json({ error: "failed_to_process" });
+  }
+});
+
+app.post("/api/movimientos", async (req, res) => {
+  try {
+    const { items, originalText } = req.body;
+    const saved: any[] = [];
+    for (const item of items) {
+      const { data, error } = await supabase
+        .from("movimientos")
+        .insert([{
+          tipo: item.tipo,
+          moneda: item.moneda,
+          monto: Math.abs(item.monto || 0),
+          categoria: item.categoria || "Otros",
+          empresa_nombre: item.empresa || "Personal",
+          descripcion: item.descripcion,
+          original_text: originalText,
+        }])
+        .select();
+      if (error) throw error;
+      saved.push(data?.[0]);
+    }
+    res.json(saved);
+  } catch (err) {
+    console.error("Save error:", err);
+    res.status(500).json({ error: "failed_to_save" });
+  }
+});
+
+app.post("/api/empresas", async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre) return res.status(400).json({ error: "nombre is required" });
+    const { data, error } = await supabase.from("empresas").insert([{ nombre }]).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Empresa error:", err);
+    res.status(500).json({ error: "failed_to_save" });
+  }
+});
+
+app.delete("/api/movimientos/:id", async (req, res) => {
+  try {
+    const { error } = await supabase.from("movimientos").delete().eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_delete" });
+  }
+});
+
+app.delete("/api/movimientos/last", async (req, res) => {
+  try {
+    const { data: last } = await supabase.from("movimientos").select("id").order("created_at", { ascending: false }).limit(1).single();
+    if (!last) return res.json({ ok: true, id: null });
+    await supabase.from("movimientos").delete().eq("id", last.id);
+    res.json({ ok: true, id: last.id });
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_delete" });
+  }
+});
+
+app.delete("/api/movimientos/all", async (req, res) => {
+  try {
+    await supabase.from("movimientos").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_delete" });
+  }
+});
+
+app.delete("/api/empresas/:id", async (req, res) => {
+  try {
+    const { error } = await supabase.from("empresas").delete().eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_delete" });
+  }
+});
+
+app.delete("/api/categorias/:id", async (req, res) => {
+  try {
+    const { error } = await supabase.from("categorias").delete().eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_delete" });
+  }
+});
+
+app.get("/api/movimientos", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 100;
+    const { data, error } = await supabase.from("movimientos").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_fetch" });
+  }
+});
+
+app.get("/api/empresas", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("empresas").select("*").order("nombre", { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_fetch" });
+  }
+});
+
+app.get("/api/categorias", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("categorias").select("*").order("nombre", { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "failed_to_fetch" });
+  }
 });
 
 app.listen(PORT, "0.0.0.0", () => {

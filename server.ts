@@ -281,11 +281,7 @@ if (bot) {
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
-          systemInstruction: `Actuá como un extractor de datos financieros para el mercado argentino.
-        ENTENDÉ JERGA: "lucas/k" (1000), "gamba" (100), "palo" (1.000.000), "pe" (pesos).
-        OBTENÉ: items (monto, tipo: ingreso/egreso, moneda: ARS/USD, categoria, empresa, descripcion).
-        CATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".
-        Retorná JSON puro.`
+          systemInstruction: SYSTEM_PROMPT + `\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`
         },
       });
       const textResponse = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || "";

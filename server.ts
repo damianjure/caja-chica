@@ -340,6 +340,7 @@ if (bot) {
     const linked = await requireLinkedAccount(ctx);
     if (!linked) return null;
 
+    // WARNING-21: role can be null for legacy usuarios — default to "viewer" so can() behaves safely
     const memberCtx = {
       role: linked.role ?? ("viewer" as const),
       permissions: linked.permissions ?? {},
@@ -376,6 +377,14 @@ if (bot) {
   }
 
   const pendingReportSessions = new Map<number, ReportSession>();
+
+  // WARNING-9: evict expired entries every 5 minutes to prevent unbounded growth
+  setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, s] of pendingReportSessions) {
+      if (now > s.expiresAt) pendingReportSessions.delete(chatId);
+    }
+  }, 5 * 60_000);
 
   function getReportSession(chatId: number): ReportSession | null {
     const s = pendingReportSessions.get(chatId);
@@ -568,20 +577,37 @@ if (bot) {
       return true;
     }
 
-    // Upsert into telegram_links as pending
-    await supabase
+    // CRITICAL-2: reject if this Telegram account already has an active link
+    const { data: existingLinks } = await supabase
       .from("telegram_links")
-      .upsert(
-        {
-          telegram_user_id: telegramUserId,
-          telegram_username: telegramUsername,
-          dashboard_id: inviteToken.dashboard_id,
-          app_user_id: inviteToken.target_user_id,
-          status: "pending_owner_confirm",
-          linked_at: null,
-        },
-        { onConflict: "telegram_user_id" },
+      .select("id")
+      .eq("telegram_user_id", telegramUserId)
+      .neq("status", "revoked")
+      .limit(1);
+    if (existingLinks && existingLinks.length > 0) {
+      await ctx.reply(
+        "⚠️ Esta cuenta de Telegram ya está vinculada. Desvincúlala primero desde el dashboard.",
       );
+      return true;
+    }
+
+    // Plain INSERT — the pivot guard above already confirmed no active/pending row exists.
+    // Relying on partial-index upsert (onConflict) is unreliable with PostgREST partial indexes.
+    const { error: insertErr } = await supabase
+      .from("telegram_links")
+      .insert({
+        telegram_user_id: telegramUserId,
+        telegram_username: telegramUsername,
+        dashboard_id: inviteToken.dashboard_id,
+        app_user_id: inviteToken.target_user_id,
+        status: "pending_owner_confirm",
+        linked_at: null,
+      });
+    if (insertErr) {
+      console.error("[handleTelegramInviteToken] insert failed:", insertErr);
+      await ctx.reply("❌ Error al procesar la solicitud. Intentá de nuevo.");
+      return true;
+    }
 
     await supabase
       .from("telegram_invite_tokens")
@@ -610,10 +636,11 @@ if (bot) {
         return ctx.reply("❌ No pude validar el código de conexión.");
       }
 
+      // WARNING-14: null expiry is treated as expired — no bypass allowed
       const isValid =
         hasTelegramAccess(target) &&
-        (!target.linkTokenExpiresAt ||
-          new Date(target.linkTokenExpiresAt).getTime() > Date.now());
+        target.linkTokenExpiresAt !== null &&
+        new Date(target.linkTokenExpiresAt).getTime() > Date.now();
 
       if (!isValid) {
         return ctx.reply(
@@ -665,7 +692,7 @@ if (bot) {
     const { data: emps } = await applyTelegramDataScope(
       supabase.from('empresas').select('nombre'),
       linked,
-    ).eq('deleted_at', null as any);
+    ).is('deleted_at', null);
     const list = emps?.map(e => `• ${e.nombre}`).join('\n') || "Sin empresas.";
     ctx.reply(`🏢 *Empresas registradas:*\n\n${list}\n\nUsá /agregarempresa [nombre] para sumar una.`, { parse_mode: "Markdown" });
   });
@@ -750,13 +777,16 @@ if (bot) {
     }
     const last = await getLastMovementByType(linked, "ingreso");
     if (!last) return ctx.reply("No hay ingresos para editar.");
-    await supabase.from("movimientos").update({
+    // WARNING-17: scope the update to the same dashboard to prevent cross-dashboard writes
+    let updateQuery = supabase.from("movimientos").update({
       monto: parsed.monto,
       descripcion: parsed.descripcion,
       categoria: parsed.categoria,
       empresa_nombre: parsed.empresa,
       moneda: parsed.moneda,
     }).eq("id", last.id);
+    if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
+    await updateQuery;
     await insertBotAuditLog({
       linked,
       actorUserId: linked.userId,
@@ -781,13 +811,16 @@ if (bot) {
     }
     const last = await getLastMovementByType(linked, "egreso");
     if (!last) return ctx.reply("No hay egresos para editar.");
-    await supabase.from("movimientos").update({
+    // WARNING-17: scope the update to the same dashboard to prevent cross-dashboard writes
+    let updateQuery = supabase.from("movimientos").update({
       monto: parsed.monto,
       descripcion: parsed.descripcion,
       categoria: parsed.categoria,
       empresa_nombre: parsed.empresa,
       moneda: parsed.moneda,
     }).eq("id", last.id);
+    if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
+    await updateQuery;
     await insertBotAuditLog({
       linked,
       actorUserId: linked.userId,
@@ -812,7 +845,7 @@ if (bot) {
       linked,
     )
       .eq("nombre", name)
-      .eq("deleted_at", null as any)
+      .is("deleted_at", null)
       .limit(1);
     const empresa = rows?.[0];
     if (!empresa) return ctx.reply("No encontré esa empresa activa.");
@@ -838,7 +871,7 @@ if (bot) {
     if (!query) return ctx.reply("Indicá qué buscar. Ej: `/buscar pan`", { parse_mode: "Markdown" });
     
     const { data: results } = await applyTelegramDataScope(
-      supabase.from('movimientos').select('*'),
+      supabase.from('movimientos').select('*').is('deleted_at', null),
       linked,
     )
       .ilike('descripcion', `%${query}%`)
@@ -856,11 +889,11 @@ if (bot) {
 
   async function getSaldosText(linked: TelegramLinkRecord) {
     const { data: emps } = await applyTelegramDataScope(
-      supabase.from('empresas').select('nombre'),
+      supabase.from('empresas').select('nombre').is('deleted_at', null),
       linked,
     );
     const { data: movs } = await applyTelegramDataScope(
-      supabase.from('movimientos').select('*'),
+      supabase.from('movimientos').select('*').is('deleted_at', null),
       linked,
     );
 
@@ -901,6 +934,14 @@ if (bot) {
   }
 
   const pendingRecurrenceSessions = new Map<number, RecurrenceSession>();
+
+  // WARNING-9: evict expired entries every 5 minutes to prevent unbounded growth
+  setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, s] of pendingRecurrenceSessions) {
+      if (now > s.expiresAt) pendingRecurrenceSessions.delete(chatId);
+    }
+  }, 5 * 60_000);
 
   function getRecurrenceSession(chatId: number): RecurrenceSession | null {
     const s = pendingRecurrenceSessions.get(chatId);
@@ -1479,7 +1520,7 @@ if (bot) {
     if (!linked) return;
     const empresaId = ctx.match[1];
     const { data: rows } = await applyTelegramDataScope(
-      supabase.from("empresas").select("*"),
+      supabase.from("empresas").select("*").is("deleted_at", null),
       linked,
     ).eq("id", empresaId).limit(1);
     const empresa = rows?.[0];
@@ -1526,56 +1567,64 @@ if (bot) {
   // --- CRON JOBS ---
   cron.schedule('0 21 * * *', async () => {
     const { data: users } = await supabase.from('usuarios').select('chat_id').eq('reminders_enabled', true);
-    users?.forEach(u => {
-      if (u.chat_id) {
-        bot.api.sendMessage(u.chat_id, "🔔 *Recordatorio:* No te olvides de registrar tus gastos del día. 💸", { parse_mode: "Markdown" });
+    for (const u of users ?? []) {
+      if (!u.chat_id) continue;
+      try {
+        await bot.api.sendMessage(u.chat_id, "🔔 *Recordatorio:* No te olvides de registrar tus gastos del día. 💸", { parse_mode: "Markdown" });
+      } catch (err) {
+        console.error(`[cron:reminder] failed to send to chat_id=${u.chat_id}:`, err);
       }
-    });
+    }
   });
 
   cron.schedule('0 8 * * *', async () => {
     const today = new Date();
     const { data: recs } = await supabase.from('recurrentes').select('*');
-    
-    recs?.forEach(async (r) => {
-      let shouldProcess = false;
-      const last = r.last_processed ? new Date(r.last_processed) : null;
-      
-      if (!last) shouldProcess = true;
-      else {
-        const diff = today.getTime() - last.getTime();
-        const days = diff / (1000 * 3600 * 24);
-        if (r.frecuencia === 'diario' && days >= 1) shouldProcess = true;
-        if (r.frecuencia === 'semanal' && days >= 7) shouldProcess = true;
-        if (r.frecuencia === 'mensual' && days >= 30) shouldProcess = true;
-      }
 
-      if (shouldProcess) {
-        await supabase.from('movimientos').insert([{
-          ...(r.dashboard_id && r.created_by_user_id
-            ? {
-                dashboard_id: r.dashboard_id,
-                created_by_user_id: r.created_by_user_id,
-              }
-            : {
-                owner_user_id: r.owner_user_id,
-              }),
-          monto: Math.abs(r.monto),
-          tipo: r.tipo,
-          moneda: r.moneda,
-          categoria: r.categoria,
-          empresa_nombre: r.empresa_nombre,
-          descripcion: r.descripcion + " (Recurrente)",
-          original_text: "System Generated",
-          conciliado: true,
-          conciliado_notas: null,
-        }]);
-        await supabase.from('recurrentes').update({ last_processed: today.toISOString() }).eq('id', r.id);
-        if (r.chat_id) {
-          bot.api.sendMessage(r.chat_id, `🔄 *Recurrente Registrado:* ${r.descripcion}\n💰 ${r.monto} ${r.moneda}`, { parse_mode: "Markdown" });
+    // CRITICAL-1: use for...of so each iteration is awaited and errors don't get swallowed
+    for (const r of recs ?? []) {
+      try {
+        let shouldProcess = false;
+        const last = r.last_processed ? new Date(r.last_processed) : null;
+
+        if (!last) shouldProcess = true;
+        else {
+          const diff = today.getTime() - last.getTime();
+          const days = diff / (1000 * 3600 * 24);
+          if (r.frecuencia === 'diario' && days >= 1) shouldProcess = true;
+          if (r.frecuencia === 'semanal' && days >= 7) shouldProcess = true;
+          if (r.frecuencia === 'mensual' && days >= 30) shouldProcess = true;
         }
+
+        if (shouldProcess) {
+          await supabase.from('movimientos').insert([{
+            ...(r.dashboard_id && r.created_by_user_id
+              ? {
+                  dashboard_id: r.dashboard_id,
+                  created_by_user_id: r.created_by_user_id,
+                }
+              : {
+                  owner_user_id: r.owner_user_id,
+                }),
+            monto: Math.abs(r.monto),
+            tipo: r.tipo,
+            moneda: r.moneda,
+            categoria: r.categoria,
+            empresa_nombre: r.empresa_nombre,
+            descripcion: r.descripcion + " (Recurrente)",
+            original_text: "System Generated",
+            conciliado: true,
+            conciliado_notas: null,
+          }]);
+          await supabase.from('recurrentes').update({ last_processed: today.toISOString() }).eq('id', r.id);
+          if (r.chat_id) {
+            bot.api.sendMessage(r.chat_id, `🔄 *Recurrente Registrado:* ${r.descripcion}\n💰 ${r.monto} ${r.moneda}`, { parse_mode: "Markdown" });
+          }
+        }
+      } catch (recErr) {
+        console.error(`[cron:recurrentes] Error processing recurrente id=${r.id}:`, recErr);
       }
-    });
+    }
   });
 
 } else {

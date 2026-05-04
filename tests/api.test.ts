@@ -116,6 +116,11 @@ function createSupabaseStub(
         });
         return api;
       },
+      in(column: string, values: unknown[]) {
+        callLog.push({ table, type: "in", args: [column, values] });
+        rows = rows.filter((row: any) => values.includes(row[column]));
+        return api;
+      },
       insert(...args: unknown[]) {
         callLog.push({ table, type: "insert", args });
         const payload = Array.isArray(args[0]) ? (args[0] as any[])[0] : null;

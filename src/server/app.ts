@@ -105,6 +105,14 @@ const extractRateLimitMap = new Map<string, { count: number; resetAt: number }>(
 const EXTRACT_RATE_LIMIT = 30;
 const EXTRACT_RATE_WINDOW_MS = 60_000;
 
+// WARNING-8: evict expired rate-limit entries every 5 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of extractRateLimitMap) {
+    if (entry.resetAt < now) extractRateLimitMap.delete(userId);
+  }
+}, 5 * 60_000);
+
 function checkExtractRateLimit(userId: string): boolean {
   const now = Date.now();
   const entry = extractRateLimitMap.get(userId);
@@ -119,6 +127,14 @@ function checkExtractRateLimit(userId: string): boolean {
 
 
 const pendingDriveOAuthStates = new Map<string, { userId: string; expiresAt: number }>();
+
+// WARNING-10: evict expired Drive OAuth states every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, v] of pendingDriveOAuthStates) {
+    if (now > v.expiresAt) pendingDriveOAuthStates.delete(key);
+  }
+}, 5 * 60_000);
 
 export function createApp({
   supabase,
@@ -139,6 +155,11 @@ export function createApp({
   tokenEncryptionKey,
 }: AppDeps) {
   const app = express();
+
+  // WARNING-7: track which users were already synced in this process lifetime.
+  // Tradeoff: process restart re-syncs all users (acceptable — invitations sync is idempotent).
+  // Declared inside createApp so tests get a fresh Set per app instance.
+  const syncedUserKeys = new Set<string>();
 
   const buildTelegramDeepLink = (token: string | null) =>
     token && telegramBotUsername
@@ -281,7 +302,7 @@ export function createApp({
     scope: DataAccessScope;
     source: "web" | "telegram" | "system";
     action: "create" | "update" | "delete" | "restore_backup";
-    entityType: "movimiento" | "empresa";
+    entityType: "movimiento" | "empresa" | "movimientos_bulk";
     entityId: string;
     beforeData?: unknown;
     afterData?: unknown;
@@ -460,28 +481,31 @@ export function createApp({
     if (error) throw error;
 
     const members = data ?? [];
-    const enriched = await Promise.all(
-      members.map(async (member: any) => {
-        const { data: userRows, error: userError } = await supabase
-          .from("app_users")
-          .select("user_id, email")
-          .eq("user_id", member.user_id)
-          .limit(1);
-        if (userError) throw userError;
-        const user = userRows?.[0] ?? null;
-        return {
-          id: member.id,
-          user_id: member.user_id,
-          email: user?.email ?? null,
-          role: member.role,
-          status: member.status,
-          created_at: member.created_at,
-          permissions: (member.permissions as Record<string, boolean>) ?? {},
-        } as DashboardMemberSummary;
-      }),
-    );
+    if (members.length === 0) return [];
 
-    return enriched;
+    // WARNING-12: batch fetch all users in a single query instead of N+1
+    const userIds = members.map((m: any) => m.user_id);
+    const { data: userRows, error: userError } = await supabase
+      .from("app_users")
+      .select("user_id, email")
+      .in("user_id", userIds)
+      .limit(userIds.length);
+    if (userError) throw userError;
+
+    const userById = new Map<string, { email: string | null }>();
+    for (const u of userRows ?? []) {
+      userById.set(u.user_id, { email: u.email ?? null });
+    }
+
+    return members.map((member: any) => ({
+      id: member.id,
+      user_id: member.user_id,
+      email: userById.get(member.user_id)?.email ?? null,
+      role: member.role,
+      status: member.status,
+      created_at: member.created_at,
+      permissions: (member.permissions as Record<string, boolean>) ?? {},
+    }));
   };
 
   app.use(withCors(allowedOrigins));
@@ -497,7 +521,12 @@ export function createApp({
       if (!token) return res.status(401).json({ error: "unauthorized" });
       const session = await effectiveResolveSession(token);
       if (!session) return res.status(403).json({ error: "forbidden" });
-      await syncPendingDashboardInvitations(session);
+      // WARNING-7: skip sync if already done for this user in this process lifetime
+      const syncKey = `${session.userId}:${session.email}`;
+      if (!syncedUserKeys.has(syncKey)) {
+        await syncPendingDashboardInvitations(session);
+        syncedUserKeys.add(syncKey);
+      }
 
       (req as any).session = session;
       next();
@@ -755,12 +784,35 @@ export function createApp({
     }
 
     try {
-      await supabase
-        .from("movimientos")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
+      const session = (req as any).session as AppSession;
+      const scope = await resolveDataAccessScope(session);
+      // CRITICAL-3: soft delete — never hard delete movimientos
+      // CRITICAL: scope filter — only delete within the caller's dashboard/owner
+      const bulkUpdate = applyDataScope(
+        supabase
+          .from("movimientos")
+          .update({
+            deleted_at: new Date().toISOString(),
+            deleted_by_user_id: session.userId,
+          })
+          .is("deleted_at", null),
+        session,
+        scope,
+      );
+      const { error: bulkErr } = await bulkUpdate;
+      if (bulkErr) throw bulkErr;
+      await logEntityMutation({
+        session,
+        scope,
+        source: "web",
+        action: "delete",
+        entityType: "movimientos_bulk",
+        entityId: "00000000-0000-0000-0000-000000000000",
+        beforeData: { note: "bulk soft-delete via dangerous route" },
+      });
       res.json({ ok: true });
     } catch (_err) {
+      console.error("[DELETE /api/movimientos/all]", _err);
       res.status(500).json({ error: "failed_to_delete" });
     }
   });
@@ -814,6 +866,8 @@ export function createApp({
       }
       const existing = await getScopeEntityById("empresas", session, scope, req.params.id);
       if (!existing) return res.status(404).json({ error: "not_found" });
+      // WARNING-20: reject if already soft-deleted to prevent duplicate backup and misleading success
+      if ((existing as any).deleted_at) return res.status(404).json({ error: "not_found" });
 
       const { data: relatedMovimientos, error: movimientosError } = await applyDataScope(
         supabase.from("movimientos").select("*"),
@@ -821,8 +875,13 @@ export function createApp({
         scope,
       )
         .eq("empresa_nombre", (existing as any).nombre)
+        .is("deleted_at", null)
         .limit(500);
       if (movimientosError) throw movimientosError;
+      // WARNING-16: warn if snapshot may be incomplete due to limit
+      if (relatedMovimientos && relatedMovimientos.length === 500) {
+        console.warn("[empresa backup] snapshot may be incomplete — 500 limit reached for empresa", req.params.id);
+      }
 
       await createEmpresaDeleteBackup({
         session,
@@ -853,6 +912,7 @@ export function createApp({
       });
       res.json({ ok: true });
     } catch (_err) {
+      console.error("[DELETE /api/empresas/:id]", _err);
       res.status(500).json({ error: "failed_to_delete" });
     }
   });
@@ -983,6 +1043,7 @@ export function createApp({
 
       const existing = await getScopeEntityById("empresas", session, scope, req.params.id);
       if (!existing) return res.status(404).json({ error: "not_found" });
+      if ((existing as any).deleted_at) return res.status(404).json({ error: "not_found" });
 
       const updatePayload = { nombre: payload.nombre };
       const { error } = await supabase
@@ -1119,6 +1180,11 @@ export function createApp({
 
   const driveEnabled = !!(googleDriveClientId && googleDriveClientSecret && googleDriveRedirectUri && tokenEncryptionKey);
 
+  // WARNING-18: warn at startup if DASHBOARD_URL is missing — Drive OAuth callback will redirect incorrectly
+  if (driveEnabled && !publicAppUrl) {
+    console.warn("[drive] WARNING: DASHBOARD_URL is not set. Drive OAuth callback will redirect to backend root instead of frontend.");
+  }
+
   const canUseDrive = (scope: DataAccessScope) =>
     scope.membershipRole === null || scope.membershipRole === "owner";
 
@@ -1163,6 +1229,7 @@ export function createApp({
   app.get("/api/drive/callback", async (req, res) => {
     if (!driveEnabled) return res.status(503).send("Drive not configured");
     const { code, state } = req.query as { code?: string; state?: string };
+    // WARNING-18: if publicAppUrl is missing, redirect goes to backend root — startup warning fires at boot
     const fallbackUrl = publicAppUrl ?? "/";
     if (!code || !state) return res.redirect(`${fallbackUrl}?driveError=missing_params`);
 
@@ -1256,15 +1323,43 @@ export function createApp({
         movements: filteredMovements as any[],
       });
 
-      const wantsDrive = req.body.destination === "drive" && driveEnabled && canUseDrive(scope);
+      // SUSPECT-CRITICAL-6: editors with export_drive permission should also be able to use Drive
+      let editorCanDrive = false;
+      if (payload.destination === "drive" && scope.membershipRole === "editor" && scope.dashboardId) {
+        const { data: memberPermsRows } = await supabase
+          .from("dashboard_members")
+          .select("permissions")
+          .eq("user_id", session.userId)
+          .eq("dashboard_id", scope.dashboardId)
+          .limit(1);
+        const perms = (memberPermsRows?.[0]?.permissions as Record<string, boolean>) ?? {};
+        editorCanDrive = perms.export_drive === true;
+      }
+      // WARNING-19: use validated destination from payload, not raw req.body
+      const wantsDrive = payload.destination === "drive" && driveEnabled && (canUseDrive(scope) || editorCanDrive);
       let driveFileId: string | null = null;
       let driveUrl: string | null = null;
 
       if (wantsDrive) {
+        // Editors never connect Drive — only the dashboard owner does.
+        // Resolve the owner's user_id when acting in the editorCanDrive branch.
+        let driveOwnerUserId = session.userId;
+        if (editorCanDrive && scope.dashboardId) {
+          const { data: ownerRows } = await supabase
+            .from("dashboard_members")
+            .select("user_id")
+            .eq("dashboard_id", scope.dashboardId)
+            .eq("role", "owner")
+            .eq("status", "active")
+            .limit(1);
+          if (ownerRows?.[0]?.user_id) {
+            driveOwnerUserId = ownerRows[0].user_id;
+          }
+        }
         const { data: connData } = await supabase
           .from("drive_connections")
           .select("refresh_token_enc")
-          .eq("owner_user_id", session.userId)
+          .eq("owner_user_id", driveOwnerUserId)
           .limit(1);
         const connection = connData?.[0];
         if (!connection) return res.status(400).json({ error: "drive_not_connected" });

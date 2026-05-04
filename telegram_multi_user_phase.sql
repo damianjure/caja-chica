@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS telegram_links (
     CHECK (status IN ('pending_owner_confirm', 'active', 'revoked')),
   linked_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (telegram_user_id)             -- un solo vínculo activo por telegram_user_id
 );
+
+-- Partial unique: permite re-vincular después de revocar (status='revoked' puede repetir)
+CREATE UNIQUE INDEX IF NOT EXISTS telegram_links_telegram_user_id_active_uniq
+  ON telegram_links (telegram_user_id)
+  WHERE status != 'revoked';
 
 CREATE INDEX IF NOT EXISTS telegram_links_dashboard_id_idx ON telegram_links(dashboard_id);
 CREATE INDEX IF NOT EXISTS telegram_links_app_user_id_idx ON telegram_links(app_user_id);

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS telegram_links (
   status text NOT NULL DEFAULT 'pending_owner_confirm'
     CHECK (status IN ('pending_owner_confirm', 'active', 'revoked')),
   linked_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 -- Partial unique: permite re-vincular después de revocar (status='revoked' puede repetir)
@@ -68,4 +68,4 @@ JOIN dashboard_members dm
 WHERE u.chat_id IS NOT NULL
   AND u.user_id IS NOT NULL
   AND u.dashboard_id IS NOT NULL
-ON CONFLICT (telegram_user_id) DO NOTHING;
+ON CONFLICT DO NOTHING;

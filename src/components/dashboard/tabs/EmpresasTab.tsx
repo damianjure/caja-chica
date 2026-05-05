@@ -1,8 +1,9 @@
 import { Pencil, Trash2 } from 'lucide-react';
 
-import type { Empresa } from '../../../services/api';
+import type { Empresa, Movimiento } from '../../../services/api';
 import { ChartCard, HorizontalBarList } from '../Charts';
 import { PlaceholderPanel, SectionCard } from '../primitives';
+import InformesTab from './InformesTab';
 
 interface CompanySummaryView {
   name: string;
@@ -23,6 +24,9 @@ export default function EmpresasTab({
   onEditCompany,
   onDeleteCompany,
   formatCurrency,
+  history,
+  companiesList,
+  canUseDrive,
 }: {
   companySummaries: CompanySummaryView[];
   topCompanies: Array<{ label: string; value: number; valueLabel?: string; secondary?: string; supportingValue?: string; segments?: Array<{ value: number; colorClass: string; label: string; currency?: 'ARS' | 'USD' }> }>;
@@ -31,6 +35,9 @@ export default function EmpresasTab({
   onEditCompany: (company: Empresa) => void;
   onDeleteCompany: (company: Empresa) => void;
   formatCurrency: (amount: number, currency: 'ARS' | 'USD') => string;
+  history: Movimiento[];
+  companiesList: string[];
+  canUseDrive: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -108,6 +115,15 @@ export default function EmpresasTab({
       </SectionCard>
 
       <PlaceholderPanel title="Sucursales y unidades de negocio" body="Hoy estamos usando empresa como proxy de unidad. Si querés sucursal/canal reales, hay que modelarlos explícitamente en la base y en el parser." />
+
+      <div className="border-t border-neutral-200 pt-6">
+        <InformesTab
+          history={history}
+          companiesList={companiesList}
+          canWriteData={canWriteData}
+          canUseDrive={canUseDrive}
+        />
+      </div>
     </div>
   );
 }

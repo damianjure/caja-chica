@@ -190,7 +190,7 @@ export function CollaborationPanel({
           <Users className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Colaboradores</h2>
+          <h2 className="text-xl font-bold">Miembros</h2>
           <p className="text-sm text-neutral-500">
             Invitá viewers o editors al dashboard compartido.
           </p>

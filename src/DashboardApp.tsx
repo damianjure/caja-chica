@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   LayoutGrid,
   Building2,
-  FileSpreadsheet,
   ArrowUpDown,
   Pencil,
   X,
@@ -46,13 +45,12 @@ interface DashboardAppProps {
   onToggleTheme: () => void;
 }
 
-type DashboardTab = 'resumen' | 'empresas' | 'gastos' | 'ingresos' | 'informes' | 'movimientos';
+type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin';
 
 const ResumenTab = lazy(() => import('./components/dashboard/tabs/ResumenTab'));
 const EmpresasTab = lazy(() => import('./components/dashboard/tabs/EmpresasTab'));
 const GastosTab = lazy(() => import('./components/dashboard/tabs/GastosTab'));
 const IngresosTab = lazy(() => import('./components/dashboard/tabs/IngresosTab'));
-const InformesTab = lazy(() => import('./components/dashboard/tabs/InformesTab'));
 const MovimientosTab = lazy(() => import('./components/dashboard/tabs/MovimientosTab'));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
 const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((module) => ({ default: module.BotConnectionPanel })));
@@ -76,13 +74,12 @@ interface ConfirmationModalState {
   onConfirm: () => Promise<void> | void;
 }
 
-const TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
-  { id: 'resumen', label: 'Resumen', description: 'Ingresos, gastos, utilidad, caja y alertas', icon: LayoutGrid },
-  { id: 'empresas', label: 'Empresas', description: 'Comparación por empresa, sucursal o unidad', icon: Building2 },
+const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
+  { id: 'resumen', label: 'Resumen', description: 'Ingresos, gastos, utilidad y caja del período', icon: LayoutGrid },
+  { id: 'movimientos', label: 'Movimientos', description: 'Transacciones filtrables y trazabilidad', icon: ArrowUpDown },
   { id: 'gastos', label: 'Gastos', description: 'Categorías, presupuesto vs real y evolución', icon: TrendingDown },
   { id: 'ingresos', label: 'Ingresos', description: 'Ventas por cliente, producto, canal y período', icon: TrendingUp },
-  { id: 'informes', label: 'Informes', description: 'Exportaciones, reportes guardados e historial', icon: FileSpreadsheet },
-  { id: 'movimientos', label: 'Movimientos', description: 'Transacciones filtrables y trazabilidad', icon: ArrowUpDown },
+  { id: 'empresas', label: 'Empresas', description: 'Comparación, informes y exportaciones', icon: Building2 },
 ];
 
 
@@ -192,15 +189,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
   const incomeTagSummaries = getIncomeTagSummaries(history);
   const monthlySummaries = getMonthlySummaries(history);
   const expenseMonthlySummaries = getMonthlySummaries(expenseHistory);
-  const totalAlerts = [
-    arsTotals.neto < 0 ? 'Caja ARS negativa en el período.' : null,
-    usdTotals.neto < 0 ? 'Caja USD negativa en el período.' : null,
-    history.length === 0 ? 'Todavía no hay movimientos cargados.' : null,
-  ].filter(Boolean) as string[];
   const dashboardRole =
     dashboardAccess?.members.find((member) => member.user_id === viewer.id)?.role ?? 'owner';
   const canWriteData = dashboardRole !== 'viewer';
-  const activeTabMeta = TAB_CONFIG.find((tab) => tab.id === activeTab) ?? TAB_CONFIG[0];
+  const tabs = viewer.role === 'superadmin'
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'SuperAdmin', description: 'Usuarios, invitaciones y configuración global', icon: ShieldCheck }]
+    : BASE_TAB_CONFIG;
+  const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const monthlyChartDataArs = [...monthlySummaries]
     .reverse()
     .map((item) => ({
@@ -861,7 +856,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       arsNeto={formatCurrency(arsTotals.neto, 'ARS')}
       usdNeto={formatCurrency(usdTotals.neto, 'USD')}
       companyCount={companySummaries.length}
-      totalAlerts={totalAlerts}
       monthlyChartDataArs={monthlyChartDataArs}
       monthlyChartDataUsd={monthlyChartDataUsd}
       topExpenseCategories={topExpenseCategories}
@@ -870,19 +864,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'}
       netPositive={arsTotals.neto >= 0}
       canWriteData={canWriteData}
-      composer={renderComposer()}
       viewer={viewer}
       dashboardAccess={dashboardAccess}
       isLoadingCollaboration={isLoadingCollaboration}
       loadCollaboration={loadCollaboration}
-      adminPanels={(viewer.role === 'admin' || viewer.role === 'superadmin') ? (
-        <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <BotConnectionPanel />
-            <AdminPanel viewer={viewer} />
-          </div>
-        </Suspense>
-      ) : null}
     />
   );
 
@@ -895,6 +880,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       onEditCompany={openCompanyEditor}
       onDeleteCompany={(company) => { void deleteCompany(company.id, company.nombre); }}
       formatCurrency={formatCurrency}
+      history={history}
+      companiesList={companiesList}
+      canUseDrive={canUseDrive}
     />
   );
 
@@ -938,15 +926,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
 
   const canUseDrive = dashboardRole === 'owner';
 
-  const renderInformes = () => (
-    <InformesTab
-      history={history}
-      companiesList={companiesList}
-      canWriteData={canWriteData}
-      canUseDrive={canUseDrive}
-    />
-  );
-
   const renderMovimientos = () => (
     <MovimientosTab
       incomeCount={visibleIncomeCount}
@@ -970,20 +949,29 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
     />
   );
 
+  const renderSuperAdmin = () => (
+    <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}>
+      <div className="space-y-6">
+        <BotConnectionPanel />
+        <AdminPanel viewer={viewer} />
+      </div>
+    </Suspense>
+  );
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'resumen':
         return renderResumen();
-      case 'empresas':
-        return renderEmpresas();
+      case 'movimientos':
+        return renderMovimientos();
       case 'gastos':
         return renderGastos();
       case 'ingresos':
         return renderIngresos();
-      case 'informes':
-        return renderInformes();
-      case 'movimientos':
-        return renderMovimientos();
+      case 'empresas':
+        return renderEmpresas();
+      case 'superadmin':
+        return renderSuperAdmin();
       default:
         return null;
     }
@@ -1081,7 +1069,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
           {/* Mobile: horizontal scroll strip */}
           <div className="md:hidden bg-white/90 backdrop-blur border border-neutral-200 rounded-2xl p-2 shadow-sm overflow-x-auto">
             <div className="flex gap-2 min-w-max">
-              {TAB_CONFIG.map((tab) => {
+              {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -1099,8 +1087,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
           </div>
           {/* md+: grid with descriptions */}
           <div className="hidden md:block bg-white/90 backdrop-blur border border-neutral-200 rounded-3xl p-3 shadow-sm">
-            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-2">
-              {TAB_CONFIG.map((tab) => {
+            <div className={`grid md:grid-cols-3 gap-2 ${tabs.length === 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
+              {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (

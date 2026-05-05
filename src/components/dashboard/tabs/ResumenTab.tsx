@@ -1,10 +1,8 @@
-import { TriangleAlert } from 'lucide-react';
-import type { ReactNode } from 'react';
 
 import { CollaborationPanel } from '../../CollaborationPanel';
 import { AppViewer, DashboardMembersResponse } from '../../../services/api';
 import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
-import { MetricCard, SectionCard } from '../primitives';
+import { MetricCard } from '../primitives';
 
 interface ResumenTabProps {
   arsIngreso: string;
@@ -12,7 +10,6 @@ interface ResumenTabProps {
   arsNeto: string;
   usdNeto: string;
   companyCount: number;
-  totalAlerts: string[];
   monthlyChartDataArs: Array<{ label: string; income: number; expense: number; net: number }>;
   monthlyChartDataUsd: Array<{ label: string; income: number; expense: number; net: number }>;
   topExpenseCategories: Array<{ label: string; value: number; secondary?: string }>;
@@ -21,12 +18,10 @@ interface ResumenTabProps {
   topExpenseValue: string;
   netPositive: boolean;
   canWriteData: boolean;
-  composer: ReactNode;
   viewer: AppViewer;
   dashboardAccess: DashboardMembersResponse | null;
   isLoadingCollaboration: boolean;
   loadCollaboration: () => Promise<void>;
-  adminPanels: ReactNode;
 }
 
 export default function ResumenTab(props: ResumenTabProps) {
@@ -102,28 +97,11 @@ export default function ResumenTab(props: ResumenTabProps) {
         </ChartCard>
       </section>
 
-      <SectionCard title="Alertas operativas" description="Te marca rápido si la foto del período tiene algo raro.">
-        {props.totalAlerts.length > 0 ? (
-          <div className="space-y-3">
-            {props.totalAlerts.map((alert) => (
-              <div key={alert} className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{alert}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-neutral-500">Sin alertas fuertes por ahora. Bien.</p>
-        )}
-      </SectionCard>
-
       {!props.canWriteData && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Estás en modo <strong>viewer</strong>. Podés ver todo, pero no cargar ni editar datos.
         </div>
       )}
-
-      {props.canWriteData && props.composer}
 
       <CollaborationPanel
         viewer={props.viewer}
@@ -131,8 +109,6 @@ export default function ResumenTab(props: ResumenTabProps) {
         loading={props.isLoadingCollaboration}
         onRefresh={props.loadCollaboration}
       />
-
-      {props.adminPanels}
     </div>
   );
 }

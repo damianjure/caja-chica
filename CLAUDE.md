@@ -117,7 +117,7 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 ### Estado de validación local más reciente
 - `npm test` → **90/90 OK** (runner Node.js v25 cuelga al terminar — comportamiento conocido, no es un fallo)
 - `npm run lint` → **OK**
-- commit HEAD: `10da726`
+- commit HEAD: `fb0a3d0`
 
 ### Cómo correr tests correctamente
 ```bash

@@ -351,6 +351,38 @@ export function parseUpdateEmpresaRequest(value: unknown): UpdateEmpresaRequest 
   return { nombre: payload.nombre.trim() };
 }
 
+export type PhotoSourceType = "photo" | "pdf" | "handwritten" | "multi";
+
+export interface PendingExtractionData {
+  monto: number | null;
+  moneda: "ARS" | "USD";
+  tipo: "ingreso" | "egreso";
+  empresa: string | null;
+  cuit: string | null;
+  categoria: string;
+  descripcion: string;
+  fecha: string | null;
+  confidence: number;
+  sourceType: PhotoSourceType;
+}
+
+export function isPendingExtractionData(value: unknown): value is PendingExtractionData {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    (obj.monto === null || (typeof obj.monto === "number" && Number.isFinite(obj.monto) && obj.monto > 0)) &&
+    (obj.moneda === "ARS" || obj.moneda === "USD") &&
+    (obj.tipo === "ingreso" || obj.tipo === "egreso") &&
+    (obj.empresa === null || typeof obj.empresa === "string") &&
+    (obj.cuit === null || typeof obj.cuit === "string") &&
+    typeof obj.categoria === "string" &&
+    typeof obj.descripcion === "string" &&
+    (obj.fecha === null || typeof obj.fecha === "string") &&
+    typeof obj.confidence === "number" &&
+    (obj.sourceType === "photo" || obj.sourceType === "pdf" || obj.sourceType === "handwritten" || obj.sourceType === "multi")
+  );
+}
+
 export function parseReportExportRequest(value: unknown): ReportExportRequest | null {
   if (!value || typeof value !== "object") return null;
   const payload = value as Record<string, unknown>;

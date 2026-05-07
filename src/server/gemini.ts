@@ -36,31 +36,73 @@ export function parseGeminiJsonResponse(value: string): GeminiExtractResponse | 
   return parsed as GeminiExtractResponse;
 }
 
-export const RECEIPT_SYSTEM_PROMPT = `Extraé datos financieros de una factura, recibo o ticket de compra.
-Retorná SIEMPRE un JSON con:
-{ "items": [{ "monto": number, "tipo": "egreso", "moneda": "ARS"|"USD", "categoria": string, "empresa": string, "descripcion": string, "confidence": number }] }
-"confidence" es 0.0-1.0 según claridad de los datos en la imagen.`;
+export const RECEIPT_SYSTEM_PROMPT = `Sos un extractor de datos de tickets y facturas para el mercado argentino.
+Analizá la imagen y extraé la información financiera principal.
 
-export const HANDWRITTEN_SYSTEM_PROMPT = `Extraé datos de un registro manuscrito de gastos o ingresos.
-Retorná SIEMPRE un JSON con:
-{ "items": [{ "monto": number, "tipo": "ingreso"|"egreso", "moneda": "ARS"|"USD", "categoria": string, "empresa": string, "descripcion": string, "confidence": number }] }
-"confidence" es 0.0-1.0 según legibilidad de la letra.`;
+Retorná SIEMPRE un objeto JSON con esta estructura exacta:
+{
+  "monto": <número total del ticket, sin signos>,
+  "moneda": "ARS" | "USD",
+  "tipo": "egreso",
+  "empresa": <nombre del comercio o null>,
+  "cuit": <CUIT del emisor sin guiones o null>,
+  "categoria": <categoría apropiada>,
+  "descripcion": <descripción breve del gasto>,
+  "fecha": <fecha en formato YYYY-MM-DD o null>,
+  "confidence": <número entre 0 y 1 indicando confianza en la extracción>
+}
 
-export const MULTI_RECEIPT_SYSTEM_PROMPT = `Extraé múltiples transacciones de múltiples recibos o facturas en la imagen.
-Retorná SIEMPRE un JSON con:
-{ "items": [{ "monto": number, "tipo": "egreso"|"ingreso", "moneda": "ARS"|"USD", "categoria": string, "empresa": string, "descripcion": string, "confidence": number }, ...] }
-"confidence" es 0.0-1.0 por item. Incluí TODOS los recibos visibles.`;
+Si no podés extraer el monto con seguridad, usá confidence menor a 0.5.
+Respondé SOLO con el JSON, sin markdown, sin explicaciones.`;
+
+export const HANDWRITTEN_SYSTEM_PROMPT = `Sos un extractor permisivo de datos financieros de notas manuscritas o imágenes poco claras para el mercado argentino.
+ENTENDÉ JERGA: "lucas/k" (1000), "gamba" (100), "palo" (1.000.000), "pe" (pesos).
+
+Intentá extraer lo que puedas. Si algo no está claro, inferí con sentido común.
+
+Retorná SIEMPRE un objeto JSON con esta estructura exacta:
+{
+  "monto": <número o null si no podés determinarlo>,
+  "moneda": "ARS" | "USD",
+  "tipo": "egreso" | "ingreso",
+  "empresa": <nombre o null>,
+  "cuit": null,
+  "categoria": <categoría apropiada o "Varios">,
+  "descripcion": <descripción breve>,
+  "fecha": null,
+  "confidence": <número entre 0 y 1>
+}
+
+Respondé SOLO con el JSON, sin markdown, sin explicaciones.`;
+
+export const MULTI_RECEIPT_SYSTEM_PROMPT = `Sos un extractor de datos de múltiples tickets o facturas para el mercado argentino.
+Se te enviarán varias imágenes. Extraé los datos de CADA UNA por separado.
+
+Retorná SIEMPRE un array JSON donde cada elemento tiene:
+{
+  "monto": <número total del ticket, sin signos>,
+  "moneda": "ARS" | "USD",
+  "tipo": "egreso",
+  "empresa": <nombre del comercio o null>,
+  "cuit": <CUIT del emisor sin guiones o null>,
+  "categoria": <categoría apropiada>,
+  "descripcion": <descripción breve del gasto>,
+  "fecha": <fecha en formato YYYY-MM-DD o null>,
+  "confidence": <número entre 0 y 1>
+}
+
+Respondé SOLO con el array JSON, sin markdown, sin explicaciones.`;
 
 export interface PhotoExtractionResult {
-  items: Array<{
-    monto: number;
-    tipo: "ingreso" | "egreso";
-    moneda: "ARS" | "USD";
-    categoria: string;
-    empresa: string;
-    descripcion: string;
-    confidence: number;
-  }>;
+  monto: number | null;
+  moneda: "ARS" | "USD";
+  tipo: "ingreso" | "egreso";
+  empresa: string | null;
+  cuit: string | null;
+  categoria: string;
+  descripcion: string;
+  fecha: string | null;
+  confidence: number;
 }
 
 export function parsePhotoExtractionResult(value: string): PhotoExtractionResult | null {
@@ -70,29 +112,39 @@ export function parsePhotoExtractionResult(value: string): PhotoExtractionResult
   } catch {
     return null;
   }
-  if (!parsed || typeof parsed !== "object") return null;
-  const items = (parsed as { items?: unknown }).items;
-  if (!Array.isArray(items)) return null;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const obj = parsed as Record<string, unknown>;
 
-  const valid = items.every((item: unknown) => {
-    if (!item || typeof item !== "object") return false;
-    const obj = item as Record<string, unknown>;
-    return (
-      typeof obj.monto === "number" &&
-      (obj.tipo === "ingreso" || obj.tipo === "egreso") &&
-      (obj.moneda === "ARS" || obj.moneda === "USD") &&
-      typeof obj.categoria === "string" &&
-      typeof obj.empresa === "string" &&
-      typeof obj.descripcion === "string" &&
-      typeof obj.confidence === "number" &&
-      obj.confidence >= 0 &&
-      obj.confidence <= 1
-    );
-  });
+  const moneda = obj.moneda === "USD" ? "USD" : "ARS";
+  const tipo = obj.tipo === "ingreso" ? "ingreso" : "egreso";
+  const confidence = typeof obj.confidence === "number" ? Math.max(0, Math.min(1, obj.confidence)) : 0;
+  const monto = typeof obj.monto === "number" && Number.isFinite(obj.monto) && obj.monto > 0 ? obj.monto : null;
 
-  return valid ? (parsed as PhotoExtractionResult) : null;
+  return {
+    monto,
+    moneda,
+    tipo,
+    empresa: typeof obj.empresa === "string" && obj.empresa.trim() ? obj.empresa.trim() : null,
+    cuit: typeof obj.cuit === "string" && obj.cuit.trim() ? obj.cuit.trim() : null,
+    categoria: typeof obj.categoria === "string" && obj.categoria.trim() ? obj.categoria.trim() : "Varios",
+    descripcion: typeof obj.descripcion === "string" && obj.descripcion.trim() ? obj.descripcion.trim() : "Gasto registrado desde foto",
+    fecha: typeof obj.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.fecha) ? obj.fecha : null,
+    confidence,
+  };
 }
 
-export function parseMultiPhotoExtractionResult(value: string): PhotoExtractionResult | null {
-  return parsePhotoExtractionResult(value);
+export function parseMultiPhotoExtractionResult(value: string): PhotoExtractionResult[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value.replace(/```json|```/g, "").trim());
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  const results: PhotoExtractionResult[] = [];
+  for (const item of parsed) {
+    const result = parsePhotoExtractionResult(JSON.stringify(item));
+    if (result) results.push(result);
+  }
+  return results.length > 0 ? results : null;
 }

@@ -11,6 +11,20 @@ import { transcribeTelegramAudioWithGemini } from "./src/server/telegramAudio.ts
 import { resolveTelegramCompany, type TelegramCompanyOption } from "./src/server/telegramCompanyResolution.ts";
 import { loadRuntimeEnv } from "./src/server/env.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "./src/server/gemini.ts";
+import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "./src/server/telegramMedia.ts";
+import { MediaGroupBuffer } from "./src/server/mediaGroupBuffer.ts";
+import {
+  createPendingExtraction,
+  getPendingExtraction,
+  getPendingExtractionByChat,
+  updatePendingExtraction,
+  deletePendingExtraction,
+  buildReviewCardText,
+  buildReviewKeyboard,
+  startExtractionSweep,
+  type ExtractionField,
+} from "./src/server/extractionReview.ts";
+import type { PendingExtractionData } from "./src/server/validation.ts";
 import {
   applyTelegramDataScope,
   buildTelegramWriteOwnership,
@@ -375,6 +389,9 @@ if (bot) {
     linked: TelegramLinkRecord;
     expiresAt: number;
   }
+
+  const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
+  startExtractionSweep();
 
   const pendingReportSessions = new Map<number, ReportSession>();
 
@@ -1259,6 +1276,38 @@ if (bot) {
     const text = ctx.message.text;
     if (text.startsWith('/')) return;
 
+    // Handle pending extraction field edits
+    const editingEntry = getPendingExtractionByChat(ctx.chat.id);
+    if (editingEntry && editingEntry.editingField) {
+      const field = editingEntry.editingField;
+      const val = text.trim();
+      const patch: Partial<PendingExtractionData> = {};
+
+      if (field === "monto") {
+        const n = parseFloat(val.replace(",", "."));
+        if (!isNaN(n) && n > 0) patch.monto = n;
+        else { await ctx.reply("❌ Monto inválido. Mandame un número positivo:"); return; }
+      } else if (field === "empresa") {
+        patch.empresa = val.toLowerCase() === "ninguna" ? null : val;
+      } else if (field === "categoria") {
+        patch.categoria = val;
+      } else if (field === "descripcion") {
+        patch.descripcion = val;
+      } else if (field === "tipo") {
+        if (val !== "ingreso" && val !== "egreso") { await ctx.reply("❌ Mandame `ingreso` o `egreso`."); return; }
+        patch.tipo = val;
+      } else if (field === "moneda") {
+        if (val !== "ARS" && val !== "USD") { await ctx.reply("❌ Mandame `ARS` o `USD`."); return; }
+        patch.moneda = val;
+      }
+
+      const updated = updatePendingExtraction(editingEntry.id, { data: patch as PendingExtractionData, editingField: null });
+      if (!updated) { await ctx.reply("❌ La sesión de edición venció. Mandá la foto de nuevo."); return; }
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.reply(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(updated.id) });
+      return;
+    }
+
     // Handle pending recurrente text inputs (monto + descripcion)
     const recSession = getRecurrenceSession(ctx.chat.id);
     if (recSession) {
@@ -1374,6 +1423,216 @@ if (bot) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch(e) {}
     }
   }
+
+  async function showExtractionReview(ctx: any, linked: any, data: PendingExtractionData, processingMsgId: number) {
+    try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+    const entry = createPendingExtraction({
+      chatId: ctx.chat.id,
+      dashboardId: linked.dashboardId ?? null,
+      userId: linked.userId ?? null,
+      ownerUserId: linked.ownerUserId ?? null,
+      data,
+      messageId: 0,
+    });
+    const text = buildReviewCardText(data);
+    const keyboard = buildReviewKeyboard(entry.id);
+    await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+  }
+
+  async function handleTelegramPhotoMessage(ctx: any) {
+    const linked = await requireTelegramCan(ctx, "write_movimiento");
+    if (!linked) return;
+
+    const mediaGroupId: string | undefined = ctx.message.media_group_id;
+
+    if (mediaGroupId) {
+      const photo = ctx.message.photo?.[ctx.message.photo.length - 1];
+      if (!photo) return;
+      const file = await ctx.getFile();
+      if (!file?.file_path) return;
+
+      mediaGroupBuffer.add(
+        mediaGroupId,
+        { filePath: file.file_path, mimeType: "image/jpeg", chatCtx: ctx },
+        async (items) => {
+          const firstCtx = items[0].chatCtx;
+          const linked2 = await requireTelegramCan(firstCtx, "write_movimiento");
+          if (!linked2) return;
+          const processingMsg = await firstCtx.reply("⏳ Procesando fotos...");
+          try {
+            const files = items.map((item, i) => ({
+              filePath: item.filePath,
+              mimeType: item.mimeType,
+              displayName: `ticket-${i + 1}.jpg`,
+            }));
+            if (files.length === 1) {
+              const { result, sourceType } = await extractFromPhoto({
+                genAI,
+                botToken: botToken as string,
+                filePath: files[0].filePath,
+                mimeType: files[0].mimeType,
+              });
+              await showExtractionReview(firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
+            } else {
+              const results = await extractFromMultiplePhotos({ genAI, botToken: botToken as string, files });
+              try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
+              for (const result of results) {
+                const data: PendingExtractionData = { ...result, sourceType: "multi" };
+                const entry = createPendingExtraction({
+                  chatId: firstCtx.chat.id,
+                  dashboardId: linked2.dashboardId ?? null,
+                  userId: linked2.userId ?? null,
+                  ownerUserId: linked2.ownerUserId ?? null,
+                  data,
+                  messageId: 0,
+                });
+                await firstCtx.reply(buildReviewCardText(data), {
+                  parse_mode: "Markdown",
+                  reply_markup: buildReviewKeyboard(entry.id),
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Telegram photo processing error:", err);
+            try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
+            await firstCtx.reply("❌ No pude procesar las fotos. Mandá una por vez o probá con mejor iluminación.");
+          }
+        },
+      );
+      return;
+    }
+
+    const photo = ctx.message.photo?.[ctx.message.photo.length - 1];
+    if (!photo) return;
+    const processingMsg = await ctx.reply("⏳ Procesando ticket...");
+    try {
+      const file = await ctx.getFile();
+      if (!file?.file_path) {
+        await ctx.reply("❌ No pude obtener la imagen.");
+        return;
+      }
+      const { result, sourceType } = await extractFromPhoto({
+        genAI,
+        botToken: botToken as string,
+        filePath: file.file_path,
+        mimeType: "image/jpeg",
+      });
+      await showExtractionReview(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+    } catch (err) {
+      console.error("Telegram photo processing error:", err);
+      try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
+      await ctx.reply("❌ No pude procesar la foto. Probá con mejor iluminación o mandá el texto directamente.");
+    }
+  }
+
+  async function handleTelegramDocumentMessage(ctx: any) {
+    const linked = await requireTelegramCan(ctx, "write_movimiento");
+    if (!linked) return;
+
+    const doc = ctx.message.document;
+    if (!doc) return;
+
+    const mimeType = inferMediaMimeType({ mimeType: doc.mime_type, filePath: doc.file_name, isDocument: true });
+    if (!mimeType || !SUPPORTED_DOCUMENT_MIME_TYPES.has(mimeType)) {
+      await ctx.reply("❌ Tipo de archivo no soportado. Mandá una imagen (JPG, PNG, WEBP) o PDF.");
+      return;
+    }
+
+    if (doc.file_size && doc.file_size > 20 * 1024 * 1024) {
+      await ctx.reply("❌ El archivo es demasiado grande (máximo 20MB).");
+      return;
+    }
+
+    const processingMsg = await ctx.reply("⏳ Procesando documento...");
+    try {
+      const file = await ctx.getFile();
+      if (!file?.file_path) {
+        await ctx.reply("❌ No pude obtener el archivo.");
+        return;
+      }
+      const { result, sourceType } = await extractFromPhoto({
+        genAI,
+        botToken: botToken as string,
+        filePath: file.file_path,
+        mimeType,
+        displayName: doc.file_name ?? "document",
+      });
+      await showExtractionReview(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+    } catch (err) {
+      console.error("Telegram document processing error:", err);
+      try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
+      await ctx.reply("❌ No pude procesar el documento.");
+    }
+  }
+
+  bot.on("message:photo", async (ctx) => {
+    await handleTelegramPhotoMessage(ctx);
+  });
+
+  bot.on("message:document", async (ctx) => {
+    await handleTelegramDocumentMessage(ctx);
+  });
+
+  bot.callbackQuery(/^er:confirm:(.+)$/, async (ctx) => {
+    const extractionId = ctx.match[1];
+    const entry = getPendingExtraction(extractionId);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta confirmación ya venció o fue usada.");
+      return;
+    }
+    await ctx.answerCallbackQuery("✅ Guardando...");
+    const d = entry.data;
+    const ownership = buildTelegramWriteOwnership(entry.dashboardId, entry.userId, entry.ownerUserId);
+    const { error } = await supabase.from("movimientos").insert([{
+      ...ownership,
+      monto: Math.abs(d.monto ?? 0),
+      tipo: d.tipo,
+      moneda: d.moneda,
+      categoria: d.categoria,
+      empresa_nombre: d.empresa,
+      descripcion: d.descripcion,
+      original_text: `[${d.sourceType}] ${d.descripcion}`,
+      conciliado: true,
+      conciliado_notas: null,
+    }]);
+    deletePendingExtraction(extractionId);
+    if (error) {
+      console.error("extractionReview confirm insert error:", error);
+      await ctx.editMessageText("❌ Error al guardar. Intentá de nuevo.", { parse_mode: "Markdown" });
+      return;
+    }
+    const montoStr = d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "monto desconocido";
+    await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${d.descripcion}`, { parse_mode: "Markdown" });
+  });
+
+  bot.callbackQuery(/^er:cancel:(.+)$/, async (ctx) => {
+    const extractionId = ctx.match[1];
+    deletePendingExtraction(extractionId);
+    await ctx.answerCallbackQuery("Cancelado");
+    await ctx.editMessageText("❌ Registro cancelado.");
+  });
+
+  bot.callbackQuery(/^er:edit:(.+):(.+)$/, async (ctx) => {
+    const extractionId = ctx.match[1];
+    const field = ctx.match[2] as ExtractionField;
+    const entry = getPendingExtraction(extractionId);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta sesión ya venció.");
+      return;
+    }
+    updatePendingExtraction(extractionId, { editingField: field });
+    await ctx.answerCallbackQuery();
+
+    const prompts: Record<ExtractionField, string> = {
+      monto: "✏️ Mandame el nuevo monto (ej: `1500`):",
+      empresa: "✏️ Mandame el nombre de la empresa (o `ninguna`):",
+      categoria: "✏️ Mandame la categoría:",
+      descripcion: "✏️ Mandame la nueva descripción:",
+      tipo: "✏️ ¿Es `ingreso` o `egreso`?",
+      moneda: "✏️ ¿`ARS` o `USD`?",
+    };
+    await ctx.reply(prompts[field] ?? "✏️ Mandame el nuevo valor:", { parse_mode: "Markdown" });
+  });
 
   bot.on("message:voice", async (ctx) => {
     await handleTelegramAudioMessage(ctx, "voice");

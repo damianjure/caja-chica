@@ -10,6 +10,7 @@ interface InformesTabProps {
   companiesList: string[];
   canWriteData: boolean;
   canUseDrive: boolean;
+  canConnectDrive: boolean;
 }
 
 function triggerDownload(fileName: string, mimeType: string, contentBase64: string) {
@@ -24,7 +25,7 @@ function triggerDownload(fileName: string, mimeType: string, contentBase64: stri
   URL.revokeObjectURL(url);
 }
 
-export default function InformesTab({ history, companiesList, canWriteData, canUseDrive }: InformesTabProps) {
+export default function InformesTab({ history, companiesList, canWriteData, canUseDrive, canConnectDrive }: InformesTabProps) {
   const today = new Date().toISOString().slice(0, 10);
   const thisMonth = today.slice(0, 7);
   const [period, setPeriod] = useState<ReportPeriod>("month");
@@ -155,7 +156,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
         <MetricCard
           label="Google Drive"
           value={
-            !canUseDrive ? "Solo owners" :
+            !canUseDrive ? "Sin permiso" :
             loadingDrive ? "Verificando..." :
             !driveStatus.enabled ? "No configurado" :
             driveStatus.connected ? "Conectado" : "Desconectado"
@@ -164,7 +165,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
         />
       </div>
 
-      {canUseDrive && !loadingDrive && driveStatus.enabled && (
+      {canConnectDrive && !loadingDrive && driveStatus.enabled && (
         <SectionCard
           title="Google Drive"
           description={driveStatus.connected

@@ -50,7 +50,7 @@ const supabase = createClient(supabaseUrl, supabaseServerKey);
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
-const dashboardUrl = process.env.DASHBOARD_URL || "https://balancediario.web.app";
+const dashboardUrl = process.env.DASHBOARD_URL || "https://caja-chica-bot.web.app";
 
 function unrefInterval(timer: ReturnType<typeof setInterval>) {
   const maybeUnref = (timer as { unref?: () => void }).unref;
@@ -1920,7 +1920,7 @@ if (bot) {
 }
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://balancediario.web.app").split(",");
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://caja-chica-bot.web.app").split(",");
 const webhookPath = bot ? "/webhook/telegram" : undefined;
 const app = createApp({
   supabase,

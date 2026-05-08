@@ -29,6 +29,8 @@ export function startExtractionSweep() {
       if (now > entry.expiresAt) pendingExtractions.delete(id);
     }
   }, SWEEP_INTERVAL_MS);
+  const maybeUnref = (sweepTimer as { unref?: () => void }).unref;
+  if (typeof maybeUnref === "function") maybeUnref.call(sweepTimer);
 }
 
 export function stopExtractionSweep() {

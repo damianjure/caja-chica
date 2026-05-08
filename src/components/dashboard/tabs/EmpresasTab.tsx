@@ -27,6 +27,7 @@ export default function EmpresasTab({
   history,
   companiesList,
   canUseDrive,
+  canConnectDrive,
 }: {
   companySummaries: CompanySummaryView[];
   topCompanies: Array<{ label: string; value: number; valueLabel?: string; secondary?: string; supportingValue?: string; segments?: Array<{ value: number; colorClass: string; label: string; currency?: 'ARS' | 'USD' }> }>;
@@ -38,6 +39,7 @@ export default function EmpresasTab({
   history: Movimiento[];
   companiesList: string[];
   canUseDrive: boolean;
+  canConnectDrive: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -122,6 +124,7 @@ export default function EmpresasTab({
           companiesList={companiesList}
           canWriteData={canWriteData}
           canUseDrive={canUseDrive}
+          canConnectDrive={canConnectDrive}
         />
       </div>
     </div>

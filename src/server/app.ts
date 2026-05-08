@@ -24,6 +24,11 @@ import {
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
+function unrefInterval(timer: ReturnType<typeof setInterval>) {
+  const maybeUnref = (timer as { unref?: () => void }).unref;
+  if (typeof maybeUnref === "function") maybeUnref.call(timer);
+}
+
 export interface SupabaseLike {
   from(table: string): any;
 }
@@ -107,12 +112,13 @@ const EXTRACT_RATE_LIMIT = 30;
 const EXTRACT_RATE_WINDOW_MS = 60_000;
 
 // WARNING-8: evict expired rate-limit entries every 5 minutes to prevent unbounded growth
-setInterval(() => {
+const extractRateLimitSweep = setInterval(() => {
   const now = Date.now();
   for (const [userId, entry] of extractRateLimitMap) {
     if (entry.resetAt < now) extractRateLimitMap.delete(userId);
   }
 }, 5 * 60_000);
+unrefInterval(extractRateLimitSweep);
 
 function checkExtractRateLimit(userId: string): boolean {
   const now = Date.now();
@@ -130,12 +136,13 @@ function checkExtractRateLimit(userId: string): boolean {
 const pendingDriveOAuthStates = new Map<string, { userId: string; expiresAt: number }>();
 
 // WARNING-10: evict expired Drive OAuth states every 5 minutes
-setInterval(() => {
+const pendingDriveOAuthStatesSweep = setInterval(() => {
   const now = Date.now();
   for (const [key, v] of pendingDriveOAuthStates) {
     if (now > v.expiresAt) pendingDriveOAuthStates.delete(key);
   }
 }, 5 * 60_000);
+unrefInterval(pendingDriveOAuthStatesSweep);
 
 export function createApp({
   supabase,
@@ -1186,19 +1193,53 @@ export function createApp({
     console.warn("[drive] WARNING: DASHBOARD_URL is not set. Drive OAuth callback will redirect to backend root instead of frontend.");
   }
 
-  const canUseDrive = (scope: DataAccessScope) =>
+  const canConnectDrive = (scope: DataAccessScope) =>
     scope.membershipRole === null || scope.membershipRole === "owner";
+
+  const editorCanExportDrive = async (session: AppSession, scope: DataAccessScope) => {
+    if (scope.membershipRole !== "editor" || !scope.dashboardId) return false;
+    const { data, error } = await supabase
+      .from("dashboard_members")
+      .select("permissions, status")
+      .eq("user_id", session.userId)
+      .eq("dashboard_id", scope.dashboardId)
+      .limit(1);
+    if (error) throw error;
+    const member = data?.[0];
+    const perms = (member?.permissions as Record<string, boolean>) ?? {};
+    return member?.status === "active" && perms.export_drive === true;
+  };
+
+  const canExportDrive = async (session: AppSession, scope: DataAccessScope) =>
+    canConnectDrive(scope) || (await editorCanExportDrive(session, scope));
+
+  const resolveDriveOwnerUserId = async (session: AppSession, scope: DataAccessScope) => {
+    if (!scope.dashboardId || scope.membershipRole === "owner" || scope.membershipRole === null) {
+      return session.userId;
+    }
+    const { data, error } = await supabase
+      .from("dashboard_members")
+      .select("user_id")
+      .eq("dashboard_id", scope.dashboardId)
+      .eq("role", "owner")
+      .eq("status", "active")
+      .limit(1);
+    if (error) throw error;
+    return data?.[0]?.user_id ?? null;
+  };
 
   app.get("/api/drive/status", requireSession, async (req, res) => {
     if (!driveEnabled) return res.json({ connected: false, enabled: false });
     try {
       const session = (req as any).session as AppSession;
       const scope = await resolveDataAccessScope(session);
-      if (!canUseDrive(scope)) return res.json({ connected: false, enabled: false });
+      if (!(await canExportDrive(session, scope))) return res.json({ connected: false, enabled: false });
+      const driveOwnerUserId = await resolveDriveOwnerUserId(session, scope);
+      if (!driveOwnerUserId) return res.json({ connected: false, enabled: true });
       const { data, error } = await supabase
         .from("drive_connections")
         .select("id")
-        .eq("owner_user_id", session.userId)
+        .eq("owner_user_id", driveOwnerUserId)
         .limit(1);
       if (error) throw error;
       res.json({ connected: (data?.length ?? 0) > 0, enabled: true });
@@ -1212,7 +1253,7 @@ export function createApp({
     try {
       const session = (req as any).session as AppSession;
       const scope = await resolveDataAccessScope(session);
-      if (!canUseDrive(scope)) return res.status(403).json({ error: "forbidden" });
+      if (!canConnectDrive(scope)) return res.status(403).json({ error: "forbidden" });
       const state = randomBytes(16).toString("hex");
       pendingDriveOAuthStates.set(state, { userId: session.userId, expiresAt: Date.now() + 5 * 60_000 });
       const url = getDriveAuthUrl(
@@ -1264,7 +1305,7 @@ export function createApp({
     try {
       const session = (req as any).session as AppSession;
       const scope = await resolveDataAccessScope(session);
-      if (!canUseDrive(scope)) return res.status(403).json({ error: "forbidden" });
+      if (!canConnectDrive(scope)) return res.status(403).json({ error: "forbidden" });
       await supabase.from("drive_connections").delete().eq("owner_user_id", session.userId);
       res.json({ ok: true });
     } catch {
@@ -1324,39 +1365,14 @@ export function createApp({
         movements: filteredMovements as any[],
       });
 
-      // SUSPECT-CRITICAL-6: editors with export_drive permission should also be able to use Drive
-      let editorCanDrive = false;
-      if (payload.destination === "drive" && scope.membershipRole === "editor" && scope.dashboardId) {
-        const { data: memberPermsRows } = await supabase
-          .from("dashboard_members")
-          .select("permissions")
-          .eq("user_id", session.userId)
-          .eq("dashboard_id", scope.dashboardId)
-          .limit(1);
-        const perms = (memberPermsRows?.[0]?.permissions as Record<string, boolean>) ?? {};
-        editorCanDrive = perms.export_drive === true;
-      }
       // WARNING-19: use validated destination from payload, not raw req.body
-      const wantsDrive = payload.destination === "drive" && driveEnabled && (canUseDrive(scope) || editorCanDrive);
+      const wantsDrive = payload.destination === "drive" && driveEnabled && (await canExportDrive(session, scope));
       let driveFileId: string | null = null;
       let driveUrl: string | null = null;
 
       if (wantsDrive) {
-        // Editors never connect Drive — only the dashboard owner does.
-        // Resolve the owner's user_id when acting in the editorCanDrive branch.
-        let driveOwnerUserId = session.userId;
-        if (editorCanDrive && scope.dashboardId) {
-          const { data: ownerRows } = await supabase
-            .from("dashboard_members")
-            .select("user_id")
-            .eq("dashboard_id", scope.dashboardId)
-            .eq("role", "owner")
-            .eq("status", "active")
-            .limit(1);
-          if (ownerRows?.[0]?.user_id) {
-            driveOwnerUserId = ownerRows[0].user_id;
-          }
-        }
+        const driveOwnerUserId = await resolveDriveOwnerUserId(session, scope);
+        if (!driveOwnerUserId) return res.status(400).json({ error: "drive_not_connected" });
         const { data: connData } = await supabase
           .from("drive_connections")
           .select("refresh_token_enc")

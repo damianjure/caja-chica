@@ -189,8 +189,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
   const incomeTagSummaries = getIncomeTagSummaries(history);
   const monthlySummaries = getMonthlySummaries(history);
   const expenseMonthlySummaries = getMonthlySummaries(expenseHistory);
-  const dashboardRole =
-    dashboardAccess?.members.find((member) => member.user_id === viewer.id)?.role ?? 'owner';
+  const currentDashboardMember = dashboardAccess?.members.find((member) => member.user_id === viewer.id) ?? null;
+  const dashboardRole = currentDashboardMember?.role ?? 'owner';
   const canWriteData = dashboardRole !== 'viewer';
   const tabs = viewer.role === 'superadmin'
     ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'SuperAdmin', description: 'Usuarios, invitaciones y configuración global', icon: ShieldCheck }]
@@ -883,6 +883,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       history={history}
       companiesList={companiesList}
       canUseDrive={canUseDrive}
+      canConnectDrive={canConnectDrive}
     />
   );
 
@@ -924,7 +925,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
     />
   );
 
-  const canUseDrive = dashboardRole === 'owner';
+  const canConnectDrive = dashboardRole === 'owner';
+  const canUseDrive =
+    canConnectDrive ||
+    (dashboardRole === 'editor' && currentDashboardMember?.permissions?.export_drive === true);
 
   const renderMovimientos = () => (
     <MovimientosTab

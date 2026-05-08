@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Fuente de verdad única — 2026-05-03 (actualizado post-sprints)
+## Fuente de verdad única — 2026-05-07 (actualizado post deploy + photo extraction + Drive refactor)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -21,13 +21,14 @@ El producto tiene tres caras:
 - bot de Telegram en grammY
 
 Integraciones principales:
-- Gemini (`@google/genai`) para extracción desde texto libre
+- Gemini (`@google/genai`) para extracción desde texto libre y OCR de tickets/facturas
 - Supabase para auth, datos y realtime
 - Firebase Hosting para frontend productivo
 - Cloud Run / Node runtime para backend y bot
 - Google Drive API (`googleapis`) para exportación de informes
+- Resend para notificaciones por email
 
-### Estado real validado (post-sprints)
+### Estado real validado (2026-05-07)
 - login Google por invitación
 - bootstrap de superadmin
 - member invitado aceptando login
@@ -38,14 +39,14 @@ Integraciones principales:
 - paneles bot/admin ocultos para `member`
 - edición/borrado seguro de movimientos y empresas con auditoría y soft delete
 - modelo de dashboard compartido soportado: `owner/editor/viewer`
-- **Fase 2 Informes** — en producción:
+- **Fase 2 Informes** — en producción (dentro de pestaña Empresas):
   - filtros: día / semana / mes / rango / empresa / tipo / moneda
   - exportación CSV y PDF real (generador propio, sin deps externos)
   - historial persistido en `report_exports`
   - **Google Drive** — integración completa:
     - OAuth2 con `drive.file` scope
     - tokens guardados cifrados en `drive_connections` (AES-256-CBC)
-    - solo `owner` puede conectar/usar Drive
+    - `owner` puede conectar Drive; `editor` con permiso `export_drive` puede usarlo
     - `viewer` no puede subir
     - destino `local` o `drive` al exportar
     - historial muestra badge con link directo si destino=drive
@@ -58,29 +59,45 @@ Integraciones principales:
   - monto → tipo → moneda → frecuencia → descripción → insert Supabase
   - soporta diario / semanal / mensual
   - reemplaza el comando one-shot anterior
+- **Bot Photo/PDF extraction** — en código (pendiente deploy):
+  - Gemini OCR para tickets, facturas y documentos escaneados
+  - soporta foto individual, álbum de Telegram (media group) y documento PDF/imagen
+  - `MediaGroupBuffer` con debounce 1.5s para álbumes
+  - flujo de revisión interactivo: card con datos extraídos → editar campos → confirmar/cancelar
+  - sesiones de revisión en `extractionReview.ts` con TTL 10 min
+  - `PendingExtractionData` con campos: monto, empresa, categoría, descripción, tipo, moneda, fecha
+- **Telegram multiusuario (Bloque 2)** — en código (pendiente deploy):
+  - flujo doble-factor: invite token → confirmación del owner → vínculo activo
+  - tabla `telegram_links` con estados `pending_owner_confirm → active → revoked`
+  - tokens de invitación one-shot con TTL 30 min en `telegram_invite_tokens`
+  - `requireTelegramCan()` con checks de permisos para cada operación del bot
+  - editor con `invite_telegram` puede generar links de vinculación Telegram
+- **Email notifications (Resend)** — en código (pendiente deploy):
+  - `src/server/email.ts` con templates HTML para invitaciones
+  - se envía email al crear invitación de app (`sendAppInvitationEmail`)
+  - se envía email al crear invitación de dashboard (`sendDashboardInvitationEmail`)
+  - env vars: `RESEND_API_KEY`, `FROM_EMAIL`
 - `setMyCommands` con retry automático (3 intentos, 2s entre intentos)
-- **Dark mode completo** — CSS vars + `!important` override cubre todo:
-  - `bg-white`, `bg-neutral-*`, `bg-red/green/amber/blue/rose-*`
-  - `bg-white/90` con `color-mix`
-  - form elements (`input`, `select`, `textarea`) con base layer global
+- **Dark mode completo** — CSS vars + `!important` override cubre todo
 - **Auditoría de seguridad completa 2026-05-03** — ver sección 14
+- **setInterval con `.unref()`** — todos los sweep intervals usan `unrefInterval()` para no colgar el proceso Node
 
 ### Pendiente
-- cerrar experiencia Telegram multiusuario compartido de punta a punta
 - deploy de todos los cambios post-sprints (frontend + backend)
+- aplicar SQL pendientes en prod: `drive_oauth_phase.sql`, `photo_ticket_phase.sql`, `telegram_multi_user_phase.sql`
 
 ---
 
 ## 2. URLs, proyectos y entornos reales
 
 ### Frontend producción
-- [https://balancediario.web.app](https://balancediario.web.app)
+- [https://caja-chica-bot.web.app](https://caja-chica-bot.web.app)
 
 ### Backend producción
 - [https://boteado-bot-442790495206.us-west2.run.app](https://boteado-bot-442790495206.us-west2.run.app)
 
 ### Firebase project
-- `balancediario`
+- `caja-chica-bot`
 
 ### Google Cloud project del backend
 - `caja-chica-bot`
@@ -108,7 +125,7 @@ NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Boteado.
 ```bash
 # Frontend
 npm run build
-firebase use balancediario   # verificar proyecto antes
+firebase use caja-chica-bot   # verificar proyecto antes
 firebase deploy --only hosting
 
 # Backend
@@ -116,10 +133,6 @@ gcloud config set project caja-chica-bot
 gcloud builds submit --tag gcr.io/caja-chica-bot/boteado-bot --region us-west2
 gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region us-west2 --platform managed --quiet
 ```
-
-### Estado de validación local más reciente
-- `npm test` → **63/63 OK**
-- `npm run lint` → **OK**
 
 ---
 
@@ -140,7 +153,9 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 - grammY
 - node-cron
 - dotenv
-- **googleapis** ← nuevo (Drive integration)
+- **googleapis** — Drive integration
+- **resend** — email notifications
+- **@google/genai@^1.29.0** — Gemini extraction + OCR
 
 ### Datos / Infra
 - Supabase
@@ -155,6 +170,7 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 - **no hay librería externa de PDF instalada** — generador mínimo propio en `src/server/reportExports.ts`
 - **no hay librería externa de rate limiting** — implementación propia en memoria (Map)
 - **no hay librería de cifrado** — AES-256-CBC vía `node:crypto` stdlib
+- **no hay librería externa de email** — Resend SDK con templates HTML inline
 
 ---
 
@@ -181,9 +197,9 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 │   │       ├── LoadingStates.tsx
 │   │       ├── primitives.tsx
 │   │       └── tabs/
-│   │           ├── EmpresasTab.tsx
+│   │           ├── EmpresasTab.tsx    ← incluye Informes como sección interna
 │   │           ├── GastosTab.tsx
-│   │           ├── InformesTab.tsx  ← Drive UI + historial con links
+│   │           ├── InformesTab.tsx    ← usado como subcomponente dentro de EmpresasTab
 │   │           ├── IngresosTab.tsx
 │   │           ├── MovimientosTab.tsx
 │   │           └── ResumenTab.tsx
@@ -194,12 +210,17 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 │   │   └── shared.ts
 │   ├── server/
 │   │   ├── app.ts
-│   │   ├── drive.ts               ← nuevo: Drive OAuth + upload + encrypt/decrypt
+│   │   ├── drive.ts               ← Drive OAuth + upload + encrypt/decrypt
+│   │   ├── email.ts               ← nuevo: Resend email notifications
 │   │   ├── env.ts
 │   │   ├── errors.ts
+│   │   ├── extractionReview.ts    ← nuevo: sesiones de revisión de extracción (fotos/PDF)
 │   │   ├── gemini.ts
+│   │   ├── mediaGroupBuffer.ts    ← nuevo: buffer de álbumes Telegram con debounce
 │   │   ├── reportExports.ts
-│   │   ├── telegramAccess.ts
+│   │   ├── telegramAccess.ts      ← actualizado: multi-user + permissions
+│   │   ├── telegramAudio.ts       ← nuevo: procesamiento de audio Telegram
+│   │   ├── telegramMedia.ts       ← nuevo: extracción desde foto/PDF con Gemini
 │   │   └── validation.ts
 │   └── services/
 │       ├── api.ts
@@ -208,21 +229,29 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 │   ├── api.test.ts
 │   ├── auth-redirect.test.ts
 │   ├── company-assignment.test.ts
+│   ├── dashboardSummary.test.ts
 │   ├── env.test.ts
+│   ├── mediaGroupBuffer.test.ts
+│   ├── permissions.test.ts
 │   ├── summary.test.ts
-│   └── telegram-access.test.ts
+│   ├── telegram-access.test.ts
+│   ├── telegram-audio.test.ts
+│   ├── telegram-company-resolution.test.ts
+│   └── telegram-media.test.ts
 ├── supabase_schema.sql
 ├── phase1_supabase_patch.sql
-├── report_exports_phase.sql              ✔ aplicado en prod
-├── fix_auth_hook.sql                     ✔ aplicado en prod
-├── shared_dashboard_phase.sql            ✔ aplicado en prod
-├── shared_dashboard_invitations_phase.sql ✔ aplicado en prod
-├── shared_dashboard_cutover_final.sql    ✔ aplicado en prod
-├── mutations_audit_soft_delete_phase.sql ✔ aplicado en prod
-├── security_definer_hook_patch.sql       ✔ aplicado en prod 2026-05-03
-├── security_hardening_phase.sql          ✔ aplicado en prod 2026-05-03
-├── soft_delete_movimientos_phase.sql     ✔ aplicado en prod 2026-05-03
+├── report_exports_phase.sql              ✔ prod
+├── fix_auth_hook.sql                     ✔ prod
+├── shared_dashboard_phase.sql            ✔ prod
+├── shared_dashboard_invitations_phase.sql ✔ prod
+├── shared_dashboard_cutover_final.sql    ✔ prod
+├── mutations_audit_soft_delete_phase.sql ✔ prod
+├── security_definer_hook_patch.sql       ✔ prod 2026-05-03
+├── security_hardening_phase.sql          ✔ prod 2026-05-03
+├── soft_delete_movimientos_phase.sql     ✔ prod 2026-05-03
 ├── drive_oauth_phase.sql                 ⚠ PENDIENTE aplicar en prod
+├── photo_ticket_phase.sql                ⚠ PENDIENTE aplicar en prod
+├── telegram_multi_user_phase.sql         ⚠ PENDIENTE aplicar en prod
 ├── firebase.json
 ├── .firebaserc
 ├── Dockerfile
@@ -238,17 +267,22 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 - `server.ts` → runtime wiring, bot, cron, integración real
 - `src/server/app.ts` → app Express testeable
 - `src/server/drive.ts` → Drive OAuth helpers + AES-256-CBC encrypt/decrypt
+- `src/server/email.ts` → Resend email notifications (invitaciones de app y dashboard)
 - `src/server/errors.ts` → helper compartido para errores de schema Supabase
-- `src/server/validation.ts` → validación de borde
+- `src/server/extractionReview.ts` → sesiones de revisión de extracción (fotos/PDF) con TTL
+- `src/server/validation.ts` → validación de borde + tipos de datos de extracción
 - `src/server/gemini.ts` → prompt y parseo de Gemini (con whitelist de intents)
-- `src/server/telegramAccess.ts` → resolución de identidad/permiso Telegram
+- `src/server/telegramAccess.ts` → resolución de identidad/permiso Telegram + permissions
+- `src/server/telegramMedia.ts` → extracción desde foto/PDF con Gemini OCR
+- `src/server/mediaGroupBuffer.ts` → buffer de álbumes Telegram con debounce configurable
+- `src/server/telegramAudio.ts` → procesamiento de audio de Telegram
 - `src/server/reportExports.ts` → generación real CSV/PDF
 - `src/reports/shared.ts` → filtros y resolución de períodos compartidos
 
 ### 6.2 Flujo principal
-1. usuario escribe texto libre o usa dashboard
+1. usuario escribe texto libre, sube foto/ticket, o usa dashboard
 2. frontend o bot llama backend
-3. backend usa Gemini cuando hace falta extraer intención/datos
+3. backend usa Gemini cuando hace falta extraer intención/datos (texto libre + OCR de imágenes)
 4. backend valida, persiste y audita
 5. dashboard consume API autenticada
 6. dashboard escucha realtime y actualiza UI
@@ -263,14 +297,31 @@ Regla del scope resolver:
 
 Roles de dashboard:
 - `owner`
-- `editor`
+- `editor` → puede tener permisos granulares vía JSONB `permissions`
 - `viewer` → puede leer pero no escribir
 
-### 6.4 Drive — modelo de acceso
-- `canUseDrive`: solo si `linked.role === null || linked.role === 'owner'`
+Permisos granulares de editor (JSONB en `dashboard_members.permissions`):
+- `export_drive` — puede exportar informes al Drive del owner
+- `delete_any` — puede borrar cualquier movimiento/empresa
+- `invite_telegram` — puede generar tokens de vinculación Telegram
+
+### 6.4 Drive — modelo de acceso (refactorizado 2026-05-07)
+- `canConnectDrive`: solo si `scope.membershipRole === null || scope.membershipRole === 'owner'`
+- `canExportDrive`: `canConnectDrive` O editor con `permissions.export_drive === true`
+- `resolveDriveOwnerUserId`: resuelve el user_id del owner del dashboard para operar con su conexión Drive
 - tokens OAuth cifrados con AES-256-CBC usando `TOKEN_ENCRYPTION_KEY` (env)
 - `pendingDriveOAuthStates`: Map en memoria con TTL 5 min (CSRF state)
 - callback `/api/drive/callback` no requiere sesión (redirect desde Google)
+
+### 6.5 Extracción desde fotos/PDF — flujo
+1. Usuario envía foto, álbum (media group) o documento al bot
+2. `MediaGroupBuffer` acumula imágenes del mismo álbum con debounce 1.5s
+3. Gemini extrae datos (OCR + interpretación semántica)
+4. Se crea `PendingExtraction` con TTL 10 min
+5. Bot muestra card de review con inline keyboard (editar campos / confirmar / cancelar)
+6. Usuario puede editar campos individuales (monto, empresa, categoría, descripción, tipo, moneda)
+7. Al confirmar → inserta movimiento, elimina la extracción pendiente
+8. `extractionReviewSweep` limpia extracciones expiradas cada 5 min
 
 ---
 
@@ -291,11 +342,18 @@ Los `member` no ven:
 - un `member` puede invitar gente a **su mismo dashboard**
 - los invitados comparten la misma data
 - no crean dashboard propio
-- permisos: `viewer` → solo ver / `editor` → ver + cargar datos
+- permisos: `viewer` → solo ver / `editor` → ver + cargar datos + permisos granulares
+
+### Email notifications
+- Al crear invitación de app: se envía email con link de activación
+- Al crear invitación de dashboard: se envía email con link para unirse
+- Templates HTML con diseño responsive, instrucciones paso a paso
+- Si `RESEND_API_KEY` no está seteada → se omite el envío sin error fatal (graceful fallback)
+- `FROM_EMAIL` default: `Boteado <onboarding@resend.dev>`
 
 ### Estado conceptual
-La parte web/backend ya avanzó bastante en dashboard compartido.
-La parte pendiente fuerte sigue siendo **Telegram multiusuario sobre dashboard compartido** y terminar la experiencia completa alrededor de eso.
+El modelo de Telegram multiusuario compartido está implementado en código (Bloque 2).
+La parte pendiente es deploy y validación end-to-end.
 
 ---
 
@@ -306,11 +364,16 @@ Archivo principal:
 
 ### Tabs actuales reales
 - Resumen
-- Empresas
+- Movimientos
 - Gastos
 - Ingresos
-- Informes
-- Movimientos
+- Empresas (incluye sección de Informes y Exportaciones)
+
+### Cambio 2026-05-07: reestructuración de tabs
+- **Informes** ya no es tab independiente — está dentro de **Empresas**
+- `DashboardTab` type: `'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin'`
+- `InformesTab` se usa como subcomponente de `EmpresasTab`
+- Prop `canConnectDrive` viaja por EmpresasTab → InformesTab (botón "Conectar Drive" solo visible para owners)
 
 ### Cambios UX aplicados
 - tab nav **móvil**: scroll horizontal compacto (icon + label, sin descripción)
@@ -332,13 +395,17 @@ Si Gemini devuelve un único movimiento sin empresa → obliga a elegir antes de
 
 ## 9. Informes — estado actual
 
+### Ubicación
+Dentro de la pestaña **Empresas** (ya no es tab independiente).
+
 ### Implementado (pendiente deploy)
 - filtros: día / semana / mes / rango / empresa / tipo / moneda
 - exportación CSV y PDF real
 - historial persistido en `report_exports`
 - descarga web desde base64
 - **Google Drive**:
-  - botón "Conectar Drive" visible solo para `owner`
+  - botón "Conectar Drive" visible solo para `owner` (usa `canConnectDrive`)
+  - editor con permiso `export_drive` puede exportar a Drive del owner (usa `canUseDrive`)
   - URL param `?driveConnected=true` / `?driveError=...` manejados al volver del OAuth
   - destino `local` o `drive` al exportar
   - historial muestra badge `Drive` con `ExternalLink` si `destination === "drive"`
@@ -350,6 +417,7 @@ drive_oauth_phase.sql  ← aplicar ANTES de deployar backend
 Crea `drive_connections` + altera `report_exports` para agregar `destination`, `drive_file_id`, `drive_url`.
 
 ### Archivos principales
+- `src/components/dashboard/tabs/EmpresasTab.tsx`
 - `src/components/dashboard/tabs/InformesTab.tsx`
 - `src/reports/shared.ts`
 - `src/server/reportExports.ts`
@@ -403,14 +471,16 @@ Archivo principal:
 - `GET /api/report-exports`
 
 #### Google Drive
-- `GET /api/drive/status`
-- `GET /api/drive/auth-url`
+- `GET /api/drive/status` — usa `canExportDrive` (owners + editors autorizados)
+- `GET /api/drive/auth-url` — requiere `canConnectDrive` (solo owners)
 - `GET /api/drive/callback` ← no requiere auth (redirect OAuth)
-- `DELETE /api/drive/disconnect`
+- `DELETE /api/drive/disconnect` — requiere `canConnectDrive` (solo owners)
 
 #### Bot / vínculo Telegram
 - `GET /api/bot/connection`
 - `POST /api/bot/connection/link-token`
+- `POST /api/bot/invite-token` ← nuevo: genera token de invitación Telegram para editor/viewer
+- `POST /api/bot/invite-token/:token/confirm` ← nuevo: owner confirma vínculo Telegram de miembro
 
 #### Admin
 - `GET /api/admin/users`
@@ -451,6 +521,20 @@ Runtime:
 - borrado/soft delete de movimiento con confirmación
 - borrado/soft delete de empresa con confirmación
 
+### Photo/PDF extraction (nuevo — pendiente deploy)
+- Soporta `message:photo` (foto individual y álbumes/media groups)
+- Soporta `message:document` (PDF, imágenes como documento)
+- `MediaGroupBuffer` acumula fotos del mismo álbum con debounce 1.5s
+- Flujo de revisión con inline keyboard:
+  - Bot muestra card con datos extraídos (tipo, monto, empresa, descripción, categoría, fecha)
+  - Si confianza < 0.6 → warning visible
+  - Botones: ✏️ Monto, 🏢 Empresa, 📂 Categ., 📝 Descripción, ↕️ Tipo, 💱 Moneda
+  - Botones: ✅ Confirmar, ❌ Cancelar
+- Al confirmar → inserta movimiento con `created_via: 'photo_extraction'`
+- Callbacks con prefijo `er:` (extraction review) para editar/confirmar/cancelar
+- Fuente type: `photo`, `pdf`, `handwritten`, `multi`
+- Campos extraíbles: monto, empresa, categoría, descripción, tipo, moneda, fecha, confianza
+
 ### Flujo de Informes en bot
 - Período: hoy / esta semana / este mes / este año / rango personalizado
 - Año implementado como range `YYYY-01-01` a `YYYY-12-31` (no hay `year` en `ReportPeriod`)
@@ -464,18 +548,25 @@ Runtime:
 - Pasos: monto (texto) → tipo (inline keyboard) → moneda → frecuencia → descripción (texto) → insert
 - Insert usa `dashboard_id + created_by_user_id` si existe, else `owner_user_id` fallback
 
+### Telegram multiusuario — modelo de vínculo (nuevo — pendiente deploy)
+- Owners: vínculo one-shot legacy (`usuarios` table) o nuevo (`telegram_links`)
+- Editor/Viewer: flujo doble-factor:
+  1. Owner genera `telegram_invite_tokens` (TTL 30 min) para un miembro específico
+  2. Miembro usa deep link `/start <token>` en Telegram
+  3. Bot crea `telegram_links` con status `pending_owner_confirm`
+  4. Owner recibe notificación y confirma/revoca desde el bot
+  5. Una vez `active`, el miembro puede usar el bot con sus permisos
+
+### Permisos del bot (nuevo)
+- `requireTelegramCan()`: función que verifica permisos antes de cada operación
+- Checks basados en `dashboard_members.role` y `permissions` JSONB
+- Operaciones que requieren permisos específicos:
+  - `invite_telegram` → generar tokens de invitación
+  - `export_drive` → exportar a Drive
+  - `delete_any` → borrar movimientos/empresas de otros
+
 ### setMyCommands
 - Retry automático: 3 intentos, 2s entre intentos, log explícito en éxito/fallo
-
-### Modelo actual del bot
-- no opera globalmente
-- cada chat debe vincularse desde dashboard con token temporal (one-shot: se invalida al vincular)
-- el usuario usa deep link o `/start <token>`
-- el bot resuelve identidad y filtra por ownership/scope
-- token de link: expira en 30 min, verificado en el resolver
-
-### Pendiente fuerte
-Cerrar de punta a punta la experiencia multiusuario compartida del bot.
 
 ---
 
@@ -513,10 +604,23 @@ Definidos en `/Users/damian/Dev/Boteado/server.ts`.
 | `security_hardening_phase.sql` | ✔ prod 2026-05-03 |
 | `soft_delete_movimientos_phase.sql` | ✔ prod 2026-05-03 |
 | `drive_oauth_phase.sql` | ⚠ **PENDIENTE** — aplicar antes de deploy |
+| `photo_ticket_phase.sql` | ⚠ **PENDIENTE** — aplicar antes de deploy |
+| `telegram_multi_user_phase.sql` | ⚠ **PENDIENTE** — aplicar antes de deploy |
 
 ### `drive_oauth_phase.sql` — qué hace
 - Crea tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`, unique idx)
 - Altera `report_exports` agregando `destination text check('local','drive')`, `drive_file_id`, `drive_url`
+
+### `photo_ticket_phase.sql` — qué hace
+- Agrega columna `cuit` a `empresas` (nullable, unique index con `WHERE cuit IS NOT NULL AND deleted_at IS NULL`)
+- Crea tabla `pending_extractions` con RLS solo para service_role
+- Campos: `chat_id`, `dashboard_id`, `user_id`, `owner_user_id`, `extracted_data jsonb`, `source_type`, `status`
+
+### `telegram_multi_user_phase.sql` — qué hace
+- Crea tabla `telegram_links` (flujo doble-factor para editor/viewer)
+- Crea tabla `telegram_invite_tokens` (tokens one-shot con TTL 30 min)
+- Agrega columna `permissions jsonb` a `dashboard_members` (permisos granulares para editor)
+- Migra owners legacy a `telegram_links` (idempotente con ON CONFLICT DO NOTHING)
 
 ### Cero orphans verificado
 `movimientos` y `empresas` — 0 rows con `dashboard_id IS NULL` en producción. El fallback legacy en código fue eliminado.
@@ -543,6 +647,7 @@ Auditoría completa de código + seguridad + DB. Se identificaron y resolvieron 
 | Expiración token Telegram validada en resolver (`.gt(expires_at)`) | `src/server/telegramAccess.ts` |
 | `VITE_API_URL` requerida — eliminada URL hardcodeada producción | `src/services/api.ts` |
 | `isMissingSchemaArtifactError` centralizada en `src/server/errors.ts` | `src/server/errors.ts` |
+| `unrefInterval()` en todos los setInterval (rate limit sweep, Drive OAuth sweep, extraction sweep) — no cuelga el proceso | `src/server/app.ts`, `src/server/extractionReview.ts` |
 
 #### SQL (aplicado en prod)
 | Fix | Patch |
@@ -567,7 +672,7 @@ Auditoría completa de código + seguridad + DB. Se identificaron y resolvieron 
 ### Frontend
 - Firebase Hosting
 - config en `firebase.json`
-- proyecto Firebase: `balancediario` — verificar con `firebase use balancediario` antes de deploy
+- proyecto Firebase: `caja-chica-bot` — verificar con `firebase use caja-chica-bot` antes de deploy
 
 ### Backend
 - Cloud Run / Node runtime
@@ -576,11 +681,13 @@ Auditoría completa de código + seguridad + DB. Se identificaron y resolvieron 
 - imagen: `gcr.io/caja-chica-bot/boteado-bot`
 - servicio Cloud Run: `boteado-bot` región `us-west2`
 
-### Checklist antes de deployar (post-sprints)
+### Checklist antes de deployar (2026-05-07)
 1. Aplicar `drive_oauth_phase.sql` en Supabase prod
-2. Agregar nuevas env vars al Cloud Run (ver sección 16)
-3. `npm run build` → `firebase deploy --only hosting`
-4. Cloud Run build + deploy
+2. Aplicar `photo_ticket_phase.sql` en Supabase prod
+3. Aplicar `telegram_multi_user_phase.sql` en Supabase prod
+4. Agregar nuevas env vars al Cloud Run (ver sección 16)
+5. `npm run build` → `firebase deploy --only hosting`
+6. Cloud Run build + deploy
 
 ---
 
@@ -610,11 +717,15 @@ Auditoría completa de código + seguridad + DB. Se identificaron y resolvieron 
 ### IA
 - `GEMINI_API_KEY`
 
-### Google Drive ← **nuevas, requeridas para Drive**
+### Google Drive
 - `GOOGLE_DRIVE_CLIENT_ID`
 - `GOOGLE_DRIVE_CLIENT_SECRET`
 - `GOOGLE_DRIVE_REDIRECT_URI` ← debe ser `https://boteado-bot-.../api/drive/callback`
 - `TOKEN_ENCRYPTION_KEY` ← base64 de 32 bytes: `openssl rand -base64 32`
+
+### Email (Resend) ← **nuevas, requeridas para notificaciones**
+- `RESEND_API_KEY` ← API key de Resend. Si falta, emails se omiten sin error fatal.
+- `FROM_EMAIL` ← default: `Boteado <onboarding@resend.dev>`
 
 ### Runtime general
 - `PORT`
@@ -640,8 +751,7 @@ Implementado en `src/index.css` con CSS custom properties:
 ## 18. Testing real
 
 ### Estado actual
-- `npm test` → **63/63 OK**
-- `npm run lint` → **OK**
+- 11 archivos de test (incluyendo nuevos: `telegram-media.test.ts`, `mediaGroupBuffer.test.ts`, `permissions.test.ts`, `telegram-audio.test.ts`, `telegram-company-resolution.test.ts`, `dashboardSummary.test.ts`)
 
 ### Cobertura relevante
 - CORS
@@ -658,6 +768,10 @@ Implementado en `src/index.css` con CSS custom properties:
 - historial de exportaciones
 - helpers de summary
 - carga `.env` y `.env.local`
+- permisos granulares de editor
+- MediaGroupBuffer y debounce de álbumes
+- extracción de medios y resolución de empresas
+- procesamiento de audio Telegram
 
 ### Comandos útiles
 ```bash
@@ -678,11 +792,19 @@ npm audit --omit=dev
 5. las mutaciones importantes deben quedar auditadas
 6. soft delete de empresas Y movimientos es preferible a delete físico
 7. Drive usa `drive.file` scope (no `drive` completo) — solo archivos creados por la app
-8. solo `owner` puede conectar Drive y subir informes — `viewer` no puede
+8. `canConnectDrive` solo para owner; `canExportDrive` para owner + editor con permiso explícito
 9. tokens OAuth cifrados con AES-256-CBC stdlib, sin deps externos
 10. año en informes implementado como rango `YYYY-01-01 / YYYY-12-31` (no type nativo)
 11. presupuesto: UI oculta con `{false && ...}`, datos y API intactos
 12. **no existe fallback legacy en `getScopeEntityById`** — eliminado 2026-05-03
+13. **Informes dentro de Empresas** — no es tab independiente, es sección de EmpresasTab
+14. **Photo/PDF extraction via Gemini** — OCR + interpretación semántica, no parser rígido
+15. **MediaGroupBuffer** — debounce 1.5s para álbumes de Telegram; evita procesar fotos sueltas antes de que llegue el grupo completo
+16. **Extraction review flow** — siempre revisión humana antes de insertar; extracción automática nunca inserta directo
+17. **Email via Resend** — graceful fallback si API key no está; no bloquea la operación
+18. **Telegram invite tokens** — one-shot con TTL 30 min; flujo doble-factor para editor/viewer
+19. **Permissions JSONB** — granular en `dashboard_members.permissions`; solo aplica a `editor`
+20. **`unrefInterval()`** en todos los setInterval del servidor — evita que timers cuelguen el proceso Node
 
 ### Implicancia práctica
 Si retomás colaboración compartida o Telegram multiusuario:
@@ -695,17 +817,19 @@ Si retomás colaboración compartida o Telegram multiusuario:
 
 ### Prioridad inmediata (deploy pendiente)
 1. Aplicar `drive_oauth_phase.sql` en Supabase prod
-2. Agregar env vars de Drive al Cloud Run
-3. Deploy frontend + backend
+2. Aplicar `photo_ticket_phase.sql` en Supabase prod
+3. Aplicar `telegram_multi_user_phase.sql` en Supabase prod
+4. Agregar env vars de Drive, Resend al Cloud Run
+5. Deploy frontend + backend
 
 ### Prioridad media
-4. limpiar env names viejos `VITE_*` en backend/server
-5. tipado correcto de `session` en Express (`(req as any).session` → tipo propio)
-6. N+1 en `listDashboardMembers` → join en query
-7. `syncPendingDashboardInvitations` → cachear en session en lugar de cada request
+6. limpiar env names viejos `VITE_*` en backend/server
+7. tipado correcto de `session` en Express (`(req as any).session` → tipo propio)
+8. N+1 en `listDashboardMembers` → join en query
+9. `syncPendingDashboardInvitations` → cachear en session en lugar de cada request
 
 ### Prioridad arquitectónica fuerte
-8. terminar modelo compartido completo para Telegram multiusuario sobre `dashboard_id`
+10. validar end-to-end Telegram multiusuario con photo extraction en prod
 
 ---
 
@@ -715,6 +839,10 @@ Si retomás colaboración compartida o Telegram multiusuario:
 - `/Users/damian/Dev/Boteado/src/DashboardApp.tsx`
 - `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `/Users/damian/Dev/Boteado/src/server/drive.ts`
+- `/Users/damian/Dev/Boteado/src/server/email.ts`
+- `/Users/damian/Dev/Boteado/src/server/extractionReview.ts`
+- `/Users/damian/Dev/Boteado/src/server/telegramMedia.ts`
+- `/Users/damian/Dev/Boteado/src/server/mediaGroupBuffer.ts`
 - `/Users/damian/Dev/Boteado/src/server/errors.ts`
 - `/Users/damian/Dev/Boteado/src/server/gemini.ts`
 - `/Users/damian/Dev/Boteado/src/server/reportExports.ts`
@@ -727,8 +855,8 @@ Si retomás colaboración compartida o Telegram multiusuario:
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/AGENTS.md` y seguí desde el deploy pendiente: primero aplicar `drive_oauth_phase.sql` en Supabase, agregar env vars de Drive al Cloud Run, luego build y deploy frontend + backend.
+> Leé `/Users/damian/Dev/Boteado/AGENTS.md` y seguí desde el deploy pendiente: primero aplicar `drive_oauth_phase.sql`, `photo_ticket_phase.sql` y `telegram_multi_user_phase.sql` en Supabase, agregar env vars de Drive y Resend al Cloud Run, luego build y deploy frontend + backend.
 
-O, si el foco es colaboración:
+O, si el foco es Telegram:
 
-> Leé `/Users/damian/Dev/Boteado/AGENTS.md` y seguí desde el modelo Telegram multiusuario compartido sobre `dashboard_id`.
+> Leé `/Users/damian/Dev/Boteado/AGENTS.md` y validá el flujo end-to-end de Telegram multiusuario con photo extraction.

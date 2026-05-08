@@ -532,7 +532,7 @@ test("genera token de vínculo para Telegram", async () => {
   await withServer(
     {
       resolveSession: async () => memberSession,
-      telegramBotUsername: "boteado_bot",
+      telegramBotUsername: "cajachica_bot",
     },
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/bot/connection/link-token`, {
@@ -544,7 +544,7 @@ test("genera token de vínculo para Telegram", async () => {
 
       assert.equal(res.status, 201);
       const body = await res.json();
-      assert.equal(body.telegramDeepLink?.startsWith("https://t.me/boteado_bot?start="), true);
+      assert.equal(body.telegramDeepLink?.startsWith("https://t.me/cajachica_bot?start="), true);
       assert.equal(body.manualStartCode?.startsWith("/start "), true);
       assert.equal(body.pendingToken !== null, true);
     },
@@ -571,7 +571,7 @@ test("genera token de vínculo para Telegram en dashboard compartido sin depende
     botActive: false,
     publicAppUrl: "https://app.example.com",
     resolveSession: async () => memberSession,
-    telegramBotUsername: "boteado_bot",
+    telegramBotUsername: "cajachica_bot",
   });
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -587,7 +587,7 @@ test("genera token de vínculo para Telegram en dashboard compartido sin depende
 
     assert.equal(res.status, 201);
     const body = await res.json();
-    assert.equal(body.telegramDeepLink?.startsWith("https://t.me/boteado_bot?start="), true);
+    assert.equal(body.telegramDeepLink?.startsWith("https://t.me/cajachica_bot?start="), true);
     const insertCall = supabase.callLog.find((entry) => entry.table === "usuarios" && entry.type === "insert");
     const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : undefined;
     assert.equal(payload?.user_id, "user-1");
@@ -911,7 +911,7 @@ test("bloquea generar vínculo de Telegram para miembros viewer del dashboard co
     botActive: false,
     publicAppUrl: "https://app.example.com",
     resolveSession: async () => viewerSession,
-    telegramBotUsername: "boteado_bot",
+    telegramBotUsername: "cajachica_bot",
   });
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));

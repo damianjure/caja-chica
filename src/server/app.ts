@@ -1,4 +1,5 @@
-import express, { RequestHandler } from "express";
+import express, { type Request, RequestHandler } from "express";
+import { tierRead, tierWrite, tierAuth, tierStrict } from "./rateLimit.ts";
 import { randomBytes } from "node:crypto";
 
 import { filterMovementsForReport, resolveReportDateRange } from "../reports/shared.ts";
@@ -23,6 +24,11 @@ import {
 } from "./validation.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
+
+function getSession(req: Request): AppSession {
+  if (!req.session) throw new Error("BUG: session middleware not applied");
+  return req.session;
+}
 
 function unrefInterval(timer: ReturnType<typeof setInterval>) {
   const maybeUnref = (timer as { unref?: () => void }).unref;
@@ -105,31 +111,6 @@ function withCors(allowedOrigins: string[]): RequestHandler {
 function hasValidAdminToken(req: express.Request, adminApiToken?: string) {
   if (!adminApiToken) return false;
   return req.header("X-Admin-Token") === adminApiToken;
-}
-
-const extractRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const EXTRACT_RATE_LIMIT = 30;
-const EXTRACT_RATE_WINDOW_MS = 60_000;
-
-// WARNING-8: evict expired rate-limit entries every 5 minutes to prevent unbounded growth
-const extractRateLimitSweep = setInterval(() => {
-  const now = Date.now();
-  for (const [userId, entry] of extractRateLimitMap) {
-    if (entry.resetAt < now) extractRateLimitMap.delete(userId);
-  }
-}, 5 * 60_000);
-unrefInterval(extractRateLimitSweep);
-
-function checkExtractRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = extractRateLimitMap.get(userId);
-  if (!entry || now >= entry.resetAt) {
-    extractRateLimitMap.set(userId, { count: 1, resetAt: now + EXTRACT_RATE_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= EXTRACT_RATE_LIMIT) return false;
-  entry.count++;
-  return true;
 }
 
 
@@ -519,6 +500,14 @@ export function createApp({
   app.use(withCors(allowedOrigins));
   app.use(express.json());
 
+  // Global rate limiting by HTTP method tier
+  app.get("/api/*", tierRead);
+  app.post("/api/*", tierWrite);
+  app.patch("/api/*", tierWrite);
+  app.delete("/api/*", tierWrite);
+  // Drive OAuth callback has no session — tighter IP-based limit
+  app.get("/api/drive/callback", tierAuth);
+
   const requireSession: RequestHandler = async (req, res, next) => {
     try {
       const authorization = req.header("Authorization");
@@ -536,7 +525,7 @@ export function createApp({
         syncedUserKeys.add(syncKey);
       }
 
-      (req as any).session = session;
+      req.session = session;
       next();
     } catch (err) {
       console.error("Auth error:", err);
@@ -545,7 +534,7 @@ export function createApp({
   };
 
   const requireAdmin: RequestHandler = (req, res, next) => {
-    const session = (req as any).session as AppSession | undefined;
+    const session = req.session;
     if (!session) return res.status(401).json({ error: "unauthorized" });
     if (session.role !== "admin" && session.role !== "superadmin") {
       return res.status(403).json({ error: "forbidden" });
@@ -554,7 +543,7 @@ export function createApp({
   };
 
   app.get("/api/me", requireSession, (req, res) => {
-    const session = (req as any).session as AppSession;
+    const session = getSession(req);
     res.json({
       id: session.userId,
       email: session.email,
@@ -565,7 +554,7 @@ export function createApp({
 
   app.get("/api/bot/connection", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       const connection = await getBotConnectionRecord(session, scope);
       const token = connection?.link_token ?? null;
@@ -588,7 +577,7 @@ export function createApp({
 
   app.post("/api/bot/connection/link-token", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -618,13 +607,8 @@ export function createApp({
     res.json({ status: "ok", botActive });
   });
 
-  app.post("/api/extract", requireSession, async (req, res) => {
+  app.post("/api/extract", requireSession, tierStrict, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
-      if (!checkExtractRateLimit(session.userId)) {
-        return res.status(429).json({ error: "rate_limit_exceeded" });
-      }
-
       const payload = parseExtractRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
 
@@ -656,7 +640,7 @@ export function createApp({
     try {
       const payload = parseSaveMovimientosRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -707,7 +691,7 @@ export function createApp({
     try {
       const payload = parseEmpresaRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -739,7 +723,7 @@ export function createApp({
 
   app.delete("/api/movimientos/last", requireSession, async (_req, res) => {
     try {
-      const session = (_req as any).session as AppSession;
+      const session = getSession(_req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -792,7 +776,7 @@ export function createApp({
     }
 
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       // CRITICAL-3: soft delete — never hard delete movimientos
       // CRITICAL: scope filter — only delete within the caller's dashboard/owner
@@ -827,7 +811,7 @@ export function createApp({
 
   app.delete("/api/movimientos/:id", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -867,7 +851,7 @@ export function createApp({
 
   app.delete("/api/empresas/:id", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -927,7 +911,7 @@ export function createApp({
 
   app.delete("/api/categorias/:id", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -955,7 +939,7 @@ export function createApp({
 
   app.post("/api/movimientos/:id/conciliar", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -992,7 +976,7 @@ export function createApp({
     try {
       const payload = parseUpdateMovimientoRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -1043,7 +1027,7 @@ export function createApp({
     try {
       const payload = parseUpdateEmpresaRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -1082,7 +1066,7 @@ export function createApp({
     try {
       const payload = parseBudgetRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -1117,7 +1101,7 @@ export function createApp({
 
   app.get("/api/movimientos", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       const { limit, before } = parsePaginationQuery(req.query);
       let query = applyDataScope(
@@ -1153,7 +1137,7 @@ export function createApp({
 
   app.get("/api/presupuestos", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       const period =
         typeof req.query.period === "string" && /^\d{4}-\d{2}$/.test(req.query.period)
@@ -1231,7 +1215,7 @@ export function createApp({
   app.get("/api/drive/status", requireSession, async (req, res) => {
     if (!driveEnabled) return res.json({ connected: false, enabled: false });
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!(await canExportDrive(session, scope))) return res.json({ connected: false, enabled: false });
       const driveOwnerUserId = await resolveDriveOwnerUserId(session, scope);
@@ -1251,7 +1235,7 @@ export function createApp({
   app.get("/api/drive/auth-url", requireSession, async (req, res) => {
     if (!driveEnabled) return res.status(503).json({ error: "drive_not_configured" });
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canConnectDrive(scope)) return res.status(403).json({ error: "forbidden" });
       const state = randomBytes(16).toString("hex");
@@ -1303,7 +1287,7 @@ export function createApp({
   app.delete("/api/drive/disconnect", requireSession, async (req, res) => {
     if (!driveEnabled) return res.status(503).json({ error: "drive_not_configured" });
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canConnectDrive(scope)) return res.status(403).json({ error: "forbidden" });
       await supabase.from("drive_connections").delete().eq("owner_user_id", session.userId);
@@ -1315,7 +1299,7 @@ export function createApp({
 
   app.get("/api/report-exports", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       const { data, error } = await applyDataScope(
         supabase
@@ -1342,7 +1326,7 @@ export function createApp({
       const range = resolveReportDateRange(payload);
       if (!range) return res.status(400).json({ error: "invalid_request" });
 
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
@@ -1441,7 +1425,7 @@ export function createApp({
 
   app.get("/api/empresas", requireSession, async (_req, res) => {
     try {
-      const session = (_req as any).session as AppSession;
+      const session = getSession(_req);
       const scope = await resolveDataAccessScope(session);
       const { data, error } = await applyDataScope(
         supabase.from("empresas").select("*").order("nombre", { ascending: true }),
@@ -1459,7 +1443,7 @@ export function createApp({
 
   app.get("/api/categorias", requireSession, async (_req, res) => {
     try {
-      const session = (_req as any).session as AppSession;
+      const session = getSession(_req);
       const scope = await resolveDataAccessScope(session);
       const { data, error } = await applyDataScope(
         supabase.from("categorias").select("*").order("nombre", { ascending: true }),
@@ -1510,7 +1494,7 @@ export function createApp({
       const payload = parseInvitationRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
 
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       if (payload.role === "superadmin" && session.role !== "superadmin") {
         return res.status(403).json({ error: "forbidden" });
       }
@@ -1559,7 +1543,7 @@ export function createApp({
 
   app.get("/api/dashboard/members", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
 
       if (!scope.dashboardId) {
@@ -1613,7 +1597,7 @@ export function createApp({
       const payload = parseDashboardInvitationRequest(req.body);
       if (!payload) return res.status(400).json({ error: "invalid_request" });
 
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
 
       if (!scope.dashboardId) {
@@ -1700,7 +1684,7 @@ export function createApp({
 
   app.post("/api/dashboard/invitations/:id/revoke", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
 
       if (!scope.dashboardId || !canManageDashboardMembers(session, scope)) {
@@ -1734,7 +1718,7 @@ export function createApp({
 
   app.post("/api/telegram/invite-token", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId) return res.status(403).json({ error: "forbidden" });
 
@@ -1794,7 +1778,7 @@ export function createApp({
 
   app.get("/api/telegram/links", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId) return res.status(403).json({ error: "forbidden" });
 
@@ -1815,7 +1799,7 @@ export function createApp({
 
   app.post("/api/telegram/links/:id/confirm", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId || scope.membershipRole !== "owner") {
         return res.status(403).json({ error: "solo owner puede confirmar" });
@@ -1842,7 +1826,7 @@ export function createApp({
 
   app.delete("/api/telegram/links/:id", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId) return res.status(403).json({ error: "forbidden" });
 
@@ -1877,7 +1861,7 @@ export function createApp({
 
   app.patch("/api/dashboard/members/:id/permissions", requireSession, async (req, res) => {
     try {
-      const session = (req as any).session as AppSession;
+      const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId || scope.membershipRole !== "owner") {
         return res.status(403).json({ error: "solo owner puede cambiar permisos" });

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { getRuntimeEnvPaths } from "../src/server/env.ts";
 
 test("detecta .env.local cuando no existe .env", () => {
-  const dir = mkdtempSync(join(tmpdir(), "boteado-env-"));
+  const dir = mkdtempSync(join(tmpdir(), "cajachica-env-"));
   writeFileSync(join(dir, ".env.local"), "VITE_API_URL=http://localhost:8080\n");
 
   const paths = getRuntimeEnvPaths(dir);
@@ -16,7 +16,7 @@ test("detecta .env.local cuando no existe .env", () => {
 });
 
 test("mantiene orden .env y luego .env.local", () => {
-  const dir = mkdtempSync(join(tmpdir(), "boteado-env-"));
+  const dir = mkdtempSync(join(tmpdir(), "cajachica-env-"));
   writeFileSync(join(dir, ".env"), "SUPABASE_URL=https://example.supabase.co\n");
   writeFileSync(join(dir, ".env.local"), "VITE_API_URL=http://localhost:8080\n");
 

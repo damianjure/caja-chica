@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-07 (actualizado post foto/tickets + deploy completo)
+## Fuente de verdad única — 2026-05-08 (post hosting migration + design audit + rebrand)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -74,24 +74,40 @@ Integraciones principales:
   - `src/server/email.ts`: `sendAppInvitationEmail()` y `sendDashboardInvitationEmail()`
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
+### Estado deploy (2026-05-08)
+- Frontend ✔ deployado en `caja-chica-bot.web.app` (hosting migrado desde `balancediario`)
+- Backend ✔ deployado en Cloud Run
+
+### Cambios 2026-05-08
+- **Hosting migration**: `balancediario` (proyecto roto) → `caja-chica-bot`. URLs hardcodeadas actualizadas.
+- **Drive permissions split**: `canUseDrive` desaparece. Ahora `canConnectDrive` (sync, solo owners) + `canExportDrive` (async, owners + editors con `export_drive`) + `resolveDriveOwnerUserId` (busca token del owner para editor).
+- **Design audit (11 mejoras UX/UI)**:
+  - Input siempre visible en todas las tabs (antes solo en Movimientos)
+  - Header stats: 4 cards → 2 (menos ruido)
+  - Eliminado badge "Realtime Active"
+  - Border-radius unificado: `rounded-2xl` cards, `rounded-xl` botones
+  - Labels unificados a `text-[11px]`
+  - Sign out inline con email del user (header compacto)
+  - Sonner toasts en bottom-center (lib `sonner` agregada)
+  - Empty state con CTA al composer
+  - Dark mode: contraste de borde aumentado
+- **Rebrand**: "Boteado" → "Caja Chica" en login, emails, PDFs.
+- **`unrefInterval` en sweeps**: previene hang del proceso al terminar tests.
+
 ### Pendiente
-1. Deploy frontend a Firebase Hosting (código listo, no se deployó en última sesión)
-2. CUIT matching en `resolveTelegramCompany()` — columna existe en DB, lógica no implementada
+1. CUIT matching en `resolveTelegramCompany()` — columna existe en DB, lógica no implementada
 
 ---
 
 ## 2. URLs, proyectos y entornos reales
 
 ### Frontend producción
-- [https://balancediario.web.app](https://balancediario.web.app)
+- [https://caja-chica-bot.web.app](https://caja-chica-bot.web.app) ← migrado 2026-05-08 desde `balancediario` (proyecto roto)
 
 ### Backend producción
 - [https://boteado-bot-442790495206.us-west2.run.app](https://boteado-bot-442790495206.us-west2.run.app)
 
-### Firebase project
-- `balancediario`
-
-### Google Cloud project del backend
+### Firebase project (hosting + backend, unificado)
 - `caja-chica-bot`
 
 ### Supabase real usado por la app
@@ -99,7 +115,8 @@ Integraciones principales:
 
 ### OJO
 NO usar `mlvounduwzfnkldbahnl` para esta app.
-NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Boteado.
+NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
+`balancediario` deprecado; hosting movido a `caja-chica-bot`.
 
 ---
 
@@ -112,7 +129,7 @@ NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Boteado.
 ```bash
 # Frontend
 npm run build
-firebase use balancediario   # verificar proyecto antes
+firebase use caja-chica-bot   # default en .firebaserc
 firebase deploy --only hosting
 
 # Backend
@@ -122,9 +139,9 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 ```
 
 ### Estado de validación local más reciente
-- `npm test` → **109/109 OK** (runner Node.js v25 cuelga al terminar — comportamiento conocido, no es un fallo)
+- `npm test` → **109/109 OK** (sweeps usan `unrefInterval` desde 2026-05-08, runner ya no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `df391b2`
+- commit HEAD: `9ffd125`
 
 ### Cómo correr tests correctamente
 ```bash
@@ -298,8 +315,9 @@ Roles de dashboard:
 - `viewer` → solo lectura
 
 ### 6.4 Drive — modelo de acceso
-- `canUseDrive(scope)`: solo `membershipRole === null` (legacy) o `membershipRole === 'owner'`
-- En report-export, editor con `export_drive: true` también puede — resuelve owner's `user_id` de `dashboard_members` para buscar el token
+- `canConnectDrive(scope)`: sync — solo `membershipRole === null` (legacy) o `membershipRole === 'owner'`
+- `canExportDrive(session, scope)`: async — `canConnectDrive` OR editor con `export_drive: true`
+- `resolveDriveOwnerUserId(session, scope)`: editor usa el token del owner (lookup en `dashboard_members`)
 - tokens OAuth cifrados con AES-256-CBC usando `TOKEN_ENCRYPTION_KEY` (env)
 - `pendingDriveOAuthStates`: Map en memoria con sweep cada 5 min
 - callback `/api/drive/callback` no requiere sesión (redirect desde Google)
@@ -541,6 +559,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `telegram_multi_user_phase.sql` | ✔ prod 2026-05-04 |
 | `drive_oauth_phase.sql` | ✔ prod 2026-05-07 |
 | `photo_ticket_phase.sql` | ✔ prod 2026-05-07 |
+| `drop_pending_extractions.sql` | ✔ aplicar en prod — tabla huérfana, sesiones viven en Map en memoria |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)
@@ -601,8 +620,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 ## 15. Infra, Docker y deploy
 
 ### Frontend
-- Firebase Hosting / proyecto: `balancediario`
-- verificar con `firebase use balancediario` antes de deploy
+- Firebase Hosting / proyecto: `caja-chica-bot` (default en `.firebaserc`)
+- URL prod: `https://caja-chica-bot.web.app`
 
 ### Backend
 - Cloud Run / proyecto GCP: `caja-chica-bot`
@@ -617,7 +636,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `photo_ticket_phase.sql` en Supabase prod | ✔ hecho 2026-05-07 |
 | Env vars Drive en Cloud Run | ✔ configuradas 2026-05-07 |
 | Deploy backend Cloud Run | ✔ deployado 2026-05-07 |
-| Deploy frontend Firebase Hosting | ⚠ **PENDIENTE** (código listo, nunca deployado en esta sesión) |
+| Deploy frontend Firebase Hosting | ✔ deployado 2026-05-08 en `caja-chica-bot.web.app` |
 
 ---
 
@@ -711,23 +730,22 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 15. INSERT Telegram invite sin upsert — partial index de PostgREST es unreliable para onConflict
 16. foto → dos prompts en cascada: RECEIPT primero, HANDWRITTEN si confidence < 0.5 — no se pide al usuario que reenvíe
 17. álbumes Telegram: debounce 1500ms porque cada foto llega en update separado; un solo call a Gemini para el batch
-18. `pending_extractions` en DB existe pero no se usa — estado in-memory es suficiente para el TTL corto
+18. `pending_extractions` tabla borrada — sesiones foto/ticket viven en Map en memoria. **Single-instance invariant**: Cloud Run max=1. Si autoscale > 1, migrar Map → tabla Supabase.
+19. Tests corren con `node --import tsx --test` — Node.js runner nativo, sin Jest/Vitest
 
 ---
 
 ## 20. Próximos pasos recomendados
 
-### Prioridad inmediata
-1. Deploy frontend Firebase Hosting: `npm run build` → `firebase use balancediario` → `firebase deploy --only hosting`
-
 ### Prioridad media (features pendientes)
-2. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe, falta usarla en la resolución
-3. Presupuesto UI — actualmente oculto con `{false && ...}` en `GastosTab.tsx`; API y datos intactos
+1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe, falta usarla en la resolución
+2. Presupuesto UI — actualmente oculto con `{false && ...}` en `GastosTab.tsx`; API y datos intactos
 
 ### Prioridad baja (deuda técnica)
-4. Rate limiting global (actualmente solo en `/api/extract`)
-5. Tipado correcto de `session` en Express (`(req as any).session` → tipo propio)
-6. Limpiar env names viejos `VITE_*` en backend/server
+3. Rate limiting global (actualmente solo en `/api/extract`)
+4. Tipado correcto de `session` en Express (`(req as any).session` → tipo propio)
+5. Limpiar env names viejos `VITE_*` en backend/server
+6. Renombrar artefactos internos `Boteado` → `Caja Chica` (imagen Docker `boteado-bot`, servicio Cloud Run `boteado-bot`, backend folder name)
 
 ---
 
@@ -754,4 +772,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Backend deployado en Cloud Run. Pendiente: deploy frontend con `npm run build` → `firebase use balancediario` → `firebase deploy --only hosting`.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Sin pendientes de deploy. Próximo foco: CUIT matching en bot Telegram o presupuesto UI.

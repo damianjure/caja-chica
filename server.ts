@@ -38,7 +38,7 @@ import { filterMovementsForReport, resolveReportDateRange, type ReportExportRequ
 import { uploadFileToDrive, decryptToken } from "./src/server/drive.ts";
 import { can, type TelegramAction } from "./src/server/permissions.ts";
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!supabaseUrl || !supabaseServerKey) {

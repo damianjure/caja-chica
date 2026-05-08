@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-08 (post hosting migration + design audit + rebrand)
+## Fuente de verdad única — 2026-05-08 (post deuda técnica: typing, rate limiting, tests, rebrand)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -78,7 +78,7 @@ Integraciones principales:
 - Frontend ✔ deployado en `caja-chica-bot.web.app` (hosting migrado desde `balancediario`)
 - Backend ✔ deployado en Cloud Run
 
-### Cambios 2026-05-08
+### Cambios 2026-05-08 (primera ronda — hosting + design)
 - **Hosting migration**: `balancediario` (proyecto roto) → `caja-chica-bot`. URLs hardcodeadas actualizadas.
 - **Drive permissions split**: `canUseDrive` desaparece. Ahora `canConnectDrive` (sync, solo owners) + `canExportDrive` (async, owners + editors con `export_drive`) + `resolveDriveOwnerUserId` (busca token del owner para editor).
 - **Design audit (11 mejoras UX/UI)**:
@@ -94,8 +94,25 @@ Integraciones principales:
 - **Rebrand**: "Boteado" → "Caja Chica" en login, emails, PDFs.
 - **`unrefInterval` en sweeps**: previene hang del proceso al terminar tests.
 
+### Cambios 2026-05-08 (segunda ronda — deuda técnica, commit `47fb1b8`)
+- **`req.session` tipado**: module augmentation en `src/server/types/express.d.ts` + helper `getSession(req)`. 37 `(req as any).session` eliminados. TypeScript ahora enforcea presencia del middleware.
+- **Rate limiting global** (`src/server/rateLimit.ts`): factory `createRateLimiter` con 4 tiers:
+  - `tierRead` 300/min por user — todas las rutas GET `/api/*`
+  - `tierWrite` 120/min por user — POST/PATCH/DELETE `/api/*`
+  - `tierStrict` 30/min por user — `/api/extract` (reemplazó inline)
+  - `tierAuth` 20/min por IP — `/api/drive/callback`
+  - Headers `X-RateLimit-*` + `Retry-After` en 429
+- **Rebrand cleanup**: test fixtures `balancediario` → `cajachica`; eliminado fallback muerto `VITE_SUPABASE_URL` en `server.ts`
+- **Firebase `balancediario` borrado**: proyecto GCP eliminado (30 días de gracia para recuperar)
+- **`drop_pending_extractions.sql`**: SQL listo — tabla huérfana, **pendiente aplicar en prod Supabase**
+- **Tests nuevos** (36 nuevos, total 147):
+  - `tests/driveOAuth.test.ts` — 19 tests: encrypt/decrypt, canConnectDrive, canExportDrive, OAuth callback, disconnect
+  - `tests/photoFlow.integration.test.ts` — 11 tests: extraction review store, buildReviewCardText, MediaGroupBuffer
+  - `tests/rateLimit.test.ts` — 6 tests: allow/block, headers, key isolation, window reset
+
 ### Pendiente
-1. CUIT matching en `resolveTelegramCompany()` — columna existe en DB, lógica no implementada
+1. `drop_pending_extractions.sql` — aplicar en prod Supabase (no rompe nada, tabla ya no se usa)
+2. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
 
 ---
 
@@ -116,7 +133,7 @@ Integraciones principales:
 ### OJO
 NO usar `mlvounduwzfnkldbahnl` para esta app.
 NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
-`balancediario` deprecado; hosting movido a `caja-chica-bot`.
+`balancediario` — proyecto GCP **eliminado** 2026-05-08.
 
 ---
 
@@ -139,9 +156,9 @@ gcloud run deploy boteado-bot --image gcr.io/caja-chica-bot/boteado-bot --region
 ```
 
 ### Estado de validación local más reciente
-- `npm test` → **109/109 OK** (sweeps usan `unrefInterval` desde 2026-05-08, runner ya no cuelga)
+- `npm test` → **145/147 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `9ffd125`
+- commit HEAD: `47fb1b8`
 
 ### Cómo correr tests correctamente
 ```bash
@@ -611,9 +628,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `DASHBOARD_URL` ausente: warning al arrancar si Drive habilitado | `src/server/app.ts` |
 
 ### Deuda de seguridad restante (baja prioridad)
-- `(req as any).session` — 40+ casts sin tipo en app.ts
-- limpieza de nombres `VITE_*` en backend/server env
-- sin rate limiting global (solo en `/api/extract`)
+- Renombrar recursos GCP/Docker `boteado-bot` → nombre nuevo (cosmético, no urgente)
 
 ---
 
@@ -637,6 +652,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | Env vars Drive en Cloud Run | ✔ configuradas 2026-05-07 |
 | Deploy backend Cloud Run | ✔ deployado 2026-05-07 |
 | Deploy frontend Firebase Hosting | ✔ deployado 2026-05-08 en `caja-chica-bot.web.app` |
+| `drop_pending_extractions.sql` en Supabase prod | ⚠ **PENDIENTE** (no rompe, tabla huérfana) |
 
 ---
 
@@ -693,8 +709,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 ## 18. Testing real
 
 ### Estado actual
-- `npm test` / `node --import tsx --test tests/**/*.test.ts` → **109/109 OK**
-- El runner de Node.js v25 cuelga al terminar (handles Express abiertos) — esto es preexistente, no es un fallo
+- `node --import tsx --test tests/**/*.test.ts` → **145/147 OK** (2 skip intencionales, 0 fail)
+- Runner no cuelga — sweeps usan `unrefInterval`
 
 ### Cobertura relevante
 - CORS, auth básica, invitaciones/admin, budgets, paginación
@@ -708,6 +724,9 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 - `parsePhotoExtractionResult` / `parseMultiPhotoExtractionResult` — JSON válido/inválido, confidence clamping, markdown fences
 - `extractFromPhoto` mock integration — upload/generateContent/delete lifecycle, retry con handwritten prompt
 - `MediaGroupBuffer` — debounce, flush, multi-group isolation
+- Drive OAuth: encrypt/decrypt round-trip, canConnectDrive por role, canExportDrive editor+permiso, callback state, disconnect
+- Rate limiter: allow/block, headers X-RateLimit-*, key isolation, window reset
+- Extraction review store: TTL, editingField transitions, buildReviewCardText, buildReviewKeyboard
 
 ---
 
@@ -726,7 +745,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 11. presupuesto: UI oculta con `{false && ...}`, datos y API intactos
 12. **no existe fallback legacy en `getScopeEntityById`** — eliminado 2026-05-03
 13. Telegram multiusuario: flujo doble-factor para editor/viewer; owner mantiene flujo legacy
-14. Maps en memoria (sessions, rate limit, OAuth state): sweep periódico cada 5 min
+14. Maps en memoria (sessions, OAuth state): sweep periódico cada 5 min con `unrefInterval`. Rate limiting en módulo propio `src/server/rateLimit.ts` con mismo patrón.
 15. INSERT Telegram invite sin upsert — partial index de PostgREST es unreliable para onConflict
 16. foto → dos prompts en cascada: RECEIPT primero, HANDWRITTEN si confidence < 0.5 — no se pide al usuario que reenvíe
 17. álbumes Telegram: debounce 1500ms porque cada foto llega en update separado; un solo call a Gemini para el batch
@@ -737,15 +756,15 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 20. Próximos pasos recomendados
 
-### Prioridad media (features pendientes)
-1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe, falta usarla en la resolución
-2. Presupuesto UI — actualmente oculto con `{false && ...}` en `GastosTab.tsx`; API y datos intactos
+### Prioridad inmediata
+1. `drop_pending_extractions.sql` — aplicar en Supabase prod (tabla huérfana, sin riesgo)
 
-### Prioridad baja (deuda técnica)
-3. Rate limiting global (actualmente solo en `/api/extract`)
-4. Tipado correcto de `session` en Express (`(req as any).session` → tipo propio)
-5. Limpiar env names viejos `VITE_*` en backend/server
-6. Renombrar artefactos internos `Boteado` → `Caja Chica` (imagen Docker `boteado-bot`, servicio Cloud Run `boteado-bot`, backend folder name)
+### Prioridad media (features pendientes)
+2. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe, lógica no implementada
+3. Presupuesto UI — oculto con `{false && ...}` en `GastosTab.tsx`; API y datos intactos
+
+### Prioridad baja (cosmético)
+4. Renombrar imagen Docker/servicio Cloud Run `boteado-bot` → nombre nuevo (requiere redeploy)
 
 ---
 
@@ -772,4 +791,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Sin pendientes de deploy. Próximo foco: CUIT matching en bot Telegram o presupuesto UI.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 145/147. Pendiente inmediato: aplicar `drop_pending_extractions.sql` en Supabase prod. Próximo feature: CUIT matching en bot Telegram.

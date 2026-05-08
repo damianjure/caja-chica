@@ -16,7 +16,7 @@ export function DashboardSkeleton() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm">
+      <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index}>
@@ -36,7 +36,7 @@ export function DashboardSkeleton() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <div key={index} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
             <SkeletonBlock className="mb-4 h-6 w-48" />
             <SkeletonBlock className="mb-8 h-4 w-72 max-w-full" />
             <SkeletonBlock className="h-56 w-full" />
@@ -49,7 +49,7 @@ export function DashboardSkeleton() {
 
 export function SectionLoadingState({ message = 'Cargando datos...' }: { message?: string }) {
   return (
-    <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-12 text-center shadow-sm">
+    <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-12 text-center shadow-sm">
       <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-neutral-200 border-t-neutral-900" />
       <p className="text-sm font-medium text-neutral-900">{message}</p>
       <p className="mt-1 text-sm text-neutral-500">Estamos armando la vista para que cargue prolija y sin saltos.</p>

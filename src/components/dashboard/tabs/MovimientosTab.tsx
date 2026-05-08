@@ -9,7 +9,6 @@ export default function MovimientosTab({
   expenseCount,
   historyCount,
   canWriteData,
-  composer,
   companiesList,
   selectedCompany,
   setSelectedCompany,
@@ -50,8 +49,6 @@ export default function MovimientosTab({
         <MetricCard label="Egresos" value={String(expenseCount)} tone="danger" />
         <MetricCard label="Total movimientos" value={String(historyCount)} />
       </div>
-
-      {canWriteData && composer}
 
       <SectionCard title="Transacciones filtrables" description="Filtrá por empresa y revisá el historial con trazabilidad sobre el texto original. Todo lo cargado entra como conciliado por defecto.">
         <div className="space-y-6">

@@ -10,7 +10,7 @@ export function MetricCard({ label, value, tone = 'neutral' }: { label: string; 
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-sm">
-      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">{label}</span>
+      <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">{label}</span>
       <div className={`text-2xl font-bold ${toneClass}`}>{value}</div>
     </div>
   );
@@ -18,7 +18,7 @@ export function MetricCard({ label, value, tone = 'neutral' }: { label: string; 
 
 export function SectionCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-5">
+    <section className="bg-white border border-neutral-200 rounded-2xl p-6 md:p-8 shadow-sm space-y-5">
       <div>
         <h2 className="text-xl font-bold text-neutral-900">{title}</h2>
         {description && <p className="text-sm text-neutral-500 mt-1">{description}</p>}

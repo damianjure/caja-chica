@@ -41,8 +41,8 @@
     --app-surface-2: #24272b;
     --app-surface-3: #2d3136;
     --app-surface-4: #3a3f46;
-    --app-border: #333841;
-    --app-border-strong: #4a515b;
+    --app-border: #3d424d;
+    --app-border-strong: #555d6a;
     --app-text-1: #f4f5f6;
     --app-text-2: #d2d6dc;
     --app-text-3: #aab2bc;
@@ -99,6 +99,7 @@
   :focus-visible {
     outline: 2px solid var(--app-text-1);
     outline-offset: 2px;
+    border-radius: 6px;
   }
 }
 

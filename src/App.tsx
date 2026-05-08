@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { toast, Toaster } from "sonner";
 
 import DashboardApp from "./DashboardApp";
 import { buildGoogleAuthRedirect, getInviteTokenFromUrl } from "./authRedirect";
@@ -9,7 +10,7 @@ import type { ThemeMode } from "./components/ThemeToggle";
 import { api, AppViewer } from "./services/api";
 import { supabase } from "./services/supabase";
 
-const THEME_STORAGE_KEY = "boteado-theme";
+const THEME_STORAGE_KEY = "cajachica-theme";
 
 function resolveInitialTheme(): ThemeMode {
   if (typeof window === "undefined") return "light";
@@ -23,7 +24,6 @@ export default function App() {
   const [viewer, setViewer] = useState<AppViewer | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme);
   const inviteToken = useMemo(
     () => (typeof window === "undefined" ? null : getInviteTokenFromUrl(new URL(window.location.href))),
@@ -31,6 +31,14 @@ export default function App() {
   );
 
   const isConfigured = useMemo(() => Boolean(supabase), []);
+
+  useEffect(() => {
+    if (inviteToken) {
+      toast("Tenés una invitación pendiente. Entrá con el mail invitado para sumarte al dashboard.", {
+        duration: 8000,
+      });
+    }
+  }, [inviteToken]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -43,15 +51,14 @@ export default function App() {
     try {
       const me = await api.getMe();
       setViewer(me);
-      setError(null);
     } catch (err) {
       setViewer(null);
       if (api.isApiError(err) && err.status === 403) {
-        setError("Tu cuenta autenticada no está autorizada para usar la aplicación.");
+        toast.error("Tu cuenta autenticada no está autorizada para usar la aplicación.");
       } else if (err instanceof Error) {
-        setError(err.message);
+        toast.error(err.message);
       } else {
-        setError("No se pudo validar tu acceso.");
+        toast.error("No se pudo validar tu acceso.");
       }
     }
   };
@@ -59,7 +66,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase) {
       setLoadingSession(false);
-      setError("Faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para iniciar sesión.");
+      toast.error("Faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para iniciar sesión.");
       return;
     }
 
@@ -95,7 +102,6 @@ export default function App() {
   const handleLogin = async () => {
     if (!supabase) return;
     setAuthLoading(true);
-    setError(null);
     try {
       const redirectTo = buildGoogleAuthRedirect(new URL(window.location.href));
       const { error: loginError } = await supabase.auth.signInWithOAuth({
@@ -109,7 +115,7 @@ export default function App() {
       });
       if (loginError) throw loginError;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión con Google.");
+      toast.error(err instanceof Error ? err.message : "No se pudo iniciar sesión con Google.");
       setAuthLoading(false);
     }
   };
@@ -119,7 +125,6 @@ export default function App() {
     await supabase.auth.signOut();
     setViewer(null);
     setSession(null);
-    setError(null);
     setAuthLoading(false);
   };
 
@@ -133,32 +138,39 @@ export default function App() {
 
   if (!isConfigured) {
     return (
-      <LoginScreen
-        isLoading={false}
-        error={error}
-        theme={theme}
-        onToggleTheme={handleToggleTheme}
-        notice={inviteToken ? "Tenés una invitación pendiente. Entrá con el mail invitado para sumarte al dashboard." : null}
-        onLogin={() => Promise.resolve()}
-      />
+      <>
+        <Toaster position="bottom-center" />
+        <LoginScreen
+          isLoading={false}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          onLogin={() => Promise.resolve()}
+        />
+      </>
     );
   }
 
   if (!session || !viewer) {
     return (
-      <LoginScreen
-        isLoading={authLoading}
-        error={error}
-        theme={theme}
-        onToggleTheme={handleToggleTheme}
-        notice={inviteToken ? "Tenés una invitación pendiente. Entrá con el mail invitado para sumarte al dashboard." : null}
-        buttonLabel={session ? "Reintentar acceso con Google" : "Entrar con Google"}
-        secondaryActionLabel={session ? "Salir y usar otra cuenta" : undefined}
-        onSecondaryAction={session ? handleSignOut : undefined}
-        onLogin={handleLogin}
-      />
+      <>
+        <Toaster position="bottom-center" />
+        <LoginScreen
+          isLoading={authLoading}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          buttonLabel={session ? "Reintentar acceso con Google" : "Entrar con Google"}
+          secondaryActionLabel={session ? "Salir y usar otra cuenta" : undefined}
+          onSecondaryAction={session ? handleSignOut : undefined}
+          onLogin={handleLogin}
+        />
+      </>
     );
   }
 
-  return <DashboardApp viewer={viewer} onSignOut={handleSignOut} theme={theme} onToggleTheme={handleToggleTheme} />;
+  return (
+    <>
+      <Toaster position="top-center" />
+      <DashboardApp viewer={viewer} onSignOut={handleSignOut} theme={theme} onToggleTheme={handleToggleTheme} />
+    </>
+  );
 }

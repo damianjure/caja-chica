@@ -112,7 +112,7 @@ export function buildReportPdf(args: {
   );
 
   const lines = [
-    `Boteado - ${args.fileName}`,
+    `Caja Chica - ${args.fileName}`,
     `Período: ${args.periodLabel}`,
     `Empresa: ${args.filters.company === "all" ? "Todas" : args.filters.company}`,
     `Tipo: ${args.filters.tipo}`,

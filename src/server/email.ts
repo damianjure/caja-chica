@@ -9,7 +9,7 @@ function getClient(): Resend | null {
   return _client;
 }
 
-const FROM = process.env.FROM_EMAIL ?? "Boteado <onboarding@resend.dev>";
+const FROM = process.env.FROM_EMAIL ?? "Caja Chica <onboarding@resend.dev>";
 
 function escapeHtml(str: string): string {
   return str
@@ -51,14 +51,14 @@ function baseTemplate(title: string, body: string): string {
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>Boteado</h1>
+      <h1>Caja Chica</h1>
       <p>Tu gestor de movimientos financieros</p>
     </div>
     <div class="body">
       ${body}
     </div>
     <div class="footer">
-      <p>Si no esperabas este mail, podés ignorarlo con confianza. Fue enviado porque alguien usó tu dirección para invitarte a Boteado.</p>
+      <p>Si no esperabas este mail, podés ignorarlo con confianza. Fue enviado porque alguien usó tu dirección para invitarte a Caja Chica.</p>
     </div>
   </div>
 </body>
@@ -68,7 +68,7 @@ function baseTemplate(title: string, body: string): string {
 function appInvitationHtml(inviteUrl: string): string {
   const safeUrl = escapeHtml(inviteUrl);
   const body = `
-    <p>¡Hola! Te damos la bienvenida a <strong>Boteado</strong>, la app para registrar y consultar tus movimientos financieros en lenguaje natural.</p>
+    <p>¡Hola! Te damos la bienvenida a <strong>Caja Chica</strong>, la app para registrar y consultar tus movimientos financieros en lenguaje natural.</p>
 
     <div class="cta"><a href="${safeUrl}">Activar mi cuenta →</a></div>
 
@@ -108,9 +108,9 @@ function appInvitationHtml(inviteUrl: string): string {
     </div>
 
     <p>Cualquier duda, respondé este mail.</p>
-    <p>Gracias por usar Boteado. 🙌</p>
+    <p>Gracias por usar Caja Chica. 🙌</p>
   `;
-  return baseTemplate("Bienvenida a Boteado", body);
+  return baseTemplate("Bienvenida a Caja Chica", body);
 }
 
 function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: string): string {
@@ -118,7 +118,7 @@ function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: 
   const safeInviter = escapeHtml(inviterEmail);
   const roleLabel = role === "editor" ? "Editor (puede cargar y ver datos)" : "Viewer (solo puede ver)";
   const body = `
-    <p>¡Hola! <strong>${safeInviter}</strong> te invitó a colaborar en su dashboard de <strong>Boteado</strong> como <em>${roleLabel}</em>.</p>
+    <p>¡Hola! <strong>${safeInviter}</strong> te invitó a colaborar en su dashboard de <strong>Caja Chica</strong> como <em>${roleLabel}</em>.</p>
     <p>Van a compartir los mismos datos: podés ver (y cargar, si sos editor) los movimientos financieros del dashboard.</p>
 
     <div class="cta"><a href="${safeUrl}">Unirme al dashboard →</a></div>
@@ -147,9 +147,9 @@ function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: 
       </ol>
     </div>
 
-    <p>Gracias por usar Boteado. 🙌</p>
+    <p>Gracias por usar Caja Chica. 🙌</p>
   `;
-  return baseTemplate("Te invitaron a un dashboard en Boteado", body);
+  return baseTemplate("Te invitaron a un dashboard en Caja Chica", body);
 }
 
 export async function sendAppInvitationEmail(to: string, inviteUrl: string): Promise<void> {
@@ -161,7 +161,7 @@ export async function sendAppInvitationEmail(to: string, inviteUrl: string): Pro
   const { error } = await client.emails.send({
     from: FROM,
     to,
-    subject: "Te invitaron a Boteado",
+    subject: "Te invitaron a Caja Chica",
     html: appInvitationHtml(inviteUrl),
   });
   if (error) console.error("[email] Failed to send app invitation to", to, error);
@@ -182,7 +182,7 @@ export async function sendDashboardInvitationEmail(
   const { error } = await client.emails.send({
     from: FROM,
     to,
-    subject: `${inviterEmail} te invitó a su dashboard en Boteado`, // subject is plain text, no escape needed
+    subject: `${inviterEmail} te invitó a su dashboard en Caja Chica`, // subject is plain text, no escape needed
     html: dashboardInvitationHtml(inviteUrl, role, inviterEmail),
   });
   if (error) console.error("[email] Failed to send dashboard invitation to", to, error);

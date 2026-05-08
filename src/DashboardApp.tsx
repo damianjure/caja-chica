@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useRef, type ReactNode } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { AnimatePresence, useReducedMotion } from 'motion/react';
+import { toast } from "sonner";
 import {
   Send,
   Trash2,
@@ -136,7 +137,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'warning'} | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string>('all');
   const [movementType, setMovementType] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [movementCurrency, setMovementCurrency] = useState<'all' | 'ARS' | 'USD'>('all');
@@ -383,14 +383,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
     };
   }, []);
 
-  const showNotification = (message: string, type: 'success' | 'warning' = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+  const showToast = (message: string, type: 'success' | 'warning' = 'success') => {
+    if (type === 'success') toast.success(message);
+    else toast.error(message);
   };
 
   const handleProcess = async () => {
     if (!canWriteData) {
-      showNotification('Tenés acceso viewer: solo lectura.', 'warning');
+      showToast('Tenés acceso viewer: solo lectura.', 'warning');
       return;
     }
     if (!inputText.trim() || isProcessing) return;
@@ -411,9 +411,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
               if (!exists) {
                 const newEmp = await api.addEmpresa(typed.companyName);
                 setCustomCompanies((prev) => [...prev, newEmp]);
-                showNotification(`Empresa "${typed.companyName}" creada.`);
+                showToast(`Empresa "${typed.companyName}" creada.`);
               } else {
-                showNotification(`La empresa "${typed.companyName}" ya existe.`, 'warning');
+                showToast(`La empresa "${typed.companyName}" ya existe.`, 'warning');
               }
             }
             break;
@@ -424,7 +424,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
               const response = await api.deleteLastMovimiento();
               if (response.id) {
                 setHistory((prev) => prev.filter((item) => item.id !== response.id));
-                showNotification('Último movimiento eliminado.');
+                showToast('Último movimiento eliminado.');
               }
             }
             break;
@@ -435,13 +435,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
 
             if (pendingAssignment) {
               setPendingItem(pendingAssignment);
-              showNotification('Elegí la empresa antes de guardar el movimiento.');
+              showToast('Elegí la empresa antes de guardar el movimiento.');
               break;
             }
 
             const saved = await api.saveMovimientos(typed.items, inputText);
             setHistory((prev) => [...saved.map(normalizeMovement), ...prev]);
-            showNotification(`${saved.length} transacciones registradas.`);
+            showToast(`${saved.length} transacciones registradas.`);
             break;
           }
           default:
@@ -468,7 +468,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       onConfirm: async () => {
         await api.deleteMovimiento(id);
         setHistory((prev) => prev.filter((item) => item.id !== id));
-        showNotification('Movimiento eliminado.', 'warning');
+        showToast('Movimiento eliminado.', 'warning');
       },
     });
   };
@@ -488,7 +488,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
         setCustomCompanies((prev) => prev.filter((company) => company.id !== id));
         if (selectedCompany === name) setSelectedCompany('all');
         if (selectedExpenseCompany === name) setSelectedExpenseCompany('all');
-        showNotification(`Empresa "${name}" desactivada.`, 'warning');
+        showToast(`Empresa "${name}" desactivada.`, 'warning');
       },
     });
   };
@@ -504,21 +504,21 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       onConfirm: async () => {
         await api.deleteCategoria(id);
         setCategories((prev) => prev.filter((category) => category.id !== id));
-        showNotification(`Categoría "${name}" eliminada.`, 'warning');
+        showToast(`Categoría "${name}" eliminada.`, 'warning');
       },
     });
   };
 
   const saveBudget = async () => {
     if (!canWriteData) {
-      showNotification('Tenés acceso viewer: no podés editar presupuestos.', 'warning');
+      showToast('Tenés acceso viewer: no podés editar presupuestos.', 'warning');
       return;
     }
     const parsedAmount = Number(budgetForm.monto);
     const categoria = budgetForm.categoria.trim();
 
     if (!categoria || !Number.isFinite(parsedAmount)) {
-      showNotification('Completá categoría y monto del presupuesto.', 'warning');
+      showToast('Completá categoría y monto del presupuesto.', 'warning');
       return;
     }
 
@@ -543,9 +543,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       });
       setBudgetPeriod(saved.period);
       setBudgetForm((prev) => ({ ...prev, categoria: '', monto: '', period: saved.period }));
-      showNotification(`Presupuesto guardado para ${saved.categoria}.`);
+      showToast(`Presupuesto guardado para ${saved.categoria}.`);
     } catch {
-      showNotification('No se pudo guardar el presupuesto.', 'warning');
+      showToast('No se pudo guardar el presupuesto.', 'warning');
     }
   };
 
@@ -577,7 +577,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
     if (!editingMovement || !movementEditForm) return;
     const monto = Number(movementEditForm.monto);
     if (!Number.isFinite(monto) || !movementEditForm.categoria.trim() || !movementEditForm.descripcion.trim()) {
-      showNotification('Completá monto, categoría y descripción.', 'warning');
+      showToast('Completá monto, categoría y descripción.', 'warning');
       return;
     }
 
@@ -608,9 +608,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       );
       setEditingMovement(null);
       setMovementEditForm(null);
-      showNotification('Movimiento actualizado.');
+      showToast('Movimiento actualizado.');
     } catch {
-      showNotification('No se pudo actualizar el movimiento.', 'warning');
+      showToast('No se pudo actualizar el movimiento.', 'warning');
     }
   };
 
@@ -641,16 +641,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       if (selectedCompany === previousName) setSelectedCompany(nextName);
       setEditingCompany(null);
       setCompanyEditName('');
-      showNotification('Empresa actualizada.');
+      showToast('Empresa actualizada.');
     } catch {
-      showNotification('No se pudo actualizar la empresa.', 'warning');
+      showToast('No se pudo actualizar la empresa.', 'warning');
     }
   };
 
   const runConfirmation = async () => {
     if (!confirmationModal) return;
     if (confirmationModal.requireText && confirmationInput !== confirmationModal.requireText) {
-      showNotification(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning');
+      showToast(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning');
       return;
     }
 
@@ -660,7 +660,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       setConfirmationModal(null);
       setConfirmationInput('');
     } catch {
-      showNotification('No se pudo completar la acción.', 'warning');
+      showToast('No se pudo completar la acción.', 'warning');
     } finally {
       setIsConfirmingAction(false);
     }
@@ -698,9 +698,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       const saved = await api.saveMovimientos([{ ...pendingItem, empresa }], pendingItem.originalText);
       setHistory((prev) => [...saved.map(normalizeMovement), ...prev]);
       setPendingItem(null);
-      showNotification(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`);
+      showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`);
     } catch {
-      showNotification('No se pudo guardar el movimiento.', 'warning');
+      showToast('No se pudo guardar el movimiento.', 'warning');
     } finally {
       setIsProcessing(false);
     }
@@ -750,10 +750,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
   const renderHistoryCards = () => (
     <>
       {filteredHistory.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4 border-2 border-dashed border-neutral-200 rounded-3xl text-neutral-400">
-          <MessageSquareText className="w-12 h-12 mb-4 opacity-20" />
-          <p>{selectedCompany === 'all' ? 'Todavía no hay nada por acá.' : `No hay datos para "${selectedCompany}"`}</p>
-          <p className="text-sm">Mandá un mensaje para empezar.</p>
+        <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-2xl text-neutral-400">
+          <MessageSquareText className="w-10 h-10 mb-3 opacity-25" />
+          <p className="font-medium text-neutral-500">{selectedCompany === 'all' ? 'Todavía no hay nada por acá.' : `No hay datos para "${selectedCompany}"`}</p>
+          <p className="text-sm mt-1">Escribí un movimiento en el campo de arriba.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -767,15 +767,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="group bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
               >
-                <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-[0.03] pointer-events-none ${item.tipo === 'ingreso' ? 'bg-green-500' : 'bg-red-500'}`} />
-
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-2">
                     <div className={`p-2 rounded-lg ${item.tipo === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                       {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-400 block leading-none mb-1">{item.categoria}</span>
+                      <span className="text-[11px] uppercase font-bold tracking-widest text-neutral-400 block leading-none mb-1">{item.categoria}</span>
                       <span className="font-semibold text-neutral-900">
                         {item.monto !== null
                           ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: item.moneda || 'ARS' }).format(item.monto)
@@ -823,8 +821,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
                   </div>
 
                   <div className="pt-3 border-t border-neutral-50 flex justify-between items-center">
-                    <span className="text-[10px] text-neutral-400 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-tight ${item.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>{item.tipo}</span>
+                    <span className="text-[11px] text-neutral-400 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
+                    <span className={`text-[11px] font-bold uppercase tracking-tight ${item.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>{item.tipo}</span>
                   </div>
                 </div>
               </motion.div>
@@ -936,7 +934,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       expenseCount={visibleExpenseCount}
       historyCount={filteredHistory.length}
       canWriteData={canWriteData}
-      composer={renderComposer()}
       companiesList={companiesList}
       selectedCompany={selectedCompany}
       setSelectedCompany={setSelectedCompany}
@@ -1023,51 +1020,36 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
 
             <div className="flex items-center gap-3 self-start">
               <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
-              <button
-                onClick={() => void onSignOut()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-white"
-              >
-                <LogOut className="w-4 h-4" />
-                Salir
-              </button>
+              <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5">
+                <span className="text-xs text-neutral-500 truncate max-w-[160px]">{viewer.email}</span>
+                <button
+                  onClick={() => void onSignOut()}
+                  className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-600 transition-colors"
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 auto-rows-fr">
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm min-h-[132px] flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Rol actual</div>
-                  <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full w-fit">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    Realtime Active
-                  </div>
-                </div>
-                <div className="mt-3 text-2xl font-semibold text-neutral-900 capitalize">{dashboardRole}</div>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm min-h-[132px] flex flex-col justify-between">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
                 <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Movimientos visibles</div>
                 <div className="mt-3 text-2xl font-semibold text-neutral-900">{history.length}</div>
               </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm min-h-[132px] flex flex-col justify-between">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Foco de esta vista</div>
-                <div className="mt-3 space-y-1">
-                  <div className="text-lg font-semibold text-neutral-900">{activeTabMeta.label}</div>
-                  <p className="text-sm text-neutral-500 text-balance">{activeTabMeta.description}</p>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm min-h-[132px] flex flex-col justify-between">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Sesión actual</div>
-
-                <div className="min-w-0 space-y-1">
-                  <div className="break-all text-lg font-semibold text-neutral-900">{viewer.email}</div>
-                  <div className="text-[11px] uppercase tracking-wider text-neutral-500 inline-flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" />
-                    {viewer.role}
-                  </div>
-                </div>
+              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+                <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">{activeTabMeta.label}</div>
+                <div className="mt-3 text-lg font-semibold text-neutral-900">{activeTabMeta.description}</div>
               </div>
           </div>
         </header>
+
+        {canWriteData && activeTab !== 'superadmin' && (
+          <div className="space-y-4">
+            {renderComposer()}
+          </div>
+        )}
 
         <section className="sticky top-3 z-20">
           {/* Mobile: horizontal scroll strip */}
@@ -1090,7 +1072,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
             </div>
           </div>
           {/* md+: grid with descriptions */}
-          <div className="hidden md:block bg-white/90 backdrop-blur border border-neutral-200 rounded-3xl p-3 shadow-sm">
+          <div className="hidden md:block bg-white/90 backdrop-blur border border-neutral-200 rounded-2xl p-3 shadow-sm">
             <div className={`grid md:grid-cols-3 gap-2 ${tabs.length === 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1128,22 +1110,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
             </motion.div>
           </AnimatePresence>
         </main>
-
-        <AnimatePresence>
-          {notification && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-              aria-live="polite"
-              className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-xl z-50 text-sm font-medium flex items-center gap-3 ${notification.type === 'success' ? 'bg-neutral-900 text-white' : 'bg-red-500 text-white'}`}
-            >
-              {notification.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {notification.message}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {editingMovement && movementEditForm && (
           <ModalShell title="Editar movimiento" onClose={() => {

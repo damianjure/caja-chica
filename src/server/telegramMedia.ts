@@ -78,6 +78,9 @@ async function downloadAndUpload(
     throw new Error(`telegram_media_download_failed:${response.status}`);
   }
   const arrayBuffer = await response.arrayBuffer();
+  if (arrayBuffer.byteLength > MAX_FILE_SIZE_BYTES) {
+    throw new Error(`telegram_media_too_large:${arrayBuffer.byteLength}`);
+  }
   const blob = new Blob([arrayBuffer], { type: mimeType });
   const uploaded = await genAI.files.upload({
     file: blob,
@@ -175,16 +178,28 @@ export async function extractFromMultiplePhotos({
 }: ExtractFromMultiplePhotosArgs): Promise<PhotoExtractionResult[]> {
   const uploadedFiles: Array<{ name?: string; uri: string; mimeType: string }> = [];
 
-  for (const file of files) {
-    const uploaded = await downloadAndUpload(
-      genAI,
-      botToken,
-      file.filePath,
-      file.mimeType,
-      file.displayName ?? file.filePath.split("/").pop() ?? "telegram-media",
-      fetchImpl,
-    );
-    uploadedFiles.push(uploaded);
+  try {
+    for (const file of files) {
+      const uploaded = await downloadAndUpload(
+        genAI,
+        botToken,
+        file.filePath,
+        file.mimeType,
+        file.displayName ?? file.filePath.split("/").pop() ?? "telegram-media",
+        fetchImpl,
+      );
+      uploadedFiles.push(uploaded);
+    }
+  } catch (err) {
+    // Clean up any files already uploaded before re-throwing
+    for (const f of uploadedFiles) {
+      if (f.name) {
+        genAI.files.delete({ name: f.name }).catch((e) => {
+          console.warn("Gemini media file cleanup error (partial upload):", e);
+        });
+      }
+    }
+    throw err;
   }
 
   const parts = uploadedFiles.flatMap((u) => [

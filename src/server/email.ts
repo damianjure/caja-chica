@@ -11,6 +11,15 @@ function getClient(): Resend | null {
 
 const FROM = process.env.FROM_EMAIL ?? "Boteado <onboarding@resend.dev>";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function baseTemplate(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -57,10 +66,11 @@ function baseTemplate(title: string, body: string): string {
 }
 
 function appInvitationHtml(inviteUrl: string): string {
+  const safeUrl = escapeHtml(inviteUrl);
   const body = `
     <p>¡Hola! Te damos la bienvenida a <strong>Boteado</strong>, la app para registrar y consultar tus movimientos financieros en lenguaje natural.</p>
 
-    <div class="cta"><a href="${inviteUrl}">Activar mi cuenta →</a></div>
+    <div class="cta"><a href="${safeUrl}">Activar mi cuenta →</a></div>
 
     <div class="note">
       ⚠️ <strong>Importante:</strong> usá exactamente la cuenta de Google asociada a este mail. Si entrás con otra cuenta, no vas a poder acceder.
@@ -104,12 +114,14 @@ function appInvitationHtml(inviteUrl: string): string {
 }
 
 function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: string): string {
+  const safeUrl = escapeHtml(inviteUrl);
+  const safeInviter = escapeHtml(inviterEmail);
   const roleLabel = role === "editor" ? "Editor (puede cargar y ver datos)" : "Viewer (solo puede ver)";
   const body = `
-    <p>¡Hola! <strong>${inviterEmail}</strong> te invitó a colaborar en su dashboard de <strong>Boteado</strong> como <em>${roleLabel}</em>.</p>
+    <p>¡Hola! <strong>${safeInviter}</strong> te invitó a colaborar en su dashboard de <strong>Boteado</strong> como <em>${roleLabel}</em>.</p>
     <p>Van a compartir los mismos datos: podés ver (y cargar, si sos editor) los movimientos financieros del dashboard.</p>
 
-    <div class="cta"><a href="${inviteUrl}">Unirme al dashboard →</a></div>
+    <div class="cta"><a href="${safeUrl}">Unirme al dashboard →</a></div>
 
     <div class="note">
       ⚠️ <strong>Importante:</strong> usá exactamente la cuenta de Google asociada a este mail. Si entrás con otra cuenta, no vas a poder acceder.
@@ -129,7 +141,7 @@ function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: 
     <div class="steps">
       <h3>Conectar el bot de Telegram (opcional)</h3>
       <ol>
-        <li>${inviterEmail} puede generarte un enlace de invitación desde <strong>Colaboración → Vincular Telegram</strong>.</li>
+        <li>${safeInviter} puede generarte un enlace de invitación desde <strong>Colaboración → Vincular Telegram</strong>.</li>
         <li>Abrí ese enlace en Telegram y esperá la confirmación.</li>
         <li>Una vez confirmado, usá <strong>/menu</strong> para ver las opciones disponibles.</li>
       </ol>
@@ -170,7 +182,7 @@ export async function sendDashboardInvitationEmail(
   const { error } = await client.emails.send({
     from: FROM,
     to,
-    subject: `${inviterEmail} te invitó a su dashboard en Boteado`,
+    subject: `${inviterEmail} te invitó a su dashboard en Boteado`, // subject is plain text, no escape needed
     html: dashboardInvitationHtml(inviteUrl, role, inviterEmail),
   });
   if (error) console.error("[email] Failed to send dashboard invitation to", to, error);

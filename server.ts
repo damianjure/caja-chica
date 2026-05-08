@@ -52,9 +52,15 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const dashboardUrl = process.env.DASHBOARD_URL || "https://balancediario.web.app";
 
+function unrefInterval(timer: ReturnType<typeof setInterval>) {
+  const maybeUnref = (timer as { unref?: () => void }).unref;
+  if (typeof maybeUnref === "function") maybeUnref.call(timer);
+}
+
 // --- TELEGRAM BOT LOGIC ---
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const bot = botToken ? new Bot(botToken) : null;
+const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
 if (bot) {
   console.log("🤖 Configurando Bot de Telegram...");
@@ -390,18 +396,18 @@ if (bot) {
     expiresAt: number;
   }
 
-  const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
   startExtractionSweep();
 
   const pendingReportSessions = new Map<number, ReportSession>();
 
   // WARNING-9: evict expired entries every 5 minutes to prevent unbounded growth
-  setInterval(() => {
+  const reportSessionSweep = setInterval(() => {
     const now = Date.now();
     for (const [chatId, s] of pendingReportSessions) {
       if (now > s.expiresAt) pendingReportSessions.delete(chatId);
     }
   }, 5 * 60_000);
+  unrefInterval(reportSessionSweep);
 
   function getReportSession(chatId: number): ReportSession | null {
     const s = pendingReportSessions.get(chatId);
@@ -412,6 +418,18 @@ if (bot) {
 
   function clearReportSession(chatId: number) { pendingReportSessions.delete(chatId); }
 
+  async function resolveTelegramDriveOwnerUserId(linked: TelegramLinkRecord): Promise<string | null> {
+    if (!linked.dashboardId) return linked.ownerUserId ?? linked.userId;
+    const { data } = await supabase
+      .from("dashboard_members")
+      .select("user_id")
+      .eq("dashboard_id", linked.dashboardId)
+      .eq("role", "owner")
+      .eq("status", "active")
+      .limit(1);
+    return data?.[0]?.user_id ?? linked.ownerUserId ?? (linked.role === "owner" ? linked.userId : null);
+  }
+
   async function canUseDriveViaTelegram(linked: TelegramLinkRecord): Promise<boolean> {
     const memberCtx = {
       role: linked.role ?? ("viewer" as const),
@@ -420,7 +438,7 @@ if (bot) {
     };
     if (!can(memberCtx, "export_drive")) return false;
 
-    const ownerUserId = linked.ownerUserId ?? linked.userId;
+    const ownerUserId = await resolveTelegramDriveOwnerUserId(linked);
     if (!ownerUserId) return false;
     const { data } = await supabase
       .from("drive_connections")
@@ -468,7 +486,8 @@ if (bot) {
     });
 
     if (destination === "drive") {
-      const ownerUserId = linked.ownerUserId ?? linked.userId;
+      const ownerUserId = await resolveTelegramDriveOwnerUserId(linked);
+      if (!ownerUserId) return ctx.reply("❌ No pude resolver el dueño del dashboard para usar Drive.");
       const { data: connData } = await supabase
         .from("drive_connections")
         .select("refresh_token_enc")
@@ -953,12 +972,13 @@ if (bot) {
   const pendingRecurrenceSessions = new Map<number, RecurrenceSession>();
 
   // WARNING-9: evict expired entries every 5 minutes to prevent unbounded growth
-  setInterval(() => {
+  const recurrenceSessionSweep = setInterval(() => {
     const now = Date.now();
     for (const [chatId, s] of pendingRecurrenceSessions) {
       if (now > s.expiresAt) pendingRecurrenceSessions.delete(chatId);
     }
   }, 5 * 60_000);
+  unrefInterval(recurrenceSessionSweep);
 
   function getRecurrenceSession(chatId: number): RecurrenceSession | null {
     const s = pendingRecurrenceSessions.get(chatId);
@@ -1582,7 +1602,16 @@ if (bot) {
     }
     await ctx.answerCallbackQuery("✅ Guardando...");
     const d = entry.data;
-    const ownership = buildTelegramWriteOwnership(entry.dashboardId, entry.userId, entry.ownerUserId);
+    const ownership = buildTelegramWriteOwnership({
+      userId: entry.userId,
+      dashboardId: entry.dashboardId,
+      ownerUserId: entry.ownerUserId,
+      role: null,
+      permissions: {},
+      username: null,
+      remindersEnabled: true,
+      linkTokenExpiresAt: null,
+    });
     const { error } = await supabase.from("movimientos").insert([{
       ...ownership,
       monto: Math.abs(d.monto ?? 0),
@@ -1914,6 +1943,19 @@ const app = createApp({
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Bot server running on http://0.0.0.0:${PORT}`);
 });
+
+function gracefulShutdown(signal: string) {
+  console.log(`Received ${signal}. Shutting down gracefully...`);
+  mediaGroupBuffer.destroy();
+  server.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

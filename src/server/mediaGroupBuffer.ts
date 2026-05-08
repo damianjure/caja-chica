@@ -57,4 +57,12 @@ export class MediaGroupBuffer<T> {
   size(): number {
     return this.buffer.size;
   }
+
+  /** Cancel all pending timers and clear the buffer. Call on graceful shutdown. */
+  destroy(): void {
+    for (const entry of this.buffer.values()) {
+      clearTimeout(entry.timerId);
+    }
+    this.buffer.clear();
+  }
 }

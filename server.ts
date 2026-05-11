@@ -274,12 +274,13 @@ if (bot) {
       .eq("id", pendingId);
   }
 
+  // Uses index (0-7) instead of UUID — Telegram callback_data limit is 64 bytes
   function buildEmpresaSelectorKeyboard(extractionId: string, empresas: Array<{ id: string; nombre: string }>) {
     const rows: Array<Array<{ text: string; callback_data: string }>> = [];
     for (let i = 0; i < empresas.length; i += 2) {
       const row: Array<{ text: string; callback_data: string }> = [];
-      row.push({ text: empresas[i].nombre, callback_data: `er:co:${extractionId}:${empresas[i].id}` });
-      if (empresas[i + 1]) row.push({ text: empresas[i + 1].nombre, callback_data: `er:co:${extractionId}:${empresas[i + 1].id}` });
+      row.push({ text: empresas[i].nombre, callback_data: `er:co:${extractionId}:${i}` });
+      if (empresas[i + 1]) row.push({ text: empresas[i + 1].nombre, callback_data: `er:co:${extractionId}:${i + 1}` });
       rows.push(row);
     }
     rows.push([
@@ -1332,14 +1333,14 @@ if (bot) {
           if (resolution.kind === "exact") {
             patch.empresa = resolution.company.nombre;
           } else if (resolution.kind === "suggest") {
-            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCompanyName: val });
+            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCompanyName: val, pendingSuggestNombre: resolution.company.nombre });
             await ctx.reply(
               `🤔 ¿Quisiste decir *${resolution.company.nombre}*?`,
               {
                 parse_mode: "Markdown",
                 reply_markup: { inline_keyboard: [
                   [
-                    { text: `✅ Usar ${resolution.company.nombre}`, callback_data: `er:co:${editingEntry.id}:${resolution.company.id ?? "search"}` },
+                    { text: `✅ Usar ${resolution.company.nombre}`, callback_data: `er:co:${editingEntry.id}:confirm` },
                     { text: "❌ Sin empresa", callback_data: `er:co:${editingEntry.id}:none` },
                   ],
                   [{ text: `➕ Crear "${val}"`, callback_data: `er:co:${editingEntry.id}:create` }],
@@ -1515,6 +1516,7 @@ if (bot) {
       data,
       messageId: 0,
       awaitingCompany: true,
+      empresaOptions: empresas,
     });
     if (empresas.length === 0) {
       updatePendingExtraction(entry.id, { editingField: "empresa" });
@@ -1577,6 +1579,7 @@ if (bot) {
                   data,
                   messageId: 0,
                   awaitingCompany: true,
+                  empresaOptions: topEmpresas,
                 });
                 if (topEmpresas.length === 0) {
                   updatePendingExtraction(eEntry.id, { editingField: "empresa" });
@@ -1770,9 +1773,20 @@ if (bot) {
       return;
     }
 
-    // action = empresaId (UUID) → empresa selected — query by ID directly
-    const { data: empRow } = await supabase.from("empresas").select("nombre").eq("id", action).limit(1);
-    const empresaNombre = empRow?.[0]?.nombre ?? null;
+    if (action === "confirm") {
+      const nombre = entry.pendingSuggestNombre;
+      updatePendingExtraction(extractionId, { awaitingCompany: false, editingField: null, pendingSuggestNombre: null });
+      const updated = getPendingExtraction(extractionId)!;
+      updated.data.empresa = nombre;
+      await ctx.answerCallbackQuery(nombre ? `✅ ${nombre}` : "✅ Empresa seleccionada");
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId) });
+      return;
+    }
+
+    // action = numeric index → empresa selected from empresaOptions list
+    const idx = parseInt(action, 10);
+    const empresaNombre = (!isNaN(idx) && entry.empresaOptions?.[idx]?.nombre) ? entry.empresaOptions[idx].nombre : null;
     updatePendingExtraction(extractionId, { awaitingCompany: false, editingField: null });
     const updated = getPendingExtraction(extractionId)!;
     updated.data.empresa = empresaNombre;

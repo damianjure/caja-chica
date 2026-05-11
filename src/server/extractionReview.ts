@@ -12,6 +12,8 @@ export interface PendingExtraction {
   editingField: ExtractionField | null;
   awaitingCompany: boolean;
   pendingNewCompanyName: string | null;
+  pendingSuggestNombre: string | null;
+  empresaOptions: Array<{ id: string; nombre: string }> | null;
 }
 
 export type ExtractionField = "monto" | "empresa" | "categoria" | "descripcion" | "tipo" | "moneda";
@@ -51,6 +53,8 @@ export function createPendingExtraction(args: {
   messageId: number;
   awaitingCompany?: boolean;
   pendingNewCompanyName?: string | null;
+  pendingSuggestNombre?: string | null;
+  empresaOptions?: Array<{ id: string; nombre: string }> | null;
 }): PendingExtraction {
   const id = `${args.chatId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const entry: PendingExtraction = {
@@ -65,6 +69,8 @@ export function createPendingExtraction(args: {
     editingField: null,
     awaitingCompany: args.awaitingCompany ?? false,
     pendingNewCompanyName: args.pendingNewCompanyName ?? null,
+    pendingSuggestNombre: args.pendingSuggestNombre ?? null,
+    empresaOptions: args.empresaOptions ?? null,
   };
   pendingExtractions.set(id, entry);
   return entry;
@@ -89,13 +95,15 @@ export function getPendingExtractionByChat(chatId: number): PendingExtraction | 
   return null;
 }
 
-export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField" | "awaitingCompany" | "pendingNewCompanyName">>): PendingExtraction | null {
+export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField" | "awaitingCompany" | "pendingNewCompanyName" | "pendingSuggestNombre" | "empresaOptions">>): PendingExtraction | null {
   const entry = getPendingExtraction(id);
   if (!entry) return null;
   if (patch.data !== undefined) entry.data = { ...entry.data, ...patch.data };
   if (patch.editingField !== undefined) entry.editingField = patch.editingField;
   if (patch.awaitingCompany !== undefined) entry.awaitingCompany = patch.awaitingCompany;
   if (patch.pendingNewCompanyName !== undefined) entry.pendingNewCompanyName = patch.pendingNewCompanyName;
+  if (patch.pendingSuggestNombre !== undefined) entry.pendingSuggestNombre = patch.pendingSuggestNombre;
+  if (patch.empresaOptions !== undefined) entry.empresaOptions = patch.empresaOptions;
   return entry;
 }
 

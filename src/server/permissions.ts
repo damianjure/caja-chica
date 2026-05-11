@@ -5,12 +5,16 @@ export type TelegramAction =
   | "delete_any_movimiento"
   | "delete_empresa"
   | "export_drive"
-  | "invite_telegram";
+  | "invite_telegram"
+  | "manage_backups"
+  | "restore_backups";
 
 export interface MemberPermissions {
   delete_any?: boolean;
   export_drive?: boolean;
   invite_telegram?: boolean;
+  manage_backups?: boolean;
+  restore_backups?: boolean;
 }
 
 export interface MemberContext {
@@ -37,6 +41,10 @@ export function can(member: MemberContext, action: TelegramAction): boolean {
       return !!member.permissions.export_drive;
     case "invite_telegram":
       return !!member.permissions.invite_telegram;
+    case "manage_backups":
+      return !!member.permissions.manage_backups;
+    case "restore_backups":
+      return !!member.permissions.restore_backups;
     default:
       return false;
   }

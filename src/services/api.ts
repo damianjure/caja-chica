@@ -106,6 +106,8 @@ export interface MemberPermissions {
   delete_any?: boolean;
   export_drive?: boolean;
   invite_telegram?: boolean;
+  manage_backups?: boolean;
+  restore_backups?: boolean;
 }
 
 export interface DashboardMember {
@@ -440,5 +442,13 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ permissions }),
     });
+  },
+
+  async revokeMember(memberId: string): Promise<void> {
+    return fetchApi(`/api/dashboard/members/${memberId}/revoke`, { method: "POST" });
+  },
+
+  async leaveDashboard(): Promise<void> {
+    return fetchApi("/api/dashboard/leave", { method: "POST" });
   },
 };

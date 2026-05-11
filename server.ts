@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from "@google/genai";
 import { createApp } from "./src/server/app.ts";
 import { transcribeTelegramAudioWithGemini } from "./src/server/telegramAudio.ts";
-import { resolveTelegramCompany, type TelegramCompanyOption } from "./src/server/telegramCompanyResolution.ts";
+import { resolveTelegramCompany, getTopEmpresasForDashboard, type TelegramCompanyOption } from "./src/server/telegramCompanyResolution.ts";
 import { loadRuntimeEnv } from "./src/server/env.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "./src/server/gemini.ts";
 import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "./src/server/telegramMedia.ts";
@@ -272,6 +272,21 @@ if (bot) {
       .from("telegram_pending_movements")
       .update({ status: "resolved", resolved_at: new Date().toISOString() })
       .eq("id", pendingId);
+  }
+
+  function buildEmpresaSelectorKeyboard(extractionId: string, empresas: Array<{ id: string; nombre: string }>) {
+    const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+    for (let i = 0; i < empresas.length; i += 2) {
+      const row: Array<{ text: string; callback_data: string }> = [];
+      row.push({ text: empresas[i].nombre, callback_data: `er:co:${extractionId}:${empresas[i].id}` });
+      if (empresas[i + 1]) row.push({ text: empresas[i + 1].nombre, callback_data: `er:co:${extractionId}:${empresas[i + 1].id}` });
+      rows.push(row);
+    }
+    rows.push([
+      { text: "🔍 Buscar/Nueva", callback_data: `er:co:${extractionId}:search` },
+      { text: "❌ Sin empresa", callback_data: `er:co:${extractionId}:none` },
+    ]);
+    return { inline_keyboard: rows };
   }
 
   function buildPendingCompanyKeyboard(pendingId: string, options: Array<{ nombre: string }>) {
@@ -1308,7 +1323,49 @@ if (bot) {
         if (!isNaN(n) && n > 0) patch.monto = n;
         else { await ctx.reply("❌ Monto inválido. Mandame un número positivo:"); return; }
       } else if (field === "empresa") {
-        patch.empresa = val.toLowerCase() === "ninguna" ? null : val;
+        if (val.toLowerCase() === "ninguna" || val === "") {
+          patch.empresa = null;
+        } else if (editingEntry.awaitingCompany) {
+          const scope = { dashboardId: editingEntry.dashboardId, ownerUserId: editingEntry.ownerUserId };
+          const allEmpresas = await getTopEmpresasForDashboard(supabase, scope, 50);
+          const resolution = resolveTelegramCompany({ empresa: val }, allEmpresas);
+          if (resolution.kind === "exact") {
+            patch.empresa = resolution.company.nombre;
+          } else if (resolution.kind === "suggest") {
+            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCompanyName: val });
+            await ctx.reply(
+              `🤔 ¿Quisiste decir *${resolution.company.nombre}*?`,
+              {
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: [
+                  [
+                    { text: `✅ Usar ${resolution.company.nombre}`, callback_data: `er:co:${editingEntry.id}:${resolution.company.id ?? "search"}` },
+                    { text: "❌ Sin empresa", callback_data: `er:co:${editingEntry.id}:none` },
+                  ],
+                  [{ text: `➕ Crear "${val}"`, callback_data: `er:co:${editingEntry.id}:create` }],
+                ]},
+              }
+            );
+            return;
+          } else {
+            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCompanyName: val });
+            await ctx.reply(
+              `🆕 No encontré una empresa con ese nombre.\n¿Qué hacemos con *${val}*?`,
+              {
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: [
+                  [
+                    { text: `➕ Crear "${val}"`, callback_data: `er:co:${editingEntry.id}:create` },
+                    { text: "❌ Sin empresa", callback_data: `er:co:${editingEntry.id}:none` },
+                  ],
+                ]},
+              }
+            );
+            return;
+          }
+        } else {
+          patch.empresa = val;
+        }
       } else if (field === "categoria") {
         patch.categoria = val;
       } else if (field === "descripcion") {
@@ -1444,8 +1501,12 @@ if (bot) {
     }
   }
 
-  async function showExtractionReview(ctx: any, linked: any, data: PendingExtractionData, processingMsgId: number) {
+  async function showEmpresaSelector(ctx: any, linked: any, data: PendingExtractionData, processingMsgId: number) {
     try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+    const empresas = await getTopEmpresasForDashboard(supabase, {
+      dashboardId: linked.dashboardId ?? null,
+      ownerUserId: linked.ownerUserId ?? null,
+    });
     const entry = createPendingExtraction({
       chatId: ctx.chat.id,
       dashboardId: linked.dashboardId ?? null,
@@ -1453,10 +1514,16 @@ if (bot) {
       ownerUserId: linked.ownerUserId ?? null,
       data,
       messageId: 0,
+      awaitingCompany: true,
     });
-    const text = buildReviewCardText(data);
-    const keyboard = buildReviewKeyboard(entry.id);
-    await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+    if (empresas.length === 0) {
+      updatePendingExtraction(entry.id, { editingField: "empresa" });
+      await ctx.reply("🏢 ¿A qué empresa corresponde este ticket? (escribí el nombre o 'ninguna'):", { parse_mode: "Markdown" });
+      return;
+    }
+    await ctx.reply("🏢 ¿A qué empresa corresponde este ticket?", {
+      reply_markup: buildEmpresaSelectorKeyboard(entry.id, empresas),
+    });
   }
 
   async function handleTelegramPhotoMessage(ctx: any) {
@@ -1492,24 +1559,33 @@ if (bot) {
                 filePath: files[0].filePath,
                 mimeType: files[0].mimeType,
               });
-              await showExtractionReview(firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
+              await showEmpresaSelector(firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
             } else {
               const results = await extractFromMultiplePhotos({ genAI, botToken: botToken as string, files });
               try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
+              const topEmpresas = await getTopEmpresasForDashboard(supabase, {
+                dashboardId: linked2.dashboardId ?? null,
+                ownerUserId: linked2.ownerUserId ?? null,
+              });
               for (const result of results) {
                 const data: PendingExtractionData = { ...result, sourceType: "multi" };
-                const entry = createPendingExtraction({
+                const eEntry = createPendingExtraction({
                   chatId: firstCtx.chat.id,
                   dashboardId: linked2.dashboardId ?? null,
                   userId: linked2.userId ?? null,
                   ownerUserId: linked2.ownerUserId ?? null,
                   data,
                   messageId: 0,
+                  awaitingCompany: true,
                 });
-                await firstCtx.reply(buildReviewCardText(data), {
-                  parse_mode: "Markdown",
-                  reply_markup: buildReviewKeyboard(entry.id),
-                });
+                if (topEmpresas.length === 0) {
+                  updatePendingExtraction(eEntry.id, { editingField: "empresa" });
+                  await firstCtx.reply("🏢 ¿A qué empresa corresponde este ticket? (escribí el nombre o 'ninguna'):");
+                } else {
+                  await firstCtx.reply(`🏢 Ticket ${results.indexOf(result) + 1} — ¿A qué empresa?`, {
+                    reply_markup: buildEmpresaSelectorKeyboard(eEntry.id, topEmpresas),
+                  });
+                }
               }
             }
           } catch (err) {
@@ -1537,7 +1613,7 @@ if (bot) {
         filePath: file.file_path,
         mimeType: "image/jpeg",
       });
-      await showExtractionReview(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showEmpresaSelector(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
       console.error("Telegram photo processing error:", err);
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -1577,7 +1653,7 @@ if (bot) {
         mimeType,
         displayName: doc.file_name ?? "document",
       });
-      await showExtractionReview(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showEmpresaSelector(ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
       console.error("Telegram document processing error:", err);
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -1639,6 +1715,70 @@ if (bot) {
     deletePendingExtraction(extractionId);
     await ctx.answerCallbackQuery("Cancelado");
     await ctx.editMessageText("❌ Registro cancelado.");
+  });
+
+  bot.callbackQuery(/^er:co:([^:]+):(.+)$/, async (ctx) => {
+    const extractionId = ctx.match[1];
+    const action = ctx.match[2];
+    const entry = getPendingExtraction(extractionId);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta sesión ya venció.");
+      return;
+    }
+
+    if (action === "search") {
+      updatePendingExtraction(extractionId, { editingField: "empresa" });
+      await ctx.answerCallbackQuery();
+      await ctx.reply("🔍 Escribí el nombre de la empresa (o 'ninguna'):", { parse_mode: "Markdown" });
+      return;
+    }
+
+    if (action === "none") {
+      updatePendingExtraction(extractionId, { awaitingCompany: false, editingField: null });
+      const updated = getPendingExtraction(extractionId)!;
+      updated.data.empresa = null;
+      await ctx.answerCallbackQuery("Sin empresa");
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId) });
+      return;
+    }
+
+    if (action === "create") {
+      const nameToCreate = entry.pendingNewCompanyName;
+      if (!nameToCreate) {
+        await ctx.answerCallbackQuery("Error: nombre no disponible.");
+        return;
+      }
+      await ctx.answerCallbackQuery("➕ Creando empresa...");
+      const scope: Record<string, string> = {};
+      if (entry.dashboardId) scope.dashboard_id = entry.dashboardId;
+      else if (entry.ownerUserId) scope.owner_user_id = entry.ownerUserId;
+      const { data: newEmp, error: empError } = await supabase
+        .from("empresas")
+        .insert([{ nombre: nameToCreate, ...scope }])
+        .select("id, nombre")
+        .limit(1);
+      if (empError || !newEmp?.[0]) {
+        await ctx.reply("❌ No se pudo crear la empresa. Intentá de nuevo.");
+        return;
+      }
+      updatePendingExtraction(extractionId, { awaitingCompany: false, editingField: null, pendingNewCompanyName: null });
+      const updated = getPendingExtraction(extractionId)!;
+      updated.data.empresa = newEmp[0].nombre;
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId) });
+      return;
+    }
+
+    // action = empresaId (UUID) → empresa selected — query by ID directly
+    const { data: empRow } = await supabase.from("empresas").select("nombre").eq("id", action).limit(1);
+    const empresaNombre = empRow?.[0]?.nombre ?? null;
+    updatePendingExtraction(extractionId, { awaitingCompany: false, editingField: null });
+    const updated = getPendingExtraction(extractionId)!;
+    updated.data.empresa = empresaNombre;
+    await ctx.answerCallbackQuery(empresaNombre ? `✅ ${empresaNombre}` : "✅ Empresa seleccionada");
+    const reviewText = buildReviewCardText(updated.data);
+    await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId) });
   });
 
   bot.callbackQuery(/^er:edit:(.+):(.+)$/, async (ctx) => {

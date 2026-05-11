@@ -1873,7 +1873,7 @@ export function createApp({
         return res.status(400).json({ error: "permissions requerido (objeto)" });
       }
 
-      const allowed = ["delete_any", "export_drive", "invite_telegram"] as const;
+      const allowed = ["delete_any", "export_drive", "invite_telegram", "manage_backups", "restore_backups"] as const;
       const sanitized: Record<string, boolean> = {};
       for (const key of allowed) {
         if (key in permissions) sanitized[key] = Boolean(permissions[key]);
@@ -1902,6 +1902,66 @@ export function createApp({
     } catch (err) {
       console.error("PATCH /api/dashboard/members/:id/permissions:", err);
       return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  app.post("/api/dashboard/members/:id/revoke", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const memberId = req.params.id;
+      const { data: callerMembership } = await supabase
+        .from("dashboard_members")
+        .select("dashboard_id, role")
+        .eq("user_id", session.userId)
+        .eq("status", "active")
+        .limit(1);
+      const isAdminOrSuper = session.role === "admin" || session.role === "superadmin";
+      const isOwner = callerMembership?.[0]?.role === "owner";
+      if (!isAdminOrSuper && !isOwner) return res.status(403).json({ error: "Forbidden" });
+      const dashboardId = callerMembership?.[0]?.dashboard_id;
+      if (!dashboardId) return res.status(404).json({ error: "No dashboard" });
+      const { data: target } = await supabase
+        .from("dashboard_members")
+        .select("user_id, role")
+        .eq("id", memberId)
+        .eq("dashboard_id", dashboardId)
+        .limit(1);
+      if (!target?.[0]) return res.status(404).json({ error: "Member not found" });
+      if (target[0].user_id === session.userId) return res.status(400).json({ error: "Cannot revoke yourself" });
+      if (target[0].role === "owner") return res.status(400).json({ error: "Cannot revoke owner" });
+      const { error } = await supabase
+        .from("dashboard_members")
+        .update({ status: "revoked" })
+        .eq("id", memberId)
+        .eq("dashboard_id", dashboardId);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.json({ revoked: true });
+    } catch (err) {
+      console.error("POST /api/dashboard/members/:id/revoke:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
+  app.post("/api/dashboard/leave", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const { data: membership } = await supabase
+        .from("dashboard_members")
+        .select("id, role, dashboard_id")
+        .eq("user_id", session.userId)
+        .eq("status", "active")
+        .limit(1);
+      if (!membership?.[0]) return res.status(404).json({ error: "No active membership" });
+      if (membership[0].role === "owner") return res.status(400).json({ error: "Owner cannot leave. Transfer ownership first." });
+      const { error } = await supabase
+        .from("dashboard_members")
+        .update({ status: "revoked" })
+        .eq("id", membership[0].id);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.json({ left: true });
+    } catch (err) {
+      console.error("POST /api/dashboard/leave:", err);
+      return res.status(500).json({ error: "Internal error" });
     }
   });
 

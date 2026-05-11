@@ -10,6 +10,8 @@ export interface PendingExtraction {
   messageId: number;
   expiresAt: number;
   editingField: ExtractionField | null;
+  awaitingCompany: boolean;
+  pendingNewCompanyName: string | null;
 }
 
 export type ExtractionField = "monto" | "empresa" | "categoria" | "descripcion" | "tipo" | "moneda";
@@ -47,6 +49,8 @@ export function createPendingExtraction(args: {
   ownerUserId: string | null;
   data: PendingExtractionData;
   messageId: number;
+  awaitingCompany?: boolean;
+  pendingNewCompanyName?: string | null;
 }): PendingExtraction {
   const id = `${args.chatId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const entry: PendingExtraction = {
@@ -59,6 +63,8 @@ export function createPendingExtraction(args: {
     messageId: args.messageId,
     expiresAt: Date.now() + TTL_MS,
     editingField: null,
+    awaitingCompany: args.awaitingCompany ?? false,
+    pendingNewCompanyName: args.pendingNewCompanyName ?? null,
   };
   pendingExtractions.set(id, entry);
   return entry;
@@ -83,11 +89,13 @@ export function getPendingExtractionByChat(chatId: number): PendingExtraction | 
   return null;
 }
 
-export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField">>): PendingExtraction | null {
+export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField" | "awaitingCompany" | "pendingNewCompanyName">>): PendingExtraction | null {
   const entry = getPendingExtraction(id);
   if (!entry) return null;
   if (patch.data !== undefined) entry.data = { ...entry.data, ...patch.data };
   if (patch.editingField !== undefined) entry.editingField = patch.editingField;
+  if (patch.awaitingCompany !== undefined) entry.awaitingCompany = patch.awaitingCompany;
+  if (patch.pendingNewCompanyName !== undefined) entry.pendingNewCompanyName = patch.pendingNewCompanyName;
   return entry;
 }
 

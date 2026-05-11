@@ -18,6 +18,7 @@ import {
   ArrowUpDown,
   Pencil,
   X,
+  Settings,
 } from 'lucide-react';
 import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
 import { getPendingCompanyAssignment } from './dashboard/companyAssignment';
@@ -46,7 +47,7 @@ interface DashboardAppProps {
   onToggleTheme: () => void;
 }
 
-type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin';
+type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin' | 'configuracion';
 
 const ResumenTab = lazy(() => import('./components/dashboard/tabs/ResumenTab'));
 const EmpresasTab = lazy(() => import('./components/dashboard/tabs/EmpresasTab'));
@@ -55,6 +56,7 @@ const IngresosTab = lazy(() => import('./components/dashboard/tabs/IngresosTab')
 const MovimientosTab = lazy(() => import('./components/dashboard/tabs/MovimientosTab'));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
 const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((module) => ({ default: module.BotConnectionPanel })));
+const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/ConfiguracionTab'));
 
 interface MovementEditForm {
   tipo: 'ingreso' | 'egreso';
@@ -81,6 +83,7 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
   { id: 'gastos', label: 'Gastos', description: 'Categorías, presupuesto vs real y evolución', icon: TrendingDown },
   { id: 'ingresos', label: 'Ingresos', description: 'Ventas por cliente, producto, canal y período', icon: TrendingUp },
   { id: 'empresas', label: 'Empresas', description: 'Comparación, informes y exportaciones', icon: Building2 },
+  { id: 'configuracion', label: 'Configuración', description: 'Miembros, permisos, Drive y cuenta', icon: Settings },
 ];
 
 
@@ -862,10 +865,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
       topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'}
       netPositive={arsTotals.neto >= 0}
       canWriteData={canWriteData}
-      viewer={viewer}
-      dashboardAccess={dashboardAccess}
-      isLoadingCollaboration={isLoadingCollaboration}
-      loadCollaboration={loadCollaboration}
     />
   );
 
@@ -950,6 +949,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
     />
   );
 
+  const renderConfiguracion = () => (
+    <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}>
+      <ConfiguracionTab
+        viewer={viewer}
+        data={dashboardAccess}
+        loading={isLoadingCollaboration}
+        onRefresh={loadCollaboration}
+        canConnectDrive={canConnectDrive}
+        onSignOut={onSignOut}
+        onDisconnectDrive={canConnectDrive ? async () => {
+          try {
+            await api.disconnectDrive();
+            showToast('Drive desconectado.');
+          } catch {
+            showToast('No se pudo desconectar Drive.', 'warning');
+          }
+        } : undefined}
+      />
+    </Suspense>
+  );
+
   const renderSuperAdmin = () => (
     <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}>
       <div className="space-y-6">
@@ -973,6 +993,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
         return renderEmpresas();
       case 'superadmin':
         return renderSuperAdmin();
+      case 'configuracion':
+        return renderConfiguracion();
       default:
         return null;
     }
@@ -1045,7 +1067,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
           </div>
         </header>
 
-        {canWriteData && activeTab !== 'superadmin' && (
+        {canWriteData && activeTab !== 'superadmin' && activeTab !== 'configuracion' && (
           <div className="space-y-4">
             {renderComposer()}
           </div>
@@ -1073,7 +1095,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
           </div>
           {/* md+: grid with descriptions */}
           <div className="hidden md:block bg-white/90 backdrop-blur border border-neutral-200 rounded-2xl p-3 shadow-sm">
-            <div className={`grid md:grid-cols-3 gap-2 ${tabs.length === 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
+            <div className={`grid md:grid-cols-3 gap-2 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;

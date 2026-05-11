@@ -1,6 +1,4 @@
 
-import { CollaborationPanel } from '../../CollaborationPanel';
-import { AppViewer, DashboardMembersResponse } from '../../../services/api';
 import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
 import { MetricCard } from '../primitives';
 
@@ -18,10 +16,6 @@ interface ResumenTabProps {
   topExpenseValue: string;
   netPositive: boolean;
   canWriteData: boolean;
-  viewer: AppViewer;
-  dashboardAccess: DashboardMembersResponse | null;
-  isLoadingCollaboration: boolean;
-  loadCollaboration: () => Promise<void>;
 }
 
 export default function ResumenTab(props: ResumenTabProps) {
@@ -102,13 +96,6 @@ export default function ResumenTab(props: ResumenTabProps) {
           Estás en modo <strong>viewer</strong>. Podés ver todo, pero no cargar ni editar datos.
         </div>
       )}
-
-      <CollaborationPanel
-        viewer={props.viewer}
-        data={props.dashboardAccess}
-        loading={props.isLoadingCollaboration}
-        onRefresh={props.loadCollaboration}
-      />
     </div>
   );
 }

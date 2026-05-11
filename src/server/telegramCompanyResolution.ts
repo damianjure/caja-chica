@@ -76,6 +76,57 @@ function similarityScore(input: string, candidate: string) {
   return Math.min(1, jaccard * 0.45 + editRatio * 0.55 + containsBoost + alignedBoost);
 }
 
+export async function getTopEmpresasForDashboard(
+  supabase: any,
+  scope: { dashboardId: string | null; ownerUserId: string | null },
+  limit = 8
+): Promise<Array<{ id: string; nombre: string }>> {
+  if (!scope.dashboardId && !scope.ownerUserId) return [];
+
+  let empresasQuery = supabase
+    .from("empresas")
+    .select("id, nombre, created_at")
+    .is("deleted_at", null);
+  if (scope.dashboardId) {
+    empresasQuery = empresasQuery.eq("dashboard_id", scope.dashboardId);
+  } else {
+    empresasQuery = empresasQuery.eq("owner_user_id", scope.ownerUserId);
+  }
+  const { data: empresas } = await empresasQuery;
+  if (!empresas || empresas.length === 0) return [];
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  let movQuery = supabase
+    .from("movimientos")
+    .select("empresa_nombre")
+    .not("empresa_nombre", "is", null)
+    .gte("created_at", thirtyDaysAgo);
+  if (scope.dashboardId) {
+    movQuery = movQuery.eq("dashboard_id", scope.dashboardId);
+  } else {
+    movQuery = movQuery.eq("owner_user_id", scope.ownerUserId);
+  }
+  const { data: movimientos } = await movQuery;
+
+  const freq = new Map<string, number>();
+  if (movimientos) {
+    for (const m of movimientos) {
+      if (m.empresa_nombre) {
+        freq.set(m.empresa_nombre, (freq.get(m.empresa_nombre) ?? 0) + 1);
+      }
+    }
+  }
+
+  const sorted = [...empresas].sort((a: any, b: any) => {
+    const fa = freq.get(a.nombre) ?? 0;
+    const fb = freq.get(b.nombre) ?? 0;
+    if (fb !== fa) return fb - fa;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  return sorted.slice(0, limit).map((e: any) => ({ id: e.id, nombre: e.nombre }));
+}
+
 export function resolveTelegramCompany(
   item: TelegramDraftItem,
   companies: TelegramCompanyOption[],

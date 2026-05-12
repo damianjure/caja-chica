@@ -39,6 +39,7 @@ import { supabase } from './services/supabase';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
 import { ThemeMode, ThemeToggle } from './components/ThemeToggle';
 import { SectionCard } from './components/dashboard/primitives';
+import { ModalShell } from './components/ui/ModalShell';
 
 interface DashboardAppProps {
   viewer: AppViewer;
@@ -87,32 +88,7 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
 ];
 
 
-function ModalShell({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-neutral-200 p-6 md:p-8 space-y-5">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-neutral-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-50"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
+// ModalShell extracted to src/components/ui/ModalShell.tsx for a11y + reuse.
 
 function normalizeMovement(item: Movimiento): Movimiento {
   return {

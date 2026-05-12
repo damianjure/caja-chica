@@ -23,6 +23,7 @@ import {
   type MemberPermissions,
   type TelegramLink,
 } from "../../../services/api";
+import { ConfirmModal } from "../../ui/ConfirmModal";
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -587,56 +588,30 @@ export default function ConfiguracionTab({
         </div>
       </section>
 
-      {/* Modal: Revocar miembro */}
       {revokeConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-neutral-200 p-6 space-y-4">
-            <h3 className="text-lg font-bold text-neutral-900">Revocar acceso</h3>
-            <p className="text-sm text-neutral-600">
-              Vas a revocar el acceso de <span className="font-medium">{revokeConfirm.email}</span>. No podrá ver ni editar el dashboard.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setRevokeConfirm(null)}
-                className="flex-1 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void handleRevokeMember(revokeConfirm.id)}
-                className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700"
-              >
-                Revocar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="Revocar acceso"
+          description={`Vas a revocar el acceso de ${revokeConfirm.email}. No podrá ver ni editar el dashboard.`}
+          confirmLabel="Revocar"
+          tone="danger"
+          onConfirm={async () => {
+            await handleRevokeMember(revokeConfirm.id);
+          }}
+          onCancel={() => setRevokeConfirm(null)}
+        />
       )}
 
-      {/* Modal: Abandonar dashboard */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-neutral-200 p-6 space-y-4">
-            <h3 className="text-lg font-bold text-neutral-900">Abandonar dashboard</h3>
-            <p className="text-sm text-neutral-600">
-              Vas a salir de este dashboard compartido. Se revocará tu acceso y se cerrará tu sesión.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowLeaveConfirm(false)}
-                className="flex-1 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void handleLeaveDashboard()}
-                className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700"
-              >
-                Abandonar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="Abandonar dashboard"
+          description="Vas a salir de este dashboard compartido. Se revocará tu acceso y se cerrará tu sesión."
+          confirmLabel="Abandonar"
+          tone="danger"
+          onConfirm={async () => {
+            await handleLeaveDashboard();
+          }}
+          onCancel={() => setShowLeaveConfirm(false)}
+        />
       )}
     </div>
   );

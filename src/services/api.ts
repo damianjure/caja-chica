@@ -536,7 +536,7 @@ export const api = {
     return fetchApi("/api/me", { method: "PATCH", body: JSON.stringify(fields) });
   },
 
-  async getMySessionsList(): Promise<{ sessions: UserSession[] }> {
+  async getMySessionsList(): Promise<{ sessions: UserSession[]; currentSessionId: string | null }> {
     return fetchApi("/api/me/sessions");
   },
 

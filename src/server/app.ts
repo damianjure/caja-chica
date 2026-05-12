@@ -84,6 +84,7 @@ export interface AppSession {
   email: string;
   role: AppRole;
   status: AppUserStatus;
+  sessionId?: string; // JWT session_id claim — present on real Supabase tokens
 }
 
 type DashboardMemberRole = "owner" | "editor" | "viewer";
@@ -537,6 +538,17 @@ export function createApp({
       const session = await effectiveResolveSession(token);
       if (!session) return res.status(403).json({ error: "forbidden" });
 
+      // Decode JWT payload to get session_id (no verification needed — token already verified above)
+      try {
+        const payloadB64 = token.split(".")[1];
+        if (payloadB64) {
+          const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+          if (typeof payload.session_id === "string") session.sessionId = payload.session_id;
+        }
+      } catch {
+        // non-fatal — sessionId stays undefined
+      }
+
       // paused users keep read access, mutations are blocked.
       if (session.status === "paused" && isMutationMethod(req.method)) {
         return res.status(423).json({ error: "user_paused" });
@@ -668,11 +680,16 @@ export function createApp({
       res.status(500).json({ error: error.message });
       return;
     }
-    res.json({ sessions: data ?? [] });
+    res.json({ sessions: data ?? [], currentSessionId: session.sessionId ?? null });
   });
 
   app.delete("/api/me/sessions/:sessionId", requireSession, async (req, res) => {
     const session = getSession(req);
+    // Prevent revoking the currently-active session — would lock the user out immediately
+    if (session.sessionId && req.params.sessionId === session.sessionId) {
+      res.status(400).json({ error: "No podés revocar tu sesión activa. Usá Cerrar sesión." });
+      return;
+    }
     const { error } = await supabase.rpc("delete_user_session", {
       target_session_id: req.params.sessionId,
       target_user_id: session.userId,

@@ -113,6 +113,7 @@ export default function ConfiguracionTab({
 
   // sessions
   const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [revokingSession, setRevokingSession] = useState<string | null>(null);
@@ -185,6 +186,7 @@ export default function ConfiguracionTab({
     try {
       const r = await api.getMySessionsList();
       setSessions(r.sessions);
+      setCurrentSessionId(r.currentSessionId);
       setSessionsLoaded(true);
     } catch {
       setError("No se pudieron cargar las sesiones.");
@@ -838,26 +840,36 @@ export default function ConfiguracionTab({
               {sessions.length === 0 ? (
                 <p className="text-sm text-neutral-500">No hay sesiones activas.</p>
               ) : (
-                sessions.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-neutral-700 truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
-                      <div className="text-[11px] text-neutral-500 mt-0.5">
-                        Iniciada {new Date(s.created_at).toLocaleString("es-AR")}
-                        {s.not_after && ` · Expira ${new Date(s.not_after).toLocaleString("es-AR")}`}
+                sessions.map((s) => {
+                  const isCurrent = currentSessionId !== null && s.id === currentSessionId;
+                  return (
+                    <div key={s.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-neutral-50" : "border-neutral-200"}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-xs font-medium text-neutral-700 truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
+                          {isCurrent && (
+                            <span className="inline-flex items-center rounded-full bg-neutral-900 px-2 py-0.5 text-[10px] font-semibold text-white shrink-0">
+                              Esta sesión
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-neutral-500 mt-0.5">
+                          Iniciada {new Date(s.created_at).toLocaleString("es-AR")}
+                          {s.not_after && ` · Expira ${new Date(s.not_after).toLocaleString("es-AR")}`}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => void handleRevokeSession(s.id)}
+                        disabled={revokingSession === s.id || isCurrent}
+                        aria-label={isCurrent ? "No se puede cerrar la sesión activa" : "Cerrar esta sesión"}
+                        title={isCurrent ? "Usá Cerrar sesión para salir" : "Cerrar sesión"}
+                        className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                      >
+                        {revokingSession === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => void handleRevokeSession(s.id)}
-                      disabled={revokingSession === s.id}
-                      aria-label="Cerrar esta sesión"
-                      className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 shrink-0"
-                      title="Cerrar sesión"
-                    >
-                      {revokingSession === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

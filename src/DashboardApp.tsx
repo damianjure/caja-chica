@@ -37,15 +37,29 @@ import {
 } from './dashboard/summary';
 import { supabase } from './services/supabase';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
-import { ThemeMode, ThemeToggle } from './components/ThemeToggle';
+import { ThemeMode, ThemePreference, ThemeToggle } from './components/ThemeToggle';
 import { SectionCard } from './components/dashboard/primitives';
 import { ModalShell } from './components/ui/ModalShell';
+
+const PREF_CURRENCY_KEY = 'caja-chica:default-currency';
+const PREF_EMPRESA_KEY = 'caja-chica:default-empresa';
+
+function readDefaultCurrency(): 'ARS' | 'USD' {
+  const v = window.localStorage.getItem(PREF_CURRENCY_KEY);
+  return v === 'USD' ? 'USD' : 'ARS';
+}
+
+function readDefaultEmpresa(): string {
+  return window.localStorage.getItem(PREF_EMPRESA_KEY) ?? '';
+}
 
 interface DashboardAppProps {
   viewer: AppViewer;
   onSignOut: () => Promise<void> | void;
   theme: ThemeMode;
   onToggleTheme: () => void;
+  themePreference: ThemePreference;
+  onSetThemePreference: (p: ThemePreference) => void;
 }
 
 type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin' | 'configuracion';
@@ -114,7 +128,7 @@ function readPersistedTab(): DashboardTab {
   return 'resumen';
 }
 
-export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }: DashboardAppProps) {
+export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference }: DashboardAppProps) {
   const initialBudgetPeriod = getCurrentPeriod();
   const [activeTab, setActiveTab] = useState<DashboardTab>(readPersistedTab);
 
@@ -136,7 +150,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
   const [budgetForm, setBudgetForm] = useState({
     period: initialBudgetPeriod,
     categoria: '',
-    moneda: 'ARS' as 'ARS' | 'USD',
+    moneda: readDefaultCurrency(),
     monto: '',
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -959,6 +973,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
         onRefresh={loadCollaboration}
         canConnectDrive={canConnectDrive}
         onSignOut={onSignOut}
+        companies={customCompanies}
+        themePreference={themePreference}
+        onSetThemePreference={onSetThemePreference}
         onDisconnectDrive={canConnectDrive ? async () => {
           try {
             await api.disconnectDrive();
@@ -1256,16 +1273,24 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme }
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {companiesList
                   .filter((company) => company !== 'all')
-                  .map((company) => (
-                    <button
-                      key={company}
-                      onClick={() => void assignPendingMovement(company)}
-                      disabled={isProcessing}
-                      className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-left font-medium text-neutral-900 transition-colors hover:bg-neutral-50 disabled:opacity-50"
-                    >
-                      {company}
-                    </button>
-                  ))}
+                  .map((company) => {
+                    const isDefault = company === readDefaultEmpresa();
+                    return (
+                      <button
+                        key={company}
+                        onClick={() => void assignPendingMovement(company)}
+                        disabled={isProcessing}
+                        className={`rounded-2xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${
+                          isDefault
+                            ? 'border-neutral-800 bg-neutral-900 text-white hover:bg-neutral-800'
+                            : 'border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50'
+                        }`}
+                      >
+                        {company}
+                        {isDefault && <span className="ml-2 text-[10px] uppercase tracking-widest opacity-70">default</span>}
+                      </button>
+                    );
+                  })}
                 <button
                   onClick={() => void assignPendingMovement('Personal')}
                   disabled={isProcessing}

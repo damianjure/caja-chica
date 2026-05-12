@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Settings,
   Smartphone,
+  SlidersHorizontal,
   UserMinus,
   UserPlus,
   Users,
@@ -24,6 +25,11 @@ import {
   type TelegramLink,
 } from "../../../services/api";
 import { ConfirmModal } from "../../ui/ConfirmModal";
+import { ThemeSelector, type ThemePreference } from "../../ThemeToggle";
+import type { Empresa } from "../../../services/api";
+
+const PREF_CURRENCY_KEY = 'caja-chica:default-currency';
+const PREF_EMPRESA_KEY = 'caja-chica:default-empresa';
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -33,6 +39,9 @@ interface ConfiguracionTabProps {
   canConnectDrive: boolean;
   onSignOut: () => Promise<void> | void;
   onDisconnectDrive?: () => Promise<void>;
+  companies: Empresa[];
+  themePreference: ThemePreference;
+  onSetThemePreference: (p: ThemePreference) => void;
 }
 
 interface PermCol {
@@ -67,7 +76,28 @@ export default function ConfiguracionTab({
   canConnectDrive,
   onSignOut,
   onDisconnectDrive,
+  companies,
+  themePreference,
+  onSetThemePreference,
 }: ConfiguracionTabProps) {
+  const [defaultCurrency, setDefaultCurrencyState] = useState<'ARS' | 'USD'>(
+    () => (window.localStorage.getItem(PREF_CURRENCY_KEY) === 'USD' ? 'USD' : 'ARS'),
+  );
+  const [defaultEmpresa, setDefaultEmpresaState] = useState<string>(
+    () => window.localStorage.getItem(PREF_EMPRESA_KEY) ?? '',
+  );
+
+  const setDefaultCurrency = (v: 'ARS' | 'USD') => {
+    setDefaultCurrencyState(v);
+    window.localStorage.setItem(PREF_CURRENCY_KEY, v);
+  };
+
+  const setDefaultEmpresa = (v: string) => {
+    setDefaultEmpresaState(v);
+    if (v) window.localStorage.setItem(PREF_EMPRESA_KEY, v);
+    else window.localStorage.removeItem(PREF_EMPRESA_KEY);
+  };
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<DashboardInvitationRole>("viewer");
   const [submitting, setSubmitting] = useState(false);
@@ -527,6 +557,67 @@ export default function ConfiguracionTab({
           </div>
         </section>
       )}
+
+      {/* ── Preferencias ──────────────────────────────────────────────────── */}
+      <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-neutral-900 text-white">
+            <SlidersHorizontal className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Preferencias</h2>
+            <p className="text-sm text-neutral-500">Configuración personal del dashboard.</p>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          {/* Tema */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Tema</p>
+            <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
+          </div>
+
+          {/* Moneda default */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Moneda por defecto</p>
+            <div className="flex gap-2" role="group" aria-label="Moneda por defecto">
+              {(['ARS', 'USD'] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setDefaultCurrency(c)}
+                  aria-pressed={defaultCurrency === c}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                    defaultCurrency === c
+                      ? 'bg-neutral-900 border-neutral-900 text-white'
+                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:bg-neutral-50'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-neutral-500">Se usa en el formulario de presupuesto.</p>
+          </div>
+
+          {/* Empresa default */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Empresa por defecto</p>
+            <select
+              value={defaultEmpresa}
+              onChange={(e) => setDefaultEmpresa(e.target.value)}
+              aria-label="Empresa por defecto"
+              className="rounded-2xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
+            >
+              <option value="">Sin empresa (Personal)</option>
+              {companies.filter((c) => !c.deleted_at).map((c) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-neutral-500">Se resalta en el selector de empresa al registrar un ticket.</p>
+          </div>
+        </div>
+      </section>
 
       {/* ── Cuenta ────────────────────────────────────────────────────────── */}
       <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">

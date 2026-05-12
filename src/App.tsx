@@ -6,17 +6,26 @@ import DashboardApp from "./DashboardApp";
 import { buildGoogleAuthRedirect, getInviteTokenFromUrl } from "./authRedirect";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { LoginScreen } from "./components/LoginScreen";
-import type { ThemeMode } from "./components/ThemeToggle";
+import type { ThemeMode, ThemePreference } from "./components/ThemeToggle";
 import { api, AppViewer } from "./services/api";
 import { supabase } from "./services/supabase";
 
 const THEME_STORAGE_KEY = "cajachica-theme";
 
-function resolveInitialTheme(): ThemeMode {
-  if (typeof window === "undefined") return "light";
+function resolvePreference(): ThemePreference {
+  if (typeof window === "undefined") return "system";
   const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
-  if (saved === "light" || saved === "dark") return saved;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  if (saved === "light" || saved === "dark" || saved === "system") return saved;
+  return "system";
+}
+
+function preferenceToTheme(pref: ThemePreference): ThemeMode {
+  if (pref === "system") {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return pref;
 }
 
 export default function App() {
@@ -24,7 +33,9 @@ export default function App() {
   const [viewer, setViewer] = useState<AppViewer | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme);
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(resolvePreference);
+  const [theme, setTheme] = useState<ThemeMode>(() => preferenceToTheme(resolvePreference()));
+
   const inviteToken = useMemo(
     () => (typeof window === "undefined" ? null : getInviteTokenFromUrl(new URL(window.location.href))),
     [],
@@ -42,10 +53,28 @@ export default function App() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  }, [theme]);
+    window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+    const applied = preferenceToTheme(themePreference);
+    setTheme(applied);
+    document.documentElement.dataset.theme = applied;
+    document.documentElement.style.colorScheme = applied;
+
+    if (themePreference !== "system") return;
+
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => {
+      const t: ThemeMode = e.matches ? "dark" : "light";
+      setTheme(t);
+      document.documentElement.dataset.theme = t;
+      document.documentElement.style.colorScheme = t;
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [themePreference]);
+
+  const setThemePreference = (pref: ThemePreference) => {
+    setThemePreferenceState(pref);
+  };
 
   const loadViewer = async () => {
     try {
@@ -129,7 +158,7 @@ export default function App() {
   };
 
   const handleToggleTheme = () => {
-    setTheme((current) => (current === "dark" ? "light" : "dark"));
+    setThemePreference(theme === "dark" ? "light" : "dark");
   };
 
   if (loadingSession) {
@@ -170,7 +199,14 @@ export default function App() {
   return (
     <>
       <Toaster position="top-center" />
-      <DashboardApp viewer={viewer} onSignOut={handleSignOut} theme={theme} onToggleTheme={handleToggleTheme} />
+      <DashboardApp
+        viewer={viewer}
+        onSignOut={handleSignOut}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        themePreference={themePreference}
+        onSetThemePreference={setThemePreference}
+      />
     </>
   );
 }

@@ -104,8 +104,12 @@ export interface AppViewer {
 
 export interface MemberPermissions {
   delete_any?: boolean;
+  edit_any?: boolean;
   export_drive?: boolean;
+  export_local?: boolean;
   invite_telegram?: boolean;
+  manage_empresas?: boolean;
+  manage_categorias?: boolean;
   manage_backups?: boolean;
   restore_backups?: boolean;
 }

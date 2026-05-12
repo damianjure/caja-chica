@@ -83,6 +83,7 @@ type DashboardMemberRole = "owner" | "editor" | "viewer";
 interface DataAccessScope {
   dashboardId: string | null;
   membershipRole: DashboardMemberRole | null;
+  memberPermissions: Record<string, boolean>;
 }
 
 interface DashboardMemberSummary {
@@ -185,7 +186,7 @@ export function createApp({
     try {
       const { data, error } = await supabase
         .from("dashboard_members")
-        .select("dashboard_id, role, status")
+        .select("dashboard_id, role, status, permissions")
         .eq("user_id", session.userId)
         .eq("status", "active")
         .limit(1);
@@ -197,13 +198,14 @@ export function createApp({
         return {
           dashboardId: membership.dashboard_id,
           membershipRole: membership.role ?? "viewer",
+          memberPermissions: (membership.permissions as Record<string, boolean>) ?? {},
         };
       }
     } catch (error) {
       if (!isMissingSchemaArtifactError(error)) throw error;
     }
 
-    return { dashboardId: null, membershipRole: null };
+    return { dashboardId: null, membershipRole: null, memberPermissions: {} };
   };
 
   const canWriteToScope = (scope: DataAccessScope) => scope.membershipRole !== "viewer";
@@ -696,6 +698,9 @@ export function createApp({
       if (!canWriteToScope(scope)) {
         return res.status(403).json({ error: "forbidden" });
       }
+      if (!canManageEmpresasOp(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
 
       const { data, error } = await supabase
         .from("empresas")
@@ -825,6 +830,10 @@ export function createApp({
       const existing = existingRows?.[0];
       if (!existing) return res.status(404).json({ error: "not_found" });
 
+      if (existing.owner_user_id !== session.userId && !canDeleteOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
       const { error } = await supabase
         .from("movimientos")
         .update({
@@ -853,7 +862,7 @@ export function createApp({
     try {
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      if (!canWriteToScope(scope)) {
+      if (!canWriteToScope(scope) || !canManageEmpresasOp(scope)) {
         return res.status(403).json({ error: "forbidden" });
       }
       const existing = await getScopeEntityById("empresas", session, scope, req.params.id);
@@ -913,7 +922,7 @@ export function createApp({
     try {
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      if (!canWriteToScope(scope)) {
+      if (!canWriteToScope(scope) || !canManageCategoriasOp(scope)) {
         return res.status(403).json({ error: "forbidden" });
       }
       const { data: existing, error: fetchError } = await applyDataScope(
@@ -991,6 +1000,10 @@ export function createApp({
       const existing = existingRows?.[0];
       if (!existing) return res.status(404).json({ error: "not_found" });
 
+      if (existing.owner_user_id !== session.userId && !canEditOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
       const updatePayload: Record<string, unknown> = {};
       if (payload.monto !== undefined) updatePayload.monto = payload.monto;
       if (payload.categoria !== undefined) updatePayload.categoria = payload.categoria;
@@ -1029,7 +1042,7 @@ export function createApp({
       if (!payload) return res.status(400).json({ error: "invalid_request" });
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      if (!canWriteToScope(scope)) {
+      if (!canWriteToScope(scope) || !canManageEmpresasOp(scope)) {
         return res.status(403).json({ error: "forbidden" });
       }
 
@@ -1177,25 +1190,35 @@ export function createApp({
     console.warn("[drive] WARNING: DASHBOARD_URL is not set. Drive OAuth callback will redirect to backend root instead of frontend.");
   }
 
-  const canConnectDrive = (scope: DataAccessScope) =>
+  const isOwnerLike = (scope: DataAccessScope) =>
     scope.membershipRole === null || scope.membershipRole === "owner";
 
-  const editorCanExportDrive = async (session: AppSession, scope: DataAccessScope) => {
-    if (scope.membershipRole !== "editor" || !scope.dashboardId) return false;
-    const { data, error } = await supabase
-      .from("dashboard_members")
-      .select("permissions, status")
-      .eq("user_id", session.userId)
-      .eq("dashboard_id", scope.dashboardId)
-      .limit(1);
-    if (error) throw error;
-    const member = data?.[0];
-    const perms = (member?.permissions as Record<string, boolean>) ?? {};
-    return member?.status === "active" && perms.export_drive === true;
+  // Check a granular permission for the current editor. defaultOn = true for backwards-compatible perms.
+  const scopePerm = (scope: DataAccessScope, key: string, defaultOn: boolean): boolean => {
+    if (scope.membershipRole !== "editor") return false;
+    const val = scope.memberPermissions[key];
+    return val !== undefined ? !!val : defaultOn;
   };
 
-  const canExportDrive = async (session: AppSession, scope: DataAccessScope) =>
-    canConnectDrive(scope) || (await editorCanExportDrive(session, scope));
+  const canConnectDrive = (scope: DataAccessScope) => isOwnerLike(scope);
+
+  const canExportDrive = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "export_drive", false);
+
+  const canExportLocal = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "export_local", true);
+
+  const canManageEmpresasOp = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "manage_empresas", true);
+
+  const canManageCategoriasOp = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "manage_categorias", true);
+
+  const canDeleteOthers = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "delete_any", false);
+
+  const canEditOthers = (scope: DataAccessScope): boolean =>
+    isOwnerLike(scope) || scopePerm(scope, "edit_any", false);
 
   const resolveDriveOwnerUserId = async (session: AppSession, scope: DataAccessScope) => {
     if (!scope.dashboardId || scope.membershipRole === "owner" || scope.membershipRole === null) {
@@ -1217,7 +1240,7 @@ export function createApp({
     try {
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      if (!(await canExportDrive(session, scope))) return res.json({ connected: false, enabled: false });
+      if (!canExportDrive(scope)) return res.json({ connected: false, enabled: false });
       const driveOwnerUserId = await resolveDriveOwnerUserId(session, scope);
       if (!driveOwnerUserId) return res.json({ connected: false, enabled: true });
       const { data, error } = await supabase
@@ -1350,7 +1373,10 @@ export function createApp({
       });
 
       // WARNING-19: use validated destination from payload, not raw req.body
-      const wantsDrive = payload.destination === "drive" && driveEnabled && (await canExportDrive(session, scope));
+      if (!canExportLocal(scope) && payload.destination === "local") {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      const wantsDrive = payload.destination === "drive" && driveEnabled && canExportDrive(scope);
       let driveFileId: string | null = null;
       let driveUrl: string | null = null;
 

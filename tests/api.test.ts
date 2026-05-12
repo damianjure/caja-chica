@@ -1197,7 +1197,7 @@ test("permite editar un movimiento y registra audit log", async () => {
       },
     ],
     dashboardMembers: [
-      { user_id: "user-1", dashboard_id: "dashboard-1", role: "editor", status: "active" },
+      { user_id: "user-1", dashboard_id: "dashboard-1", role: "editor", status: "active", permissions: { edit_any: true } },
     ],
   });
   const app = createApp({

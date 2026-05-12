@@ -62,13 +62,22 @@ test("editor NO puede borrar movimientos ajenos sin toggle", () => {
   assert.equal(can(editorDefault, "delete_any_movimiento"), false);
 });
 
-test("editor NUNCA puede borrar empresas aunque tenga todos los toggles", () => {
-  const editorFull: MemberContext = {
+test("editor con manage_empresas puede borrar empresas (default ON)", () => {
+  // delete_empresa now requires manage_empresas (default ON for editors).
+  // Editor can DISABLE manage_empresas to prevent empresa management.
+  const editorDefault2: MemberContext = {
     role: "editor",
-    permissions: { delete_any: true, export_drive: true, invite_telegram: true },
+    permissions: {},
     user_id: "editor-1",
   };
-  assert.equal(can(editorFull, "delete_empresa"), false);
+  assert.equal(can(editorDefault2, "delete_empresa"), true);
+
+  const editorWithEmpresasOff: MemberContext = {
+    role: "editor",
+    permissions: { manage_empresas: false },
+    user_id: "editor-1",
+  };
+  assert.equal(can(editorWithEmpresasOff, "delete_empresa"), false);
 });
 
 test("editor NO puede usar Drive sin toggle", () => {

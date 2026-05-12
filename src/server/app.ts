@@ -71,11 +71,13 @@ export interface AppDeps {
   tokenEncryptionKey?: string;
 }
 
+export type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+
 export interface AppSession {
   userId: string;
   email: string;
   role: AppRole;
-  status: "active" | "suspended";
+  status: AppUserStatus;
 }
 
 type DashboardMemberRole = "owner" | "editor" | "viewer";
@@ -170,7 +172,10 @@ export function createApp({
         .limit(1);
       if (error) throw error;
       const profile = data?.[0];
-      if (!profile || profile.status !== "active") return null;
+      if (!profile) return null;
+      // blocked + suspended (legacy) users cannot session at all.
+      // paused users keep their session but writes are rejected by enforceUserStatus.
+      if (profile.status === "blocked" || profile.status === "suspended") return null;
 
       return {
         userId: profile.user_id,
@@ -510,6 +515,11 @@ export function createApp({
   // Drive OAuth callback has no session — tighter IP-based limit
   app.get("/api/drive/callback", tierAuth);
 
+  const isMutationMethod = (method: string) => {
+    const m = method.toUpperCase();
+    return m === "POST" || m === "PATCH" || m === "PUT" || m === "DELETE";
+  };
+
   const requireSession: RequestHandler = async (req, res, next) => {
     try {
       const authorization = req.header("Authorization");
@@ -520,6 +530,12 @@ export function createApp({
       if (!token) return res.status(401).json({ error: "unauthorized" });
       const session = await effectiveResolveSession(token);
       if (!session) return res.status(403).json({ error: "forbidden" });
+
+      // paused users keep read access, mutations are blocked.
+      if (session.status === "paused" && isMutationMethod(req.method)) {
+        return res.status(423).json({ error: "user_paused" });
+      }
+
       // WARNING-7: skip sync if already done for this user in this process lifetime
       const syncKey = `${session.userId}:${session.email}`;
       if (!syncedUserKeys.has(syncKey)) {
@@ -540,6 +556,25 @@ export function createApp({
     if (!session) return res.status(401).json({ error: "unauthorized" });
     if (session.role !== "admin" && session.role !== "superadmin") {
       return res.status(403).json({ error: "forbidden" });
+    }
+    next();
+  };
+
+  const requireSuperadmin: RequestHandler = (req, res, next) => {
+    const session = req.session;
+    if (!session) return res.status(401).json({ error: "unauthorized" });
+    if (session.role !== "superadmin") {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    next();
+  };
+
+  // Blocks mutations for paused users. Run AFTER requireSession on mutation routes.
+  const enforceUserStatus: RequestHandler = (req, res, next) => {
+    const session = req.session;
+    if (!session) return res.status(401).json({ error: "unauthorized" });
+    if (session.status === "paused") {
+      return res.status(423).json({ error: "user_paused" });
     }
     next();
   };
@@ -1562,6 +1597,299 @@ export function createApp({
         if (error) throw error;
         res.json({ ok: true });
       } catch (_err) {
+        res.status(500).json({ error: "failed_to_save" });
+      }
+    },
+  );
+
+  // ----- Superadmin: user lifecycle (status / role / force-logout / detail / telegram revoke) -----
+
+  const writeAuditLog = async (entry: {
+    actor_user_id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    dashboard_id?: string | null;
+    before_data?: unknown;
+    after_data?: unknown;
+    source?: "web" | "telegram" | "system";
+  }) => {
+    try {
+      await supabase.from("audit_logs").insert({
+        actor_user_id: entry.actor_user_id,
+        action: entry.action,
+        entity_type: entry.entity_type,
+        entity_id: entry.entity_id,
+        dashboard_id: entry.dashboard_id ?? null,
+        before_data: entry.before_data ?? null,
+        after_data: entry.after_data ?? null,
+        source: entry.source ?? "web",
+      });
+    } catch (err) {
+      console.error("[audit] failed to write log:", err);
+    }
+  };
+
+  const parseStatusBody = (body: unknown): { status: AppUserStatus; reason?: string } | null => {
+    if (!body || typeof body !== "object") return null;
+    const b = body as Record<string, unknown>;
+    const s = b.status;
+    if (s !== "active" && s !== "paused" && s !== "blocked") return null;
+    const reason = typeof b.reason === "string" ? b.reason.slice(0, 500) : undefined;
+    return { status: s, reason };
+  };
+
+  app.get(
+    "/api/admin/users/:id/detail",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const userId = req.params.id;
+        const { data: user, error: userErr } = await supabase
+          .from("app_users")
+          .select(
+            "user_id, email, role, status, display_name, invited_by, invited_at, created_at, paused_at, blocked_at, status_reason, status_changed_at, status_changed_by",
+          )
+          .eq("user_id", userId)
+          .limit(1)
+          .maybeSingle();
+        if (userErr) throw userErr;
+        if (!user) return res.status(404).json({ error: "not_found" });
+
+        const [{ count: movimientosCount }, dashboards, telegramLinks, driveConn] =
+          await Promise.all([
+            supabase
+              .from("movimientos")
+              .select("id", { count: "exact", head: true })
+              .eq("owner_user_id", userId)
+              .is("deleted_at", null),
+            supabase
+              .from("dashboard_members")
+              .select("dashboard_id, role, status, permissions, created_at")
+              .eq("user_id", userId),
+            supabase
+              .from("telegram_links")
+              .select("id, dashboard_id, chat_id, status, created_at")
+              .eq("app_user_id", userId),
+            supabase
+              .from("drive_connections")
+              .select("owner_user_id, dashboard_id, created_at")
+              .eq("owner_user_id", userId)
+              .maybeSingle(),
+          ]);
+
+        res.json({
+          user,
+          stats: { movimientos: movimientosCount ?? 0 },
+          dashboards: dashboards.data ?? [],
+          telegramLinks: telegramLinks.data ?? [],
+          drive: driveConn.data ?? null,
+        });
+      } catch (err) {
+        console.error("[admin] user detail error:", err);
+        res.status(500).json({ error: "failed_to_fetch" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:id/status",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const payload = parseStatusBody(req.body);
+        if (!payload) return res.status(400).json({ error: "invalid_request" });
+
+        const session = getSession(req);
+        const userId = req.params.id;
+
+        if (userId === session.userId) {
+          return res.status(400).json({ error: "cannot_change_own_status" });
+        }
+
+        const { data: before, error: beforeErr } = await supabase
+          .from("app_users")
+          .select("user_id, email, role, status")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (beforeErr) throw beforeErr;
+        if (!before) return res.status(404).json({ error: "not_found" });
+
+        const now = new Date().toISOString();
+        const update: Record<string, unknown> = {
+          status: payload.status,
+          status_reason: payload.reason ?? null,
+          status_changed_by: session.userId,
+          status_changed_at: now,
+        };
+        if (payload.status === "paused") update.paused_at = now;
+        if (payload.status === "blocked") update.blocked_at = now;
+        if (payload.status === "active") {
+          update.paused_at = null;
+          update.blocked_at = null;
+        }
+
+        const { error: updateErr } = await supabase
+          .from("app_users")
+          .update(update)
+          .eq("user_id", userId);
+        if (updateErr) throw updateErr;
+
+        const action =
+          payload.status === "active"
+            ? "activate"
+            : payload.status === "paused"
+              ? "pause"
+              : "block";
+
+        await writeAuditLog({
+          actor_user_id: session.userId,
+          action,
+          entity_type: "app_user",
+          entity_id: userId,
+          before_data: { status: before.status },
+          after_data: { status: payload.status, reason: payload.reason ?? null },
+        });
+
+        // For blocked: force-logout the user from Supabase auth too.
+        if (payload.status === "blocked") {
+          try {
+            await (supabase as any).auth.admin.signOut(userId);
+          } catch (err) {
+            console.warn("[admin] failed to signOut on block:", err);
+          }
+        }
+
+        res.json({ ok: true, status: payload.status });
+      } catch (err) {
+        console.error("[admin] status change error:", err);
+        res.status(500).json({ error: "failed_to_save" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:id/force-logout",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        const userId = req.params.id;
+
+        if (userId === session.userId) {
+          return res.status(400).json({ error: "cannot_logout_self" });
+        }
+
+        try {
+          await (supabase as any).auth.admin.signOut(userId);
+        } catch (err) {
+          console.error("[admin] signOut error:", err);
+          return res.status(500).json({ error: "failed_to_logout" });
+        }
+
+        await writeAuditLog({
+          actor_user_id: session.userId,
+          action: "force_logout",
+          entity_type: "app_user",
+          entity_id: userId,
+        });
+
+        res.json({ ok: true });
+      } catch (err) {
+        console.error("[admin] force-logout error:", err);
+        res.status(500).json({ error: "failed_to_save" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/users/:id/role",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const body = (req.body ?? {}) as Record<string, unknown>;
+        const role = body.role;
+        if (role !== "superadmin" && role !== "admin" && role !== "member") {
+          return res.status(400).json({ error: "invalid_role" });
+        }
+
+        const session = getSession(req);
+        const userId = req.params.id;
+
+        if (userId === session.userId) {
+          return res.status(400).json({ error: "cannot_change_own_role" });
+        }
+
+        const { data: before, error: beforeErr } = await supabase
+          .from("app_users")
+          .select("user_id, role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (beforeErr) throw beforeErr;
+        if (!before) return res.status(404).json({ error: "not_found" });
+
+        const { error: updateErr } = await supabase
+          .from("app_users")
+          .update({ role })
+          .eq("user_id", userId);
+        if (updateErr) throw updateErr;
+
+        await writeAuditLog({
+          actor_user_id: session.userId,
+          action: "role_change",
+          entity_type: "app_user",
+          entity_id: userId,
+          before_data: { role: before.role },
+          after_data: { role },
+        });
+
+        res.json({ ok: true, role });
+      } catch (err) {
+        console.error("[admin] role change error:", err);
+        res.status(500).json({ error: "failed_to_save" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/telegram-links/:linkId/revoke",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        const linkId = req.params.linkId;
+
+        const { data: link, error: getErr } = await supabase
+          .from("telegram_links")
+          .select("id, app_user_id, dashboard_id, chat_id, status")
+          .eq("id", linkId)
+          .maybeSingle();
+        if (getErr) throw getErr;
+        if (!link) return res.status(404).json({ error: "not_found" });
+
+        const { error: updateErr } = await supabase
+          .from("telegram_links")
+          .update({ status: "revoked", revoked_at: new Date().toISOString() })
+          .eq("id", linkId);
+        if (updateErr) throw updateErr;
+
+        await writeAuditLog({
+          actor_user_id: session.userId,
+          action: "telegram_link_revoke",
+          entity_type: "telegram_link",
+          entity_id: linkId,
+          dashboard_id: link.dashboard_id,
+          before_data: { status: link.status, chat_id: link.chat_id },
+        });
+
+        res.json({ ok: true });
+      } catch (err) {
+        console.error("[admin] telegram revoke error:", err);
         res.status(500).json({ error: "failed_to_save" });
       }
     },

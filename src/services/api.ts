@@ -68,7 +68,7 @@ export interface BotConnectionStatus {
 }
 
 export type AppRole = "superadmin" | "admin" | "member";
-export type AppUserStatus = "active" | "suspended";
+export type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
 export type InvitationStatus = "pending" | "accepted" | "revoked" | "expired";
 export type DashboardMemberRole = "owner" | "editor" | "viewer";
 export type DashboardInvitationRole = "editor" | "viewer";
@@ -81,6 +81,39 @@ export interface AppUser {
   invited_by: string | null;
   invited_at: string | null;
   created_at: string;
+}
+
+export interface AdminUserDetail {
+  user: AppUser & {
+    display_name?: string | null;
+    paused_at?: string | null;
+    blocked_at?: string | null;
+    status_reason?: string | null;
+    status_changed_at?: string | null;
+    status_changed_by?: string | null;
+  };
+  stats: {
+    movimientos: number;
+  };
+  dashboards: Array<{
+    dashboard_id: string;
+    role: string;
+    status: string;
+    permissions: Record<string, boolean>;
+    created_at: string;
+  }>;
+  telegramLinks: Array<{
+    id: string;
+    dashboard_id: string | null;
+    chat_id: number | null;
+    status: string;
+    created_at: string;
+  }>;
+  drive: {
+    owner_user_id: string;
+    dashboard_id: string | null;
+    created_at: string;
+  } | null;
 }
 
 export interface AppInvitation {
@@ -395,6 +428,40 @@ export const api = {
 
   async revokeInvitation(invitationId: string): Promise<{ ok: boolean }> {
     return fetchApi(`/api/admin/invitations/${invitationId}/revoke`, {
+      method: "POST",
+    });
+  },
+
+  async getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
+    return fetchApi(`/api/admin/users/${userId}/detail`);
+  },
+
+  async setUserStatus(
+    userId: string,
+    status: Exclude<AppUserStatus, "suspended">,
+    reason?: string,
+  ): Promise<{ ok: boolean; status: AppUserStatus }> {
+    return fetchApi(`/api/admin/users/${userId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, reason }),
+    });
+  },
+
+  async forceLogoutUser(userId: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/admin/users/${userId}/force-logout`, {
+      method: "POST",
+    });
+  },
+
+  async setUserRole(userId: string, role: AppRole): Promise<{ ok: boolean; role: AppRole }> {
+    return fetchApi(`/api/admin/users/${userId}/role`, {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  async adminRevokeTelegramLink(linkId: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/admin/telegram-links/${linkId}/revoke`, {
       method: "POST",
     });
   },

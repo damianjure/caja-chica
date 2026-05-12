@@ -358,6 +358,21 @@ if (bot) {
     return resolveTelegramIdentityByChatId(supabase, chatId);
   }
 
+  async function getAppUserStatus(userId: string | null | undefined): Promise<string | null> {
+    if (!userId) return null;
+    try {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) return null;
+      return (data?.status as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function requireLinkedAccount(ctx: any) {
     const linked = await getLinkedTelegramUser(ctx.chat.id);
     if (!hasTelegramAccess(linked)) {
@@ -366,6 +381,16 @@ if (bot) {
       );
       return null;
     }
+
+    const userId = linked.userId ?? linked.ownerUserId ?? null;
+    const status = await getAppUserStatus(userId);
+    if (status === "blocked" || status === "suspended") {
+      await ctx.reply(
+        "🚫 Tu cuenta está bloqueada. Contactá al administrador para más info.",
+      );
+      return null;
+    }
+    (linked as any).appUserStatus = status;
     return linked;
   }
 
@@ -375,6 +400,12 @@ if (bot) {
   ): Promise<TelegramLinkRecord | null> {
     const linked = await requireLinkedAccount(ctx);
     if (!linked) return null;
+
+    // paused users keep read access; block write/delete/export actions.
+    if ((linked as any).appUserStatus === "paused" && action !== "read") {
+      await ctx.reply("⏸️ Tu cuenta está pausada. Solo podés consultar — sin escribir, borrar ni exportar.");
+      return null;
+    }
 
     // WARNING-21: role can be null for legacy usuarios — default to "viewer" so can() behaves safely
     const memberCtx = {

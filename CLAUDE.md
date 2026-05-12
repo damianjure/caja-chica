@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-08 (post deuda técnica: typing, rate limiting, tests, rebrand)
+## Fuente de verdad única — 2026-05-12 (post user settings: display name, notification hour, sessions, export, delete account)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -74,9 +74,10 @@ Integraciones principales:
   - `src/server/email.ts`: `sendAppInvitationEmail()` y `sendDashboardInvitationEmail()`
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
-### Estado deploy (2026-05-08)
-- Frontend ✔ deployado en `caja-chica-bot.web.app` (hosting migrado desde `balancediario`)
+### Estado deploy (2026-05-12)
+- Frontend ✔ deployado en `caja-chica-bot.web.app`
 - Backend ✔ deployado en Cloud Run
+- Tests: 156 total / 154 pass / 2 skip / 0 fail
 
 ### Cambios 2026-05-08 (primera ronda — hosting + design)
 - **Hosting migration**: `balancediario` (proyecto roto) → `caja-chica-bot`. URLs hardcodeadas actualizadas.
@@ -110,9 +111,26 @@ Integraciones principales:
   - `tests/photoFlow.integration.test.ts` — 11 tests: extraction review store, buildReviewCardText, MediaGroupBuffer
   - `tests/rateLimit.test.ts` — 6 tests: allow/block, headers, key isolation, window reset
 
+### Cambios 2026-05-12 (user settings — commit `c65ce13`)
+- **`user_settings_phase.sql`** — ✔ aplicado en prod:
+  - `app_users.display_name text`
+  - `app_users.notification_hour smallint DEFAULT 21 CHECK (0..23)`
+  - `get_my_sessions(uuid)` — SECURITY DEFINER, lista sesiones auth del usuario
+  - `delete_user_session(uuid, uuid)` — SECURITY DEFINER, revoca sesión puntual
+- **`GET /api/me`** — ahora retorna `display_name` y `notification_hour`
+- **`PATCH /api/me`** — actualiza `display_name` y/o `notification_hour`
+- **`GET /api/me/export`** — JSON dump de movimientos, empresas y categorías (GDPR)
+- **`GET /api/me/sessions`** — lista sesiones activas vía `get_my_sessions` RPC
+- **`DELETE /api/me/sessions/:id`** — revoca sesión vía `delete_user_session` RPC
+- **`DELETE /api/me`** — borra membresías + `supabase.auth.admin.deleteUser()`
+- **Cron recordatorio**: `0 21 * * *` → `0 * * * *` (hourly), filtra por `notification_hour` UTC por usuario
+- **ConfiguracionTab** — sección **Preferencias**: tema (Claro/Oscuro/Sistema), moneda default (ARS/USD), empresa default, hora del recordatorio (slider)
+- **ConfiguracionTab** — sección **Cuenta**: nombre visible (display_name), exportar datos, sesiones activas (lazy-load + revocar), borrar cuenta (confirm con email)
+- **A11y (Chunk 3)**: `text-neutral-400` → `text-neutral-500` en 11 archivos, aria-labels en icon-only buttons, aria-live en regiones dinámicas
+- **Tests**: 9 nuevos (total 154 pass / 2 skip / 0 fail)
+
 ### Pendiente
-1. `drop_pending_extractions.sql` — aplicar en prod Supabase (no rompe nada, tabla ya no se usa)
-2. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
+1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
 
 ---
 
@@ -156,9 +174,9 @@ gcloud run deploy caja-chica --image gcr.io/caja-chica-bot/caja-chica --region u
 ```
 
 ### Estado de validación local más reciente
-- `npm test` → **145/147 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
+- `npm test` → **154/156 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `47fb1b8`
+- commit HEAD: `c65ce13`
 
 ### Cómo correr tests correctamente
 ```bash
@@ -283,6 +301,8 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 ├── telegram_multi_user_phase.sql         ✔ aplicado en prod 2026-05-04
 ├── drive_oauth_phase.sql                 ✔ aplicado en prod 2026-05-07
 ├── photo_ticket_phase.sql                ✔ aplicado en prod 2026-05-07
+├── drop_pending_extractions.sql          ✔ aplicado en prod 2026-05-08
+├── user_settings_phase.sql               ✔ aplicado en prod 2026-05-12
 ├── firebase.json
 ├── .firebaserc
 ├── Dockerfile
@@ -432,8 +452,13 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 ### Salud
 - `GET /api/health`
 
-### Sesión
-- `GET /api/me`
+### Sesión / cuenta
+- `GET /api/me` — retorna `id`, `email`, `role`, `status`, `display_name`, `notification_hour`
+- `PATCH /api/me` — actualiza `display_name` y/o `notification_hour`
+- `GET /api/me/export` — JSON dump (movimientos, empresas, categorías) para GDPR
+- `GET /api/me/sessions` — lista sesiones auth activas (via `get_my_sessions` RPC)
+- `DELETE /api/me/sessions/:id` — revoca sesión puntual (via `delete_user_session` RPC)
+- `DELETE /api/me` — elimina cuenta: borra membresías + `supabase.auth.admin.deleteUser()`
 
 ### Extracción IA
 - `POST /api/extract` — rate limit 30 req/min por usuario, input max 2000 chars
@@ -576,7 +601,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `telegram_multi_user_phase.sql` | ✔ prod 2026-05-04 |
 | `drive_oauth_phase.sql` | ✔ prod 2026-05-07 |
 | `photo_ticket_phase.sql` | ✔ prod 2026-05-07 |
-| `drop_pending_extractions.sql` | ✔ aplicar en prod — tabla huérfana, sesiones viven en Map en memoria |
+| `drop_pending_extractions.sql` | ✔ aplicado en prod 2026-05-08 |
+| `user_settings_phase.sql` | ✔ prod 2026-05-12 |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)
@@ -653,6 +679,9 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | Deploy backend Cloud Run | ✔ deployado 2026-05-07 |
 | Deploy frontend Firebase Hosting | ✔ deployado 2026-05-08 en `caja-chica-bot.web.app` |
 | `drop_pending_extractions.sql` en Supabase prod | ✔ aplicado 2026-05-08 |
+| `user_settings_phase.sql` en Supabase prod | ✔ aplicado 2026-05-12 |
+| Deploy frontend Firebase Hosting (user settings) | ✔ deployado 2026-05-12 |
+| Deploy backend Cloud Run (user settings) | ✔ deployado 2026-05-12 |
 
 ---
 
@@ -788,4 +817,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 145/147. Sin pendientes de infra. Próximo feature: CUIT matching en bot Telegram.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). Sin pendientes de infra. Último commit: `c65ce13` (user settings: display name, notification hour, sessions, export, delete account). Próximo: CUIT matching en bot Telegram.

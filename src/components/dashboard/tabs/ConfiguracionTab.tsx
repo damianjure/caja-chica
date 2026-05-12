@@ -367,6 +367,91 @@ export default function ConfiguracionTab({
         <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
       )}
 
+      {/* ── Preferencias ──────────────────────────────────────────────────── */}
+      <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-neutral-900 text-white">
+            <SlidersHorizontal className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Preferencias</h2>
+            <p className="text-sm text-neutral-500">Configuración personal del dashboard.</p>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          {/* Tema */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Tema</p>
+            <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
+          </div>
+
+          {/* Moneda default */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Moneda por defecto</p>
+            <div className="flex gap-2" role="group" aria-label="Moneda por defecto">
+              {(['ARS', 'USD'] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setDefaultCurrency(c)}
+                  aria-pressed={defaultCurrency === c}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                    defaultCurrency === c
+                      ? 'bg-neutral-900 border-neutral-900 text-white'
+                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:bg-neutral-50'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-neutral-500">Se usa en el formulario de presupuesto.</p>
+          </div>
+
+          {/* Empresa default */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Empresa por defecto</p>
+            <select
+              value={defaultEmpresa}
+              onChange={(e) => setDefaultEmpresa(e.target.value)}
+              aria-label="Empresa por defecto"
+              className="rounded-2xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
+            >
+              <option value="">Sin empresa (Personal)</option>
+              {companies.filter((c) => !c.deleted_at).map((c) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-neutral-500">Se resalta en el selector de empresa al registrar un ticket.</p>
+          </div>
+
+          {/* Notification hour */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Hora del recordatorio</p>
+              {savingNotifHour && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
+            </div>
+            <div className="flex items-center gap-3">
+              <Bell className="w-4 h-4 text-neutral-500 shrink-0" />
+              <input
+                type="range"
+                min={0}
+                max={23}
+                value={notifHour}
+                onChange={(e) => void handleSaveNotifHour(Number(e.target.value))}
+                className="flex-1 accent-neutral-900"
+                aria-label="Hora del recordatorio diario"
+              />
+              <span className="w-14 text-sm font-mono text-neutral-700 text-right">
+                {String(notifHour).padStart(2, "0")}:00 hs
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Miembros (solo owner / admin) ─────────────────────────────────── */}
       {canManage && (
         <section className="bg-white border border-neutral-200 rounded-3xl shadow-sm overflow-hidden">
@@ -640,91 +725,6 @@ export default function ConfiguracionTab({
           </div>
         </section>
       )}
-
-      {/* ── Preferencias ──────────────────────────────────────────────────── */}
-      <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-neutral-900 text-white">
-            <SlidersHorizontal className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">Preferencias</h2>
-            <p className="text-sm text-neutral-500">Configuración personal del dashboard.</p>
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          {/* Tema */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Tema</p>
-            <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
-          </div>
-
-          {/* Moneda default */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Moneda por defecto</p>
-            <div className="flex gap-2" role="group" aria-label="Moneda por defecto">
-              {(['ARS', 'USD'] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setDefaultCurrency(c)}
-                  aria-pressed={defaultCurrency === c}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                    defaultCurrency === c
-                      ? 'bg-neutral-900 border-neutral-900 text-white'
-                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:bg-neutral-50'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-neutral-500">Se usa en el formulario de presupuesto.</p>
-          </div>
-
-          {/* Empresa default */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Empresa por defecto</p>
-            <select
-              value={defaultEmpresa}
-              onChange={(e) => setDefaultEmpresa(e.target.value)}
-              aria-label="Empresa por defecto"
-              className="rounded-2xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
-            >
-              <option value="">Sin empresa (Personal)</option>
-              {companies.filter((c) => !c.deleted_at).map((c) => (
-                <option key={c.id} value={c.nombre}>{c.nombre}</option>
-              ))}
-            </select>
-            <p className="text-[11px] text-neutral-500">Se resalta en el selector de empresa al registrar un ticket.</p>
-          </div>
-
-          {/* Notification hour */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Hora del recordatorio</p>
-              {savingNotifHour && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
-            </div>
-            <div className="flex items-center gap-3">
-              <Bell className="w-4 h-4 text-neutral-500 shrink-0" />
-              <input
-                type="range"
-                min={0}
-                max={23}
-                value={notifHour}
-                onChange={(e) => void handleSaveNotifHour(Number(e.target.value))}
-                className="flex-1 accent-neutral-900"
-                aria-label="Hora del recordatorio diario"
-              />
-              <span className="w-14 text-sm font-mono text-neutral-700 text-right">
-                {String(notifHour).padStart(2, "0")}:00 hs
-              </span>
-            </div>
-            <p className="text-[11px] text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
-          </div>
-        </div>
-      </section>
 
       {/* ── Cuenta ────────────────────────────────────────────────────────── */}
       <section className="bg-white border border-neutral-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">

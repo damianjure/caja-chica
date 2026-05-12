@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-12 (post user settings: display name, notification hour, sessions, export, delete account)
+## Fuente de verdad única — 2026-05-12 (post ConfiguracionTab reorder + new owner fresh start)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -111,6 +111,11 @@ Integraciones principales:
   - `tests/photoFlow.integration.test.ts` — 11 tests: extraction review store, buildReviewCardText, MediaGroupBuffer
   - `tests/rateLimit.test.ts` — 6 tests: allow/block, headers, key isolation, window reset
 
+### Cambios 2026-05-12 (ConfiguracionTab reorder + OAuth fix)
+- **ConfiguracionTab** — orden de secciones ajustado: **1. Preferencias → 2. Miembros → 3. Cuenta**
+- **OAuth troubleshooting**: `redirect_uri_mismatch` resuelto. Credenciales OAuth en proyecto GCP `caja-chica-bot` (no `balancediario`). `balancediario` restaurado con `gcloud projects undelete` pero no se usa activamente.
+- **Nuevo owner**: primer login entra con todo vacío y en cero — ya garantizado por el scoping de datos (`dashboard_id` o `owner_user_id` del caller). Sin datos compartidos entre owners distintos.
+
 ### Cambios 2026-05-12 (user settings — commit `c65ce13`)
 - **`user_settings_phase.sql`** — ✔ aplicado en prod:
   - `app_users.display_name text`
@@ -148,10 +153,14 @@ Integraciones principales:
 ### Supabase real usado por la app
 - proyecto: `dezgusgxotihxkfkxico`
 
+### Google OAuth credentials (Google Sign-In)
+- Las credenciales OAuth 2.0 (Client ID / Secret) para Google Sign-In están en el proyecto GCP **`caja-chica-bot`** (no en `balancediario`).
+- El Authorized redirect URI configurado en la consola de Google es: `https://dezgusgxotihxkfkxico.supabase.co/auth/v1/callback`
+
 ### OJO
 NO usar `mlvounduwzfnkldbahnl` para esta app.
 NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
-`balancediario` — proyecto GCP **eliminado** 2026-05-08.
+`balancediario` — proyecto GCP restaurado (undelete 2026-05-12 durante troubleshooting OAuth), pero no se usa para nada activo. Las credenciales OAuth están en `caja-chica-bot`.
 
 ---
 

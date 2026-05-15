@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-12 (post ConfiguracionTab reorder + new owner fresh start)
+## Fuente de verdad única — 2026-05-12 (post Firebase security headers — HEAD: 5274ae4)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -22,7 +22,7 @@ Integraciones principales:
 - Cloud Run / Node runtime para backend y bot
 - Google Drive API (`googleapis`) para exportación de informes
 
-### Estado real validado (post deploy 2026-05-07)
+### Estado real validado (post deploy 2026-05-12)
 - login Google por invitación
 - bootstrap de superadmin
 - member invitado aceptando login
@@ -111,10 +111,16 @@ Integraciones principales:
   - `tests/photoFlow.integration.test.ts` — 11 tests: extraction review store, buildReviewCardText, MediaGroupBuffer
   - `tests/rateLimit.test.ts` — 6 tests: allow/block, headers, key isolation, window reset
 
-### Cambios 2026-05-12 (ConfiguracionTab reorder + OAuth fix)
+### Cambios 2026-05-12 (UX/A11y — commits ebeb61f, cdab9c0, 5956220)
+- **ModalShell** (`src/components/ui/ModalShell.tsx`): role=dialog, aria-modal, focus trap, Esc-to-close, body scroll-lock, tamaños sm/md/lg/xl
+- **ConfirmModal** (`src/components/ui/ConfirmModal.tsx`): reemplaza `window.confirm/prompt`; `requireText` para acciones destructivas; `askReason`; loading state
+- **AdminPanel**: botón explícito "Administrar" en cada fila, todas las acciones pasan por ConfirmModal, `role=status/alert` + `aria-live`
+- **A11y (Chunk 3)**: `text-neutral-400` → `text-neutral-500` en 11 archivos, aria-labels en icon-only buttons, aria-live en regiones dinámicas
+
+### Cambios 2026-05-12 (ConfiguracionTab reorder + OAuth fix — commit bc4b659)
 - **ConfiguracionTab** — orden de secciones ajustado: **1. Preferencias → 2. Miembros → 3. Cuenta**
 - **OAuth troubleshooting**: `redirect_uri_mismatch` resuelto. Credenciales OAuth en proyecto GCP `caja-chica-bot` (no `balancediario`). `balancediario` restaurado con `gcloud projects undelete` pero no se usa activamente.
-- **Nuevo owner**: primer login entra con todo vacío y en cero — ya garantizado por el scoping de datos (`dashboard_id` o `owner_user_id` del caller). Sin datos compartidos entre owners distintos.
+- **Nuevo owner**: primer login entra con todo vacío y en cero — garantizado por el scoping de datos (`dashboard_id` o `owner_user_id` del caller). Sin datos compartidos entre owners distintos.
 
 ### Cambios 2026-05-12 (user settings — commit `c65ce13`)
 - **`user_settings_phase.sql`** — ✔ aplicado en prod:
@@ -131,8 +137,18 @@ Integraciones principales:
 - **Cron recordatorio**: `0 21 * * *` → `0 * * * *` (hourly), filtra por `notification_hour` UTC por usuario
 - **ConfiguracionTab** — sección **Preferencias**: tema (Claro/Oscuro/Sistema), moneda default (ARS/USD), empresa default, hora del recordatorio (slider)
 - **ConfiguracionTab** — sección **Cuenta**: nombre visible (display_name), exportar datos, sesiones activas (lazy-load + revocar), borrar cuenta (confirm con email)
-- **A11y (Chunk 3)**: `text-neutral-400` → `text-neutral-500` en 11 archivos, aria-labels en icon-only buttons, aria-live en regiones dinámicas
 - **Tests**: 9 nuevos (total 154 pass / 2 skip / 0 fail)
+
+### Cambios 2026-05-12 (session self-lockout guard — commit `037035b`)
+- **`AppSession.sessionId`** — `requireSession` extrae el claim `session_id` del JWT y lo guarda en la sesión
+- **`GET /api/me/sessions`** — ahora retorna `currentSessionId` además de la lista de sesiones
+- **`DELETE /api/me/sessions/:id`** — retorna 400 si el `id` es igual al `session_id` del caller (previene auto-bloqueo)
+- **UI (ConfiguracionTab)**: badge "Esta sesión" en la fila de la sesión actual; botón "Revocar" deshabilitado para la sesión propia
+
+### Cambios 2026-05-12 (Firebase security headers — commit `5274ae4`)
+- **`firebase.json`** — headers de caché y seguridad para hosting:
+  - `/assets/**`: `Cache-Control: public, max-age=31536000, immutable` (assets Vite con hash → cache forever)
+  - `**`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
 
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
@@ -142,10 +158,10 @@ Integraciones principales:
 ## 2. URLs, proyectos y entornos reales
 
 ### Frontend producción
-- [https://caja-chica-bot.web.app](https://caja-chica-bot.web.app) ← migrado 2026-05-08 desde `balancediario` (proyecto roto)
+- https://caja-chica-bot.web.app ← migrado 2026-05-08 desde `balancediario` (proyecto roto)
 
 ### Backend producción
-- [https://caja-chica-442790495206.us-west2.run.app](https://caja-chica-442790495206.us-west2.run.app)
+- https://caja-chica-442790495206.us-west2.run.app
 
 ### Firebase project (hosting + backend, unificado)
 - `caja-chica-bot`
@@ -185,7 +201,7 @@ gcloud run deploy caja-chica --image gcr.io/caja-chica-bot/caja-chica --region u
 ### Estado de validación local más reciente
 - `npm test` → **154/156 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `c65ce13`
+- commit HEAD: `5274ae4`
 
 ### Cómo correr tests correctamente
 ```bash
@@ -205,6 +221,7 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - Tailwind CSS v4
 - motion
 - lucide-react
+- sonner
 
 ### Backend
 - Express
@@ -214,6 +231,7 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - node-cron
 - dotenv
 - **googleapis** ← Drive integration
+- **resend** ← emails de invitación
 
 ### Datos / Infra
 - Supabase
@@ -226,7 +244,7 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 
 ### Importante
 - **no hay librería externa de PDF** — generador mínimo propio en `src/server/reportExports.ts`
-- **no hay librería externa de rate limiting** — Map en memoria
+- **no hay librería externa de rate limiting** — Map en memoria (`src/server/rateLimit.ts`)
 - **no hay librería de cifrado** — AES-256-CBC vía `node:crypto` stdlib
 
 ---
@@ -234,84 +252,95 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 ## 5. Estructura importante del proyecto
 
 ```text
-/Users/damian/Dev/Boteado
+.
 ├── CLAUDE.md
-├── server.ts
+├── server.ts                              ← runtime wiring, bot, cron, integración real
 ├── src/
 │   ├── App.tsx
 │   ├── DashboardApp.tsx
 │   ├── authRedirect.ts
-│   ├── index.css                  ← dark mode CSS vars + overrides completos
+│   ├── index.css                          ← dark mode CSS vars + overrides completos
 │   ├── components/
 │   │   ├── AdminPanel.tsx
 │   │   ├── AppLoadingScreen.tsx
 │   │   ├── BotConnectionPanel.tsx
-│   │   ├── CollaborationPanel.tsx ← toggles permisos + invitación Telegram + vínculos
+│   │   ├── CollaborationPanel.tsx         ← toggles permisos + invitación Telegram + vínculos
 │   │   ├── LoginScreen.tsx
 │   │   ├── ThemeToggle.tsx
-│   │   └── dashboard/
-│   │       ├── Charts.tsx
-│   │       ├── LoadingStates.tsx
-│   │       ├── primitives.tsx
-│   │       └── tabs/
-│   │           ├── EmpresasTab.tsx
-│   │           ├── GastosTab.tsx
-│   │           ├── InformesTab.tsx  ← Drive UI + historial con links
-│   │           ├── IngresosTab.tsx
-│   │           ├── MovimientosTab.tsx
-│   │           └── ResumenTab.tsx
+│   │   ├── dashboard/
+│   │   │   ├── Charts.tsx
+│   │   │   ├── LoadingStates.tsx
+│   │   │   ├── primitives.tsx
+│   │   │   └── tabs/
+│   │   │       ├── ConfiguracionTab.tsx   ← Preferencias / Miembros / Cuenta
+│   │   │       ├── EmpresasTab.tsx
+│   │   │       ├── GastosTab.tsx
+│   │   │       ├── InformesTab.tsx        ← Drive UI + historial con links
+│   │   │       ├── IngresosTab.tsx
+│   │   │       ├── MovimientosTab.tsx
+│   │   │       └── ResumenTab.tsx
+│   │   └── ui/
+│   │       ├── ConfirmModal.tsx           ← reemplaza window.confirm; requireText para destructivas
+│   │       └── ModalShell.tsx             ← base modal: focus trap, Esc, scroll-lock
 │   ├── dashboard/
 │   │   ├── companyAssignment.ts
 │   │   └── summary.ts
 │   ├── reports/
 │   │   └── shared.ts
 │   ├── server/
-│   │   ├── app.ts
-│   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
-│   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Resend
+│   │   ├── app.ts                         ← app Express testeable
+│   │   ├── drive.ts                       ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
+│   │   ├── email.ts                       ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Resend
 │   │   ├── env.ts
 │   │   ├── errors.ts
-│   │   ├── extractionReview.ts    ← inline keyboard confirm/edit flow para fotos; TTL 10min
-│   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT para fotos
-│   │   ├── mediaGroupBuffer.ts    ← debounce genérico para álbumes Telegram (1500ms)
-│   │   ├── permissions.ts         ← can(member, action) helper
+│   │   ├── extractionReview.ts            ← inline keyboard confirm/edit flow para fotos; TTL 10min
+│   │   ├── gemini.ts                      ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT para fotos
+│   │   ├── mediaGroupBuffer.ts            ← debounce genérico para álbumes Telegram (1500ms)
+│   │   ├── permissions.ts                 ← can(member, action) helper
+│   │   ├── rateLimit.ts                   ← createRateLimiter factory + 4 tiers
 │   │   ├── reportExports.ts
-│   │   ├── telegramAccess.ts      ← resolveViaNewLinks() + fallback legacy
-│   │   ├── telegramAudio.ts       ← extracción desde audio/voz
-│   │   ├── telegramCompanyResolution.ts ← resolución de empresa por nombre
-│   │   ├── telegramMedia.ts       ← extractFromPhoto() + extractFromMultiplePhotos() + inferMediaMimeType()
-│   │   └── validation.ts          ← PendingExtractionData + isPendingExtractionData + parseReportExportRequest
+│   │   ├── telegramAccess.ts              ← resolveViaNewLinks() + fallback legacy
+│   │   ├── telegramAudio.ts               ← extracción desde audio/voz
+│   │   ├── telegramCompanyResolution.ts   ← resolución de empresa por nombre
+│   │   ├── telegramMedia.ts               ← extractFromPhoto() + extractFromMultiplePhotos() + inferMediaMimeType()
+│   │   ├── types/
+│   │   │   └── express.d.ts               ← module augmentation: req.session tipado
+│   │   └── validation.ts                  ← PendingExtractionData + isPendingExtractionData + parseReportExportRequest
 │   └── services/
 │       ├── api.ts
 │       └── supabase.ts
 ├── tests/
 │   ├── api.test.ts
-│   ├── auth-redirect.test.ts
+│   ├── authRedirect.test.ts
 │   ├── company-assignment.test.ts
 │   ├── dashboardSummary.test.ts
+│   ├── driveOAuth.test.ts
 │   ├── env.test.ts
-│   ├── mediaGroupBuffer.test.ts   ← 5 tests del debounce buffer
-│   ├── permissions.test.ts        ← 11 tests de can()
-│   ├── summary.test.ts
-│   ├── telegramAccess.test.ts     ← incluye tests multiusuario
+│   ├── mediaGroupBuffer.test.ts           ← 5 tests del debounce buffer
+│   ├── permissions.test.ts                ← 11 tests de can()
+│   ├── photoFlow.integration.test.ts
+│   ├── rateLimit.test.ts
+│   ├── superadmin.test.ts
+│   ├── telegramAccess.test.ts             ← incluye tests multiusuario
 │   ├── telegramAudio.test.ts
-│   └── telegramMedia.test.ts      ← 14 tests: inferMediaMimeType, parse functions, extractFromPhoto mock
+│   ├── telegramCompanyResolution.test.ts
+│   └── telegramMedia.test.ts              ← 14 tests: inferMediaMimeType, parse functions, extractFromPhoto mock
 ├── supabase_schema.sql
 ├── phase1_supabase_patch.sql
-├── report_exports_phase.sql              ✔ aplicado en prod
-├── fix_auth_hook.sql                     ✔ aplicado en prod
-├── shared_dashboard_phase.sql            ✔ aplicado en prod
+├── report_exports_phase.sql               ✔ aplicado en prod
+├── fix_auth_hook.sql                      ✔ aplicado en prod
+├── shared_dashboard_phase.sql             ✔ aplicado en prod
 ├── shared_dashboard_invitations_phase.sql ✔ aplicado en prod
-├── shared_dashboard_cutover_final.sql    ✔ aplicado en prod
-├── mutations_audit_soft_delete_phase.sql ✔ aplicado en prod
-├── security_definer_hook_patch.sql       ✔ aplicado en prod 2026-05-03
-├── security_hardening_phase.sql          ✔ aplicado en prod 2026-05-03
-├── soft_delete_movimientos_phase.sql     ✔ aplicado en prod 2026-05-03
-├── telegram_multi_user_phase.sql         ✔ aplicado en prod 2026-05-04
-├── drive_oauth_phase.sql                 ✔ aplicado en prod 2026-05-07
-├── photo_ticket_phase.sql                ✔ aplicado en prod 2026-05-07
-├── drop_pending_extractions.sql          ✔ aplicado en prod 2026-05-08
-├── user_settings_phase.sql               ✔ aplicado en prod 2026-05-12
+├── shared_dashboard_cutover_final.sql     ✔ aplicado en prod
+├── mutations_audit_soft_delete_phase.sql  ✔ aplicado en prod
+├── security_definer_hook_patch.sql        ✔ aplicado en prod 2026-05-03
+├── security_hardening_phase.sql           ✔ aplicado en prod 2026-05-03
+├── soft_delete_movimientos_phase.sql      ✔ aplicado en prod 2026-05-03
+├── telegram_multi_user_phase.sql          ✔ aplicado en prod 2026-05-04
+├── drive_oauth_phase.sql                  ✔ aplicado en prod 2026-05-07
+├── photo_ticket_phase.sql                 ✔ aplicado en prod 2026-05-07
+├── drop_pending_extractions.sql           ✔ aplicado en prod 2026-05-08
+├── user_settings_phase.sql                ✔ aplicado en prod 2026-05-12
 ├── firebase.json
 ├── .firebaserc
 ├── Dockerfile
@@ -333,11 +362,16 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - `src/server/extractionReview.ts` → store en memoria + tarjeta revisión + inline keyboard para fotos
 - `src/server/gemini.ts` → prompts texto (whitelist intents) + prompts foto (RECEIPT/HANDWRITTEN/MULTI_RECEIPT)
 - `src/server/mediaGroupBuffer.ts` → debounce genérico `MediaGroupBuffer<T>` para álbumes Telegram
+- `src/server/rateLimit.ts` → `createRateLimiter` factory; 4 tiers; Map en memoria con sweep
 - `src/server/telegramAccess.ts` → resolución de identidad/permiso Telegram
 - `src/server/telegramMedia.ts` → `extractFromPhoto()`, `extractFromMultiplePhotos()`, `inferMediaMimeType()`
+- `src/server/telegramCompanyResolution.ts` → resolución de empresa por nombre desde bot
 - `src/server/validation.ts` → `PendingExtractionData`, `isPendingExtractionData`, `parseReportExportRequest`
 - `src/server/reportExports.ts` → generación real CSV/PDF
+- `src/server/types/express.d.ts` → module augmentation: `req.session` tipado como `AppSession`
 - `src/reports/shared.ts` → filtros y resolución de períodos compartidos
+- `src/components/ui/ModalShell.tsx` → base modal reutilizable con a11y completo
+- `src/components/ui/ConfirmModal.tsx` → diálogo de confirmación genérico; reemplaza `window.confirm`
 
 ### 6.2 Flujo principal
 1. usuario escribe texto libre o usa dashboard
@@ -414,8 +448,7 @@ Helper: `can(member: MemberContext, action: GranularAction): boolean`
 
 ## 8. Dashboard web — estado real
 
-Archivo principal:
-- `/Users/damian/Dev/Boteado/src/DashboardApp.tsx`
+Archivo principal: `src/DashboardApp.tsx`
 
 ### Tabs actuales reales
 - Resumen
@@ -424,6 +457,7 @@ Archivo principal:
 - Ingresos
 - Informes
 - Movimientos
+- Configuración
 
 ### Cambios UX aplicados
 - tab nav **móvil**: scroll horizontal compacto (icon + label, sin descripción)
@@ -433,6 +467,12 @@ Archivo principal:
 - `Movimientos`: filtro combinado empresa/tipo/moneda
 - lo nuevo entra `conciliado` por defecto
 - **dark mode completo** — todos los componentes responden a `[data-theme="dark"]`
+- **tab activo persistido** en localStorage (`caja-chica:active-tab`) — refresh no pierde la posición
+
+### ConfiguracionTab — secciones (orden actual)
+1. **Preferencias**: tema (Claro/Oscuro/Sistema), moneda default (ARS/USD), empresa default, hora del recordatorio
+2. **Miembros**: gestión de colaboradores del dashboard
+3. **Cuenta**: nombre visible (display_name), exportar datos (GDPR), sesiones activas, borrar cuenta
 
 ---
 
@@ -456,7 +496,7 @@ Archivo principal:
 
 ## 10. Backend HTTP — endpoints
 
-Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
+Archivo principal: `src/server/app.ts`
 
 ### Salud
 - `GET /api/health`
@@ -465,8 +505,8 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `GET /api/me` — retorna `id`, `email`, `role`, `status`, `display_name`, `notification_hour`
 - `PATCH /api/me` — actualiza `display_name` y/o `notification_hour`
 - `GET /api/me/export` — JSON dump (movimientos, empresas, categorías) para GDPR
-- `GET /api/me/sessions` — lista sesiones auth activas (via `get_my_sessions` RPC)
-- `DELETE /api/me/sessions/:id` — revoca sesión puntual (via `delete_user_session` RPC)
+- `GET /api/me/sessions` — lista sesiones auth activas + `currentSessionId` (via `get_my_sessions` RPC)
+- `DELETE /api/me/sessions/:id` — revoca sesión puntual; 400 si el id es la sesión del caller (anti self-lockout)
 - `DELETE /api/me` — elimina cuenta: borra membresías + `supabase.auth.admin.deleteUser()`
 
 ### Extracción IA
@@ -477,7 +517,7 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `GET /api/movimientos?limit=50&before=<ISO_DATE>`
 - `DELETE /api/movimientos/:id` — soft delete con auditoría
 - `DELETE /api/movimientos/last` — soft delete con auditoría
-- `DELETE /api/movimientos/all` *(peligrosa, bloqueada por defecto — ahora scopeada al dashboard del caller)*
+- `DELETE /api/movimientos/all` *(peligrosa, bloqueada por defecto — scopeada al dashboard del caller)*
 - `PATCH /api/movimientos/:id`
 - `POST /api/movimientos/:id/conciliar`
 
@@ -509,7 +549,7 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `GET /api/bot/connection`
 - `POST /api/bot/connection/link-token`
 
-### Telegram multiusuario (nuevo)
+### Telegram multiusuario
 - `GET /api/telegram/links` — lista vínculos del dashboard
 - `POST /api/telegram/invite` — genera invite token (owner o editor con `invite_telegram`)
 - `POST /api/telegram/links/:id/confirm` — owner confirma vínculo pendiente
@@ -537,7 +577,7 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 
 ## 11. Bot de Telegram — estado real
 
-Runtime: `/Users/damian/Dev/Boteado/server.ts`
+Runtime: `server.ts`
 
 ### Capacidades principales
 - `/start` — vinculación con token (owner: one-shot; editor/viewer: doble-factor)
@@ -582,8 +622,9 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 12. Cron jobs
 
-### Recordatorio diario
-- cron: `0 21 * * *`
+### Recordatorio de notificación (hourly)
+- cron: `0 * * * *` (cada hora, cambio desde `0 21 * * *`)
+- filtra usuarios por `notification_hour === hora UTC actual`
 - `for...of` con try/catch por usuario (no forEach)
 
 ### Recurrentes
@@ -662,7 +703,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | Audit log bulk delete: UUID sentinel + entityType `movimientos_bulk` | `src/server/app.ts` |
 | `DASHBOARD_URL` ausente: warning al arrancar si Drive habilitado | `src/server/app.ts` |
 
-### Deuda de seguridad restante (baja prioridad)
+### Deuda de seguridad restante
 - (ninguna pendiente)
 
 ---
@@ -672,6 +713,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 ### Frontend
 - Firebase Hosting / proyecto: `caja-chica-bot` (default en `.firebaserc`)
 - URL prod: `https://caja-chica-bot.web.app`
+- Headers de caché: `Cache-Control: public, max-age=31536000, immutable` en `/assets/**`
+- Headers de seguridad: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
 
 ### Backend
 - Cloud Run / proyecto GCP: `caja-chica-bot`
@@ -689,8 +732,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | Deploy frontend Firebase Hosting | ✔ deployado 2026-05-08 en `caja-chica-bot.web.app` |
 | `drop_pending_extractions.sql` en Supabase prod | ✔ aplicado 2026-05-08 |
 | `user_settings_phase.sql` en Supabase prod | ✔ aplicado 2026-05-12 |
-| Deploy frontend Firebase Hosting (user settings) | ✔ deployado 2026-05-12 |
-| Deploy backend Cloud Run (user settings) | ✔ deployado 2026-05-12 |
+| Deploy frontend Firebase Hosting (user settings + security headers) | ✔ deployado 2026-05-12 |
+| Deploy backend Cloud Run (user settings + session self-lockout) | ✔ deployado 2026-05-12 |
 
 ---
 
@@ -741,23 +784,26 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 - Variables: `--app-canvas`, `--app-surface-1/2/3/4`, `--app-border`, `--app-text-1/2/3/4`
 - `@layer utilities` con `!important` mapea clases Tailwind → variables
 - Base layer: `input`, `select`, `textarea`, `option` usan variables globalmente
+- Tema `system` disponible desde user settings: `matchMedia` listener activo mientras preferencia === `'system'`
 
 ---
 
 ## 18. Testing real
 
 ### Estado actual
-- `node --import tsx --test tests/**/*.test.ts` → **145/147 OK** (2 skip intencionales, 0 fail)
+- `node --import tsx --test tests/**/*.test.ts` → **154/156 OK** (2 skip intencionales, 0 fail)
 - Runner no cuelga — sweeps usan `unrefInterval`
 
 ### Cobertura relevante
 - CORS, auth básica, invitaciones/admin, budgets, paginación
 - dashboard compartido, restricciones viewer/editor
+- superadmin: status toggles, force-logout, role changes, permission toggles
 - Telegram access model multiusuario (incluyendo expiración de token, pivot guard)
-- can() helper — 11 tests de permisos granulares
+- `can()` helper — 11 tests de permisos granulares
 - edición y borrado auditado, conciliación
 - export CSV/PDF, historial de exportaciones
 - summary helpers, env loading
+- resolución de empresa desde bot (telegramCompanyResolution)
 - `inferMediaMimeType` — mime explicit, extension fallback, null cases
 - `parsePhotoExtractionResult` / `parseMultiPhotoExtractionResult` — JSON válido/inválido, confidence clamping, markdown fences
 - `extractFromPhoto` mock integration — upload/generateContent/delete lifecycle, retry con handwritten prompt
@@ -765,6 +811,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 - Drive OAuth: encrypt/decrypt round-trip, canConnectDrive por role, canExportDrive editor+permiso, callback state, disconnect
 - Rate limiter: allow/block, headers X-RateLimit-*, key isolation, window reset
 - Extraction review store: TTL, editingField transitions, buildReviewCardText, buildReviewKeyboard
+- User settings: display_name, notification_hour, sessions list + self-lockout guard, export, delete account
 
 ---
 
@@ -789,6 +836,8 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 17. álbumes Telegram: debounce 1500ms porque cada foto llega en update separado; un solo call a Gemini para el batch
 18. `pending_extractions` tabla borrada — sesiones foto/ticket viven en Map en memoria. **Single-instance invariant**: Cloud Run max=1. Si autoscale > 1, migrar Map → tabla Supabase.
 19. Tests corren con `node --import tsx --test` — Node.js runner nativo, sin Jest/Vitest
+20. `DELETE /api/me/sessions/:id` compara contra `AppSession.sessionId` (claim JWT) — previene auto-lockout sin tabla de sesiones propias
+21. Assets Vite tienen hash de contenido en el nombre → `max-age=31536000, immutable` es seguro
 
 ---
 
@@ -805,25 +854,30 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 21. Archivos clave para abrir primero
 
-- `/Users/damian/Dev/Boteado/CLAUDE.md`
-- `/Users/damian/Dev/Boteado/src/DashboardApp.tsx`
-- `/Users/damian/Dev/Boteado/src/server/app.ts`
-- `/Users/damian/Dev/Boteado/src/server/permissions.ts`
-- `/Users/damian/Dev/Boteado/src/server/telegramAccess.ts`
-- `/Users/damian/Dev/Boteado/src/server/telegramMedia.ts`
-- `/Users/damian/Dev/Boteado/src/server/extractionReview.ts`
-- `/Users/damian/Dev/Boteado/src/server/mediaGroupBuffer.ts`
-- `/Users/damian/Dev/Boteado/src/server/drive.ts`
-- `/Users/damian/Dev/Boteado/src/server/gemini.ts`
-- `/Users/damian/Dev/Boteado/src/server/email.ts`
-- `/Users/damian/Dev/Boteado/src/server/reportExports.ts`
-- `/Users/damian/Dev/Boteado/src/reports/shared.ts`
-- `/Users/damian/Dev/Boteado/src/services/api.ts`
-- `/Users/damian/Dev/Boteado/server.ts`
-- `/Users/damian/Dev/Boteado/tests/api.test.ts`
+- `CLAUDE.md`
+- `src/DashboardApp.tsx`
+- `src/server/app.ts`
+- `src/server/permissions.ts`
+- `src/server/rateLimit.ts`
+- `src/server/telegramAccess.ts`
+- `src/server/telegramMedia.ts`
+- `src/server/extractionReview.ts`
+- `src/server/mediaGroupBuffer.ts`
+- `src/server/drive.ts`
+- `src/server/gemini.ts`
+- `src/server/email.ts`
+- `src/server/reportExports.ts`
+- `src/server/types/express.d.ts`
+- `src/reports/shared.ts`
+- `src/services/api.ts`
+- `src/components/ui/ModalShell.tsx`
+- `src/components/ui/ConfirmModal.tsx`
+- `src/components/dashboard/tabs/ConfiguracionTab.tsx`
+- `server.ts`
+- `tests/api.test.ts`
 
 ---
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). Sin pendientes de infra. Último commit: `c65ce13` (user settings: display name, notification hour, sessions, export, delete account). Próximo: CUIT matching en bot Telegram.
+> Leé `CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). Sin pendientes de infra. Último commit: `5274ae4` (Firebase security headers). Próximo: CUIT matching en bot Telegram.

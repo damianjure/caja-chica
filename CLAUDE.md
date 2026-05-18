@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-12 (post ConfiguracionTab reorder + new owner fresh start)
+## Fuente de verdad única — 2026-05-18 (post onboarding por invitación + modo demo)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -79,6 +79,36 @@ Integraciones principales:
 - Backend ✔ deployado en Cloud Run
 - Tests: 156 total / 154 pass / 2 skip / 0 fail
 
+### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
+- **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
+  - `empresas.is_demo boolean not null default false`
+  - `movimientos.is_demo boolean not null default false`
+  - `app_users.onboarding_state text default 'pending' check(pending,seeded,completed,cleaned)`
+  - índices parciales en `is_demo=true` para bulk-delete rápido
+- **`src/server/demoSeed.ts`** — nuevo:
+  - `ensurePersonalDashboard(supabase, session)` — bootstrap `dashboards` + `dashboard_members owner` para cuentas nuevas (resuelve dashboard_id NOT NULL post-cutover)
+  - `seedDemoData(supabase, session, dashboardId)` — Empresa Demo SA + 10 movimientos ARS is_demo:true
+  - `purgeDemoData(supabase, session, dashboardId)` — bulk-delete is_demo=true, set state=cleaned
+- **Backend `app.ts`**:
+  - `ensureOnboardingSeed` hook en `requireSession` — corre una vez por proceso para cuentas member con state=pending
+  - `GET /api/me` — retorna `onboarding_state`
+  - `PATCH /api/me` — acepta `onboarding_state` (solo completed|cleaned, no pending/seeded)
+  - `DELETE /api/me/demo-data` — nuevo endpoint, purga is_demo del dashboard del caller
+  - `POST /api/admin/invitations` — TTL 7 días en `expires_at` + 409 guard para duplicados activos
+  - `POST /api/dashboard/invitations` — auto-purge demo al primer invite (cuando state=seeded)
+- **Frontend**:
+  - `WelcomeWizard.tsx` — modal 3 pasos: bienvenida → tour demo → Telegram opcional (skippeable)
+  - `DashboardApp.tsx` — monta wizard cuando `onboarding_state in (pending, seeded)`
+  - `ConfiguracionTab.tsx` — botón "Limpiar datos de ejemplo" visible cuando state=seeded/pending
+  - `api.ts` — `OnboardingState` type, `deleteDemoData()`, `onboarding_state` en `AppViewer`
+- **Tests**: stub con `.gt()`, fix shape `/api/me`. 154 pass / 2 skip / 0 fail
+
+### Arquitectura onboarding — notas clave
+- `app_role` enum = `(superadmin,admin,member)` — NO existe `owner`. "Owner" = legacy self-scope (sin dashboard_members row).
+- Nuevos usuarios invitados como `member` operan self-scoped; se vuelven owner de dashboard al invitar editor/viewer.
+- `dashboard_id NOT NULL` post-cutover → `ensurePersonalDashboard` crea el dashboard ANTES del seed.
+- Seed punto de entrada: `requireSession` en backend (no en auth trigger ni en frontend).
+
 ### Cambios 2026-05-08 (primera ronda — hosting + design)
 - **Hosting migration**: `balancediario` (proyecto roto) → `caja-chica-bot`. URLs hardcodeadas actualizadas.
 - **Drive permissions split**: `canUseDrive` desaparece. Ahora `canConnectDrive` (sync, solo owners) + `canExportDrive` (async, owners + editors con `export_drive`) + `resolveDriveOwnerUserId` (busca token del owner para editor).
@@ -136,6 +166,7 @@ Integraciones principales:
 
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
+2. **Aplicar `onboarding_demo_phase.sql` en Supabase prod** antes de deployar los commits `df3ad5c`/`9310cf6`/`44703ad`
 
 ---
 
@@ -249,6 +280,7 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 │   │   ├── CollaborationPanel.tsx ← toggles permisos + invitación Telegram + vínculos
 │   │   ├── LoginScreen.tsx
 │   │   ├── ThemeToggle.tsx
+│   │   ├── WelcomeWizard.tsx      ← wizard 3 pasos onboarding (bienvenida, tour demo, Telegram opcional)
 │   │   └── dashboard/
 │   │       ├── Charts.tsx
 │   │       ├── LoadingStates.tsx
@@ -267,6 +299,7 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 │   │   └── shared.ts
 │   ├── server/
 │   │   ├── app.ts
+│   │   ├── demoSeed.ts            ← ensurePersonalDashboard() + seedDemoData() + purgeDemoData()
 │   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
 │   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Resend
 │   │   ├── env.ts
@@ -462,8 +495,9 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `GET /api/health`
 
 ### Sesión / cuenta
-- `GET /api/me` — retorna `id`, `email`, `role`, `status`, `display_name`, `notification_hour`
-- `PATCH /api/me` — actualiza `display_name` y/o `notification_hour`
+- `GET /api/me` — retorna `id`, `email`, `role`, `status`, `display_name`, `notification_hour`, `onboarding_state`
+- `PATCH /api/me` — actualiza `display_name`, `notification_hour` y/o `onboarding_state` (solo `completed`|`cleaned`)
+- `DELETE /api/me/demo-data` — purga registros `is_demo=true` del dashboard del caller; set `onboarding_state=cleaned`
 - `GET /api/me/export` — JSON dump (movimientos, empresas, categorías) para GDPR
 - `GET /api/me/sessions` — lista sesiones auth activas (via `get_my_sessions` RPC)
 - `DELETE /api/me/sessions/:id` — revoca sesión puntual (via `delete_user_session` RPC)
@@ -612,6 +646,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `photo_ticket_phase.sql` | ✔ prod 2026-05-07 |
 | `drop_pending_extractions.sql` | ✔ aplicado en prod 2026-05-08 |
 | `user_settings_phase.sql` | ✔ prod 2026-05-12 |
+| `onboarding_demo_phase.sql` | ⚠ pendiente aplicar en prod |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)
@@ -826,4 +861,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). Sin pendientes de infra. Último commit: `c65ce13` (user settings: display name, notification hour, sessions, export, delete account). Próximo: CUIT matching en bot Telegram.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). **Pendiente de infra: aplicar `onboarding_demo_phase.sql` en Supabase prod antes de deployar.** Últimos commits: `df3ad5c`/`9310cf6`/`44703ad` (onboarding por invitación: bootstrap dashboard, seed demo, WelcomeWizard, TTL invitaciones). Pendientes de features: CUIT matching en bot Telegram, presupuesto UI.

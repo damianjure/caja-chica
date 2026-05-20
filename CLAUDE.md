@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-18 (post onboarding por invitación + modo demo)
+## Fuente de verdad única — 2026-05-20 (post Brevo + impeccable polish + onboarding live)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -69,9 +69,10 @@ Integraciones principales:
   - flujo inline keyboard: tarjeta de revisión → editar campo por campo → confirmar → guardar
   - `empresas.cuit` agregado — campo extra para matching futuro
   - sessions en Map con TTL 10 min + sweep cada 5 min
-- **Email de invitaciones** — ✔ implementado (2026-05-07):
-  - invitaciones de app y de dashboard disparan email vía Resend
+- **Email de invitaciones** — ✔ deployado (Brevo desde 2026-05-20):
+  - invitaciones de app y de dashboard disparan email vía Brevo (`POST https://api.brevo.com/v3/smtp/email`)
   - `src/server/email.ts`: `sendAppInvitationEmail()` y `sendDashboardInvitationEmail()`
+  - sin SDK extra, `fetch` directo + graceful fallback si `BREVO_API_KEY` ausente
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
 ### Estado deploy (2026-05-12)
@@ -164,9 +165,42 @@ Integraciones principales:
 - **A11y (Chunk 3)**: `text-neutral-400` → `text-neutral-500` en 11 archivos, aria-labels en icon-only buttons, aria-live en regiones dinámicas
 - **Tests**: 9 nuevos (total 154 pass / 2 skip / 0 fail)
 
+### Cambios 2026-05-20 (Brevo + impeccable polish + onboarding live)
+- **`onboarding_demo_phase.sql`** ✔ aplicada en Supabase prod 2026-05-20 vía MCP supabase. Verificado vía `information_schema`: 3 columnas + 2 índices parciales.
+- **Email delivery: Resend → Brevo** (commit `71f9ed4`):
+  - `src/server/email.ts` reescrito con `fetch` directo a `POST https://api.brevo.com/v3/smtp/email`
+  - Dep `resend` removida de `package.json`
+  - Env vars nuevas: `BREVO_API_KEY`, `FROM_EMAIL` (default `hola@damianjure.com`), `FROM_NAME` (default `Caja Chica`)
+  - Graceful fallback si `BREVO_API_KEY` ausente (warn + return sin throw)
+  - Sender verificado en Brevo: `Damian Jure <hola@damianjure.com>`
+- **Impeccable audit fixes** (commit `71805b5`):
+  - `index.html`: preconnect + preload Inter en `<head>` (paralelo a JS); removido `@import` bloqueante del CSS
+  - `src/index.css` `@theme`: tokens `--ease-out-quart/quint/expo`, `--duration-instant/quick/base/slow`
+  - `@layer base`: default global `transition-timing-function: ease-out-quart` + `duration: 180ms` en `*`
+  - `::selection` y `:focus-visible` tinted con `color-mix(in srgb, --app-text-1...)`
+  - `text-rendering: optimizeLegibility` + `-webkit-font-smoothing: antialiased`
+- **Impeccable polish + spacing rhythm** (commit `f2972c1`):
+  - `ModalShell.tsx`: backdrop tinteado (mix `--app-text-1` 42%) + `backdrop-blur-[2px]`; botón close `h-11 w-11` (44px touch target WCAG)
+  - `PlaceholderPanel`: border más suave, padding asimétrico `px-5 py-4`, `leading-relaxed`
+  - `SectionCard`: header `<header mb-6>` + body `space-y-5`, `max-w-prose` description, heading `tracking-tight`, padding `px-6 py-7 md:px-8 md:py-9`
+  - `MetricCard`: padding `px-5 py-4`, label `mb-2`, valor con `tracking-tight tabular-nums`
+  - `index.css` `@theme`: tokens semánticos `--space-tight/snug/comfort/relaxed/section/hero`
+  - `@layer utilities`: stacks `.stack-tight/.stack-snug/.stack-comfort/.stack-relaxed/.stack-section/.stack-hero` + densidades fila `.row-compact/.row-comfort/.row-airy`
+- **SDD artifacts archived** (commit `77ffbef`): `openspec/` + `docs/specs/sdd-init.md` committed; `.gitignore` extendido (`.firebase/`, `.claire/`, `.claude/worktrees/`)
+- **Deploys 2026-05-20**:
+  - Backend Cloud Run revision `caja-chica-00012-xxv` (Brevo + env vars `BREVO_API_KEY` + `FROM_EMAIL` + `FROM_NAME`)
+  - Frontend Firebase Hosting deployado 3× (post-onboarding, post-audit, post-polish)
+- **Tests**: 156 total / 154 pass / 2 skip / 0 fail (verificado post-refactor Brevo)
+- **AGENTS.md**: detectado desactualizado (snapshot 2026-05-07). Mantener CLAUDE.md como única fuente de verdad. AGENTS.md deprecado.
+
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
-2. **Aplicar `onboarding_demo_phase.sql` en Supabase prod** antes de deployar los commits `df3ad5c`/`9310cf6`/`44703ad`
+2. Test envío real de email vía Brevo (sistema deployado, no probado in-vivo todavía)
+3. Validar onboarding wizard end-to-end con cuenta nueva real
+4. Spacing rhythm tokens listos, no aplicados aún a ConfiguracionTab (963 líneas) / InformesTab (378 líneas)
+5. Audit follow-ups skippeados: escala tipográfica ratio ≥1.25 (afecta `text-base` global), migración hex → OKLCH, self-host Inter Variable, sistema radius semántico
+6. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión pendiente: implementar o eliminar
+7. Cleanup eventual del proyecto GCP `balancediario` (restaurado pero unused)
 
 ---
 
@@ -646,7 +680,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `photo_ticket_phase.sql` | ✔ prod 2026-05-07 |
 | `drop_pending_extractions.sql` | ✔ aplicado en prod 2026-05-08 |
 | `user_settings_phase.sql` | ✔ prod 2026-05-12 |
-| `onboarding_demo_phase.sql` | ⚠ pendiente aplicar en prod |
+| `onboarding_demo_phase.sql` | ✔ prod 2026-05-20 |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)
@@ -761,8 +795,10 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 - `GOOGLE_DRIVE_REDIRECT_URI` ← debe ser `https://caja-chica-442790495206.us-west2.run.app/api/drive/callback`
 - `TOKEN_ENCRYPTION_KEY` ← base64 de 32 bytes: `openssl rand -base64 32`
 
-### Email (Resend)
-- `RESEND_API_KEY` ← requerida para envío de emails de invitación
+### Email (Brevo) ← migrado 2026-05-20
+- `BREVO_API_KEY` ← requerida para envío de emails de invitación (formato `xkeysib-...`)
+- `FROM_EMAIL` ← default `hola@damianjure.com` (sender verificado en Brevo)
+- `FROM_NAME` ← default `Caja Chica`
 
 ### Runtime general
 - `PORT`
@@ -861,4 +897,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run (`caja-chica-bot`). Tests: 154/156 (0 fail). **Pendiente de infra: aplicar `onboarding_demo_phase.sql` en Supabase prod antes de deployar.** Últimos commits: `df3ad5c`/`9310cf6`/`44703ad` (onboarding por invitación: bootstrap dashboard, seed demo, WelcomeWizard, TTL invitaciones). Pendientes de features: CUIT matching en bot Telegram, presupuesto UI.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00012-xxv`. Tests: 154/156 (0 fail). Migration `onboarding_demo_phase.sql` ✔ aplicada en prod 2026-05-20. Email vía Brevo (`hola@damianjure.com`). Últimos commits: `71f9ed4` (Brevo), `f2972c1` (polish+spacing), `71805b5` (audit). Pendiente: test envío real email, validar wizard onboarding end-to-end, CUIT matching, aplicar spacing rhythm en tabs grandes, audit follow-ups (OKLCH/type scale/font self-host/radius).

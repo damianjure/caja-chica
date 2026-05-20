@@ -16,63 +16,71 @@
   --space-relaxed: 1.5rem;
   --space-section: 2rem;
   --space-hero: 3rem;
+  --radius-pill: 9999px;
+  --radius-input: 0.625rem;
+  --radius-card: 1rem;
+  --radius-hero: 1.75rem;
 }
 
 @layer base {
+  /* Color tokens in OKLCH (perceptually uniform).
+     Light: warm cream neutrals tinted hue ≈76 (yellow-orange).
+     Dark: cool blue-grey neutrals tinted hue ≈264.
+     Chroma kept low near extremes (luminance 0.19 / 0.98) per OKLCH design law. */
   :root {
-    --app-canvas: #f5f3ee;
-    --app-surface-1: #fbfaf7;
-    --app-surface-2: #f3f0ea;
-    --app-surface-3: #ebe6de;
-    --app-surface-4: #e2dbd1;
-    --app-border: #ddd6cc;
-    --app-border-strong: #c8bfb3;
-    --app-text-1: #1f1d1a;
-    --app-text-2: #514b43;
-    --app-text-3: #7a7167;
-    --app-text-4: #a1968b;
-    --app-strong-surface: #1f1d1a;
-    --app-strong-text: #f8f6f2;
-    --app-red-surface: #fff1ef;
-    --app-red-border: #f5c8c2;
-    --app-red-text: #b24839;
-    --app-green-surface: #eef9f0;
-    --app-green-border: #c8e6cf;
-    --app-green-text: #2e7d46;
-    --app-amber-surface: #fff7e8;
-    --app-amber-border: #f1d8a5;
-    --app-amber-text: #9a6617;
-    --app-blue-surface: #edf5ff;
-    --app-blue-border: #c7dcff;
-    --app-blue-text: #315ea8;
+    --app-canvas: oklch(96.1% 0.008 76);
+    --app-surface-1: oklch(98% 0.005 76);
+    --app-surface-2: oklch(94.5% 0.008 76);
+    --app-surface-3: oklch(91.1% 0.011 76);
+    --app-surface-4: oklch(87.1% 0.013 76);
+    --app-border: oklch(85.2% 0.014 76);
+    --app-border-strong: oklch(77% 0.017 75);
+    --app-text-1: oklch(21.4% 0.006 70);
+    --app-text-2: oklch(38% 0.011 75);
+    --app-text-3: oklch(51.1% 0.013 76);
+    --app-text-4: oklch(65.2% 0.015 76);
+    --app-strong-surface: oklch(21.4% 0.006 70);
+    --app-strong-text: oklch(96.9% 0.006 76);
+    --app-red-surface: oklch(95.7% 0.018 25);
+    --app-red-border: oklch(84.7% 0.052 25);
+    --app-red-text: oklch(51.5% 0.150 30);
+    --app-green-surface: oklch(96.2% 0.024 145);
+    --app-green-border: oklch(88.1% 0.058 150);
+    --app-green-text: oklch(49.1% 0.115 150);
+    --app-amber-surface: oklch(97.4% 0.022 85);
+    --app-amber-border: oklch(88% 0.062 85);
+    --app-amber-text: oklch(49% 0.108 70);
+    --app-blue-surface: oklch(96.5% 0.018 250);
+    --app-blue-border: oklch(86.4% 0.054 252);
+    --app-blue-text: oklch(47% 0.110 258);
   }
 
   [data-theme="dark"] {
-    --app-canvas: #151516;
-    --app-surface-1: #1d1f22;
-    --app-surface-2: #24272b;
-    --app-surface-3: #2d3136;
-    --app-surface-4: #3a3f46;
-    --app-border: #3d424d;
-    --app-border-strong: #555d6a;
-    --app-text-1: #f4f5f6;
-    --app-text-2: #d2d6dc;
-    --app-text-3: #aab2bc;
-    --app-text-4: #7f8994;
-    --app-strong-surface: #f4f5f6;
-    --app-strong-text: #151516;
-    --app-red-surface: #342321;
-    --app-red-border: #623732;
-    --app-red-text: #ffb0a3;
-    --app-green-surface: #1f3125;
-    --app-green-border: #345840;
-    --app-green-text: #97e2a9;
-    --app-amber-surface: #342b1d;
-    --app-amber-border: #685336;
-    --app-amber-text: #f3d089;
-    --app-blue-surface: #1c2837;
-    --app-blue-border: #314967;
-    --app-blue-text: #a8c8ff;
+    --app-canvas: oklch(19% 0.003 274);
+    --app-surface-1: oklch(23.2% 0.005 268);
+    --app-surface-2: oklch(26.6% 0.008 268);
+    --app-surface-3: oklch(30.5% 0.011 268);
+    --app-surface-4: oklch(37.2% 0.013 264);
+    --app-border: oklch(37.8% 0.016 268);
+    --app-border-strong: oklch(47.5% 0.020 264);
+    --app-text-1: oklch(96.4% 0.003 264);
+    --app-text-2: oklch(85.3% 0.008 264);
+    --app-text-3: oklch(73.1% 0.013 264);
+    --app-text-4: oklch(58.3% 0.018 264);
+    --app-strong-surface: oklch(96.4% 0.003 264);
+    --app-strong-text: oklch(19% 0.003 274);
+    --app-red-surface: oklch(26.2% 0.025 30);
+    --app-red-border: oklch(38.5% 0.054 30);
+    --app-red-text: oklch(81.5% 0.080 30);
+    --app-green-surface: oklch(29% 0.034 155);
+    --app-green-border: oklch(40.5% 0.058 150);
+    --app-green-text: oklch(84.6% 0.108 150);
+    --app-amber-surface: oklch(26.2% 0.024 70);
+    --app-amber-border: oklch(42% 0.055 70);
+    --app-amber-text: oklch(86% 0.090 80);
+    --app-blue-surface: oklch(25% 0.034 258);
+    --app-blue-border: oklch(38.8% 0.066 258);
+    --app-blue-text: oklch(81.2% 0.080 252);
   }
 
   html {

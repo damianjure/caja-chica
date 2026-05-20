@@ -1,15 +1,16 @@
-import { Resend } from "resend";
+// Email delivery via Brevo (formerly Sendinblue) transactional API.
+// Endpoint: POST https://api.brevo.com/v3/smtp/email
+// Auth: header `api-key`
+// Docs: https://developers.brevo.com/reference/sendtransacemail
 
-let _client: Resend | null = null;
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
-function getClient(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  if (!_client) _client = new Resend(key);
-  return _client;
+const FROM_EMAIL = process.env.FROM_EMAIL ?? "hola@damianjure.com";
+const FROM_NAME = process.env.FROM_NAME ?? "Caja Chica";
+
+function getApiKey(): string | null {
+  return process.env.BREVO_API_KEY ?? null;
 }
-
-const FROM = process.env.FROM_EMAIL ?? "Caja Chica <onboarding@resend.dev>";
 
 function escapeHtml(str: string): string {
   return str
@@ -152,20 +153,45 @@ function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: 
   return baseTemplate("Te invitaron a un dashboard en Caja Chica", body);
 }
 
-export async function sendAppInvitationEmail(to: string, inviteUrl: string): Promise<void> {
-  const client = getClient();
-  if (!client) {
-    console.warn("[email] RESEND_API_KEY not set — skipping invitation email to", to);
+async function sendViaBrevo(to: string, subject: string, htmlContent: string): Promise<void> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn("[email] BREVO_API_KEY not set — skipping email to", to);
     return;
   }
-  const { error } = await client.emails.send({
-    from: FROM,
-    to,
-    subject: "Te invitaron a Caja Chica",
-    html: appInvitationHtml(inviteUrl),
-  });
-  if (error) console.error("[email] Failed to send app invitation to", to, error);
-  else console.log("[email] App invitation sent to", to);
+
+  const payload = {
+    sender: { name: FROM_NAME, email: FROM_EMAIL },
+    to: [{ email: to }],
+    subject,
+    htmlContent,
+  };
+
+  try {
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => "<no body>");
+      console.error("[email] Brevo send failed", { to, status: res.status, body: errorBody });
+      return;
+    }
+
+    console.log("[email] Sent to", to, "subject:", subject);
+  } catch (err) {
+    console.error("[email] Brevo request error", { to, err });
+  }
+}
+
+export async function sendAppInvitationEmail(to: string, inviteUrl: string): Promise<void> {
+  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl));
 }
 
 export async function sendDashboardInvitationEmail(
@@ -174,17 +200,9 @@ export async function sendDashboardInvitationEmail(
   role: string,
   inviterEmail: string,
 ): Promise<void> {
-  const client = getClient();
-  if (!client) {
-    console.warn("[email] RESEND_API_KEY not set — skipping dashboard invitation email to", to);
-    return;
-  }
-  const { error } = await client.emails.send({
-    from: FROM,
+  await sendViaBrevo(
     to,
-    subject: `${inviterEmail} te invitó a su dashboard en Caja Chica`, // subject is plain text, no escape needed
-    html: dashboardInvitationHtml(inviteUrl, role, inviterEmail),
-  });
-  if (error) console.error("[email] Failed to send dashboard invitation to", to, error);
-  else console.log("[email] Dashboard invitation sent to", to);
+    `${inviterEmail} te invitó a su dashboard en Caja Chica`,
+    dashboardInvitationHtml(inviteUrl, role, inviterEmail),
+  );
 }

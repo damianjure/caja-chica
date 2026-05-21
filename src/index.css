@@ -73,23 +73,26 @@
 
 @layer base {
   /* Color tokens in OKLCH (perceptually uniform).
-     Light: warm cream neutrals tinted hue ≈76 (yellow-orange).
-     Dark: cool blue-grey neutrals tinted hue ≈264.
-     Chroma kept low near extremes (luminance 0.19 / 0.98) per OKLCH design law. */
+     Palette "Bosque & Niebla" (2026-05-21):
+       Light: desaturated sage-grey neutrals tinted hue ≈155-165.
+       Dark: cool green-grey neutrals tinted hue ≈158-165.
+       Chroma kept low near extremes per OKLCH design law.
+     Semantic pills (red/green/amber/blue below) keep their hues — they
+     differentiate movement types and must stay distinct from the neutral palette. */
   :root {
-    --app-canvas: oklch(96.1% 0.008 76);
-    --app-surface-1: oklch(98% 0.005 76);
-    --app-surface-2: oklch(94.5% 0.008 76);
-    --app-surface-3: oklch(91.1% 0.011 76);
-    --app-surface-4: oklch(87.1% 0.013 76);
-    --app-border: oklch(85.2% 0.014 76);
-    --app-border-strong: oklch(77% 0.017 75);
-    --app-text-1: oklch(21.4% 0.006 70);
-    --app-text-2: oklch(38% 0.011 75);
-    --app-text-3: oklch(51.1% 0.013 76);
-    --app-text-4: oklch(65.2% 0.015 76);
-    --app-strong-surface: oklch(21.4% 0.006 70);
-    --app-strong-text: oklch(96.9% 0.006 76);
+    --app-canvas: oklch(95.5% 0.008 155);
+    --app-surface-1: oklch(98.5% 0.005 155);
+    --app-surface-2: oklch(93.5% 0.009 155);
+    --app-surface-3: oklch(89% 0.012 155);
+    --app-surface-4: oklch(85% 0.014 155);
+    --app-border: oklch(85% 0.014 155);
+    --app-border-strong: oklch(77% 0.018 157);
+    --app-text-1: oklch(23% 0.014 165);
+    --app-text-2: oklch(39% 0.016 160);
+    --app-text-3: oklch(52% 0.016 158);
+    --app-text-4: oklch(64% 0.014 156);
+    --app-strong-surface: oklch(23% 0.014 165);
+    --app-strong-text: oklch(97% 0.006 155);
     --app-red-surface: oklch(95.7% 0.018 25);
     --app-red-border: oklch(84.7% 0.052 25);
     --app-red-text: oklch(51.5% 0.150 30);
@@ -105,19 +108,19 @@
   }
 
   [data-theme="dark"] {
-    --app-canvas: oklch(19% 0.003 274);
-    --app-surface-1: oklch(23.2% 0.005 268);
-    --app-surface-2: oklch(26.6% 0.008 268);
-    --app-surface-3: oklch(30.5% 0.011 268);
-    --app-surface-4: oklch(37.2% 0.013 264);
-    --app-border: oklch(37.8% 0.016 268);
-    --app-border-strong: oklch(47.5% 0.020 264);
-    --app-text-1: oklch(96.4% 0.003 264);
-    --app-text-2: oklch(85.3% 0.008 264);
-    --app-text-3: oklch(73.1% 0.013 264);
-    --app-text-4: oklch(58.3% 0.018 264);
-    --app-strong-surface: oklch(96.4% 0.003 264);
-    --app-strong-text: oklch(19% 0.003 274);
+    --app-canvas: oklch(18.5% 0.009 165);
+    --app-surface-1: oklch(22.5% 0.011 162);
+    --app-surface-2: oklch(26.5% 0.013 160);
+    --app-surface-3: oklch(32% 0.015 158);
+    --app-surface-4: oklch(38% 0.017 156);
+    --app-border: oklch(36% 0.018 160);
+    --app-border-strong: oklch(47% 0.022 158);
+    --app-text-1: oklch(96% 0.008 155);
+    --app-text-2: oklch(84% 0.012 158);
+    --app-text-3: oklch(71% 0.014 160);
+    --app-text-4: oklch(58% 0.016 160);
+    --app-strong-surface: oklch(96% 0.008 155);
+    --app-strong-text: oklch(18.5% 0.009 165);
     --app-red-surface: oklch(26.2% 0.025 30);
     --app-red-border: oklch(38.5% 0.054 30);
     --app-red-text: oklch(81.5% 0.080 30);

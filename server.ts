@@ -816,9 +816,9 @@ if (bot) {
     );
   });
 
-  bot.command("menu", (ctx) => ctx.reply("📋 *Menú Principal*", { 
+  bot.command("menu", (ctx) => ctx.reply("📋 *Esto es lo que podés hacer*\n\nElegí una opción o escribí un movimiento como hablás. Tipo: `pagué 4500 de luz`.", {
     parse_mode: "Markdown",
-    reply_markup: mainKeyboard 
+    reply_markup: mainKeyboard
   }));
 
   bot.command("informes", (ctx) => startReportFlow(ctx));

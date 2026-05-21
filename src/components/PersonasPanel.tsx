@@ -28,6 +28,7 @@ import {
   type AppRole,
   type DashboardRole,
 } from "../services/labels";
+import { ConfirmModal } from "./ui/ConfirmModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -255,6 +256,13 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
+  // Pending confirmation: revoke or role change. Rendered as a ConfirmModal.
+  const [confirm, setConfirm] = useState<
+    | { kind: "revoke"; persona: PersonaRecord }
+    | { kind: "role"; persona: PersonaRecord; newRole: string }
+    | null
+  >(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -322,7 +330,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
   const handleChangeRole = async (persona: PersonaRecord, newRole: string) => {
     try {
       await api.updatePersonaRole(persona.id, newRole);
-      toast.success(`Rol actualizado a ${newRole}`);
+      toast.success(`Acceso actualizado a "${DASHBOARD_ROLE_LABELS[newRole as DashboardRole] ?? newRole}"`);
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo cambiar el rol.");
@@ -337,7 +345,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
       } else {
         await api.revokeDashboardInvitation(persona.id);
       }
-      toast.success("Revocado");
+      toast.success("Acceso quitado");
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo revocar.");
@@ -468,8 +476,8 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                   persona={persona}
                   onResend={() => void handleResend(persona)}
                   onCopyLink={() => void handleCopyLink(persona)}
-                  onChangeRole={(r) => void handleChangeRole(persona, r)}
-                  onRevoke={() => void handleRevoke(persona)}
+                  onChangeRole={(r) => setConfirm({ kind: "role", persona, newRole: r })}
+                  onRevoke={() => setConfirm({ kind: "revoke", persona })}
                   loadingResend={resendingId === persona.id}
                 />
 
@@ -481,6 +489,38 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           </div>
         )}
       </div>
+
+      {confirm?.kind === "revoke" && (
+        <ConfirmModal
+          title={`¿Quitar acceso a ${confirm.persona.email}?`}
+          description="Va a dejar de ver este dashboard. Sus movimientos y empresas siguen acá. Podés volver a invitarla cuando quieras."
+          confirmLabel={ACTION_LABELS.revoke}
+          tone="danger"
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            await handleRevoke(confirm.persona);
+            setConfirm(null);
+          }}
+        />
+      )}
+
+      {confirm?.kind === "role" && (
+        <ConfirmModal
+          title={`Cambiar acceso de ${confirm.persona.email}`}
+          description={
+            confirm.newRole === "editor"
+              ? "Va a poder ver y cargar movimientos. Sigue sin poder invitar gente."
+              : "Va a poder ver los movimientos, pero ya no cargar ni editar."
+          }
+          confirmLabel={ACTION_LABELS.changeRole}
+          tone="neutral"
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            await handleChangeRole(confirm.persona, confirm.newRole);
+            setConfirm(null);
+          }}
+        />
+      )}
     </div>
   );
 }

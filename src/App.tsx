@@ -193,6 +193,7 @@ export default function App() {
           isLoading={authLoading}
           theme={theme}
           onToggleTheme={handleToggleTheme}
+          blocked={!!session}
           buttonLabel={session ? "Reintentar acceso con Google" : "Entrar con Google"}
           secondaryActionLabel={session ? "Salir y usar otra cuenta" : undefined}
           onSecondaryAction={session ? handleSignOut : undefined}

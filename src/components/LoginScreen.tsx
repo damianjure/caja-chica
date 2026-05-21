@@ -20,6 +20,8 @@ interface LoginScreenProps {
   secondaryActionLabel?: string;
   onSecondaryAction?: () => Promise<void> | void;
   onLogin: () => Promise<void> | void;
+  /** When true: user is logged into Google but that account has no app access. */
+  blocked?: boolean;
 }
 
 export function LoginScreen({
@@ -30,6 +32,7 @@ export function LoginScreen({
   secondaryActionLabel,
   onSecondaryAction,
   onLogin,
+  blocked = false,
 }: LoginScreenProps) {
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans flex items-center justify-center p-4">
@@ -50,11 +53,21 @@ export function LoginScreen({
             <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
           </div>
 
-          <div className="space-y-2 text-sm text-neutral-600">
-            <p>
-              Entrá con la cuenta de Google que te invitaron. Otra cuenta no va a poder acceder.
-            </p>
-          </div>
+          {blocked ? (
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-neutral-900">Esta cuenta de Google no tiene acceso.</p>
+              <p className="text-neutral-600">
+                La invitación es para otra dirección. Salí y entrá con la cuenta exacta
+                con la que te invitaron.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 text-sm text-neutral-600">
+              <p>
+                Entrá con la cuenta de Google que te invitaron. Otra cuenta no va a poder acceder.
+              </p>
+            </div>
+          )}
 
           <button
             onClick={() => void onLogin()}

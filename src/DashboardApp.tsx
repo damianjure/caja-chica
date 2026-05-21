@@ -22,6 +22,7 @@ import {
   Repeat,
 } from 'lucide-react';
 import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
+import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
 import { getPendingCompanyAssignment } from './dashboard/companyAssignment';
@@ -789,8 +790,21 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {filteredHistory.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-2xl text-neutral-400">
           <MessageSquareText className="w-10 h-10 mb-3 opacity-25" />
-          <p className="font-medium text-neutral-500">{selectedCompany === 'all' ? 'Todavía no hay nada por acá.' : `No hay datos para "${selectedCompany}"`}</p>
-          <p className="text-sm mt-1">Escribí un movimiento en el campo de arriba.</p>
+          {selectedCompany === 'all' ? (
+            <>
+              <p className="font-medium text-neutral-500">Sin movimientos por ahora.</p>
+              <p className="text-sm mt-1">
+                {canWriteData
+                  ? 'Escribí un movimiento en el campo de arriba. Tipo: "pagué 4500 de luz".'
+                  : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-neutral-500">{`No hay datos para "${selectedCompany}"`}</p>
+              <p className="text-sm mt-1">Probá con otra empresa o sacá el filtro.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1100,7 +1114,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             <div className="flex items-center gap-3 self-start">
               <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
               <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5">
-                <span className="text-xs text-neutral-500 truncate max-w-[160px]">{viewer.email}</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs text-neutral-700 truncate max-w-[200px]">{viewer.email}</span>
+                  <span className="text-[10px] text-neutral-400 truncate max-w-[200px]">
+                    {APP_ROLE_LABELS[viewer.role as AppRole] ?? viewer.role}
+                    {' · '}
+                    {DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}
+                    {dashboardRole === 'owner' ? ' de este dashboard' : ' este dashboard'}
+                  </span>
+                </div>
                 <button
                   onClick={() => void onSignOut()}
                   className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-600 transition-colors"
@@ -1127,6 +1149,12 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         {canWriteData && activeTab !== 'superadmin' && activeTab !== 'configuracion' && (
           <div className="space-y-4">
             {renderComposer()}
+          </div>
+        )}
+
+        {!canWriteData && activeTab !== 'superadmin' && activeTab !== 'configuracion' && (
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+            Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".
           </div>
         )}
 

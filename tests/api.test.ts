@@ -345,6 +345,7 @@ test("devuelve perfil para usuario autenticado activo", async () => {
         display_name: null,
         notification_hour: 21,
         onboarding_state: "completed",
+        is_dashboard_joiner: false,
       });
     },
   );

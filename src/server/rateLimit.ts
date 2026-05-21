@@ -76,3 +76,4 @@ export const tierRead = createRateLimiter({ windowMs: 60_000, max: 300, keyFn: u
 export const tierWrite = createRateLimiter({ windowMs: 60_000, max: 120, keyFn: userOrIp });
 export const tierAuth = createRateLimiter({ windowMs: 60_000, max: 20, keyFn: ipOnly });
 export const tierStrict = createRateLimiter({ windowMs: 60_000, max: 30, keyFn: userOrIp });
+export const tierResend = createRateLimiter({ windowMs: 60_000, max: 10, keyFn: userOrIp });

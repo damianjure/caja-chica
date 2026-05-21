@@ -138,6 +138,7 @@ export interface AppViewer {
   display_name?: string | null;
   notification_hour?: number | null;
   onboarding_state?: OnboardingState;
+  is_dashboard_joiner?: boolean;
 }
 
 export interface UserSession {
@@ -249,6 +250,27 @@ export interface TelegramLink {
 export interface TelegramInviteTokenResponse {
   token: string;
   expires_at: string;
+}
+
+export type PersonaStatus = "pending" | "active" | "expired" | "revoked";
+export type PersonaScope = "app" | "dashboard";
+
+export interface PersonaRecord {
+  id: string;
+  email: string;
+  type: PersonaScope;
+  role: string;
+  status: PersonaStatus;
+  created_at: string;
+  last_action_at: string;
+  telegram_link_status: "active" | null;
+  invite_url: string;
+}
+
+export interface PersonaFilters {
+  status?: PersonaStatus;
+  role?: string;
+  scope?: PersonaScope;
 }
 
 class ApiError extends Error {
@@ -557,5 +579,26 @@ export const api = {
 
   getExportUrl(): string {
     return `${API_BASE}/api/me/export`;
+  },
+
+  async listPersonas(filters?: PersonaFilters): Promise<PersonaRecord[]> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.role) params.set("role", filters.role);
+    if (filters?.scope) params.set("scope", filters.scope);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi(`/api/personas${suffix}`);
+  },
+
+  async resendInvitation(id: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/personas/${id}/resend`, { method: "POST" });
+  },
+
+  async updatePersonaRole(id: string, role: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/personas/${id}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
   },
 };

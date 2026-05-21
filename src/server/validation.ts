@@ -73,6 +73,7 @@ export type DashboardMembershipRole = "viewer" | "editor";
 export interface DashboardInvitationRequest {
   email: string;
   role: DashboardMembershipRole;
+  telegram_preauth?: boolean;
 }
 
 function isIsoDate(value: string) {
@@ -268,6 +269,7 @@ export function parseDashboardInvitationRequest(
   return {
     email,
     role: payload.role,
+    telegram_preauth: payload.telegram_preauth === true,
   };
 }
 

@@ -32,6 +32,7 @@ import {
 } from "../../../services/api";
 import { ConfirmModal } from "../../ui/ConfirmModal";
 import { ThemeSelector, type ThemePreference } from "../../ThemeToggle";
+import { PersonasPanel } from "../../PersonasPanel";
 import type { Empresa } from "../../../services/api";
 
 const PREF_CURRENCY_KEY = 'caja-chica:default-currency';
@@ -485,33 +486,8 @@ export default function ConfiguracionTab({
               </div>
             </div>
 
-            {/* Invite form */}
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] gap-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
-                placeholder="colaborador@empresa.com"
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
-              />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-              </select>
-              <button
-                onClick={() => void handleInvite()}
-                disabled={submitting || !email.trim()}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-3 text-sm text-white font-medium hover:bg-neutral-800 disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                Invitar
-              </button>
-            </div>
+            {/* Invitations — unified panel */}
+            <PersonasPanel scope="dashboard" showTelegramToggle />
           </div>
 
           {/* Permissions table */}
@@ -661,44 +637,6 @@ export default function ConfiguracionTab({
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          )}
-
-          {/* Pending invitations */}
-          {!loading && data && data.invitations.length > 0 && (
-            <div className="px-6 py-4 border-t border-neutral-100 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Invitaciones pendientes</p>
-              <div className="space-y-2">
-                {data.invitations.map((inv) => (
-                  <div key={inv.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-neutral-900 text-sm [overflow-wrap:anywhere]">{inv.email}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {roleBadge(inv.role)}
-                        <span className="text-xs text-neutral-500">{inv.status}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => void navigator.clipboard.writeText(inv.invite_url).then(() => showNotice("Link copiado"))}
-                        className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-50"
-                        title="Copiar link"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      {inv.status === "pending" && (
-                        <button
-                          onClick={() => void handleRevokeDashboardInvitation(inv.id)}
-                          className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50"
-                          title="Revocar"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}

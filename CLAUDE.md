@@ -193,14 +193,69 @@ Integraciones principales:
 - **Tests**: 156 total / 154 pass / 2 skip / 0 fail (verificado post-refactor Brevo)
 - **AGENTS.md**: detectado desactualizado (snapshot 2026-05-07). Mantener CLAUDE.md como única fuente de verdad. AGENTS.md deprecado.
 
+### Cambios 2026-05-21 (invitaciones unificadas — SDD completo + deploy)
+SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/archive/2026-05-21-invitaciones-unificadas/`. Engram observations #511-#519.
+
+- **`unified_invitations_phase.sql`** — ✔ aplicada en prod 2026-05-21 vía MCP supabase:
+  - `user_invitations.last_reminder_at timestamptz null`
+  - `dashboard_invitations.last_reminder_at timestamptz null`, `telegram_preauth boolean default false`, `telegram_invite_token_id uuid references telegram_invite_tokens(id) on delete set null`
+  - `telegram_invite_tokens.pre_authorized boolean default false`
+  - Índices parciales: `idx_user_invitations_reminder`, `idx_dashboard_invitations_reminder` (where status='pending')
+- **Nuevos endpoints** (`src/server/app.ts`):
+  - `GET /api/personas` — vista unificada de invitaciones (user + dashboard), merge JS, filtros opcionales
+  - `POST /api/personas/:id/resend` — reenvío con rate limit (3 por invite/24h), regenera token si vencido
+  - `PATCH /api/personas/:id/role` — cambio de rol con matriz de transiciones
+  - `POST /api/dashboard/invitations` — extendido con `telegram_preauth`: crea `telegram_invite_tokens` con `pre_authorized=true` + TTL 24h
+  - `GET /api/me` — retorna `is_dashboard_joiner` derivado
+- **`src/server/inviteReminders.ts`** — nuevo módulo exportable `processInviteReminders(supabase, opts?)`:
+  - queries `user_invitations` y `dashboard_invitations` status=pending, created_at < now-3d, expires_at > now, last_reminder_at IS NULL or < now-1d
+  - for-of con try/catch — un error no rompe los demás; log count final
+  - cron `0 10 * * *` montado en `server.ts`
+- **`src/components/PersonasPanel.tsx`** — nuevo componente unificado:
+  - props: `scope: 'app' | 'dashboard'`, `showTelegramToggle`
+  - tabla con badge status (pending/active/expired/revoked), badge role, last_action relativo
+  - dropdown acciones: Resend, Copy link, Cambiar rol, Revocar
+  - form de invitación con toggle telegram_preauth (scope=dashboard)
+  - consume `listPersonas()`, `resendInvitation()`, `updatePersonaRole()` de api.ts
+- **`src/components/WelcomeJoined.tsx`** — nuevo wizard 2 pasos para joiners invitados (sin demo seed)
+- **`src/DashboardApp.tsx`** — renderiza `WelcomeJoined` para joiners, `WelcomeWizard` para owners
+- **`src/server/email.ts`** — `sendDashboardInvitationEmail` acepta `telegramDeepLink?` opcional
+- **`src/server/validation.ts`** — `DashboardInvitationRequest.telegram_preauth` opcional boolean
+- **`server.ts`** — `handleTelegramInviteToken`: soporte `pre_authorized=true` (orphan guard + bypass `pending_owner_confirm`)
+- **ConfiguracionTab.tsx** — sección Miembros usa `<PersonasPanel scope="dashboard" showTelegramToggle />`; duplicado de form invitación y lista pendiente removidos
+- **Email rediseño** (`src/server/email.ts`):
+  - OKLCH neutrals tinted (h≈95), accent jade `oklch(62% 0.14 148)` solo en monogram/eyebrow/badge — rompe reflex fintech navy/gold
+  - Monogram + wordmark en lugar de slab negro pesado
+  - Jerarquía tipográfica ratio ≥2 (eyebrow 12 → title 26 → lede 16 → body 15), tracking negativo en títulos
+  - Preheader hidden para Gmail/Apple Mail preview
+  - Pasos numerados con counter() CSS + cuadrito redondeado (sin caja externa)
+  - Dark mode nativo vía `prefers-color-scheme`
+  - Media query <480px para mobile (CTA full-width)
+  - Copy sin em dashes; lede con ejemplo concreto ("pagué 4500 de luz"); firma personal en app invitation
+  - Sin glassmorphism, gradient text, cards anidadas, side-stripe
+  - `appInvitationHtml` y `dashboardInvitationHtml` ahora exported para preview/tests
+  - `sendDashboardInvitationEmail` acepta `telegramDeepLink?` para embed de deep link
+- **SDD architecture decision: Approach C aditivo** — no se toca trigger `on_auth_user_created`. Endpoints viejos (`POST /api/admin/invitations`, `POST /api/dashboard/invitations`) siguen funcionando.
+- **Tests**: 208 total / 206 pass / 2 skip / 0 fail (+52 nuevos: 34 personas, 8 inviteReminder, 8 telegramPreAuth + asserts api.test.ts)
+- **Verify warnings residuales**:
+  - W1: `CollaborationPanel.tsx` quedó dead code (no imports) — pendiente decisión borrar
+  - W2: `WelcomeJoined.tsx` sin unit tests (consistente con resto del proyecto)
+
+### Deploy 2026-05-21
+- SQL prod: ✔ aplicada vía MCP supabase
+- Backend Cloud Run: PENDIENTE this session
+- Frontend Firebase Hosting: PENDIENTE this session
+
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
 2. Test envío real de email vía Brevo (sistema deployado, no probado in-vivo todavía)
 3. Validar onboarding wizard end-to-end con cuenta nueva real
-4. Spacing rhythm tokens listos, no aplicados aún a ConfiguracionTab (963 líneas) / InformesTab (378 líneas)
-5. Audit follow-ups skippeados: escala tipográfica ratio ≥1.25 (afecta `text-base` global), migración hex → OKLCH, self-host Inter Variable, sistema radius semántico
-6. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión pendiente: implementar o eliminar
-7. Cleanup eventual del proyecto GCP `balancediario` (restaurado pero unused)
+4. Smoke test end-to-end Personas: invitar dummy → ver en panel → resend → role-edit → telegram preauth
+5. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1)
+6. Spacing rhythm tokens listos, no aplicados aún a ConfiguracionTab / InformesTab
+7. Audit follow-ups skippeados: escala tipográfica ratio ≥1.25, migración hex → OKLCH, self-host Inter Variable, sistema radius semántico
+8. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión pendiente: implementar o eliminar
+9. Cleanup eventual del proyecto GCP `balancediario` (restaurado pero unused)
 
 ---
 

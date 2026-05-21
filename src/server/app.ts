@@ -1,5 +1,5 @@
 import express, { type Request, RequestHandler } from "express";
-import { tierRead, tierWrite, tierAuth, tierStrict } from "./rateLimit.ts";
+import { tierRead, tierWrite, tierAuth, tierStrict, tierResend } from "./rateLimit.ts";
 import { randomBytes } from "node:crypto";
 
 import { filterMovementsForReport, resolveReportDateRange } from "../reports/shared.ts";
@@ -435,7 +435,7 @@ export function createApp({
     try {
       const { data, error } = await supabase
         .from("dashboard_invitations")
-        .select("id, dashboard_id, role")
+        .select("id, dashboard_id, role, invited_by_user_id")
         .eq("email", session.email.toLowerCase())
         .eq("status", "pending")
         .limit(50);
@@ -451,6 +451,7 @@ export function createApp({
               user_id: session.userId,
               role: invitation.role,
               status: "active",
+              invited_by_user_id: invitation.invited_by_user_id ?? null,
             },
             { onConflict: "dashboard_id,user_id" },
           );
@@ -578,6 +579,20 @@ export function createApp({
     // Relocated side effects: sync invitations and seed demo data for new member accounts
     await syncPendingDashboardInvitations(session);
 
+    // Derive is_dashboard_joiner: true when user has a dashboard_members row with invited_by_user_id set
+    let isDashboardJoiner = false;
+    try {
+      const { data: memberRows } = await supabase
+        .from("dashboard_members")
+        .select("id")
+        .eq("user_id", session.userId)
+        .not("invited_by_user_id", "is", null)
+        .limit(1);
+      isDashboardJoiner = !!(memberRows && memberRows.length > 0);
+    } catch {
+      // non-fatal — default to false
+    }
+
     let currentOnboardingState: string | undefined;
 
     if (session.role === "member") {
@@ -587,12 +602,25 @@ export function createApp({
         .eq("user_id", session.userId)
         .single();
       if (!userRow || userRow.onboarding_state === "pending") {
-        try {
-          const dashboardId = await ensurePersonalDashboard(supabase, session);
-          await seedDemoData(supabase, session, dashboardId);
-          currentOnboardingState = "seeded";
-        } catch (seedErr) {
-          console.error("Onboarding seed error:", seedErr);
+        if (isDashboardJoiner) {
+          // Joiners skip demo seed — mark completed directly
+          try {
+            await supabase
+              .from("app_users")
+              .update({ onboarding_state: "completed" })
+              .eq("user_id", session.userId);
+            currentOnboardingState = "completed";
+          } catch (err) {
+            console.error("Joiner onboarding_state update error:", err);
+          }
+        } else {
+          try {
+            const dashboardId = await ensurePersonalDashboard(supabase, session);
+            await seedDemoData(supabase, session, dashboardId);
+            currentOnboardingState = "seeded";
+          } catch (seedErr) {
+            console.error("Onboarding seed error:", seedErr);
+          }
         }
       }
     }
@@ -611,6 +639,7 @@ export function createApp({
       display_name: data?.display_name ?? null,
       notification_hour: data?.notification_hour ?? 21,
       onboarding_state: currentOnboardingState ?? data?.onboarding_state ?? "completed",
+      is_dashboard_joiner: isDashboardJoiner,
     });
   });
 
@@ -2143,6 +2172,28 @@ export function createApp({
       const now = new Date().toISOString();
       const inviteToken = randomBytes(24).toString("hex");
 
+      // Handle telegram_preauth: create a pre-authorized telegram invite token (TTL 24h)
+      let telegramTokenId: string | null = null;
+      let telegramDeepLink: string | undefined;
+      if (payload.telegram_preauth) {
+        const telegramToken = randomBytes(24).toString("hex");
+        const telegramTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const { data: tTokenData } = await supabase
+          .from("telegram_invite_tokens")
+          .insert({
+            token: telegramToken,
+            dashboard_id: scope.dashboardId,
+            target_user_id: existingUser?.user_id ?? null,
+            pre_authorized: true,
+            expires_at: telegramTokenExpiresAt,
+            status: "pending",
+          })
+          .select()
+          .single();
+        telegramTokenId = tTokenData?.id ?? null;
+        telegramDeepLink = buildTelegramDeepLink(telegramToken) ?? undefined;
+      }
+
       const invitationPayload = {
         dashboard_id: scope.dashboardId,
         email: payload.email,
@@ -2153,6 +2204,9 @@ export function createApp({
         accepted_at: acceptedNow ? now : null,
         expires_at: null,
         invite_token: inviteToken,
+        ...(payload.telegram_preauth
+          ? { telegram_preauth: true, telegram_invite_token_id: telegramTokenId }
+          : {}),
       };
 
       const { data, error } = await supabase
@@ -2193,8 +2247,12 @@ export function createApp({
       }
 
       const inviteUrl = `${publicAppUrl || ""}/?invite=${data.invite_token}`;
-      res.status(201).json({ ...data, invite_url: inviteUrl });
-      void sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email);
+      res.status(201).json({
+        ...data,
+        invite_url: inviteUrl,
+        ...(telegramDeepLink ? { telegram_deep_link: telegramDeepLink } : {}),
+      });
+      void sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email, telegramDeepLink);
 
       // Auto-purge demo data when owner invites their first collaborator
       void (async () => {
@@ -2507,6 +2565,337 @@ export function createApp({
     } catch (err) {
       console.error("POST /api/dashboard/leave:", err);
       return res.status(500).json({ error: "Internal error" });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Personas — unified view of all invitations
+  // ---------------------------------------------------------------------------
+
+  type PersonaStatus = "pending" | "active" | "expired" | "revoked";
+  type PersonaScope = "app" | "dashboard";
+
+  interface PersonaRecord {
+    id: string;
+    email: string;
+    type: PersonaScope;
+    role: string;
+    status: PersonaStatus;
+    created_at: string;
+    last_action_at: string;
+    telegram_link_status: "active" | null;
+    invite_url: string;
+  }
+
+  function derivePersonaStatus(row: {
+    status: string;
+    accepted_at: string | null;
+    expires_at: string | null;
+  }): PersonaStatus {
+    if (row.status === "revoked") return "revoked";
+    if (row.accepted_at) return "active";
+    if (row.expires_at && row.expires_at < new Date().toISOString()) return "expired";
+    return "pending";
+  }
+
+  function deriveLastActionAt(row: {
+    created_at: string;
+    accepted_at: string | null;
+    last_reminder_at: string | null;
+  }): string {
+    const candidates = [row.created_at, row.accepted_at, row.last_reminder_at].filter(Boolean) as string[];
+    return candidates.reduce((a, b) => (a > b ? a : b));
+  }
+
+  app.get("/api/personas", requireSession, tierRead, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      const isOwner = scope.membershipRole === "owner";
+      const isAdmin = session.role === "admin" || session.role === "superadmin";
+
+      // Only owners and admins can access this endpoint
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const statusFilter = typeof req.query.status === "string" ? req.query.status : null;
+      const scopeFilter = typeof req.query.scope === "string" ? req.query.scope : null;
+      const roleFilter = typeof req.query.role === "string" ? req.query.role : null;
+
+      const personas: PersonaRecord[] = [];
+
+      // App-scope invitations (user_invitations) — visible to admins and owners
+      if (!scopeFilter || scopeFilter === "app") {
+        const { data: uiRows, error: uiErr } = await supabase
+          .from("user_invitations")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (uiErr) throw uiErr;
+
+        for (const row of (uiRows ?? []) as any[]) {
+          const status = derivePersonaStatus(row);
+          const last_action_at = deriveLastActionAt(row);
+          personas.push({
+            id: row.id,
+            email: row.email,
+            type: "app",
+            role: row.role,
+            status,
+            created_at: row.created_at,
+            last_action_at,
+            telegram_link_status: null,
+            invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}`,
+          });
+        }
+      }
+
+      // Dashboard-scope invitations — visible only to owner of that dashboard
+      if ((!scopeFilter || scopeFilter === "dashboard") && scope.dashboardId) {
+        const { data: diRows, error: diErr } = await supabase
+          .from("dashboard_invitations")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, telegram_preauth, telegram_invite_token_id")
+          .eq("dashboard_id", scope.dashboardId)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (diErr) throw diErr;
+
+        const telegramLinksByInviteToken: Map<string, string> = new Map();
+        const diInviteTokens = ((diRows ?? []) as any[]).map((r: any) => r.invite_token).filter(Boolean);
+
+        if (diInviteTokens.length > 0) {
+          // Look up active telegram links for these invitations
+          const { data: tlRows } = await supabase
+            .from("telegram_links")
+            .select("id, status, invite_token")
+            .in("invite_token", diInviteTokens)
+            .eq("status", "active")
+            .limit(500);
+          for (const tl of (tlRows ?? []) as any[]) {
+            if (tl.invite_token) telegramLinksByInviteToken.set(tl.invite_token, tl.status);
+          }
+        }
+
+        for (const row of (diRows ?? []) as any[]) {
+          const status = derivePersonaStatus(row);
+          const last_action_at = deriveLastActionAt(row);
+          const tgStatus = row.invite_token && telegramLinksByInviteToken.has(row.invite_token)
+            ? ("active" as const)
+            : null;
+          personas.push({
+            id: row.id,
+            email: row.email,
+            type: "dashboard",
+            role: row.role,
+            status,
+            created_at: row.created_at,
+            last_action_at,
+            telegram_link_status: tgStatus,
+            invite_url: `${publicAppUrl || ""}/join?token=${row.invite_token}`,
+          });
+        }
+      }
+
+      // Apply post-fetch filters
+      let result = personas;
+      if (statusFilter) result = result.filter((p) => p.status === statusFilter);
+      if (roleFilter) result = result.filter((p) => p.role === roleFilter);
+
+      // Sort by last_action_at DESC
+      result.sort((a, b) => (a.last_action_at > b.last_action_at ? -1 : 1));
+
+      return res.json(result);
+    } catch (err) {
+      console.error("GET /api/personas:", err);
+      return res.status(500).json({ error: "failed_to_fetch" });
+    }
+  });
+
+  // Helper: lookup a persona invite by id across both tables.
+  // Returns { table, row } or null.
+  async function lookupPersonaInvite(
+    id: string,
+    dashboardId: string | null,
+  ): Promise<{ table: "user_invitations" | "dashboard_invitations"; row: any } | null> {
+    // Try user_invitations first
+    const { data: uiRows } = await supabase
+      .from("user_invitations")
+      .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by")
+      .eq("id", id)
+      .limit(1);
+    if (uiRows?.[0]) return { table: "user_invitations", row: uiRows[0] };
+
+    // Try dashboard_invitations (must belong to the caller's dashboard)
+    if (dashboardId) {
+      const { data: diRows } = await supabase
+        .from("dashboard_invitations")
+        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by_user_id, dashboard_id, accepted_user_id")
+        .eq("id", id)
+        .eq("dashboard_id", dashboardId)
+        .limit(1);
+      if (diRows?.[0]) return { table: "dashboard_invitations", row: diRows[0] };
+    }
+
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/personas/:id/resend
+  // ---------------------------------------------------------------------------
+
+  app.post("/api/personas/:id/resend", requireSession, tierResend, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      const isOwner = scope.membershipRole === "owner";
+      const isAdmin = session.role === "admin" || session.role === "superadmin";
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId);
+      if (!found) return res.status(404).json({ error: "not_found" });
+
+      const { table, row } = found;
+      const derived = derivePersonaStatus(row);
+
+      // Already consumed or revoked — cannot resend
+      if (derived === "active") return res.status(409).json({ error: "already_accepted" });
+      if (row.status === "revoked") return res.status(409).json({ error: "invite_revoked" });
+
+      const nowDate = new Date();
+      const nowIso = nowDate.toISOString();
+
+      // Regenerate token + expires_at if expired
+      let currentToken: string = row.invite_token;
+      if (derived === "expired") {
+        currentToken = randomBytes(24).toString("hex");
+        const newExpiresAt = new Date(nowDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        await supabase
+          .from(table)
+          .update({ invite_token: currentToken, expires_at: newExpiresAt })
+          .eq("id", row.id);
+      }
+
+      // Update last_reminder_at
+      await supabase
+        .from(table)
+        .update({ last_reminder_at: nowIso })
+        .eq("id", row.id);
+
+      // Dispatch email based on table type
+      if (table === "user_invitations") {
+        const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
+        void sendAppInvitationEmail(row.email, inviteUrl);
+      } else {
+        const inviteUrl = `${publicAppUrl || ""}/join?token=${currentToken}`;
+        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email);
+      }
+
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("POST /api/personas/:id/resend:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // PATCH /api/personas/:id/role
+  // ---------------------------------------------------------------------------
+
+  app.patch("/api/personas/:id/role", requireSession, tierWrite, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      const isOwner = scope.membershipRole === "owner";
+      const isAdmin = session.role === "admin" || session.role === "superadmin";
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const newRole = body.role;
+
+      // Validate role: only member/admin for app scope; editor/viewer for dashboard scope
+      // Superadmin promotion requires caller to be superadmin
+      const validAppRoles = ["member", "admin"];
+      const validDashboardRoles = ["editor", "viewer"];
+      const allValid = [...validAppRoles, ...validDashboardRoles];
+      if (typeof newRole !== "string" || !allValid.includes(newRole)) {
+        return res.status(400).json({ error: "invalid_role" });
+      }
+
+      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId);
+      if (!found) return res.status(404).json({ error: "not_found" });
+
+      const { table, row } = found;
+
+      if (table === "user_invitations") {
+        // App scope: owner or admin can update role (member ↔ admin); only superadmin can set superadmin
+        if (!validAppRoles.includes(newRole as string)) {
+          return res.status(400).json({ error: "invalid_role_for_scope" });
+        }
+
+        const derived = derivePersonaStatus(row);
+        if (derived === "active") {
+          // Accepted invite: must update app_users directly, not the invite
+          // For now 409 — use the admin user management routes instead
+          return res.status(409).json({ error: "already_accepted_use_user_management" });
+        }
+
+        await supabase
+          .from("user_invitations")
+          .update({ role: newRole })
+          .eq("id", row.id);
+
+        return res.json({ ok: true });
+      }
+
+      // Dashboard scope
+      if (!validDashboardRoles.includes(newRole as string)) {
+        return res.status(400).json({ error: "invalid_role_for_scope" });
+      }
+
+      // Guard: cannot change role of owner
+      if (row.role === "owner") {
+        return res.status(422).json({ error: "cannot_change_owner_role" });
+      }
+
+      const derived = derivePersonaStatus(row);
+
+      if (derived !== "active") {
+        // Pending invite: update dashboard_invitations.role
+        await supabase
+          .from("dashboard_invitations")
+          .update({ role: newRole })
+          .eq("id", row.id);
+      } else {
+        // Accepted invite: update dashboard_members.role + reset permissions
+        // (remove editor-only permissions if demoting to viewer)
+        if (row.accepted_user_id) {
+          await supabase
+            .from("dashboard_members")
+            .update({ role: newRole, permissions: {} })
+            .eq("user_id", row.accepted_user_id)
+            .eq("dashboard_id", row.dashboard_id);
+        }
+        // Also update the invitation record to keep in sync
+        await supabase
+          .from("dashboard_invitations")
+          .update({ role: newRole })
+          .eq("id", row.id);
+      }
+
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("PATCH /api/personas/:id/role:", err);
+      return res.status(500).json({ error: "internal" });
     }
   });
 

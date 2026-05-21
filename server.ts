@@ -7,6 +7,7 @@ loadRuntimeEnv();
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from "@google/genai";
 import { createApp } from "./src/server/app.ts";
+import { processInviteReminders } from "./src/server/inviteReminders.ts";
 import { transcribeTelegramAudioWithGemini } from "./src/server/telegramAudio.ts";
 import { resolveTelegramCompany, getTopEmpresasForDashboard, type TelegramCompanyOption } from "./src/server/telegramCompanyResolution.ts";
 import { loadRuntimeEnv } from "./src/server/env.ts";
@@ -635,7 +636,7 @@ if (bot) {
   async function handleTelegramInviteToken(ctx: any, token: string): Promise<boolean> {
     const { data: tokenRows } = await supabase
       .from("telegram_invite_tokens")
-      .select("id, dashboard_id, target_user_id, expires_at, status")
+      .select("id, dashboard_id, target_user_id, expires_at, status, pre_authorized")
       .eq("token", token)
       .eq("status", "pending")
       .limit(1);
@@ -660,7 +661,7 @@ if (bot) {
       return true;
     }
 
-    // CRITICAL-2: reject if this Telegram account already has an active link
+    // CRITICAL-2: reject if this Telegram account already has an active link (pivot guard)
     const { data: existingLinks } = await supabase
       .from("telegram_links")
       .select("id")
@@ -674,6 +675,59 @@ if (bot) {
       return true;
     }
 
+    // Pre-authorized flow: skip pending_owner_confirm, insert as active directly.
+    // Requires that the invitee already has an app_users row (i.e. completed login).
+    if (inviteToken.pre_authorized) {
+      // Orphan guard: verify app_users exists for the target
+      let targetUserId = inviteToken.target_user_id;
+      if (!targetUserId) {
+        // target_user_id may be null if user hadn't signed up when invite was created.
+        // We cannot resolve the user without their email here — direct them to sign up first.
+        await ctx.reply(
+          "⚠️ Primero completá el login en https://caja-chica-bot.web.app y volvé a tocar este link.",
+        );
+        return true;
+      }
+
+      // Verify the user row actually exists
+      const { data: appUserRows } = await supabase
+        .from("app_users")
+        .select("user_id")
+        .eq("user_id", targetUserId)
+        .limit(1);
+      if (!appUserRows || appUserRows.length === 0) {
+        await ctx.reply(
+          "⚠️ Primero completá el login en https://caja-chica-bot.web.app y volvé a tocar este link.",
+        );
+        return true;
+      }
+
+      const { error: insertErr } = await supabase
+        .from("telegram_links")
+        .insert({
+          telegram_user_id: telegramUserId,
+          telegram_username: telegramUsername,
+          dashboard_id: inviteToken.dashboard_id,
+          app_user_id: targetUserId,
+          status: "active",
+          linked_at: new Date().toISOString(),
+        });
+      if (insertErr) {
+        console.error("[handleTelegramInviteToken] pre_authorized insert failed:", insertErr);
+        await ctx.reply("❌ Error al procesar la solicitud. Intentá de nuevo.");
+        return true;
+      }
+
+      await supabase
+        .from("telegram_invite_tokens")
+        .update({ status: "claimed" })
+        .eq("id", inviteToken.id);
+
+      await ctx.reply("✅ ¡Listo! Tu Telegram quedó vinculado al dashboard. Usá /menu para empezar.");
+      return true;
+    }
+
+    // Standard flow: insert as pending_owner_confirm
     // Plain INSERT — the pivot guard above already confirmed no active/pending row exists.
     // Relying on partial-index upsert (onConflict) is unreliable with PostgREST partial indexes.
     const { error: insertErr } = await supabase
@@ -2125,6 +2179,16 @@ if (bot) {
 } else {
   console.warn("⚠️ TELEGRAM_BOT_TOKEN no configurado. El bot no se iniciará.");
 }
+
+// Invite reminder cron — daily at 10:00 UTC
+cron.schedule('0 10 * * *', async () => {
+  try {
+    const { sent } = await processInviteReminders(supabase as unknown as Parameters<typeof processInviteReminders>[0]);
+    console.log(`[cron:inviteReminder] Done. Sent: ${sent}`);
+  } catch (err) {
+    console.error("[cron:inviteReminder] Unexpected error:", err);
+  }
+});
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://caja-chica-bot.web.app").split(",");

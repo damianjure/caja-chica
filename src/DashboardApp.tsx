@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
 import WelcomeWizard from './components/WelcomeWizard';
+import WelcomeJoined from './components/WelcomeJoined';
 import { getPendingCompanyAssignment } from './dashboard/companyAssignment';
 import {
   formatCurrency,
@@ -1035,7 +1036,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans p-4 md:p-8">
-      {showWizard && (
+      {showWizard && viewer.is_dashboard_joiner && (
+        <WelcomeJoined
+          viewer={viewer}
+          onFinish={() => setShowWizard(false)}
+        />
+      )}
+      {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard
           onFinish={() => setShowWizard(false)}
         />

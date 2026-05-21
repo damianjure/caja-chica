@@ -243,19 +243,28 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 
 ### Deploy 2026-05-21
 - SQL prod: ✔ aplicada vía MCP supabase
-- Backend Cloud Run: ✔ revision `caja-chica-00014-z98` (image `gcr.io/caja-chica-bot/caja-chica@sha256:973eda1f...`)
+- Backend Cloud Run: ✔ revision `caja-chica-00020-m68` (post recurrentes + tipo egreso fix)
 - Frontend Firebase Hosting: ✔ deployado en `caja-chica-bot.web.app`
+
+### Cambios 2026-05-21 segunda tanda
+- **Vocabulario unificado** (commit `303eac8`): Operador/Usuario/Dueño/Puede editar/Puede ver, sección "Equipo". `src/services/labels.ts` centralizado. Aplicado en PersonasPanel, AdminPanel, ConfiguracionTab, WelcomeJoined, LoginScreen, email.ts, bot replies, DashboardApp tab nav.
+- **Badge contrast dark mode** (commit `0daec9d`): status + dashboard role + app role badges con ring + dark variants (bg-{color}-500/15 + text-{color}-200 + ring-{color}-400/40).
+- **Joiner wizard fix** (commit `d10fe8f`, rev `caja-chica-00015-zck`): backend dejaba `onboarding_state='completed'` directo → WelcomeJoined nunca renderizaba. Fixed: joiners stay `pending` hasta que cierran wizard.
+- **activeTab state leak** (commit `0349605`): localStorage no se limpiaba en signOut; useEffect normaliza tab contra allowed tabs del viewer actual.
+- **Email v2 1-CTA** (commit `0349605`): founder voice, sin feature dump, sin nested step boxes. "Damián te sumó al dashboard" subject. Telegram pre-auth = aside line. New CSS classes (.from, .from-footer, h1.title, .fine, .aside, .link) + dark mode variants.
+- **Recurrentes web UI + frecuencias** (commit `2a6d347`+`3993892`, SDD `recurrentes-ui-y-frecuencias` archive engram #524-#529): tab nueva "Recurrentes" entre Ingresos y Empresas. Full CRUD + pausar/activar + soft delete + next_run derivado con label relativo. Quincenal + anual sumadas. Migration `recurrentes_ui_phase.sql` aplicada (is_active default true + deleted_at + idx_recurrentes_active partial). DB check `recurrentes_frecuencia_check` extendida a 5 valores. Tipo 'gasto' → 'egreso' (DB compat, UI label "Gasto"). 5 endpoints `/api/recurrentes/*`. Cron `0 8 * * *` guard is_active/deleted_at + addMonth date arithmetic. Bot inline keyboard 5 botones. Tests 243/241 pass.
+- **Audit follow-ups** (commit `e4066a9`): Inter Variable self-hosted (woff2 en `/public/fonts/`, removed Google Fonts CDN), radius scale tokens (--radius-xs..3xl), type scale ratio ≥1.25 (--text-xs..5xl), stack-relaxed aplicado en InformesTab + ConfiguracionTab.
+- **Brevo live send test**: ✔ verificado (messageId `<202605212120.80852709198@smtp-relay.mailin.fr>`).
+- **Smoke test Personas DB-level**: ✔ verificado vía supabase MCP (insert dashboard_invitations dummy → query merge JS → resend update last_reminder_at → role-edit → cleanup).
 
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
-2. Test envío real de email vía Brevo (sistema deployado, no probado in-vivo todavía)
-3. Validar onboarding wizard end-to-end con cuenta nueva real
-4. Smoke test end-to-end Personas: invitar dummy → ver en panel → resend → role-edit → telegram preauth
-5. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1)
-6. Spacing rhythm tokens listos, no aplicados aún a ConfiguracionTab / InformesTab
-7. Audit follow-ups skippeados: escala tipográfica ratio ≥1.25, migración hex → OKLCH, self-host Inter Variable, sistema radius semántico
-8. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión pendiente: implementar o eliminar
-9. Cleanup eventual del proyecto GCP `balancediario` (restaurado pero unused)
+2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere sesión real)
+3. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
+4. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1)
+5. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión: implementar o eliminar
+6. Aplicar radius semantic tokens en componentes (hoy usan rounded-2xl/3xl tailwind directo)
+7. Migración label "Gasto" en otras pantallas: hoy egreso wire, label inconsistente entre app y bot
 
 ---
 

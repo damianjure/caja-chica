@@ -44,11 +44,15 @@ interface PersonasPanelProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Higher-contrast badge palette with explicit dark-mode variants.
+// Tailwind v4 emits `[data-theme="dark"] .dark\:*` when the dark variant is configured.
+// If `dark:` doesn't take effect at runtime (no `dark` class on <html>), the data-theme
+// fallback selectors in src/index.css would catch it. Using ring for extra edge contrast.
 const STATUS_STYLES: Record<PersonaStatus, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  active: "bg-green-100 text-green-700",
-  expired: "bg-neutral-100 text-neutral-500",
-  revoked: "bg-red-100 text-red-600",
+  pending: "bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
+  active: "bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40",
+  expired: "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40",
+  revoked: "bg-red-100 text-red-700 ring-1 ring-red-300/60 dark:bg-red-500/15 dark:text-red-200 dark:ring-red-400/40",
 };
 
 // Map our PersonaStatus to the canonical vocab labels (revoked → "Sin acceso", etc.).
@@ -70,15 +74,15 @@ function StatusBadge({ status }: { status: PersonaStatus }) {
 }
 
 const DASHBOARD_ROLE_STYLES: Record<DashboardRole, string> = {
-  owner: "bg-violet-100 text-violet-700",
-  editor: "bg-green-100 text-green-700",
-  viewer: "bg-neutral-100 text-neutral-600",
+  owner: "bg-violet-100 text-violet-800 ring-1 ring-violet-300/60 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-400/40",
+  editor: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/40",
+  viewer: "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-300/60 dark:bg-neutral-700/50 dark:text-neutral-200 dark:ring-neutral-500/40",
 };
 
 const APP_ROLE_STYLES: Record<AppRole, string> = {
-  superadmin: "bg-rose-100 text-rose-700",
-  admin: "bg-amber-100 text-amber-800",
-  member: "bg-blue-100 text-blue-700",
+  superadmin: "bg-rose-100 text-rose-800 ring-1 ring-rose-300/60 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/40",
+  admin: "bg-amber-100 text-amber-900 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
+  member: "bg-sky-100 text-sky-800 ring-1 ring-sky-300/60 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/40",
 };
 
 function RoleBadge({ role, scope }: { role: string; scope: PersonaScope }) {

@@ -243,8 +243,8 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 
 ### Deploy 2026-05-21
 - SQL prod: ✔ aplicada vía MCP supabase
-- Backend Cloud Run: PENDIENTE this session
-- Frontend Firebase Hosting: PENDIENTE this session
+- Backend Cloud Run: ✔ revision `caja-chica-00014-z98` (image `gcr.io/caja-chica-bot/caja-chica@sha256:973eda1f...`)
+- Frontend Firebase Hosting: ✔ deployado en `caja-chica-bot.web.app`
 
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada

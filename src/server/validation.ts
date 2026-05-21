@@ -353,6 +353,45 @@ export function parseUpdateEmpresaRequest(value: unknown): UpdateEmpresaRequest 
   return { nombre: payload.nombre.trim() };
 }
 
+// ---------------------------------------------------------------------------
+// Recurrentes
+// ---------------------------------------------------------------------------
+
+import { FRECUENCIA_WHITELIST, type Frecuencia } from "./recurrentes.ts";
+
+export interface RecurrenteRequest {
+  monto: number;
+  tipo: "gasto" | "ingreso";
+  moneda: "ARS" | "USD";
+  frecuencia: Frecuencia;
+  categoria?: string;
+  empresa_nombre?: string;
+  descripcion?: string;
+}
+
+export function parseRecurrenteRequest(body: unknown): RecurrenteRequest | null {
+  if (!body || typeof body !== "object") return null;
+  const p = body as Record<string, unknown>;
+
+  if (typeof p.monto !== "number" || !Number.isFinite(p.monto) || p.monto <= 0) return null;
+  if (p.tipo !== "gasto" && p.tipo !== "ingreso") return null;
+  if (p.moneda !== "ARS" && p.moneda !== "USD") return null;
+  if (!FRECUENCIA_WHITELIST.includes(p.frecuencia as Frecuencia)) return null;
+
+  const result: RecurrenteRequest = {
+    monto: p.monto,
+    tipo: p.tipo,
+    moneda: p.moneda,
+    frecuencia: p.frecuencia as Frecuencia,
+  };
+
+  if (typeof p.categoria === "string" && p.categoria.trim()) result.categoria = p.categoria.trim();
+  if (typeof p.empresa_nombre === "string" && p.empresa_nombre.trim()) result.empresa_nombre = p.empresa_nombre.trim();
+  if (typeof p.descripcion === "string" && p.descripcion.trim()) result.descripcion = p.descripcion.trim();
+
+  return result;
+}
+
 export type PhotoSourceType = "photo" | "pdf" | "handwritten" | "multi";
 
 export interface PendingExtractionData {

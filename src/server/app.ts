@@ -18,11 +18,13 @@ import {
   parseInvitationRequest,
   parsePaginationQuery,
   parseReconciliationRequest,
+  parseRecurrenteRequest,
   parseReportExportRequest,
   parseSaveMovimientosRequest,
   parseUpdateEmpresaRequest,
   parseUpdateMovimientoRequest,
 } from "./validation.ts";
+import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
@@ -2889,6 +2891,203 @@ export function createApp({
       return res.json({ ok: true });
     } catch (err) {
       console.error("PATCH /api/personas/:id/role:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Recurrentes endpoints
+  // ---------------------------------------------------------------------------
+
+  app.get("/api/recurrentes", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      let query = applyDataScope(
+        supabase.from("recurrentes").select("*"),
+        session,
+        scope,
+      ).is("deleted_at", null);
+
+      // Optional ?active filter
+      const activeParam = (req.query as Record<string, string>).active;
+      if (activeParam === "true") query = (query as any).eq("is_active", true);
+      if (activeParam === "false") query = (query as any).eq("is_active", false);
+
+      const { data, error } = await (query as any);
+      if (error) throw error;
+
+      const now = new Date();
+      const items = (data ?? []).map((r: any) => {
+        const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
+        const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed);
+        return {
+          ...r,
+          next_run_at: nextRun ? nextRun.toISOString() : null,
+          next_run_label: relativeRunLabel(nextRun, now),
+        };
+      });
+
+      // Sort by next_run_at ascending (nulls first = "se activa esta noche")
+      items.sort((a: any, b: any) => {
+        if (!a.next_run_at) return -1;
+        if (!b.next_run_at) return 1;
+        return a.next_run_at < b.next_run_at ? -1 : 1;
+      });
+
+      return res.json(items);
+    } catch (err) {
+      console.error("GET /api/recurrentes:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  app.post("/api/recurrentes", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      if (!canWriteToScope(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const parsed = parseRecurrenteRequest(req.body);
+      if (!parsed) return res.status(400).json({ error: "invalid_body" });
+
+      const ownership = buildWriteOwnership(session, scope);
+      const { data, error } = await supabase
+        .from("recurrentes")
+        .insert([{
+          ...ownership,
+          monto: parsed.monto,
+          tipo: parsed.tipo,
+          moneda: parsed.moneda,
+          frecuencia: parsed.frecuencia,
+          categoria: parsed.categoria ?? null,
+          empresa_nombre: parsed.empresa_nombre ?? "Personal",
+          descripcion: parsed.descripcion ?? null,
+          is_active: true,
+          deleted_at: null,
+          last_processed: null,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(201).json(data);
+    } catch (err) {
+      console.error("POST /api/recurrentes:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  app.patch("/api/recurrentes/:id/toggle", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      if (!canWriteToScope(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      if (!row) return res.status(404).json({ error: "not_found" });
+      if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+
+      const { data, error } = await supabase
+        .from("recurrentes")
+        .update({ is_active: !row.is_active })
+        .eq("id", req.params.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json(data);
+    } catch (err) {
+      console.error("PATCH /api/recurrentes/:id/toggle:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  app.patch("/api/recurrentes/:id", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      if (!canWriteToScope(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      if (!row) return res.status(404).json({ error: "not_found" });
+      if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+
+      const p = req.body as Record<string, unknown>;
+      const updates: Record<string, unknown> = {};
+
+      if (p.monto !== undefined) {
+        if (typeof p.monto !== "number" || p.monto <= 0) return res.status(400).json({ error: "invalid_monto" });
+        updates.monto = p.monto;
+      }
+      if (p.tipo !== undefined) {
+        if (p.tipo !== "gasto" && p.tipo !== "ingreso") return res.status(400).json({ error: "invalid_tipo" });
+        updates.tipo = p.tipo;
+      }
+      if (p.moneda !== undefined) {
+        if (p.moneda !== "ARS" && p.moneda !== "USD") return res.status(400).json({ error: "invalid_moneda" });
+        updates.moneda = p.moneda;
+      }
+      if (p.frecuencia !== undefined) {
+        const parsed = parseRecurrenteRequest({ monto: 1, tipo: "gasto", moneda: "ARS", frecuencia: p.frecuencia });
+        if (!parsed) return res.status(400).json({ error: "invalid_frecuencia" });
+        updates.frecuencia = p.frecuencia;
+      }
+      if (p.categoria !== undefined) updates.categoria = p.categoria;
+      if (p.empresa_nombre !== undefined) updates.empresa_nombre = p.empresa_nombre;
+      if (p.descripcion !== undefined) updates.descripcion = p.descripcion;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "no_fields" });
+      }
+
+      const { data, error } = await supabase
+        .from("recurrentes")
+        .update(updates)
+        .eq("id", req.params.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json(data);
+    } catch (err) {
+      console.error("PATCH /api/recurrentes/:id:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  app.delete("/api/recurrentes/:id", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+
+      if (!canWriteToScope(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      if (!row) return res.status(404).json({ error: "not_found" });
+      if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+
+      const { error } = await supabase
+        .from("recurrentes")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", req.params.id);
+
+      if (error) throw error;
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("DELETE /api/recurrentes/:id:", err);
       return res.status(500).json({ error: "internal" });
     }
   });

@@ -273,6 +273,35 @@ export interface PersonaFilters {
   scope?: PersonaScope;
 }
 
+export type Frecuencia = 'diario' | 'semanal' | 'quincenal' | 'mensual' | 'anual';
+
+export interface Recurrente {
+  id: string;
+  monto: number;
+  tipo: 'gasto' | 'ingreso';
+  moneda: 'ARS' | 'USD';
+  frecuencia: Frecuencia;
+  empresa_nombre: string;
+  descripcion?: string;
+  categoria?: string;
+  is_active: boolean;
+  deleted_at: string | null;
+  last_processed: string | null;
+  created_at: string;
+  next_run_at: string;
+  next_run_label: string;
+}
+
+export type RecurrenteRequest = {
+  monto: number;
+  tipo: 'gasto' | 'ingreso';
+  moneda: 'ARS' | 'USD';
+  frecuencia: Frecuencia;
+  empresa_nombre?: string;
+  descripcion?: string;
+  categoria?: string;
+};
+
 class ApiError extends Error {
   status: number;
 
@@ -600,5 +629,35 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
     });
+  },
+
+  async listRecurrentes(filters?: { active?: boolean; include_deleted?: boolean }): Promise<Recurrente[]> {
+    const params = new URLSearchParams();
+    if (filters?.active !== undefined) params.set("active", String(filters.active));
+    if (filters?.include_deleted) params.set("include_deleted", "true");
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi(`/api/recurrentes${suffix}`);
+  },
+
+  async createRecurrente(body: RecurrenteRequest): Promise<Recurrente> {
+    return fetchApi("/api/recurrentes", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async updateRecurrente(id: string, body: Partial<RecurrenteRequest>): Promise<Recurrente> {
+    return fetchApi(`/api/recurrentes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async toggleRecurrente(id: string): Promise<Recurrente> {
+    return fetchApi(`/api/recurrentes/${id}/toggle`, { method: "PATCH" });
+  },
+
+  async deleteRecurrente(id: string): Promise<void> {
+    return fetchApi(`/api/recurrentes/${id}`, { method: "DELETE" });
   },
 };

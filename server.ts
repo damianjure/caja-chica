@@ -37,6 +37,7 @@ import {
 import { buildReportFile } from "./src/server/reportExports.ts";
 import { filterMovementsForReport, resolveReportDateRange, type ReportExportRequest } from "./src/reports/shared.ts";
 import { uploadFileToDrive, decryptToken } from "./src/server/drive.ts";
+import { addMonth } from "./src/server/recurrentes.ts";
 import { can, type TelegramAction } from "./src/server/permissions.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
@@ -1065,7 +1066,7 @@ if (bot) {
     monto?: number;
     tipo?: "ingreso" | "egreso";
     moneda?: "ARS" | "USD";
-    frecuencia?: "diario" | "semanal" | "mensual";
+    frecuencia?: "diario" | "semanal" | "quincenal" | "mensual" | "anual";
     linked: TelegramLinkRecord;
     expiresAt: number;
   }
@@ -1121,7 +1122,8 @@ if (bot) {
     pendingRecurrenceSessions.set(ctx.chat.id, session);
     await ctx.reply("📅 ¿Con qué frecuencia?", {
       reply_markup: new InlineKeyboard()
-        .text("📆 Diario", "rec_frec:diario").text("📆 Semanal", "rec_frec:semanal").text("📆 Mensual", "rec_frec:mensual"),
+        .text("📆 Diario", "rec_frec:diario").text("📆 Semanal", "rec_frec:semanal").row()
+        .text("📆 Quincenal", "rec_frec:quincenal").text("📆 Mensual", "rec_frec:mensual").text("📆 Anual", "rec_frec:anual"),
     });
   });
 
@@ -1129,7 +1131,7 @@ if (bot) {
     ctx.answerCallbackQuery();
     const session = getRecurrenceSession(ctx.chat.id);
     if (!session || session.step !== "frecuencia") return ctx.reply("Sesión vencida. Usá /recurrente para empezar.");
-    session.frecuencia = ctx.match[1] as "diario" | "semanal" | "mensual";
+    session.frecuencia = ctx.match[1] as "diario" | "semanal" | "quincenal" | "mensual" | "anual";
     session.step = "descripcion";
     pendingRecurrenceSessions.set(ctx.chat.id, session);
     await ctx.reply("📝 Por último, mandame una *descripción* corta (ej: `Alquiler`, `Netflix`):", { parse_mode: "Markdown" });
@@ -2132,6 +2134,9 @@ if (bot) {
 
     // CRITICAL-1: use for...of so each iteration is awaited and errors don't get swallowed
     for (const r of recs ?? []) {
+      // Guard: skip paused or soft-deleted recurrentes
+      if (!r.is_active || r.deleted_at) continue;
+
       try {
         let shouldProcess = false;
         const last = r.last_processed ? new Date(r.last_processed) : null;
@@ -2142,7 +2147,18 @@ if (bot) {
           const days = diff / (1000 * 3600 * 24);
           if (r.frecuencia === 'diario' && days >= 1) shouldProcess = true;
           if (r.frecuencia === 'semanal' && days >= 7) shouldProcess = true;
-          if (r.frecuencia === 'mensual' && days >= 30) shouldProcess = true;
+          if (r.frecuencia === 'quincenal' && days >= 14) shouldProcess = true;
+          // mensual: use calendar arithmetic — nextRun = addMonth(last); process if today >= nextRun
+          if (r.frecuencia === 'mensual') {
+            const nextRun = addMonth(last);
+            if (today >= nextRun) shouldProcess = true;
+          }
+          // anual: addMonth x12 equivalent — use same addMonth logic iteratively
+          if (r.frecuencia === 'anual') {
+            let nextRun = addMonth(last);
+            for (let i = 0; i < 11; i++) nextRun = addMonth(nextRun);
+            if (today >= nextRun) shouldProcess = true;
+          }
         }
 
         if (shouldProcess) {

@@ -19,6 +19,7 @@ import {
   Pencil,
   X,
   Settings,
+  Repeat,
 } from 'lucide-react';
 import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
 import WelcomeWizard from './components/WelcomeWizard';
@@ -64,7 +65,7 @@ interface DashboardAppProps {
   onSetThemePreference: (p: ThemePreference) => void;
 }
 
-type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'empresas' | 'superadmin' | 'configuracion';
+type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
 
 const ResumenTab = lazy(() => import('./components/dashboard/tabs/ResumenTab'));
 const EmpresasTab = lazy(() => import('./components/dashboard/tabs/EmpresasTab'));
@@ -74,6 +75,7 @@ const MovimientosTab = lazy(() => import('./components/dashboard/tabs/Movimiento
 const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
 const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((module) => ({ default: module.BotConnectionPanel })));
 const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/ConfiguracionTab'));
+const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/RecurrentesTab'));
 
 interface MovementEditForm {
   tipo: 'ingreso' | 'egreso';
@@ -99,6 +101,7 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
   { id: 'movimientos', label: 'Movimientos', description: 'Transacciones filtrables y trazabilidad', icon: ArrowUpDown },
   { id: 'gastos', label: 'Gastos', description: 'Categorías, presupuesto vs real y evolución', icon: TrendingDown },
   { id: 'ingresos', label: 'Ingresos', description: 'Ventas por cliente, producto, canal y período', icon: TrendingUp },
+  { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
   { id: 'empresas', label: 'Empresas', description: 'Comparación, informes y exportaciones', icon: Building2 },
   { id: 'configuracion', label: 'Configuración', description: 'Miembros, permisos, Drive y cuenta', icon: Settings },
 ];
@@ -115,7 +118,7 @@ function normalizeMovement(item: Movimiento): Movimiento {
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
 const VALID_TABS: ReadonlyArray<DashboardTab> = [
-  'resumen', 'movimientos', 'gastos', 'ingresos', 'empresas', 'superadmin', 'configuracion',
+  'resumen', 'movimientos', 'gastos', 'ingresos', 'recurrentes', 'empresas', 'superadmin', 'configuracion',
 ];
 
 function readPersistedTab(): DashboardTab {
@@ -981,6 +984,12 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     />
   );
 
+  const renderRecurrentes = () => (
+    <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}>
+      <RecurrentesTab viewer={viewer} canWriteData={canWriteData} />
+    </Suspense>
+  );
+
   const renderConfiguracion = () => (
     <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}>
       <ConfiguracionTab
@@ -1024,6 +1033,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         return renderGastos();
       case 'ingresos':
         return renderIngresos();
+      case 'recurrentes':
+        return renderRecurrentes();
       case 'empresas':
         return renderEmpresas();
       case 'superadmin':

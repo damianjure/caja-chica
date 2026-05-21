@@ -1104,7 +1104,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         )}
 
-        <header className="space-y-4">
+        <header>
+          {/* Elevated header panel: distinct surface + shadow lifts it above the canvas. */}
+          <div className="space-y-4 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[0_8px_24px_-6px_rgba(40,30,10,0.14),0_2px_6px_rgba(40,30,10,0.06)] dark:shadow-[0_10px_28px_-6px_rgba(0,0,0,0.55),0_2px_8px_rgba(0,0,0,0.4)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4 min-w-0">
               <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard financiero</h1>
@@ -1135,14 +1137,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+              <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
                 <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Movimientos visibles</div>
                 <div className="mt-3 text-2xl font-semibold text-neutral-900">{history.length}</div>
               </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+              <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
                 <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">{activeTabMeta.label}</div>
                 <div className="mt-3 text-lg font-semibold text-neutral-900">{activeTabMeta.description}</div>
               </div>
+          </div>
           </div>
         </header>
 

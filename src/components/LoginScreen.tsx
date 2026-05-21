@@ -43,7 +43,7 @@ export function LoginScreen({
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Caja Chica</h1>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  Acceso privado para usuarios autorizados.
+                  Solo por invitación.
                 </p>
               </div>
             </div>
@@ -52,7 +52,7 @@ export function LoginScreen({
 
           <div className="space-y-2 text-sm text-neutral-600">
             <p>
-              Entrá con tu cuenta de Google. Solo pueden acceder las cuentas invitadas por el administrador.
+              Entrá con la cuenta de Google que te invitaron. Otra cuenta no va a poder acceder.
             </p>
           </div>
 

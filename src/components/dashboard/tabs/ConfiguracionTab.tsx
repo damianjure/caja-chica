@@ -471,7 +471,7 @@ export default function ConfiguracionTab({
         </div>
       </section>
 
-      {/* ── Miembros (solo owner / admin) ─────────────────────────────────── */}
+      {/* ── Equipo (solo Dueño / Admin) ────────────────────────────────────── */}
       {canManage && (
         <section className="bg-white border border-neutral-200 rounded-3xl shadow-sm overflow-hidden">
           {/* Header */}
@@ -481,8 +481,8 @@ export default function ConfiguracionTab({
                 <Users className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Miembros</h2>
-                <p className="text-sm text-neutral-500">Accesos, permisos e invitaciones.</p>
+                <h2 className="text-xl font-bold">Equipo</h2>
+                <p className="text-sm text-neutral-500">Quién tiene acceso a este dashboard y qué puede hacer.</p>
               </div>
             </div>
 

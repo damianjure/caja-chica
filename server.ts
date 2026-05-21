@@ -378,7 +378,7 @@ if (bot) {
     const linked = await getLinkedTelegramUser(ctx.chat.id);
     if (!hasTelegramAccess(linked)) {
       await ctx.reply(
-        "🔒 Este chat todavía no está vinculado a una cuenta autorizada.\n\nEntrá al dashboard, generá tu vínculo de Telegram y volvé a mandar el comando /start con el código que te da la app.",
+        "🔒 Este chat todavía no está sumado a ninguna cuenta.\n\nPedile al dueño del dashboard que te mande un link desde Configuración → Equipo → Sumar Telegram, y abrilo desde acá.",
       );
       return null;
     }
@@ -670,7 +670,7 @@ if (bot) {
       .limit(1);
     if (existingLinks && existingLinks.length > 0) {
       await ctx.reply(
-        "⚠️ Esta cuenta de Telegram ya está vinculada. Desvincúlala primero desde el dashboard.",
+        "⚠️ Esta cuenta de Telegram ya está sumada a otro dashboard. Pedile al dueño que te quite el acceso primero.",
       );
       return true;
     }
@@ -723,7 +723,7 @@ if (bot) {
         .update({ status: "claimed" })
         .eq("id", inviteToken.id);
 
-      await ctx.reply("✅ ¡Listo! Tu Telegram quedó vinculado al dashboard. Usá /menu para empezar.");
+      await ctx.reply("✅ Listo. Quedaste sumado al dashboard. Usá /menu para empezar.");
       return true;
     }
 
@@ -797,7 +797,7 @@ if (bot) {
         .eq("id", target.id as string);
 
       return ctx.reply(
-        "✅ Chat vinculado con éxito.\n\nA partir de ahora este bot va a operar solamente sobre tus datos.",
+        "✅ Chat sumado. A partir de ahora opera sobre tus datos.",
         { reply_markup: mainKeyboard },
       );
     }
@@ -805,13 +805,13 @@ if (bot) {
     const linked = await getLinkedTelegramUser(ctx.chat.id);
     if (hasTelegramAccess(linked)) {
       return ctx.reply(
-        "¡Hola de nuevo! Este chat ya está vinculado a tu cuenta. 💸\n\nUsá /menu para ver más opciones.",
+        "Hola de nuevo. Ya estás dentro. 💸\n\nUsá /menu para ver qué se puede hacer.",
         { reply_markup: mainKeyboard },
       );
     }
 
     ctx.reply(
-      "🔒 Este bot ahora es multiusuario privado.\n\nPrimero entrá al dashboard, generá el vínculo de Telegram y después mandame el comando /start con el código que te da la app.",
+      "🔒 Bot solo por invitación.\n\nPedile al dueño del dashboard que te mande un link desde Configuración → Equipo → Sumar Telegram, y abrilo desde acá.",
     );
   });
 

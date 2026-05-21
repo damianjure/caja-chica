@@ -25,6 +25,7 @@ import {
 } from "../services/api";
 import { ModalShell } from "./ui/ModalShell";
 import { ConfirmModal } from "./ui/ConfirmModal";
+import { APP_ROLE_LABELS, STATUS_LABELS as VOCAB_STATUS } from "../services/labels";
 
 interface AdminPanelProps {
   viewer: AppViewer;
@@ -317,9 +318,9 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           <Shield className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Administración</h2>
+          <h2 className="text-xl font-bold">Operador · Usuarios del sistema</h2>
           <p className="text-sm text-neutral-600">
-            Gestioná usuarios autorizados e invitaciones activas.
+            Todas las cuentas registradas e invitaciones activas. Solo vos ves esta tabla.
           </p>
         </div>
       </div>
@@ -339,9 +340,9 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           aria-label="Rol de la invitación"
           className="rounded-2xl border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
         >
-          <option value="member">member</option>
-          <option value="admin">admin</option>
-          {isSuperadmin && <option value="superadmin">superadmin</option>}
+          <option value="member">Usuario</option>
+          <option value="admin">Admin</option>
+          {isSuperadmin && <option value="superadmin">Operador</option>}
         </select>
         <button
           type="button"
@@ -396,7 +397,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                         {invitation.email}
                       </div>
                       <div className="text-xs text-neutral-600">
-                        {invitation.role} · {invitation.status}
+                        {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -499,7 +500,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                     )}
                   </div>
                   <div className="text-xs text-neutral-600 mt-1 flex items-center gap-2 flex-wrap">
-                    <span>{user.role}</span>
+                    <span>{APP_ROLE_LABELS[user.role as AppRole] ?? user.role}</span>
                     <span
                       className={`inline-block px-2 py-0.5 rounded-full text-[11px] border ${badge.className}`}
                       aria-label={`Estado: ${badge.label}`}
@@ -603,7 +604,7 @@ function UserDetailModal({
   return (
     <ModalShell
       title={detail?.user.email ?? "Detalle de usuario"}
-      description={detail ? `${detail.user.role} · ${statusBadge[detail.user.status]?.label ?? detail.user.status}` : undefined}
+      description={detail ? `${APP_ROLE_LABELS[detail.user.role as AppRole] ?? detail.user.role} · ${statusBadge[detail.user.status]?.label ?? detail.user.status}` : undefined}
       onClose={onClose}
       size="lg"
     >
@@ -679,7 +680,7 @@ function UserDetailModal({
 
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
-              Rol global
+              Rol del sistema
             </h3>
             <div className="flex gap-2 flex-wrap">
               {(["member", "admin", "superadmin"] as AppRole[]).map((r) => {
@@ -699,6 +700,7 @@ function UserDetailModal({
                     inactive: "bg-white border-red-300 text-red-800 hover:border-red-500",
                   },
                 }[r];
+                const roleLabel = { member: "Usuario", admin: "Admin", superadmin: "Operador" }[r];
                 return (
                   <button
                     key={r}
@@ -717,7 +719,7 @@ function UserDetailModal({
                     ) : (
                       <ShieldCheck className="w-3.5 h-3.5" />
                     )}
-                    {r}
+                    {roleLabel}
                   </button>
                 );
               })}

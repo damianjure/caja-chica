@@ -19,6 +19,15 @@ import {
   type PersonaScope,
   type PersonaStatus,
 } from "../services/api";
+import {
+  ACTION_LABELS,
+  APP_ROLE_LABELS,
+  DASHBOARD_ROLE_LABELS,
+  STATUS_LABELS as VOCAB_STATUS_LABELS,
+  badgeTooltip,
+  type AppRole,
+  type DashboardRole,
+} from "../services/labels";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,11 +51,12 @@ const STATUS_STYLES: Record<PersonaStatus, string> = {
   revoked: "bg-red-100 text-red-600",
 };
 
+// Map our PersonaStatus to the canonical vocab labels (revoked → "Sin acceso", etc.).
 const STATUS_LABELS: Record<PersonaStatus, string> = {
-  pending: "Pendiente",
-  active: "Activo",
-  expired: "Vencido",
-  revoked: "Revocado",
+  pending: VOCAB_STATUS_LABELS.pending,
+  active: VOCAB_STATUS_LABELS.active,
+  expired: VOCAB_STATUS_LABELS.expired,
+  revoked: VOCAB_STATUS_LABELS.revoked,
 };
 
 function StatusBadge({ status }: { status: PersonaStatus }) {
@@ -59,10 +69,42 @@ function StatusBadge({ status }: { status: PersonaStatus }) {
   );
 }
 
-function RoleBadge({ role }: { role: string }) {
+const DASHBOARD_ROLE_STYLES: Record<DashboardRole, string> = {
+  owner: "bg-violet-100 text-violet-700",
+  editor: "bg-green-100 text-green-700",
+  viewer: "bg-neutral-100 text-neutral-600",
+};
+
+const APP_ROLE_STYLES: Record<AppRole, string> = {
+  superadmin: "bg-rose-100 text-rose-700",
+  admin: "bg-amber-100 text-amber-800",
+  member: "bg-blue-100 text-blue-700",
+};
+
+function RoleBadge({ role, scope }: { role: string; scope: PersonaScope }) {
+  const isDashboardRole = scope === "dashboard" && (role === "owner" || role === "editor" || role === "viewer");
+  const isAppRole = scope === "app" && (role === "superadmin" || role === "admin" || role === "member");
+
+  let label = role;
+  let className = "bg-neutral-100 text-neutral-600";
+  let tip = "";
+
+  if (isDashboardRole) {
+    label = DASHBOARD_ROLE_LABELS[role as DashboardRole];
+    className = DASHBOARD_ROLE_STYLES[role as DashboardRole];
+    tip = badgeTooltip(role as DashboardRole);
+  } else if (isAppRole) {
+    label = APP_ROLE_LABELS[role as AppRole];
+    className = APP_ROLE_STYLES[role as AppRole];
+    tip = badgeTooltip(role as AppRole);
+  }
+
   return (
-    <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
-      {role}
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+      title={tip}
+    >
+      {label}
     </span>
   );
 }
@@ -133,7 +175,7 @@ function ActionMenu({
             className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
           >
             <Link className="w-3.5 h-3.5" />
-            Copiar link
+            {ACTION_LABELS.copyLink}
           </button>
 
           {canResend && (
@@ -150,7 +192,7 @@ function ActionMenu({
               ) : (
                 <Send className="w-3.5 h-3.5" />
               )}
-              Reenviar
+              {ACTION_LABELS.resend}
             </button>
           )}
 
@@ -165,7 +207,9 @@ function ActionMenu({
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                Cambiar a {persona.role === "editor" ? "viewer" : "editor"}
+                {persona.role === "editor"
+                  ? `${ACTION_LABELS.changeRole}: "${DASHBOARD_ROLE_LABELS.viewer}"`
+                  : `${ACTION_LABELS.changeRole}: "${DASHBOARD_ROLE_LABELS.editor}"`}
               </button>
             </>
           )}
@@ -181,7 +225,7 @@ function ActionMenu({
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               >
                 <XCircle className="w-3.5 h-3.5" />
-                Revocar
+                {ACTION_LABELS.revoke}
               </button>
             </>
           )}
@@ -320,13 +364,13 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
               onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
               className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm"
             >
-              <option value="viewer">viewer</option>
-              <option value="editor">editor</option>
+              <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
+              <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>
             </select>
           )}
           {scope === "app" && (
             <div className="flex items-center rounded-2xl border border-neutral-200 px-4 py-3 text-sm text-neutral-500">
-              member
+              {APP_ROLE_LABELS.member}
             </div>
           )}
           <button
@@ -339,7 +383,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             ) : (
               <UserPlus className="w-4 h-4" />
             )}
-            Invitar
+            {ACTION_LABELS.inviteSend}
           </button>
         </div>
 
@@ -351,7 +395,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
               onChange={(e) => setTelegramPreauth(e.target.checked)}
               className="rounded"
             />
-            Habilitar Telegram al aceptar
+            {ACTION_LABELS.telegramPreauthToggle}
           </label>
         )}
       </div>
@@ -360,7 +404,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-500">
-            Invitaciones {pendingCount > 0 && `· ${pendingCount} pendiente${pendingCount > 1 ? "s" : ""}`}
+            {scope === "dashboard" ? "Personas" : "Invitaciones"} {pendingCount > 0 && `· ${pendingCount} invitad${pendingCount > 1 ? "as" : "a"}`}
           </h3>
           <button
             onClick={() => void load()}
@@ -376,9 +420,10 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : personas.length === 0 ? (
-          <p className="text-sm text-neutral-500 py-4 text-center">
-            No hay invitaciones.
-          </p>
+          <div className="rounded-2xl border border-dashed border-neutral-200 px-6 py-10 text-center">
+            <h4 className="text-sm font-semibold text-neutral-700">{ACTION_LABELS.emptyTeamTitle}</h4>
+            <p className="mt-1 text-sm text-neutral-500">{ACTION_LABELS.emptyTeamBody}</p>
+          </div>
         ) : (
           <div className="space-y-2">
             {personas.map((persona) => (
@@ -398,7 +443,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <StatusBadge status={persona.status} />
-                    <RoleBadge role={persona.role} />
+                    <RoleBadge role={persona.role} scope={scope} />
                     <span className="text-xs text-neutral-400">
                       {relativeTime(persona.last_action_at)}
                     </span>

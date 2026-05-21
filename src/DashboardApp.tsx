@@ -216,7 +216,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const dashboardRole = currentDashboardMember?.role ?? 'owner';
   const canWriteData = dashboardRole !== 'viewer';
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'SuperAdmin', description: 'Usuarios, invitaciones y configuración global', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Usuarios del sistema, invitaciones globales y configuración', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   // Normalize activeTab against the current viewer's allowed tabs.

@@ -348,7 +348,7 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
   const inviterName = inviterEmail.split("@")[0] ?? "Alguien";
   const safeInviterName = escapeHtml(inviterName);
   const isEditor = role === "editor";
-  const roleBadge = isEditor ? "Editor" : "Viewer";
+  const roleBadge = isEditor ? "Puede editar" : "Puede ver";
   const rolePerk = isEditor
     ? "podés ver y cargar movimientos en tiempo real."
     : "podés ver todos los movimientos del dashboard.";
@@ -358,7 +358,7 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
   const body = `
     <p class="from"><strong>${safeInviterName}</strong> · vía Caja Chica</p>
     <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
-    <p class="lede">Compartimos los mismos movimientos. Entrás como <span class="badge">${roleBadge}</span> así ${rolePerk}</p>
+    <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span> así ${rolePerk}</p>
 
     <div class="cta">
       <a href="${safeUrl}">Entrar con Google</a>
@@ -367,7 +367,7 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
     <p class="fine">Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.</p>
 
     ${telegramDeepLink ? `
-    <p class="aside">¿Preferís cargar gastos por Telegram? <a class="link" href="${escapeHtml(telegramDeepLink)}">Vincular después del primer login →</a></p>
+    <p class="aside">¿Preferís cargar gastos por Telegram? <a class="link" href="${escapeHtml(telegramDeepLink)}">Sumarlo después del primer login →</a></p>
     ` : ``}
 
     <p class="signoff">Cualquier cosa, respondé este mail.</p>
@@ -376,7 +376,7 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
   `;
   return baseTemplate(
     `${inviterName} te sumó al dashboard`,
-    `${inviterName} te invitó a su dashboard de Caja Chica como ${roleBadge}.`,
+    `${inviterName} te invitó a su dashboard de Caja Chica con acceso ${roleBadge}.`,
     body,
   );
 }

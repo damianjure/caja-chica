@@ -56,13 +56,13 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             </div>
             <div>
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Te sumaste a un dashboard
+                Estás en un dashboard ajeno.
               </h2>
               <p className="text-neutral-500 text-sm leading-relaxed">
                 {viewer.email && (
                   <>Hola <strong className="text-neutral-700 dark:text-neutral-300">{viewer.email}</strong>. </>
                 )}
-                Ya podés ver y cargar movimientos en el dashboard compartido. Sin datos de ejemplo — vas directo a los datos reales.
+                Te sumaron al dashboard de otra persona. Compartís los mismos movimientos. Sin datos de ejemplo: vas directo a los datos reales.
               </p>
             </div>
             {telegramDeepLink ? (
@@ -92,9 +92,9 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
                 <MessageCircle className="w-5 h-5 text-sky-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-neutral-900 dark:text-white">Vincular Telegram</h3>
+                <h3 className="font-semibold text-neutral-900 dark:text-white">Sumar Telegram</h3>
                 <p className="text-sm text-neutral-500">
-                  Tu invitación incluye acceso al bot. Podés vincularlo ahora o hacerlo después.
+                  Te sumaron también al bot. Podés activarlo ahora o más tarde.
                 </p>
               </div>
             </div>

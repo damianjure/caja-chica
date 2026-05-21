@@ -45,13 +45,37 @@ function addYear(date: Date): Date {
 }
 
 /**
+ * If `dayOfMonth` is set (1-31), returns a Date for that day in the month
+ * AFTER the reference date. Clamps to last day of target month if dayOfMonth > maxDay.
+ * Used for "mensual el día X" semantics.
+ */
+function nextMonthlyOnDay(reference: Date, dayOfMonth: number, now: Date): Date {
+  // Strategy: try this month at dayOfMonth. If that's in the past (vs `now`),
+  // jump to next month.
+  const year = reference.getUTCFullYear();
+  const month = reference.getUTCMonth();
+  const tryThisMonth = new Date(Date.UTC(year, month, Math.min(dayOfMonth, lastDayOfMonth(year, month))));
+  if (tryThisMonth.getTime() > now.getTime()) return tryThisMonth;
+
+  const targetMonth = (month + 1) % 12;
+  const targetYear = month === 11 ? year + 1 : year;
+  const maxDay = lastDayOfMonth(targetYear, targetMonth);
+  return new Date(Date.UTC(targetYear, targetMonth, Math.min(dayOfMonth, maxDay)));
+}
+
+/**
  * Compute when a recurrente will next run, given its last_processed date.
  * Returns null when last_processed is null (caller renders "se activa esta noche").
  * All math is in UTC — no DST drift.
+ *
+ * If `dayOfMonth` is provided and frecuencia === "mensual", the next run is
+ * pinned to that calendar day instead of relative-to-last_processed math.
  */
 export function computeNextRun(
   frecuencia: Frecuencia,
   lastProcessed: Date | null,
+  dayOfMonth: number | null = null,
+  now: Date = new Date(),
 ): Date | null {
   if (lastProcessed === null) return null;
 
@@ -63,6 +87,9 @@ export function computeNextRun(
     case "quincenal":
       return new Date(lastProcessed.getTime() + 14 * 24 * 3600 * 1000);
     case "mensual":
+      if (dayOfMonth !== null && dayOfMonth >= 1 && dayOfMonth <= 31) {
+        return nextMonthlyOnDay(lastProcessed, dayOfMonth, now);
+      }
       return addMonth(lastProcessed);
     case "anual":
       return addYear(lastProcessed);

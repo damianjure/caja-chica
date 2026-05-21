@@ -2921,7 +2921,8 @@ export function createApp({
       const now = new Date();
       const items = (data ?? []).map((r: any) => {
         const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
-        const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed);
+        const dayOfMonth = typeof r.day_of_month === "number" ? r.day_of_month : null;
+        const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed, dayOfMonth, now);
         return {
           ...r,
           next_run_at: nextRun ? nextRun.toISOString() : null,
@@ -2967,6 +2968,7 @@ export function createApp({
           categoria: parsed.categoria ?? null,
           empresa_nombre: parsed.empresa_nombre ?? "Personal",
           descripcion: parsed.descripcion ?? null,
+          day_of_month: parsed.day_of_month ?? null,
           is_active: true,
           deleted_at: null,
           last_processed: null,
@@ -3046,6 +3048,21 @@ export function createApp({
       if (p.categoria !== undefined) updates.categoria = p.categoria;
       if (p.empresa_nombre !== undefined) updates.empresa_nombre = p.empresa_nombre;
       if (p.descripcion !== undefined) updates.descripcion = p.descripcion;
+
+      if (p.day_of_month !== undefined) {
+        if (p.day_of_month === null) {
+          updates.day_of_month = null;
+        } else if (
+          typeof p.day_of_month === "number" &&
+          Number.isInteger(p.day_of_month) &&
+          p.day_of_month >= 1 &&
+          p.day_of_month <= 31
+        ) {
+          updates.day_of_month = p.day_of_month;
+        } else {
+          return res.status(400).json({ error: "invalid_day_of_month" });
+        }
+      }
 
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: "no_fields" });

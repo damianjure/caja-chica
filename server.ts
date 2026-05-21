@@ -37,7 +37,7 @@ import {
 import { buildReportFile } from "./src/server/reportExports.ts";
 import { filterMovementsForReport, resolveReportDateRange, type ReportExportRequest } from "./src/reports/shared.ts";
 import { uploadFileToDrive, decryptToken } from "./src/server/drive.ts";
-import { addMonth } from "./src/server/recurrentes.ts";
+import { addMonth, computeNextRun } from "./src/server/recurrentes.ts";
 import { can, type TelegramAction } from "./src/server/permissions.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
@@ -2148,10 +2148,11 @@ if (bot) {
           if (r.frecuencia === 'diario' && days >= 1) shouldProcess = true;
           if (r.frecuencia === 'semanal' && days >= 7) shouldProcess = true;
           if (r.frecuencia === 'quincenal' && days >= 14) shouldProcess = true;
-          // mensual: use calendar arithmetic — nextRun = addMonth(last); process if today >= nextRun
+          // mensual: if day_of_month is set, pin next run to that calendar day;
+          // otherwise relative calendar arithmetic from last_processed.
           if (r.frecuencia === 'mensual') {
-            const nextRun = addMonth(last);
-            if (today >= nextRun) shouldProcess = true;
+            const nextRun = computeNextRun('mensual', last, typeof r.day_of_month === 'number' ? r.day_of_month : null, today);
+            if (nextRun && today >= nextRun) shouldProcess = true;
           }
           // anual: addMonth x12 equivalent — use same addMonth logic iteratively
           if (r.frecuencia === 'anual') {

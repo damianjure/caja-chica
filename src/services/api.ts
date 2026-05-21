@@ -290,6 +290,8 @@ export interface Recurrente {
   created_at: string;
   next_run_at: string;
   next_run_label: string;
+  /** 1-31. Only meaningful for frecuencia === 'mensual'. */
+  day_of_month: number | null;
 }
 
 export type RecurrenteRequest = {
@@ -300,6 +302,8 @@ export type RecurrenteRequest = {
   empresa_nombre?: string;
   descripcion?: string;
   categoria?: string;
+  /** 1-31. Sent only when frecuencia === 'mensual'. */
+  day_of_month?: number | null;
 };
 
 class ApiError extends Error {

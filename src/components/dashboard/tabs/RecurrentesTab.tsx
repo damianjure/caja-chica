@@ -49,6 +49,8 @@ interface FormState {
   categoria: string;
   empresa_nombre: string;
   descripcion: string;
+  /** Día del mes 1-31. Solo aplica a frecuencia mensual. */
+  dayOfMonth: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -59,6 +61,7 @@ const EMPTY_FORM: FormState = {
   categoria: '',
   empresa_nombre: 'Personal',
   descripcion: '',
+  dayOfMonth: '1',
 };
 
 function recurrenteToForm(r: Recurrente): FormState {
@@ -70,6 +73,7 @@ function recurrenteToForm(r: Recurrente): FormState {
     categoria: r.categoria ?? '',
     empresa_nombre: r.empresa_nombre ?? 'Personal',
     descripcion: r.descripcion ?? '',
+    dayOfMonth: r.day_of_month ? String(r.day_of_month) : '1',
   };
 }
 
@@ -150,7 +154,7 @@ function RecurrenteModal({
               </select>
             </div>
 
-            <div className="col-span-2">
+            <div className={form.frecuencia === 'mensual' ? '' : 'col-span-2'}>
               <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Frecuencia</label>
               <select
                 value={form.frecuencia}
@@ -162,6 +166,21 @@ function RecurrenteModal({
                 ))}
               </select>
             </div>
+
+            {form.frecuencia === 'mensual' && (
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Día del mes</label>
+                <select
+                  value={form.dayOfMonth}
+                  onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={String(d)}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Categoría</label>
@@ -256,6 +275,7 @@ export default function RecurrentesTab({
       categoria: form.categoria || undefined,
       empresa_nombre: form.empresa_nombre || 'Personal',
       descripcion: form.descripcion || undefined,
+      day_of_month: form.frecuencia === 'mensual' ? Number(form.dayOfMonth) : null,
     };
     try {
       const created = await api.createRecurrente(body);
@@ -279,6 +299,7 @@ export default function RecurrentesTab({
       categoria: form.categoria || undefined,
       empresa_nombre: form.empresa_nombre || 'Personal',
       descripcion: form.descripcion || undefined,
+      day_of_month: form.frecuencia === 'mensual' ? Number(form.dayOfMonth) : null,
     };
     try {
       const updated = await api.updateRecurrente(editing.id, body);
@@ -357,7 +378,10 @@ export default function RecurrentesTab({
                     <span className={badgeTipo(r.tipo)}>
                       {r.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
                     </span>
-                    <span className={badgeFrecuencia}>{FRECUENCIA_LABELS[r.frecuencia]}</span>
+                    <span className={badgeFrecuencia}>
+                      {FRECUENCIA_LABELS[r.frecuencia]}
+                      {r.frecuencia === 'mensual' && r.day_of_month ? ` · día ${r.day_of_month}` : ''}
+                    </span>
                     <span className={r.is_active ? badgeActive : badgePaused}>
                       {r.is_active ? 'Activo' : 'Pausado'}
                     </span>

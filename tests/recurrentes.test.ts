@@ -200,6 +200,36 @@ test("computeNextRun: anual leap year Feb 29 → Feb 28 in non-leap", () => {
   assert.strictEqual(result.toISOString(), "2025-02-28T00:00:00.000Z");
 });
 
+test("computeNextRun: mensual with day_of_month pins to that day next month", () => {
+  // last_processed May 5, day_of_month=5, now May 10 → already past the 5th this month
+  const base = new Date("2026-05-05T00:00:00.000Z");
+  const now = new Date("2026-05-10T00:00:00.000Z");
+  const result = computeNextRun("mensual", base, 5, now)!;
+  assert.strictEqual(result.toISOString(), "2026-06-05T00:00:00.000Z");
+});
+
+test("computeNextRun: mensual with day_of_month still ahead this month", () => {
+  // last_processed May 1, day_of_month=20, now May 10 → the 20th is still ahead
+  const base = new Date("2026-05-01T00:00:00.000Z");
+  const now = new Date("2026-05-10T00:00:00.000Z");
+  const result = computeNextRun("mensual", base, 20, now)!;
+  assert.strictEqual(result.toISOString(), "2026-05-20T00:00:00.000Z");
+});
+
+test("computeNextRun: mensual day_of_month=31 clamps to Feb 28", () => {
+  // day_of_month=31, target month February → clamp to last day
+  const base = new Date("2026-01-31T00:00:00.000Z");
+  const now = new Date("2026-02-01T00:00:00.000Z");
+  const result = computeNextRun("mensual", base, 31, now)!;
+  assert.strictEqual(result.toISOString(), "2026-02-28T00:00:00.000Z");
+});
+
+test("computeNextRun: mensual without day_of_month falls back to addMonth", () => {
+  const base = new Date("2026-05-21T00:00:00.000Z");
+  const result = computeNextRun("mensual", base, null)!;
+  assert.strictEqual(result.toISOString(), "2026-06-21T00:00:00.000Z");
+});
+
 // ---------------------------------------------------------------------------
 // relativeRunLabel tests
 // ---------------------------------------------------------------------------

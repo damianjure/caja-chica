@@ -367,6 +367,8 @@ export interface RecurrenteRequest {
   categoria?: string;
   empresa_nombre?: string;
   descripcion?: string;
+  /** 1-31. Only meaningful for frecuencia === "mensual". */
+  day_of_month?: number;
 }
 
 export function parseRecurrenteRequest(body: unknown): RecurrenteRequest | null {
@@ -388,6 +390,18 @@ export function parseRecurrenteRequest(body: unknown): RecurrenteRequest | null 
   if (typeof p.categoria === "string" && p.categoria.trim()) result.categoria = p.categoria.trim();
   if (typeof p.empresa_nombre === "string" && p.empresa_nombre.trim()) result.empresa_nombre = p.empresa_nombre.trim();
   if (typeof p.descripcion === "string" && p.descripcion.trim()) result.descripcion = p.descripcion.trim();
+
+  // day_of_month — only accepted for frecuencia=mensual. Range 1-31.
+  // Backend silently ignores the value for other frecuencias to keep the API permissive.
+  if (
+    typeof p.day_of_month === "number" &&
+    Number.isInteger(p.day_of_month) &&
+    p.day_of_month >= 1 &&
+    p.day_of_month <= 31 &&
+    result.frecuencia === "mensual"
+  ) {
+    result.day_of_month = p.day_of_month;
+  }
 
   return result;
 }

@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+/*
+  Inter Variable self-hosted. woff2 in /public/fonts/.
+  Variable axes: wght 100-900, slnt -10 to 0.
+  font-display: swap → text renders with fallback first, swaps when font ready.
+*/
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2-variations");
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -16,10 +36,39 @@
   --space-relaxed: 1.5rem;
   --space-section: 2rem;
   --space-hero: 3rem;
+  /* Radius scale (semantic + numeric). Pick by intent:
+       xs  = inline accents (chips, ticks)
+       sm  = inputs, small buttons
+       md  = buttons, badges with content
+       lg  = standard cards, modal items
+       xl  = large cards, panels
+       2xl = hero panels, modal shells
+       pill = circular pills (still 9999) */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
   --radius-pill: 9999px;
+  /* Legacy aliases (kept for backward compat in existing components). */
   --radius-input: 0.625rem;
   --radius-card: 1rem;
   --radius-hero: 1.75rem;
+
+  /* Type scale (ratio ≥1.25 between steps).
+       Used via Tailwind text-* utilities or directly as font-size: var(...).
+       Base 16px. */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px (×1.125 from base — for body lead) */
+  --text-xl: 1.25rem;     /* 20px (×1.25 from base) */
+  --text-2xl: 1.5rem;     /* 24px (×1.2 from xl) */
+  --text-3xl: 1.875rem;   /* 30px (×1.25 from 2xl) */
+  --text-4xl: 2.25rem;    /* 36px (×1.2 from 3xl) */
+  --text-5xl: 3rem;       /* 48px (×1.33 from 4xl) */
 }
 
 @layer base {

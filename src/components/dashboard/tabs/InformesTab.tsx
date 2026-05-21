@@ -145,7 +145,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
   const driveReady = canUseDrive && driveStatus.enabled && driveStatus.connected;
 
   return (
-    <div className="space-y-6">
+    <div className="stack-relaxed">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <MetricCard label="Exportaciones" value={String(exportsHistory.length)} tone="neutral" />
         <MetricCard

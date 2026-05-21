@@ -361,7 +361,7 @@ import { FRECUENCIA_WHITELIST, type Frecuencia } from "./recurrentes.ts";
 
 export interface RecurrenteRequest {
   monto: number;
-  tipo: "gasto" | "ingreso";
+  tipo: "egreso" | "ingreso";
   moneda: "ARS" | "USD";
   frecuencia: Frecuencia;
   categoria?: string;
@@ -374,7 +374,7 @@ export function parseRecurrenteRequest(body: unknown): RecurrenteRequest | null 
   const p = body as Record<string, unknown>;
 
   if (typeof p.monto !== "number" || !Number.isFinite(p.monto) || p.monto <= 0) return null;
-  if (p.tipo !== "gasto" && p.tipo !== "ingreso") return null;
+  if (p.tipo !== "egreso" && p.tipo !== "ingreso") return null;
   if (p.moneda !== "ARS" && p.moneda !== "USD") return null;
   if (!FRECUENCIA_WHITELIST.includes(p.frecuencia as Frecuencia)) return null;
 

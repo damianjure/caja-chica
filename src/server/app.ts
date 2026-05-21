@@ -3031,7 +3031,7 @@ export function createApp({
         updates.monto = p.monto;
       }
       if (p.tipo !== undefined) {
-        if (p.tipo !== "gasto" && p.tipo !== "ingreso") return res.status(400).json({ error: "invalid_tipo" });
+        if (p.tipo !== "egreso" && p.tipo !== "ingreso") return res.status(400).json({ error: "invalid_tipo" });
         updates.tipo = p.tipo;
       }
       if (p.moneda !== undefined) {
@@ -3039,7 +3039,7 @@ export function createApp({
         updates.moneda = p.moneda;
       }
       if (p.frecuencia !== undefined) {
-        const parsed = parseRecurrenteRequest({ monto: 1, tipo: "gasto", moneda: "ARS", frecuencia: p.frecuencia });
+        const parsed = parseRecurrenteRequest({ monto: 1, tipo: "egreso", moneda: "ARS", frecuencia: p.frecuencia });
         if (!parsed) return res.status(400).json({ error: "invalid_frecuencia" });
         updates.frecuencia = p.frecuencia;
       }

@@ -278,7 +278,7 @@ export type Frecuencia = 'diario' | 'semanal' | 'quincenal' | 'mensual' | 'anual
 export interface Recurrente {
   id: string;
   monto: number;
-  tipo: 'gasto' | 'ingreso';
+  tipo: 'egreso' | 'ingreso';
   moneda: 'ARS' | 'USD';
   frecuencia: Frecuencia;
   empresa_nombre: string;
@@ -294,7 +294,7 @@ export interface Recurrente {
 
 export type RecurrenteRequest = {
   monto: number;
-  tipo: 'gasto' | 'ingreso';
+  tipo: 'egreso' | 'ingreso';
   moneda: 'ARS' | 'USD';
   frecuencia: Frecuencia;
   empresa_nombre?: string;

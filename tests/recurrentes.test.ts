@@ -257,7 +257,7 @@ test("relativeRunLabel: 365 days returns en 1 año", () => {
 test("parseRecurrenteRequest: valid body returns parsed object", () => {
   const result = parseRecurrenteRequest({
     monto: 1500,
-    tipo: "gasto",
+    tipo: "egreso",
     moneda: "ARS",
     frecuencia: "mensual",
   });
@@ -269,7 +269,7 @@ test("parseRecurrenteRequest: valid body returns parsed object", () => {
 test("parseRecurrenteRequest: frecuencia inválida returns null", () => {
   const result = parseRecurrenteRequest({
     monto: 1000,
-    tipo: "gasto",
+    tipo: "egreso",
     moneda: "ARS",
     frecuencia: "trimestral",
   });
@@ -279,7 +279,7 @@ test("parseRecurrenteRequest: frecuencia inválida returns null", () => {
 test("parseRecurrenteRequest: monto <= 0 returns null", () => {
   const result = parseRecurrenteRequest({
     monto: 0,
-    tipo: "gasto",
+    tipo: "egreso",
     moneda: "ARS",
     frecuencia: "diario",
   });
@@ -289,17 +289,17 @@ test("parseRecurrenteRequest: monto <= 0 returns null", () => {
 test("parseRecurrenteRequest: tipo inválido returns null", () => {
   const result = parseRecurrenteRequest({
     monto: 100,
-    tipo: "egreso",
+    tipo: "gasto", // legacy name no longer accepted — DB uses egreso
     moneda: "ARS",
     frecuencia: "semanal",
   });
-  // egreso is NOT in whitelist — only gasto|ingreso
+  // Only egreso|ingreso are accepted (consistent with DB check constraint).
   assert.strictEqual(result, null);
 });
 
 test("parseRecurrenteRequest: quincenal and anual accepted", () => {
   for (const f of ["quincenal", "anual"] as const) {
-    const result = parseRecurrenteRequest({ monto: 100, tipo: "gasto", moneda: "USD", frecuencia: f });
+    const result = parseRecurrenteRequest({ monto: 100, tipo: "egreso", moneda: "USD", frecuencia: f });
     assert.ok(result, `frecuencia ${f} should be accepted`);
     assert.strictEqual(result.frecuencia, f);
   }
@@ -314,7 +314,7 @@ const BASE_RECURRENTE = {
   owner_user_id: "user-1",
   dashboard_id: null,
   monto: 5000,
-  tipo: "gasto",
+  tipo: "egreso",
   moneda: "ARS",
   frecuencia: "mensual",
   empresa_nombre: "Personal",
@@ -406,7 +406,7 @@ test("POST /api/recurrentes: viewer gets 403", async () => {
   const { port, close } = await startServer(stub, session);
   try {
     const { status } = await req(port, "POST", "/api/recurrentes", {
-      monto: 1000, tipo: "gasto", moneda: "ARS", frecuencia: "mensual",
+      monto: 1000, tipo: "egreso", moneda: "ARS", frecuencia: "mensual",
     });
     assert.strictEqual(status, 403);
   } finally {
@@ -420,7 +420,7 @@ test("POST /api/recurrentes: frecuencia inválida returns 400", async () => {
   const { port, close } = await startServer(stub, session);
   try {
     const { status } = await req(port, "POST", "/api/recurrentes", {
-      monto: 1000, tipo: "gasto", moneda: "ARS", frecuencia: "foo",
+      monto: 1000, tipo: "egreso", moneda: "ARS", frecuencia: "foo",
     });
     assert.strictEqual(status, 400);
   } finally {
@@ -434,7 +434,7 @@ test("POST /api/recurrentes: successful creation returns 201", async () => {
   const { port, close } = await startServer(stub, session);
   try {
     const { status, data } = await req(port, "POST", "/api/recurrentes", {
-      monto: 2000, tipo: "gasto", moneda: "ARS", frecuencia: "quincenal",
+      monto: 2000, tipo: "egreso", moneda: "ARS", frecuencia: "quincenal",
     });
     assert.strictEqual(status, 201);
     assert.ok(data);

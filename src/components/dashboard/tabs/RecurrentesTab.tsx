@@ -20,7 +20,7 @@ const badgeActive =
 const badgePaused =
   'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40';
 
-const badgeTipo = (tipo: 'gasto' | 'ingreso') =>
+const badgeTipo = (tipo: 'egreso' | 'ingreso') =>
   tipo === 'ingreso'
     ? 'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/40'
     : 'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-rose-100 text-rose-800 ring-1 ring-rose-300/60 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/40';
@@ -43,7 +43,7 @@ function formatMonto(monto: number, moneda: 'ARS' | 'USD'): string {
 
 interface FormState {
   monto: string;
-  tipo: 'gasto' | 'ingreso';
+  tipo: 'egreso' | 'ingreso';
   moneda: 'ARS' | 'USD';
   frecuencia: Frecuencia;
   categoria: string;
@@ -53,7 +53,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   monto: '',
-  tipo: 'gasto',
+  tipo: 'egreso',
   moneda: 'ARS',
   frecuencia: 'mensual',
   categoria: '',
@@ -130,10 +130,10 @@ function RecurrenteModal({
               <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Tipo</label>
               <select
                 value={form.tipo}
-                onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'gasto' | 'ingreso' }))}
+                onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}
                 className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               >
-                <option value="gasto">Gasto</option>
+                <option value="egreso">Gasto</option>
                 <option value="ingreso">Ingreso</option>
               </select>
             </div>

@@ -424,7 +424,7 @@ export default function ConfiguracionTab({
                   className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
                     defaultCurrency === c
                       ? 'bg-neutral-900 border-neutral-900 text-white'
-                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:bg-neutral-50'
+                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-[var(--app-border-strong)]'
                   }`}
                 >
                   {c}
@@ -457,54 +457,54 @@ export default function ConfiguracionTab({
               <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Hora del recordatorio</p>
               {savingNotifHour && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <Bell className="w-4 h-4 text-neutral-500 shrink-0" />
-              <div className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-2">
+              <div className="inline-flex items-center gap-0.5 rounded-md border border-neutral-200 bg-white px-2 py-1">
                 <div className="flex flex-col items-center">
                   <button
                     type="button"
                     onClick={() => void handleSaveNotif((notifHour + 1) % 24, notifMinute)}
                     aria-label="Subir hora"
-                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
                   >
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <span className="w-9 text-center text-2xl font-mono font-semibold tabular-nums text-neutral-900">
+                  <span className="w-6 text-center text-base font-mono font-semibold tabular-nums text-neutral-900 leading-none">
                     {String(notifHour).padStart(2, "0")}
                   </span>
                   <button
                     type="button"
                     onClick={() => void handleSaveNotif((notifHour + 23) % 24, notifMinute)}
                     aria-label="Bajar hora"
-                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <span className="pb-1 text-2xl font-mono font-semibold text-neutral-400">:</span>
+                <span className="text-base font-mono font-semibold text-neutral-400 leading-none">:</span>
                 <div className="flex flex-col items-center">
                   <button
                     type="button"
                     onClick={() => void handleSaveNotif(notifHour, (notifMinute + 5) % 60)}
                     aria-label="Subir minutos"
-                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
                   >
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <span className="w-9 text-center text-2xl font-mono font-semibold tabular-nums text-neutral-900">
+                  <span className="w-6 text-center text-base font-mono font-semibold tabular-nums text-neutral-900 leading-none">
                     {String(notifMinute).padStart(2, "0")}
                   </span>
                   <button
                     type="button"
                     onClick={() => void handleSaveNotif(notifHour, (notifMinute + 55) % 60)}
                     aria-label="Bajar minutos"
-                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <span className="ml-1 self-end pb-1 text-xs text-neutral-400">hs</span>
               </div>
+              <span className="text-xs text-neutral-400">hs (UTC)</span>
             </div>
             <p className="text-xs text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
           </div>
@@ -603,7 +603,7 @@ export default function ConfiguracionTab({
                                   title={col.description}
                                   className={`inline-flex items-center justify-center w-6 h-6 rounded-full mx-auto transition-all disabled:opacity-40 ${
                                     active
-                                      ? "bg-neutral-900 text-white hover:bg-neutral-700"
+                                      ? "bg-neutral-900 text-white"
                                       : "border-2 border-neutral-300 text-transparent hover:border-neutral-500"
                                   }`}
                                 >
@@ -622,7 +622,7 @@ export default function ConfiguracionTab({
                             <button
                               onClick={() => setRevokeConfirm({ id: member.id, email: member.email ?? member.user_id })}
                               disabled={isRevoking}
-                              className="inline-flex items-center justify-center w-7 h-7 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 mx-auto"
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-xl border border-red-200 text-red-500 hover:border-red-400 disabled:opacity-50 mx-auto"
                               title="Revocar acceso"
                             >
                               {isRevoking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
@@ -735,7 +735,7 @@ export default function ConfiguracionTab({
                                 <code className="flex-1 text-xs font-mono text-neutral-800 break-all">/start {freshToken.token}</code>
                                 <button
                                   onClick={() => void handleCopyToken(freshToken.token)}
-                                  className="shrink-0 p-1.5 rounded-md hover:bg-neutral-200"
+                                  className="shrink-0 p-1.5 rounded-md border border-transparent hover:border-[var(--app-border-strong)]"
                                   aria-label="Copiar comando"
                                 >
                                   <Copy className="w-3.5 h-3.5 text-neutral-600" />
@@ -749,14 +749,14 @@ export default function ConfiguracionTab({
                                   <button
                                     disabled={isGenerating}
                                     onClick={() => void handleGenerateToken(member.user_id)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-border-strong)] disabled:opacity-50"
                                   >
                                     {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                                     Regenerar vínculo
                                   </button>
                                   <button
                                     onClick={() => void handleRevokeLink(activeLink.id)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
                                   >
                                     <X className="w-3 h-3" /> Desvincular
                                   </button>
@@ -766,13 +766,13 @@ export default function ConfiguracionTab({
                                 <>
                                   <button
                                     onClick={() => void handleConfirmLink(pendingLink.id)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-green-600 hover:border-green-400"
                                   >
                                     <Check className="w-3 h-3" /> Confirmar vínculo
                                   </button>
                                   <button
                                     onClick={() => void handleRevokeLink(pendingLink.id)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
                                   >
                                     <X className="w-3 h-3" /> Rechazar
                                   </button>
@@ -782,7 +782,7 @@ export default function ConfiguracionTab({
                                 <button
                                   disabled={isGenerating}
                                   onClick={() => void handleGenerateToken(member.user_id)}
-                                  className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 border border-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:border-[var(--app-border-strong)] disabled:opacity-50"
                                 >
                                   {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                                   {freshToken ? "Regenerar comando" : "Generar vínculo de Telegram"}
@@ -846,7 +846,7 @@ export default function ConfiguracionTab({
               type="button"
               onClick={() => void handleSaveDisplayName()}
               disabled={savingDisplayName}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-border-strong)] disabled:opacity-50"
             >
               {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Guardar
@@ -859,7 +859,7 @@ export default function ConfiguracionTab({
           {canConnectDrive && onDisconnectDrive && (
             <button
               onClick={() => void onDisconnectDrive()}
-              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
             >
               <HardDrive className="w-4 h-4 text-neutral-500" />
               Desconectar Google Drive
@@ -871,7 +871,7 @@ export default function ConfiguracionTab({
             <button
               onClick={() => void handlePurgeDemo()}
               disabled={purgingDemo}
-              className="w-full flex items-center gap-3 rounded-xl border border-amber-200 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-amber-200 px-4 py-3 text-sm font-medium text-amber-700 hover:border-amber-400 transition-colors disabled:opacity-50"
             >
               {purgingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Limpiar datos de ejemplo
@@ -881,7 +881,7 @@ export default function ConfiguracionTab({
           {/* Export data */}
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
           >
             <Download className="w-4 h-4 text-neutral-500" />
             Exportar mis datos (JSON)
@@ -891,7 +891,7 @@ export default function ConfiguracionTab({
             <button
               onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingDashboard}
-              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors disabled:opacity-50"
             >
               {leavingDashboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
               Abandonar este dashboard
@@ -900,7 +900,7 @@ export default function ConfiguracionTab({
 
           <button
             onClick={() => void onSignOut()}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
           >
             <LogOut className="w-4 h-4 text-neutral-500" />
             Cerrar sesión
@@ -950,7 +950,7 @@ export default function ConfiguracionTab({
                         disabled={revokingSession === s.id || isCurrent}
                         aria-label={isCurrent ? "No se puede cerrar la sesión activa" : "Cerrar esta sesión"}
                         title={isCurrent ? "Usá Cerrar sesión para salir" : "Cerrar sesión"}
-                        className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                        className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                       >
                         {revokingSession === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                       </button>
@@ -966,7 +966,7 @@ export default function ConfiguracionTab({
         <div className="border-t border-red-100 pt-4">
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Borrar mi cuenta

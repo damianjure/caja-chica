@@ -348,7 +348,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           type="button"
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-3 text-white font-medium hover:bg-neutral-800 disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -404,7 +404,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                       <button
                         type="button"
                         onClick={() => void handleCopy(invitation)}
-                        className="p-2 rounded-xl border border-neutral-300 hover:bg-neutral-50"
+                        className="p-2 rounded-xl border border-neutral-300 hover:border-[var(--app-border-strong)]"
                         aria-label={`Copiar link de ${invitation.email}`}
                         title="Copiar link"
                       >
@@ -414,7 +414,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                         <button
                           type="button"
                           onClick={() => void handleRevokeInvitation(invitation.id)}
-                          className="p-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50"
+                          className="p-2 rounded-xl border border-red-300 text-red-600 hover:border-red-400"
                           aria-label={`Revocar invitación de ${invitation.email}`}
                           title="Revocar"
                         >
@@ -513,7 +513,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                   <button
                     type="button"
                     onClick={() => onSelect(user.user_id)}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 hover:border-neutral-400"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium hover:border-[var(--app-border-strong)]"
                     aria-label={`Administrar ${user.email}`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -543,9 +543,9 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                       red: "bg-red-600 border-red-600 text-white ring-2 ring-red-200",
                     }[tone];
                     const inactiveClass = {
-                      green: "bg-white border-green-300 text-green-800 hover:bg-green-50",
-                      amber: "bg-white border-amber-300 text-amber-800 hover:bg-amber-50",
-                      red: "bg-white border-red-300 text-red-800 hover:bg-red-50",
+                      green: "bg-white border-green-300 text-green-800 hover:border-green-400",
+                      amber: "bg-white border-amber-300 text-amber-800 hover:border-amber-400",
+                      red: "bg-white border-red-300 text-red-800 hover:border-red-400",
                     }[tone];
                     return (
                       <button
@@ -671,7 +671,7 @@ function UserDetailModal({
               type="button"
               onClick={onForceLogout}
               disabled={acting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:border-[var(--app-border-strong)] disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
               Forzar logout (cerrar sesiones)
@@ -748,7 +748,7 @@ function UserDetailModal({
                         type="button"
                         onClick={() => onRevokeTelegramLink(link.id, link.chat_id)}
                         disabled={acting}
-                        className="p-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        className="p-2 rounded-lg border border-red-300 text-red-700 hover:border-red-400 disabled:opacity-50"
                         aria-label={`Revocar vínculo de chat ${link.chat_id ?? "—"}`}
                         title="Revocar"
                       >
@@ -798,9 +798,9 @@ function StatusButton({ icon, label, active, onClick, disabled, tone }: StatusBu
     red: "bg-red-600 border-red-600 text-white shadow-md ring-2 ring-red-200",
   }[tone];
   const inactiveClass = {
-    green: "bg-white border-green-300 text-green-800 hover:bg-green-50",
-    amber: "bg-white border-amber-300 text-amber-800 hover:bg-amber-50",
-    red: "bg-white border-red-300 text-red-800 hover:bg-red-50",
+    green: "bg-white border-green-300 text-green-800 hover:border-green-400",
+    amber: "bg-white border-amber-300 text-amber-800 hover:border-amber-400",
+    red: "bg-white border-red-300 text-red-800 hover:border-red-400",
   }[tone];
   return (
     <button

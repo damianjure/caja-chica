@@ -126,7 +126,7 @@ export function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-neutral-300 hover:bg-neutral-50 active:scale-[0.94] transition-transform text-neutral-700 shrink-0"
+            className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-neutral-300 hover:border-[var(--app-border-strong)] active:scale-[0.94] transition-transform text-neutral-700 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

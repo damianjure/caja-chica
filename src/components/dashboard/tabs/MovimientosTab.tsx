@@ -58,23 +58,40 @@ export default function MovimientosTab({
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
               {companiesList.map((company) => {
                 const companyEntity = customCompanies.find((item) => item.nombre === company);
+                const isSelected = selectedCompany === company;
+                const showActions = Boolean(canWriteData && companyEntity && isSelected);
                 return (
-                  <div key={company} className="relative group">
+                  <div
+                    key={company}
+                    className={`inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap transition duration-150 border ${
+                      isSelected
+                        ? 'bg-neutral-900 text-white border-neutral-900'
+                        : 'bg-white border-neutral-200 text-neutral-500 hover:border-[var(--app-border-strong)]'
+                    }`}
+                  >
                     <button
                       onClick={() => setSelectedCompany(company)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition duration-150 active:scale-[0.95] ${selectedCompany === company ? 'bg-neutral-900 text-white shadow-md' : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}
+                      className={`py-1.5 active:scale-[0.95] ${showActions ? 'pl-4 pr-2' : 'px-4'}`}
                     >
                       {company === 'all' ? 'Todas las empresas' : company}
                     </button>
-                    {canWriteData && companyEntity && (
-                      <div className="absolute -top-1 -right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(event) => { event.stopPropagation(); onEditCompany(companyEntity); }} className="bg-white border border-neutral-200 text-neutral-700 rounded-full p-0.5 shadow-sm">
-                          <Pencil className="w-2.5 h-2.5" />
+                    {showActions && companyEntity && (
+                      <span className="flex items-center gap-0.5 pr-1.5">
+                        <button
+                          onClick={(event) => { event.stopPropagation(); onEditCompany(companyEntity); }}
+                          className="rounded-full p-1 text-white/60 hover:text-white transition-colors"
+                          aria-label={`Editar ${company}`}
+                        >
+                          <Pencil className="w-3 h-3" />
                         </button>
-                        <button onClick={(event) => { event.stopPropagation(); onDeleteCompany(companyEntity); }} className="bg-red-500 text-white rounded-full p-0.5 shadow-sm">
-                          <Trash2 className="w-2.5 h-2.5" />
+                        <button
+                          onClick={(event) => { event.stopPropagation(); onDeleteCompany(companyEntity); }}
+                          className="rounded-full p-1 text-white/60 hover:text-red-300 transition-colors"
+                          aria-label={`Eliminar ${company}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
-                      </div>
+                      </span>
                     )}
                   </div>
                 );
@@ -122,11 +139,15 @@ export default function MovimientosTab({
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-100 pt-4">
             <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mr-2">Categorías:</span>
             {categories.map((category) => (
-              <div key={category.id} className="group relative">
-                <span className="px-3 py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">{category.nombre}</span>
+              <div key={category.id} className="inline-flex items-center gap-1 rounded-full bg-neutral-100 py-1 pl-3 pr-1.5">
+                <span className="text-xs font-medium text-neutral-600">{category.nombre}</span>
                 {canWriteData && (
-                  <button onClick={() => onDeleteCategory(category)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    <Trash2 className="w-2.5 h-2.5" />
+                  <button
+                    onClick={() => onDeleteCategory(category)}
+                    className="rounded-full p-0.5 text-neutral-400 hover:text-red-600 transition-colors"
+                    aria-label={`Eliminar categoría ${category.nombre}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 )}
               </div>

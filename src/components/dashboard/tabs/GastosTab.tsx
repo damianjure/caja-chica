@@ -112,7 +112,7 @@ export default function GastosTab({
             className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
           />
           {canWriteData && (
-            <button onClick={() => void onSaveBudget()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 py-3 text-white font-medium hover:bg-neutral-800">
+            <button onClick={() => void onSaveBudget()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-border-strong)]">
               Guardar presupuesto
             </button>
           )}

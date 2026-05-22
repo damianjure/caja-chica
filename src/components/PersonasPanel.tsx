@@ -164,7 +164,7 @@ function ActionMenu({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+        className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-border-strong)]"
       >
         Acciones
         <ChevronDown className="w-3 h-3" />
@@ -177,7 +177,7 @@ function ActionMenu({
               onCopyLink();
               setOpen(false);
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)]"
           >
             <Link className="w-3.5 h-3.5" />
             {ACTION_LABELS.copyLink}
@@ -190,7 +190,7 @@ function ActionMenu({
                 onResend();
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)] disabled:opacity-50"
             >
               {loadingResend ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -209,7 +209,7 @@ function ActionMenu({
                   onChangeRole(persona.role === "editor" ? "viewer" : "editor");
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)]"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 {persona.role === "editor"
@@ -227,7 +227,7 @@ function ActionMenu({
                   onRevoke();
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-[var(--app-surface-2)]"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 {ACTION_LABELS.revoke}
@@ -388,7 +388,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           <button
             onClick={() => void handleInvite()}
             disabled={submitting || !email.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-3 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,7 +420,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           </h3>
           <button
             onClick={() => void load()}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+            className="p-1.5 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 hover:border-[var(--app-border-strong)]"
             title="Actualizar"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -465,7 +465,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 {/* Copy icon shortcut */}
                 <button
                   onClick={() => void handleCopyLink(persona)}
-                  className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                  className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:border-[var(--app-border-strong)]"
                   title="Copiar link"
                 >
                   <Copy className="w-3.5 h-3.5" />

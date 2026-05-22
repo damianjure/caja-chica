@@ -176,7 +176,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             {driveStatus.connected ? (
               <button
                 onClick={() => void disconnectDrive()}
-                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:border-rose-400"
               >
                 <Unlink className="h-4 w-4" />
                 Desconectar Drive
@@ -184,7 +184,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             ) : (
               <button
                 onClick={() => void connectDrive()}
-                className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2 text-sm font-medium text-white hover:border-[var(--app-border-strong)]"
               >
                 <HardDriveUpload className="h-4 w-4" />
                 Conectar Google Drive
@@ -350,7 +350,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                             href={item.drive_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:border-blue-400"
                           >
                             <ExternalLink className="h-3 w-3" />
                             Drive

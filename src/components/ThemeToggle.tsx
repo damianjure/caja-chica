@@ -20,7 +20,7 @@ export function ThemeToggle({
       onClick={onToggle}
       aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      className={`inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:border-[var(--app-border-strong)] ${compact ? '' : 'min-w-[132px] justify-center'}`}
+      className={`inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:border-[var(--app-text-2)] ${compact ? '' : 'min-w-[132px] justify-center'}`}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       <span>{isDark ? 'Modo claro' : 'Modo oscuro'}</span>
@@ -54,7 +54,7 @@ export function ThemeSelector({
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
               active
                 ? 'bg-neutral-900 border-neutral-900 text-white'
-                : 'bg-white border-neutral-300 text-neutral-700 hover:border-[var(--app-border-strong)]'
+                : 'bg-white border-neutral-300 text-neutral-700 hover:border-[var(--app-text-2)]'
             }`}
           >
             <Icon className="w-3.5 h-3.5" />

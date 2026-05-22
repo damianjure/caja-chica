@@ -220,14 +220,14 @@ function RecurrenteModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-neutral-600 border border-transparent hover:border-[var(--app-border-strong)] transition-colors"
+              className="px-4 py-2 rounded-xl text-sm font-medium text-neutral-600 border border-transparent hover:border-[var(--app-text-2)] transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-border-strong)] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
@@ -348,7 +348,7 @@ export default function RecurrentesTab({
           <div className="flex justify-end mb-4">
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-border-strong)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-text-2)] transition-colors"
             >
               <Plus className="w-4 h-4" />
               Nuevo recurrente
@@ -412,7 +412,7 @@ export default function RecurrentesTab({
                     <button
                       onClick={() => handleToggle(r.id)}
                       disabled={togglingId === r.id}
-                      className="p-2 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-[var(--app-border-strong)] transition-colors disabled:opacity-50"
+                      className="p-2 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-[var(--app-text-2)] transition-colors disabled:opacity-50"
                       title={r.is_active ? 'Pausar' : 'Activar'}
                       aria-label={r.is_active ? 'Pausar recurrente' : 'Activar recurrente'}
                     >
@@ -420,7 +420,7 @@ export default function RecurrentesTab({
                     </button>
                     <button
                       onClick={() => setEditing(r)}
-                      className="p-2 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-[var(--app-border-strong)] transition-colors"
+                      className="p-2 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-[var(--app-text-2)] transition-colors"
                       title="Editar"
                       aria-label="Editar recurrente"
                     >

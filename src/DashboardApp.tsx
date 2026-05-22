@@ -765,7 +765,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             id="process-button"
             onClick={handleProcess}
             disabled={!inputText.trim() || isProcessing}
-            className="flex items-center gap-2 bg-neutral-900 text-white border border-neutral-900 px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-border-strong)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)]"
+            className="flex items-center gap-2 bg-neutral-900 text-white border border-neutral-900 px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-text-2)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)]"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {isProcessing ? 'Procesando...' : 'Enviar'}
@@ -838,7 +838,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                     {canWriteData && (
                       <button
                         onClick={() => openMovementEditor(item)}
-                        className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-border-strong)]"
+                        className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
                         title="Editar"
                       >
                         <Pencil className="w-4 h-4" />
@@ -846,7 +846,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                     )}
                     <button
                       onClick={() => copyJson(item)}
-                      className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-border-strong)]"
+                      className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
                       title="Copiar JSON"
                     >
                       {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -1167,7 +1167,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {tab.label}
@@ -1186,7 +1186,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}
+                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Icon className="w-4 h-4" />
@@ -1347,8 +1347,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                         disabled={isProcessing}
                         className={`rounded-2xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${
                           isDefault
-                            ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-border-strong)]'
-                            : 'border-neutral-200 bg-white text-neutral-900 hover:border-[var(--app-border-strong)]'
+                            ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-text-2)]'
+                            : 'border-neutral-200 bg-white text-neutral-900 hover:border-[var(--app-text-2)]'
                         }`}
                       >
                         {company}
@@ -1359,7 +1359,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <button
                   onClick={() => void assignPendingMovement('Personal')}
                   disabled={isProcessing}
-                  className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-left font-medium text-neutral-600 transition-colors hover:border-[var(--app-border-strong)] disabled:opacity-50"
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-left font-medium text-neutral-600 transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
                 >
                   Sin empresa (Personal)
                 </button>
@@ -1414,7 +1414,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   setConfirmationModal(null);
                   setConfirmationInput('');
                 }}
-                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 hover:border-[var(--app-border-strong)] active:scale-[0.97] transition duration-150"
+                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 hover:border-[var(--app-text-2)] active:scale-[0.97] transition duration-150"
                 disabled={isConfirmingAction}
               >
                 Cancelar
@@ -1423,7 +1423,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 onClick={() => void runConfirmation()}
                 disabled={isConfirmingAction}
                 className={`rounded-md border px-5 py-3 font-medium text-white active:scale-[0.97] transition duration-150 ${
-                  confirmationModal.tone === 'danger' ? 'bg-red-600 border-red-600 hover:border-red-300' : 'bg-neutral-900 border-neutral-900 hover:border-[var(--app-border-strong)]'
+                  confirmationModal.tone === 'danger' ? 'bg-red-600 border-red-600 hover:border-red-300' : 'bg-neutral-900 border-neutral-900 hover:border-[var(--app-text-2)]'
                 } disabled:opacity-60`}
               >
                 {isConfirmingAction ? 'Confirmando...' : confirmationModal.confirmLabel}

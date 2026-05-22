@@ -46,7 +46,7 @@ export function ConfirmModal({
   const confirmClasses =
     tone === "danger"
       ? "bg-red-600 border border-red-600 hover:border-red-300 text-white"
-      : "bg-neutral-900 border border-neutral-900 hover:border-[var(--app-border-strong)] text-white";
+      : "bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] text-white";
 
   const handleConfirm = async () => {
     if (!canConfirm) return;
@@ -99,7 +99,7 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={submitting}
-            className="flex-1 rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] disabled:opacity-50"
+            className="flex-1 rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {cancelLabel}
           </button>

@@ -66,7 +66,7 @@ export default function MovimientosTab({
                     className={`inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap transition duration-150 border ${
                       isSelected
                         ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'bg-white border-neutral-200 text-neutral-500 hover:border-[var(--app-border-strong)]'
+                        : 'bg-white border-neutral-200 text-neutral-500 hover:border-[var(--app-text-2)]'
                     }`}
                   >
                     <button

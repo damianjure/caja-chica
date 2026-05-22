@@ -72,7 +72,7 @@ export function LoginScreen({
           <button
             onClick={() => void onLogin()}
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-neutral-300 px-5 py-3 text-neutral-900 font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-neutral-300 px-5 py-3 text-neutral-900 font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
               <>
@@ -90,7 +90,7 @@ export function LoginScreen({
           {secondaryActionLabel && onSecondaryAction && (
             <button
               onClick={() => void onSecondaryAction()}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-neutral-200 px-5 py-3 text-neutral-700 font-medium hover:border-[var(--app-border-strong)] transition-colors"
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-neutral-200 px-5 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)] transition-colors"
             >
               {secondaryActionLabel}
             </button>

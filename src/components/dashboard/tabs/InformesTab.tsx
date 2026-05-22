@@ -184,7 +184,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             ) : (
               <button
                 onClick={() => void connectDrive()}
-                className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2 text-sm font-medium text-white hover:border-[var(--app-border-strong)]"
+                className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2 text-sm font-medium text-white hover:border-[var(--app-text-2)]"
               >
                 <HardDriveUpload className="h-4 w-4" />
                 Conectar Google Drive

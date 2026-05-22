@@ -68,7 +68,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             {telegramDeepLink ? (
               <button
                 onClick={() => setStep('telegram')}
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-border-strong)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -76,7 +76,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
               <button
                 onClick={finish}
                 disabled={finishing}
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-border-strong)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 disabled:opacity-50"
               >
                 {finishing ? 'Cargando...' : 'Ir al dashboard'}
               </button>
@@ -114,7 +114,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             <button
               onClick={finish}
               disabled={finishing}
-              className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-border-strong)] active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
             >
               {finishing ? 'Cargando...' : 'Ir al dashboard'}
             </button>

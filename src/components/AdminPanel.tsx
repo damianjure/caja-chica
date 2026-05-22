@@ -348,7 +348,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           type="button"
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -404,7 +404,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                       <button
                         type="button"
                         onClick={() => void handleCopy(invitation)}
-                        className="p-2 rounded-xl border border-neutral-300 hover:border-[var(--app-border-strong)]"
+                        className="p-2 rounded-xl border border-neutral-300 hover:border-[var(--app-text-2)]"
                         aria-label={`Copiar link de ${invitation.email}`}
                         title="Copiar link"
                       >
@@ -513,7 +513,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                   <button
                     type="button"
                     onClick={() => onSelect(user.user_id)}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium hover:border-[var(--app-border-strong)]"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
                     aria-label={`Administrar ${user.email}`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -671,7 +671,7 @@ function UserDetailModal({
               type="button"
               onClick={onForceLogout}
               disabled={acting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:border-[var(--app-border-strong)] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
               Forzar logout (cerrar sesiones)

@@ -164,7 +164,7 @@ function ActionMenu({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-border-strong)]"
+        className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-text-2)]"
       >
         Acciones
         <ChevronDown className="w-3 h-3" />
@@ -388,7 +388,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           <button
             onClick={() => void handleInvite()}
             disabled={submitting || !email.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,7 +420,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           </h3>
           <button
             onClick={() => void load()}
-            className="p-1.5 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 hover:border-[var(--app-border-strong)]"
+            className="p-1.5 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 hover:border-[var(--app-text-2)]"
             title="Actualizar"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -465,7 +465,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 {/* Copy icon shortcut */}
                 <button
                   onClick={() => void handleCopyLink(persona)}
-                  className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:border-[var(--app-border-strong)]"
+                  className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:border-[var(--app-text-2)]"
                   title="Copiar link"
                 >
                   <Copy className="w-3.5 h-3.5" />

@@ -2,9 +2,7 @@ import { useState, useMemo, useEffect, type ReactElement } from "react";
 import {
   Bell,
   Check,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   Copy,
   Download,
   HardDrive,
@@ -424,7 +422,7 @@ export default function ConfiguracionTab({
                   className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
                     defaultCurrency === c
                       ? 'bg-neutral-900 border-neutral-900 text-white'
-                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-[var(--app-border-strong)]'
+                      : 'bg-white border-neutral-300 text-neutral-700 hover:border-[var(--app-text-2)]'
                   }`}
                 >
                   {c}
@@ -459,50 +457,28 @@ export default function ConfiguracionTab({
             </div>
             <div className="flex items-center gap-2.5">
               <Bell className="w-4 h-4 text-neutral-500 shrink-0" />
-              <div className="inline-flex items-center gap-0.5 rounded-md border border-neutral-200 bg-white px-2 py-1">
-                <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveNotif((notifHour + 1) % 24, notifMinute)}
-                    aria-label="Subir hora"
-                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-6 text-center text-base font-mono font-semibold tabular-nums text-neutral-900 leading-none">
-                    {String(notifHour).padStart(2, "0")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveNotif((notifHour + 23) % 24, notifMinute)}
-                    aria-label="Bajar hora"
-                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
-                  >
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+              <div className="inline-flex items-center gap-0.5 rounded-md border border-neutral-200 bg-white px-2 py-1.5 hover:border-[var(--app-text-2)] transition-colors">
+                <select
+                  value={notifHour}
+                  onChange={(e) => void handleSaveNotif(Number(e.target.value), notifMinute)}
+                  aria-label="Hora del recordatorio"
+                  className="appearance-none bg-transparent text-center text-base font-mono font-semibold tabular-nums text-neutral-900 outline-none cursor-pointer"
+                >
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
+                  ))}
+                </select>
                 <span className="text-base font-mono font-semibold text-neutral-400 leading-none">:</span>
-                <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveNotif(notifHour, (notifMinute + 5) % 60)}
-                    aria-label="Subir minutos"
-                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-6 text-center text-base font-mono font-semibold tabular-nums text-neutral-900 leading-none">
-                    {String(notifMinute).padStart(2, "0")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveNotif(notifHour, (notifMinute + 55) % 60)}
-                    aria-label="Bajar minutos"
-                    className="text-neutral-400 hover:text-neutral-900 transition-colors"
-                  >
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <select
+                  value={notifMinute}
+                  onChange={(e) => void handleSaveNotif(notifHour, Number(e.target.value))}
+                  aria-label="Minutos del recordatorio"
+                  className="appearance-none bg-transparent text-center text-base font-mono font-semibold tabular-nums text-neutral-900 outline-none cursor-pointer"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
+                    <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                  ))}
+                </select>
               </div>
               <span className="text-xs text-neutral-400">hs (UTC)</span>
             </div>
@@ -735,7 +711,7 @@ export default function ConfiguracionTab({
                                 <code className="flex-1 text-xs font-mono text-neutral-800 break-all">/start {freshToken.token}</code>
                                 <button
                                   onClick={() => void handleCopyToken(freshToken.token)}
-                                  className="shrink-0 p-1.5 rounded-md border border-transparent hover:border-[var(--app-border-strong)]"
+                                  className="shrink-0 p-1.5 rounded-md border border-transparent hover:border-[var(--app-text-2)]"
                                   aria-label="Copiar comando"
                                 >
                                   <Copy className="w-3.5 h-3.5 text-neutral-600" />
@@ -749,7 +725,7 @@ export default function ConfiguracionTab({
                                   <button
                                     disabled={isGenerating}
                                     onClick={() => void handleGenerateToken(member.user_id)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-border-strong)] disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-text-2)] disabled:opacity-50"
                                   >
                                     {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                                     Regenerar vínculo
@@ -782,7 +758,7 @@ export default function ConfiguracionTab({
                                 <button
                                   disabled={isGenerating}
                                   onClick={() => void handleGenerateToken(member.user_id)}
-                                  className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 border border-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:border-[var(--app-border-strong)] disabled:opacity-50"
+                                  className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 border border-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50"
                                 >
                                   {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                                   {freshToken ? "Regenerar comando" : "Generar vínculo de Telegram"}
@@ -846,7 +822,7 @@ export default function ConfiguracionTab({
               type="button"
               onClick={() => void handleSaveDisplayName()}
               disabled={savingDisplayName}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-border-strong)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Guardar
@@ -859,7 +835,7 @@ export default function ConfiguracionTab({
           {canConnectDrive && onDisconnectDrive && (
             <button
               onClick={() => void onDisconnectDrive()}
-              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
             >
               <HardDrive className="w-4 h-4 text-neutral-500" />
               Desconectar Google Drive
@@ -881,7 +857,7 @@ export default function ConfiguracionTab({
           {/* Export data */}
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
           >
             <Download className="w-4 h-4 text-neutral-500" />
             Exportar mis datos (JSON)
@@ -900,7 +876,7 @@ export default function ConfiguracionTab({
 
           <button
             onClick={() => void onSignOut()}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-border-strong)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
           >
             <LogOut className="w-4 h-4 text-neutral-500" />
             Cerrar sesión

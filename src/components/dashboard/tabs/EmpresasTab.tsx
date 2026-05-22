@@ -67,7 +67,7 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onEditCompany(item);
                           }}
-                          className="p-2 rounded-xl border border-neutral-200 text-neutral-700 hover:border-[var(--app-border-strong)]"
+                          className="p-2 rounded-xl border border-neutral-200 text-neutral-700 hover:border-[var(--app-text-2)]"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>

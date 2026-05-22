@@ -102,7 +102,7 @@ export function BotConnectionPanel() {
             <button
               onClick={() => void handleCreateToken()}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-4 py-3 text-white font-medium hover:border-[var(--app-border-strong)] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-4 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {creating ? (
                 <>
@@ -122,7 +122,7 @@ export function BotConnectionPanel() {
                 href={status.telegramDeepLink}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700 font-medium hover:border-[var(--app-border-strong)]"
+                className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)]"
               >
                 Abrir Telegram
               </a>
@@ -140,7 +140,7 @@ export function BotConnectionPanel() {
                 </code>
                 <button
                   onClick={() => void copyValue(status.manualStartCode, "Comando copiado.")}
-                  className="p-2 rounded-xl border border-neutral-200 hover:border-[var(--app-border-strong)]"
+                  className="p-2 rounded-xl border border-neutral-200 hover:border-[var(--app-text-2)]"
                   aria-label="Copiar comando"
                   title="Copiar comando"
                 >

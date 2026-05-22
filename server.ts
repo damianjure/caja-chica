@@ -2094,8 +2094,10 @@ if (bot) {
   }
 
   // --- CRON JOBS ---
-  cron.schedule('0 * * * *', async () => {
-    const currentHour = new Date().getUTCHours();
+  cron.schedule('* * * * *', async () => {
+    const now = new Date();
+    const currentHour = now.getUTCHours();
+    const currentMinute = now.getUTCMinutes();
 
     const { data: telegramUsers } = await supabase
       .from('usuarios')
@@ -2109,17 +2111,17 @@ if (bot) {
 
     const { data: appUsers } = await supabase
       .from('app_users')
-      .select('user_id, notification_hour')
+      .select('user_id, notification_hour, notification_minute')
       .in('user_id', userIds);
 
-    const hourMap = new Map<string, number>(
-      appUsers?.map((u) => [u.user_id, u.notification_hour ?? 21]) ?? [],
+    const scheduleMap = new Map<string, { hour: number; minute: number }>(
+      appUsers?.map((u) => [u.user_id, { hour: u.notification_hour ?? 21, minute: u.notification_minute ?? 0 }]) ?? [],
     );
 
     for (const u of telegramUsers) {
       if (!u.chat_id) continue;
-      const notifHour = hourMap.get(u.user_id) ?? 21;
-      if (notifHour !== currentHour) continue;
+      const notif = scheduleMap.get(u.user_id) ?? { hour: 21, minute: 0 };
+      if (notif.hour !== currentHour || notif.minute !== currentMinute) continue;
       try {
         await bot.api.sendMessage(u.chat_id, "🔔 *Recordatorio:* No te olvides de registrar tus gastos del día. 💸", { parse_mode: "Markdown" });
       } catch (err) {

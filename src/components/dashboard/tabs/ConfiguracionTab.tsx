@@ -2,7 +2,9 @@ import { useState, useMemo, useEffect, type ReactElement } from "react";
 import {
   Bell,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Copy,
   Download,
   HardDrive,
@@ -112,6 +114,7 @@ export default function ConfiguracionTab({
 
   // notification hour
   const [notifHour, setNotifHour] = useState(viewer.notification_hour ?? 21);
+  const [notifMinute, setNotifMinute] = useState(viewer.notification_minute ?? 0);
   const [savingNotifHour, setSavingNotifHour] = useState(false);
 
   // sessions
@@ -186,11 +189,12 @@ export default function ConfiguracionTab({
     }
   };
 
-  const handleSaveNotifHour = async (h: number) => {
+  const handleSaveNotif = async (h: number, m: number) => {
     setNotifHour(h);
+    setNotifMinute(m);
     setSavingNotifHour(true);
     try {
-      await api.updateMe({ notification_hour: h });
+      await api.updateMe({ notification_hour: h, notification_minute: m });
     } catch {
       setError("No se pudo guardar la hora.");
     } finally {
@@ -368,7 +372,7 @@ export default function ConfiguracionTab({
   const roleBadge = (role: string) => {
     const styles: Record<string, string> = {
       owner: "bg-neutral-900 text-white",
-      editor: "bg-blue-100 text-blue-700",
+      editor: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200",
       viewer: "bg-neutral-100 text-neutral-600",
     };
     return (
@@ -455,18 +459,52 @@ export default function ConfiguracionTab({
             </div>
             <div className="flex items-center gap-3">
               <Bell className="w-4 h-4 text-neutral-500 shrink-0" />
-              <input
-                type="range"
-                min={0}
-                max={23}
-                value={notifHour}
-                onChange={(e) => void handleSaveNotifHour(Number(e.target.value))}
-                className="flex-1 accent-neutral-900"
-                aria-label="Hora del recordatorio diario"
-              />
-              <span className="w-14 text-sm font-mono text-neutral-700 text-right">
-                {String(notifHour).padStart(2, "0")}:00 hs
-              </span>
+              <div className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-2">
+                <div className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveNotif((notifHour + 1) % 24, notifMinute)}
+                    aria-label="Subir hora"
+                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <span className="w-9 text-center text-2xl font-mono font-semibold tabular-nums text-neutral-900">
+                    {String(notifHour).padStart(2, "0")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveNotif((notifHour + 23) % 24, notifMinute)}
+                    aria-label="Bajar hora"
+                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="pb-1 text-2xl font-mono font-semibold text-neutral-400">:</span>
+                <div className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveNotif(notifHour, (notifMinute + 5) % 60)}
+                    aria-label="Subir minutos"
+                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <span className="w-9 text-center text-2xl font-mono font-semibold tabular-nums text-neutral-900">
+                    {String(notifMinute).padStart(2, "0")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveNotif(notifHour, (notifMinute + 55) % 60)}
+                    aria-label="Bajar minutos"
+                    className="rounded p-0.5 text-neutral-400 hover:text-neutral-900 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="ml-1 self-end pb-1 text-xs text-neutral-400">hs</span>
+              </div>
             </div>
             <p className="text-xs text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
           </div>
@@ -531,10 +569,10 @@ export default function ConfiguracionTab({
                     return (
                       <tr
                         key={member.id}
-                        className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50/60 transition-colors"
+                        className="border-b border-neutral-100 last:border-0"
                       >
                         {/* Member info — sticky */}
-                        <td className="sticky left-0 z-10 bg-white px-6 py-4 hover:bg-neutral-50/60">
+                        <td className="sticky left-0 z-10 bg-white px-6 py-4">
                           <div className="font-medium text-neutral-900 text-sm [overflow-wrap:anywhere] leading-tight">
                             {member.email ?? member.user_id}
                           </div>
@@ -655,7 +693,7 @@ export default function ConfiguracionTab({
                       <div key={member.id} className="border-b border-neutral-100 last:border-0">
                         <button
                           onClick={() => setExpandedTelegramMember(isExpanded ? null : member.id)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50/60 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left"
                         >
                           <ChevronRight className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 text-xs font-semibold shrink-0">

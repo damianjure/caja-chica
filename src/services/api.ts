@@ -137,6 +137,7 @@ export interface AppViewer {
   status: AppUserStatus;
   display_name?: string | null;
   notification_hour?: number | null;
+  notification_minute?: number | null;
   onboarding_state?: OnboardingState;
   is_dashboard_joiner?: boolean;
 }
@@ -590,7 +591,7 @@ export const api = {
     return fetchApi("/api/dashboard/leave", { method: "POST" });
   },
 
-  async updateMe(fields: { display_name?: string | null; notification_hour?: number; onboarding_state?: OnboardingState }): Promise<void> {
+  async updateMe(fields: { display_name?: string | null; notification_hour?: number; notification_minute?: number; onboarding_state?: OnboardingState }): Promise<void> {
     return fetchApi("/api/me", { method: "PATCH", body: JSON.stringify(fields) });
   },
 

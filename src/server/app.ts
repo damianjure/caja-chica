@@ -623,7 +623,7 @@ export function createApp({
 
     const { data } = await supabase
       .from("app_users")
-      .select("display_name, notification_hour, onboarding_state")
+      .select("display_name, notification_hour, notification_minute, onboarding_state")
       .eq("user_id", session.userId)
       .single();
 
@@ -634,6 +634,7 @@ export function createApp({
       status: session.status,
       display_name: data?.display_name ?? null,
       notification_hour: data?.notification_hour ?? 21,
+      notification_minute: data?.notification_minute ?? 0,
       onboarding_state: currentOnboardingState ?? data?.onboarding_state ?? "completed",
       is_dashboard_joiner: isDashboardJoiner,
     });
@@ -641,7 +642,7 @@ export function createApp({
 
   app.patch("/api/me", requireSession, async (req, res) => {
     const session = getSession(req);
-    const body = req.body as { display_name?: string | null; notification_hour?: number; onboarding_state?: string };
+    const body = req.body as { display_name?: string | null; notification_hour?: number; notification_minute?: number; onboarding_state?: string };
     const updates: Record<string, unknown> = {};
 
     if ("display_name" in body) {
@@ -654,6 +655,14 @@ export function createApp({
         return;
       }
       updates.notification_hour = h;
+    }
+    if ("notification_minute" in body) {
+      const m = Number(body.notification_minute);
+      if (!Number.isInteger(m) || m < 0 || m > 59) {
+        res.status(400).json({ error: "notification_minute must be 0–59" });
+        return;
+      }
+      updates.notification_minute = m;
     }
     if ("onboarding_state" in body) {
       const allowed = ["completed", "cleaned"];

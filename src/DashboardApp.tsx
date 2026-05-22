@@ -1111,10 +1111,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             <div className="space-y-4 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white text-xs font-bold">CC</span>
-                <span className="text-sm font-semibold tracking-tight text-neutral-900">Caja Chica</span>
+                <span className="text-base font-semibold tracking-tight text-neutral-900">Caja Chica</span>
               </div>
-              <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard financiero</h1>
-              <p className="text-neutral-500">Vista clara para entender caja, rendimiento y operación sin perder trazabilidad.</p>
+              <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard Financiero</h1>
+              <p className="text-neutral-500">Un vistazo claro para saber si hay problemas financieros o económicos.</p>
             </div>
 
             <div className="flex items-center gap-3 self-start">
@@ -1141,20 +1141,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             </div>
           </div>
 
-          <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
-            <div className="text-xs font-bold uppercase tracking-widest text-neutral-400">Movimientos visibles</div>
-            <div className="mt-3 text-2xl font-semibold text-neutral-900">{history.length}</div>
-          </div>
           </div>
         </header>
 
-        {canWriteData && activeTab !== 'superadmin' && activeTab !== 'configuracion' && (
+        {canWriteData && activeTab === 'movimientos' && (
           <div className="space-y-4">
             {renderComposer()}
           </div>
         )}
 
-        {!canWriteData && activeTab !== 'superadmin' && activeTab !== 'configuracion' && (
+        {!canWriteData && activeTab === 'movimientos' && (
           <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
             Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".
           </div>
@@ -1171,7 +1167,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:shadow-[var(--app-shadow-md)]'}`}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {tab.label}
@@ -1190,7 +1186,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:shadow-[var(--app-shadow-md)] hover:-translate-y-0.5'}`}
+                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Icon className="w-4 h-4" />

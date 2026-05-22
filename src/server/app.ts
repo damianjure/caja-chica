@@ -476,7 +476,7 @@ export function createApp({
   const listDashboardMembers = async (dashboardId: string): Promise<DashboardMemberSummary[]> => {
     const { data, error } = await supabase
       .from("dashboard_members")
-      .select("id, user_id, role, status, created_at, permissions, app_users(email)")
+      .select("id, user_id, role, status, created_at, permissions, app_users!dashboard_members_user_id_fkey(email)")
       .eq("dashboard_id", dashboardId)
       .order("created_at", { ascending: true })
       .limit(100);

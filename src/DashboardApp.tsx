@@ -99,13 +99,13 @@ interface ConfirmationModalState {
 }
 
 const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
-  { id: 'resumen', label: 'Resumen', description: 'Ingresos, gastos, utilidad y caja del período', icon: LayoutGrid },
-  { id: 'movimientos', label: 'Movimientos', description: 'Transacciones filtrables y trazabilidad', icon: ArrowUpDown },
-  { id: 'gastos', label: 'Gastos', description: 'Categorías, presupuesto vs real y evolución', icon: TrendingDown },
-  { id: 'ingresos', label: 'Ingresos', description: 'Ventas por cliente, producto, canal y período', icon: TrendingUp },
+  { id: 'resumen', label: 'Resumen', description: 'Un vistazo de empresas, ingresos y gastos del período', icon: LayoutGrid },
+  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo de todos tus movimientos', icon: ArrowUpDown },
+  { id: 'gastos', label: 'Gastos', description: 'Categorías, etiquetas y gastos por empresa', icon: TrendingDown },
+  { id: 'ingresos', label: 'Ingresos', description: 'Categorías, etiquetas e ingresos por empresa', icon: TrendingUp },
   { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
-  { id: 'empresas', label: 'Empresas', description: 'Comparación, informes y exportaciones', icon: Building2 },
-  { id: 'configuracion', label: 'Configuración', description: 'Miembros, permisos, Drive y cuenta', icon: Settings },
+  { id: 'empresas', label: 'Empresas', description: 'Saldos, informes y backups de datos', icon: Building2 },
+  { id: 'configuracion', label: 'Configuración', description: 'Cuenta, equipo, permisos y Drive', icon: Settings },
 ];
 
 
@@ -221,7 +221,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const dashboardRole = currentDashboardMember?.role ?? 'owner';
   const canWriteData = dashboardRole !== 'viewer';
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Usuarios del sistema, invitaciones globales y configuración', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Administración de la aplicación', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   // Normalize activeTab against the current viewer's allowed tabs.
@@ -1131,10 +1131,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 </div>
                 <button
                   onClick={() => void onSignOut()}
-                  className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-600 transition-colors"
+                  className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.94] transition"
                   title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -1161,7 +1162,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <section className="sticky top-3 z-20">
           {/* Mobile: horizontal scroll strip */}
-          <div className="md:hidden bg-white/90 backdrop-blur border border-neutral-200 rounded-2xl p-2 shadow-sm overflow-x-auto">
+          <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1170,7 +1171,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow' : 'bg-white text-neutral-700 border-transparent hover:border-neutral-200 hover:bg-neutral-50'}`}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:shadow-[var(--app-shadow-md)]'}`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {tab.label}
@@ -1180,8 +1181,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             </div>
           </div>
           {/* md+: grid with descriptions */}
-          <div className="hidden md:block bg-white/90 backdrop-blur border border-neutral-200 rounded-2xl p-3 shadow-sm">
-            <div className={`grid md:grid-cols-3 gap-2 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
+          <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-3">
+            <div className={`grid md:grid-cols-3 gap-3 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -1189,7 +1190,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-2xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-lg' : 'bg-white text-neutral-700 border-transparent hover:border-neutral-200 hover:bg-neutral-50'}`}
+                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:shadow-[var(--app-shadow-md)] hover:-translate-y-0.5'}`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Icon className="w-4 h-4" />

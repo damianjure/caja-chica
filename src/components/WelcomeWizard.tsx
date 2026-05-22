@@ -63,6 +63,16 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
           <X className="w-5 h-5" />
         </button>
 
+        {/* Progress */}
+        <div className="absolute top-5 left-6 flex gap-1.5">
+          {(['welcome', 'tour', 'telegram'] as Step[]).map((s) => (
+            <span
+              key={s}
+              className={`h-1.5 rounded-full transition-all ${s === step ? 'w-5 bg-neutral-900' : 'w-1.5 bg-neutral-200'}`}
+            />
+          ))}
+        </div>
+
         {/* Welcome */}
         {step === 'welcome' && (
           <div className="p-8 flex flex-col items-center text-center gap-6">
@@ -79,7 +89,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
             </div>
             <button
               onClick={() => setStep('tour')}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-xl transition duration-150"
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
             >
               Ver el tour <ChevronRight className="w-4 h-4" />
             </button>
@@ -111,7 +121,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => { void loadTelegramLink(); setStep('telegram'); }}
-                className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-xl transition duration-150 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -143,29 +153,20 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
                 href={deepLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-xl transition duration-150 text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 text-sm"
               >
                 <MessageCircle className="w-4 h-4" />
                 Abrir bot en Telegram
               </a>
             )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => finish(false)}
-                disabled={finishing}
-                className="flex-1 py-3 px-4 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50 active:scale-[0.97] transition duration-150 text-sm font-medium disabled:opacity-50"
-              >
-                Saltear por ahora
-              </button>
-              <button
-                onClick={() => finish(false)}
-                disabled={finishing}
-                className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-xl transition duration-150 text-sm disabled:opacity-50"
-              >
-                {finishing ? 'Cargando...' : 'Ir al dashboard'}
-              </button>
-            </div>
+            <button
+              onClick={() => finish(false)}
+              disabled={finishing}
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+            >
+              {finishing ? 'Cargando...' : 'Ir al dashboard'}
+            </button>
           </div>
         )}
 

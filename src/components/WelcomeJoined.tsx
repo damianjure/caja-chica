@@ -56,7 +56,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             </div>
             <div>
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-                Estás en un dashboard ajeno.
+                Te sumaron a un dashboard compartido
               </h2>
               <p className="text-neutral-500 text-sm leading-relaxed">
                 {viewer.email && (
@@ -68,7 +68,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             {telegramDeepLink ? (
               <button
                 onClick={() => setStep('telegram')}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-xl transition duration-150"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -76,7 +76,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
               <button
                 onClick={finish}
                 disabled={finishing}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-xl transition duration-150 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 disabled:opacity-50"
               >
                 {finishing ? 'Cargando...' : 'Ir al dashboard'}
               </button>
@@ -104,29 +104,20 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
                 href={telegramDeepLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-xl transition duration-150 text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 text-sm"
               >
                 <MessageCircle className="w-4 h-4" />
                 Abrir bot en Telegram
               </a>
             )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={finish}
-                disabled={finishing}
-                className="flex-1 py-3 px-4 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50 active:scale-[0.97] transition duration-150 text-sm font-medium disabled:opacity-50"
-              >
-                Saltear por ahora
-              </button>
-              <button
-                onClick={finish}
-                disabled={finishing}
-                className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-xl transition duration-150 text-sm disabled:opacity-50"
-              >
-                {finishing ? 'Cargando...' : 'Ir al dashboard'}
-              </button>
-            </div>
+            <button
+              onClick={finish}
+              disabled={finishing}
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+            >
+              {finishing ? 'Cargando...' : 'Ir al dashboard'}
+            </button>
           </div>
         )}
       </motion.div>

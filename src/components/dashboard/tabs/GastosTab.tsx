@@ -80,14 +80,14 @@ export default function GastosTab({
               setBudgetForm((prev) => ({ ...prev, period: normalized }));
               setBudgetPeriod(normalized);
             }}
-            className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
           />
           <input
             list="budget-categories"
             value={budgetForm.categoria}
             onChange={(event) => setBudgetForm((prev) => ({ ...prev, categoria: event.target.value }))}
             placeholder="Categoría"
-            className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
           />
           <datalist id="budget-categories">
             {categories.map((category) => (
@@ -97,7 +97,7 @@ export default function GastosTab({
           <select
             value={budgetForm.moneda}
             onChange={(event) => setBudgetForm((prev) => ({ ...prev, moneda: event.target.value as 'ARS' | 'USD' }))}
-            className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
           >
             <option value="ARS">ARS</option>
             <option value="USD">USD</option>
@@ -109,10 +109,10 @@ export default function GastosTab({
             value={budgetForm.monto}
             onChange={(event) => setBudgetForm((prev) => ({ ...prev, monto: event.target.value }))}
             placeholder="Monto"
-            className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
           />
           {canWriteData && (
-            <button onClick={() => void onSaveBudget()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-3 text-white font-medium hover:bg-neutral-800">
+            <button onClick={() => void onSaveBudget()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 py-3 text-white font-medium hover:bg-neutral-800">
               Guardar presupuesto
             </button>
           )}
@@ -155,7 +155,7 @@ export default function GastosTab({
         ) : (
           <div className="space-y-3">
             {categorySummaries.slice(0, 10).map((category) => (
-              <div key={category.name} className="rounded-2xl border border-neutral-200 px-4 py-3 flex items-center justify-between gap-4 text-sm">
+              <div key={category.name} className="rounded-xl border border-neutral-200 px-4 py-3 flex items-center justify-between gap-4 text-sm">
                 <div>
                   <div className="font-medium text-neutral-900">{category.name}</div>
                   <div className="text-xs text-neutral-500">{category.movimientos} movimientos</div>
@@ -186,14 +186,14 @@ export default function GastosTab({
         ) : (
           <div className="space-y-3">
             {recentExpenses.map((expense) => (
-              <div key={expense.id} className="rounded-2xl border border-neutral-200 px-4 py-3">
+              <div key={expense.id} className="rounded-xl border border-neutral-200 px-4 py-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-neutral-900">{expense.descripcion}</div>
                     <div className="mt-1 text-xs text-neutral-500">
                       {expense.empresa_nombre} · {expense.categoria}
                     </div>
-                    <div className="mt-1 text-[11px] text-neutral-500">{new Date(expense.created_at).toLocaleString('es-AR')}</div>
+                    <div className="mt-1 text-xs text-neutral-500">{new Date(expense.created_at).toLocaleString('es-AR')}</div>
                   </div>
                   <div className="text-sm font-semibold text-red-600">{formatCurrency(expense.monto, expense.moneda)}</div>
                 </div>

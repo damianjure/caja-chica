@@ -15,18 +15,18 @@ const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
 const FRECUENCIA_OPTIONS: Frecuencia[] = ['diario', 'semanal', 'quincenal', 'mensual', 'anual'];
 
 const badgeActive =
-  'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40';
+  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40';
 
 const badgePaused =
-  'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40';
+  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40';
 
 const badgeTipo = (tipo: 'egreso' | 'ingreso') =>
   tipo === 'ingreso'
-    ? 'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/40'
-    : 'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-rose-100 text-rose-800 ring-1 ring-rose-300/60 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/40';
+    ? 'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/40'
+    : 'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-800 ring-1 ring-rose-300/60 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/40';
 
 const badgeFrecuencia =
-  'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-sky-100 text-sky-800 ring-1 ring-sky-300/60 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/40';
+  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-sky-100 text-sky-800 ring-1 ring-sky-300/60 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/40';
 
 function formatAbsoluteDate(isoString: string): string {
   try {
@@ -107,7 +107,7 @@ function RecurrenteModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]" onClick={onClose}>
       <div
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5"
+        className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
@@ -117,7 +117,7 @@ function RecurrenteModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Monto</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Monto</label>
               <input
                 type="number"
                 min="0.01"
@@ -131,7 +131,7 @@ function RecurrenteModal({
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Tipo</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Tipo</label>
               <select
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}
@@ -143,7 +143,7 @@ function RecurrenteModal({
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Moneda</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Moneda</label>
               <select
                 value={form.moneda}
                 onChange={(e) => setForm((f) => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}
@@ -155,7 +155,7 @@ function RecurrenteModal({
             </div>
 
             <div className={form.frecuencia === 'mensual' ? '' : 'col-span-2'}>
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Frecuencia</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Frecuencia</label>
               <select
                 value={form.frecuencia}
                 onChange={(e) => setForm((f) => ({ ...f, frecuencia: e.target.value as Frecuencia }))}
@@ -169,7 +169,7 @@ function RecurrenteModal({
 
             {form.frecuencia === 'mensual' && (
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Día del mes</label>
+                <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Día del mes</label>
                 <select
                   value={form.dayOfMonth}
                   onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
@@ -183,7 +183,7 @@ function RecurrenteModal({
             )}
 
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Categoría</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Categoría</label>
               <input
                 type="text"
                 value={form.categoria}
@@ -194,7 +194,7 @@ function RecurrenteModal({
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Empresa</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Empresa</label>
               <input
                 type="text"
                 value={form.empresa_nombre}
@@ -205,7 +205,7 @@ function RecurrenteModal({
             </div>
 
             <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-neutral-500 uppercase tracking-wide mb-1">Descripción</label>
+              <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Descripción</label>
               <input
                 type="text"
                 value={form.descripcion}
@@ -368,7 +368,7 @@ export default function RecurrentesTab({
             {recurrentes.map((r) => (
               <div
                 key={r.id}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 p-4"
+                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 p-4"
               >
                 <div className="space-y-2 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -387,7 +387,7 @@ export default function RecurrentesTab({
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                     {r.empresa_nombre && (
                       <span>{r.empresa_nombre}</span>
                     )}
@@ -400,7 +400,7 @@ export default function RecurrentesTab({
                   </div>
 
                   <span
-                    className="text-[11px] text-neutral-400 dark:text-neutral-500 cursor-default"
+                    className="text-xs text-neutral-400 dark:text-neutral-500 cursor-default"
                     title={formatAbsoluteDate(r.next_run_at)}
                   >
                     Próxima carga: {r.next_run_label}

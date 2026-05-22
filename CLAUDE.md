@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-20 (post Brevo + impeccable polish + onboarding live)
+## Fuente de verdad única — 2026-05-22 (post key rotation)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -243,7 +243,7 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 
 ### Deploy 2026-05-21
 - SQL prod: ✔ aplicada vía MCP supabase
-- Backend Cloud Run: ✔ revision `caja-chica-00020-m68` (post recurrentes + tipo egreso fix)
+- Backend Cloud Run: ✔ revision `caja-chica-00022-s9f` (post key rotation 2026-05-22)
 - Frontend Firebase Hosting: ✔ deployado en `caja-chica-bot.web.app`
 
 ### Cambios 2026-05-21 segunda tanda

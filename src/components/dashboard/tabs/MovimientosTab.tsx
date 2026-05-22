@@ -120,7 +120,7 @@ export default function MovimientosTab({
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-100 pt-4">
-            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mr-2">Categorías:</span>
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mr-2">Categorías:</span>
             {categories.map((category) => (
               <div key={category.id} className="group relative">
                 <span className="px-3 py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">{category.nombre}</span>

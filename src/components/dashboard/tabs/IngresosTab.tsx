@@ -40,7 +40,7 @@ export default function IngresosTab({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {incomeTags.map((tag) => (
-              <div key={tag.label} className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+              <div key={tag.label} className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-neutral-900">{tag.label}</div>
                   <div className="text-sm font-semibold text-green-600">{tag.value}</div>
@@ -58,14 +58,14 @@ export default function IngresosTab({
         ) : (
           <div className="space-y-3">
             {recentIncomes.map((income) => (
-              <div key={income.id} className="rounded-2xl border border-neutral-200 px-4 py-3">
+              <div key={income.id} className="rounded-xl border border-neutral-200 px-4 py-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-neutral-900">{income.descripcion}</div>
                     <div className="mt-1 text-xs text-neutral-500">
                       {income.empresa_nombre} · {income.categoria}
                     </div>
-                    <div className="mt-1 text-[11px] text-neutral-500">{new Date(income.created_at).toLocaleString('es-AR')}</div>
+                    <div className="mt-1 text-xs text-neutral-500">{new Date(income.created_at).toLocaleString('es-AR')}</div>
                   </div>
                   <div className="text-sm font-semibold text-green-600">{formatCurrency(income.monto, income.moneda)}</div>
                 </div>

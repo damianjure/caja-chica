@@ -53,7 +53,7 @@ export function TrendBars({
             <div className="mb-3 flex h-40 items-end justify-center gap-3 relative">
               <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 bg-neutral-200" />
               <div
-                className={`absolute left-1/2 -translate-x-1/2 rounded-full px-2 py-1 text-[11px] font-semibold shadow-sm ${
+                className={`absolute left-1/2 -translate-x-1/2 rounded-full px-2 py-1 text-xs font-semibold shadow-sm ${
                   item.net >= 0
                     ? 'bg-emerald-900 text-white'
                     : 'bg-red-100 text-red-700'
@@ -184,11 +184,11 @@ export function BudgetComparisonList({
           </div>
           <div className="space-y-2">
             <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-neutral-500"><span>Presupuesto</span><span>{formatCompact(item.budget)}</span></div>
+              <div className="mb-1 flex items-center justify-between text-xs text-neutral-500"><span>Presupuesto</span><span>{formatCompact(item.budget)}</span></div>
               <div className="h-2 rounded-full bg-neutral-200"><div className="h-full rounded-full bg-neutral-900" style={{ width: `${(item.budget / max) * 100}%` }} /></div>
             </div>
             <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-neutral-500"><span>Real</span><span>{formatCompact(item.actual)}</span></div>
+              <div className="mb-1 flex items-center justify-between text-xs text-neutral-500"><span>Real</span><span>{formatCompact(item.actual)}</span></div>
               <div className="h-2 rounded-full bg-red-100"><div className="h-full rounded-full bg-red-500" style={{ width: `${(item.actual / max) * 100}%` }} /></div>
             </div>
           </div>

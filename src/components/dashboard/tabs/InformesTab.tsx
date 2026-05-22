@@ -267,7 +267,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
               </label>
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Vista rápida</div>
@@ -278,7 +278,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                     Sobre los movimientos visibles en el dashboard. La exportación final sale del backend y queda trazada.
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                <div className="rounded-xl bg-white px-4 py-3 text-right shadow-sm">
                   <div className="text-xs uppercase tracking-widest text-neutral-500">Movimientos visibles</div>
                   <div className="text-2xl font-semibold text-neutral-900">{previewMovements.length}</div>
                 </div>
@@ -323,7 +323,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
           </div>
 
           <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="mb-3 inline-flex rounded-2xl bg-white p-2 text-neutral-700 shadow-sm">
+            <div className="mb-3 inline-flex rounded-xl bg-white p-2 text-neutral-700 shadow-sm">
               <FolderOpen className="h-5 w-5" />
             </div>
             <div className="text-lg font-semibold text-neutral-900">Historial de exportaciones</div>
@@ -341,7 +341,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                 <p className="text-sm text-neutral-500">Todavía no hay exportaciones registradas.</p>
               ) : (
                 exportsHistory.slice(0, 8).map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-neutral-200 bg-white p-3">
+                  <div key={item.id} className="rounded-xl border border-neutral-200 bg-white p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-medium text-neutral-900">{item.file_name}</div>
                       <div className="flex items-center gap-1">

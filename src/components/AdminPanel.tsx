@@ -502,7 +502,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                   <div className="text-xs text-neutral-600 mt-1 flex items-center gap-2 flex-wrap">
                     <span>{APP_ROLE_LABELS[user.role as AppRole] ?? user.role}</span>
                     <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-[11px] border ${badge.className}`}
+                      className={`inline-block px-2 py-0.5 rounded-full text-xs border ${badge.className}`}
                       aria-label={`Estado: ${badge.label}`}
                     >
                       {badge.label}
@@ -775,7 +775,7 @@ function Stat({ label, value }: StatProps) {
   return (
     <div className="border border-neutral-300 rounded-2xl py-3 px-2">
       <div className="text-2xl font-bold text-neutral-900">{value}</div>
-      <div className="text-[11px] uppercase tracking-widest text-neutral-600 mt-0.5">
+      <div className="text-xs uppercase tracking-widest text-neutral-600 mt-0.5">
         {label}
       </div>
     </div>

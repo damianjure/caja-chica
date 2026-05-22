@@ -63,17 +63,17 @@ export default function ResumenTab(props: ResumenTabProps) {
 
         <ChartCard title="Lo que necesita atención" description="Una lectura rápida para que entiendas dónde actuar sin escanear todo el dashboard.">
           <div className="space-y-3">
-            <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+            <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
               <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Resultado del período</div>
               <div className={`mt-2 text-2xl font-bold ${props.netPositive ? 'text-green-600' : 'text-red-600'}`}>{props.arsNeto}</div>
               <p className="mt-1 text-sm text-neutral-500">{props.netPositive ? 'El período viene sano en ARS.' : 'Los egresos están superando a los ingresos en ARS.'}</p>
             </div>
-            <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+            <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
               <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Cobertura operativa</div>
               <div className="mt-2 text-2xl font-bold text-neutral-900">{props.companyCount}</div>
               <p className="mt-1 text-sm text-neutral-500">empresas o frentes con actividad visible en el dashboard.</p>
             </div>
-            <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+            <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
               <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Top gasto</div>
               <div className="mt-2 text-lg font-semibold text-neutral-900">{props.topExpenseLabel}</div>
               <p className="mt-1 text-sm text-neutral-500">{props.topExpenseValue}</p>
@@ -92,7 +92,7 @@ export default function ResumenTab(props: ResumenTabProps) {
       </section>
 
       {!props.canWriteData && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Estás en modo <strong>viewer</strong>. Podés ver todo, pero no cargar ni editar datos.
         </div>
       )}

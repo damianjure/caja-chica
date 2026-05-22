@@ -20,6 +20,7 @@ import {
   X,
   Settings,
   Repeat,
+  Tag,
 } from 'lucide-react';
 import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
 import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
@@ -752,7 +753,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       <div className="relative group">
         <textarea
           id="message-input"
-          className="w-full min-h-[140px] p-6 bg-white border border-neutral-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg"
+          className="w-full min-h-[140px] p-6 bg-white border border-neutral-200 rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg"
           placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o 'Agregar empresa Casa'"
           value={inputText}
           onChange={(event) => setInputText(event.target.value)}
@@ -764,7 +765,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             id="process-button"
             onClick={handleProcess}
             disabled={!inputText.trim() || isProcessing}
-            className="flex items-center gap-2 bg-neutral-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-neutral-800 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-lg shadow-neutral-200"
+            className="flex items-center gap-2 bg-neutral-900 text-white px-6 py-2.5 rounded-md font-medium hover:bg-neutral-800 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)]"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {isProcessing ? 'Procesando...' : 'Enviar'}
@@ -788,8 +789,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const renderHistoryCards = () => (
     <>
       {filteredHistory.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-2xl text-neutral-400">
-          <MessageSquareText className="w-10 h-10 mb-3 opacity-25" />
+        <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-lg text-neutral-400">
+          <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
           {selectedCompany === 'all' ? (
             <>
               <p className="font-medium text-neutral-500">Sin movimientos por ahora.</p>
@@ -817,7 +818,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
                 transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1], delay: Math.min(index * 0.04, 0.16) }}
-                className="group bg-white border border-neutral-200 hover:border-neutral-300 rounded-2xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
+                className="group bg-white border border-neutral-200 hover:border-neutral-300 rounded-lg p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-2">
@@ -825,8 +826,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                       {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     </div>
                     <div>
-                      <span className="text-[11px] uppercase font-bold tracking-widest text-neutral-400 block leading-none mb-1">{item.categoria}</span>
-                      <span className="font-semibold text-neutral-900">
+                      <span className="text-xs font-medium text-neutral-500 block leading-none mb-1">{item.categoria}</span>
+                      <span className="text-lg font-semibold text-neutral-900 tabular-nums">
                         {item.monto !== null
                           ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: item.moneda || 'ARS' }).format(item.monto)
                           : 'Monto no especificado'}
@@ -867,14 +868,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
                   <div className="flex flex-wrap gap-2">
                     {item.empresa_nombre && (
-                      <span className="text-[11px] font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md">🏢 {item.empresa_nombre}</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Building2 className="w-3 h-3" />{item.empresa_nombre}</span>
                     )}
-                    <span className="text-[11px] font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md">🎯 {item.descripcion}</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Tag className="w-3 h-3" />{item.descripcion}</span>
                   </div>
 
-                  <div className="pt-3 border-t border-neutral-50 flex justify-between items-center">
-                    <span className="text-[11px] text-neutral-400 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
-                    <span className={`text-[11px] font-bold uppercase tracking-tight ${item.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>{item.tipo}</span>
+                  <div className="pt-3 border-t border-neutral-100">
+                    <span className="text-xs text-neutral-400 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
                   </div>
                 </div>
               </motion.div>
@@ -1062,7 +1062,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans p-4 md:p-8">
+      <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8">
         <div className="mx-auto max-w-7xl">
           <DashboardSkeleton />
         </div>
@@ -1071,7 +1071,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && (
         <WelcomeJoined
           viewer={viewer}
@@ -1085,7 +1085,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       )}
       <div className="max-w-7xl mx-auto space-y-8">
         {apiStatus === 'missing_url' && (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3 text-amber-800 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <p>
               <strong>API no configurada:</strong> Los datos no se guardarán permanentemente.
@@ -1095,7 +1095,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         )}
 
         {apiStatus === 'load_error' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-3 text-red-700 text-sm">
+          <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3 text-red-700 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <p>
               <strong>Error al cargar datos desde la API:</strong>{' '}
@@ -1106,9 +1106,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <header>
           {/* Elevated header panel: distinct surface + shadow lifts it above the canvas. */}
-          <div className="space-y-4 rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[0_8px_24px_-6px_rgba(40,30,10,0.14),0_2px_6px_rgba(40,30,10,0.06)] dark:shadow-[0_10px_28px_-6px_rgba(0,0,0,0.55),0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="space-y-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[var(--app-shadow-panel)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white text-xs font-bold">CC</span>
+                <span className="text-sm font-semibold tracking-tight text-neutral-900">Caja Chica</span>
+              </div>
               <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard financiero</h1>
               <p className="text-neutral-500">Vista clara para entender caja, rendimiento y operación sin perder trazabilidad.</p>
             </div>
@@ -1118,7 +1122,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5">
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs text-neutral-700 truncate max-w-[200px]">{viewer.email}</span>
-                  <span className="text-[10px] text-neutral-400 truncate max-w-[200px]">
+                  <span className="text-xs text-neutral-400 truncate max-w-[200px]">
                     {APP_ROLE_LABELS[viewer.role as AppRole] ?? viewer.role}
                     {' · '}
                     {DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}
@@ -1136,15 +1140,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Movimientos visibles</div>
-                <div className="mt-3 text-2xl font-semibold text-neutral-900">{history.length}</div>
-              </div>
-              <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">{activeTabMeta.label}</div>
-                <div className="mt-3 text-lg font-semibold text-neutral-900">{activeTabMeta.description}</div>
-              </div>
+          <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
+            <div className="text-xs font-bold uppercase tracking-widest text-neutral-400">Movimientos visibles</div>
+            <div className="mt-3 text-2xl font-semibold text-neutral-900">{history.length}</div>
           </div>
           </div>
         </header>
@@ -1230,15 +1228,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <select
                 value={movementEditForm.tipo}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, tipo: event.target.value as 'ingreso' | 'egreso' } : prev)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3"
+                className="rounded-md border border-neutral-200 px-4 py-3"
               >
-                <option value="ingreso">ingreso</option>
-                <option value="egreso">egreso</option>
+                <option value="ingreso">Ingreso</option>
+                <option value="egreso">Egreso</option>
               </select>
               <select
                 value={movementEditForm.moneda}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, moneda: event.target.value as 'ARS' | 'USD' } : prev)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3"
+                className="rounded-md border border-neutral-200 px-4 py-3"
               >
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
@@ -1247,25 +1245,25 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 value={movementEditForm.monto}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, monto: event.target.value } : prev)}
                 type="number"
-                className="rounded-2xl border border-neutral-200 px-4 py-3"
+                className="rounded-md border border-neutral-200 px-4 py-3"
                 placeholder="Monto"
               />
               <input
                 value={movementEditForm.categoria}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, categoria: event.target.value } : prev)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3"
+                className="rounded-md border border-neutral-200 px-4 py-3"
                 placeholder="Categoría"
               />
               <input
                 value={movementEditForm.empresa}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, empresa: event.target.value } : prev)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 md:col-span-2"
+                className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2"
                 placeholder="Empresa"
               />
               <textarea
                 value={movementEditForm.descripcion}
                 onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, descripcion: event.target.value } : prev)}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 md:col-span-2 min-h-[120px]"
+                className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2 min-h-[120px]"
                 placeholder="Descripción"
               />
             </div>
@@ -1275,13 +1273,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   setEditingMovement(null);
                   setMovementEditForm(null);
                 }}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700"
+                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => void saveMovementEdit()}
-                className="rounded-2xl bg-neutral-900 px-5 py-3 text-white font-medium"
+                className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium"
               >
                 Guardar cambios
               </button>
@@ -1298,7 +1296,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <input
                 value={companyEditName}
                 onChange={(event) => setCompanyEditName(event.target.value)}
-                className="w-full rounded-2xl border border-neutral-200 px-4 py-3"
+                className="w-full rounded-md border border-neutral-200 px-4 py-3"
                 placeholder="Nombre de empresa"
               />
               <p className="text-sm text-neutral-500">
@@ -1311,13 +1309,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   setEditingCompany(null);
                   setCompanyEditName('');
                 }}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700"
+                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => void saveCompanyEdit()}
-                className="rounded-2xl bg-neutral-900 px-5 py-3 text-white font-medium"
+                className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium"
               >
                 Guardar cambios
               </button>
@@ -1357,7 +1355,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                         }`}
                       >
                         {company}
-                        {isDefault && <span className="ml-2 text-[10px] uppercase tracking-widest opacity-70">default</span>}
+                        {isDefault && <span className="ml-2 text-xs uppercase tracking-widest opacity-70">default</span>}
                       </button>
                     );
                   })}
@@ -1375,7 +1373,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <button
                 onClick={() => setPendingItem(null)}
                 disabled={isProcessing}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700"
+                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
               >
                 Cancelar registro
               </button>
@@ -1407,7 +1405,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <input
                   value={confirmationInput}
                   onChange={(event) => setConfirmationInput(event.target.value)}
-                  className="w-full rounded-2xl border border-neutral-200 px-4 py-3"
+                  className="w-full rounded-md border border-neutral-200 px-4 py-3"
                   placeholder={`Escribí ${confirmationModal.requireText}`}
                 />
               ) : null}
@@ -1419,7 +1417,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   setConfirmationModal(null);
                   setConfirmationInput('');
                 }}
-                className="rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700 hover:bg-neutral-50 active:scale-[0.97] transition duration-150"
+                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 hover:bg-neutral-50 active:scale-[0.97] transition duration-150"
                 disabled={isConfirmingAction}
               >
                 Cancelar
@@ -1427,7 +1425,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <button
                 onClick={() => void runConfirmation()}
                 disabled={isConfirmingAction}
-                className={`rounded-2xl px-5 py-3 font-medium text-white active:scale-[0.97] transition duration-150 ${
+                className={`rounded-md px-5 py-3 font-medium text-white active:scale-[0.97] transition duration-150 ${
                   confirmationModal.tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-neutral-900 hover:bg-neutral-800'
                 } disabled:opacity-60`}
               >

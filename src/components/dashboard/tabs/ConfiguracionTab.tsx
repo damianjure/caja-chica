@@ -365,7 +365,7 @@ export default function ConfiguracionTab({
       viewer: "bg-neutral-100 text-neutral-600",
     };
     return (
-      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[role] ?? "bg-neutral-100 text-neutral-500"}`}>
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles[role] ?? "bg-neutral-100 text-neutral-500"}`}>
         {role}
       </span>
     );
@@ -380,10 +380,10 @@ export default function ConfiguracionTab({
   return (
     <div className="stack-relaxed">
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {notice && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
       )}
 
       {/* ── Preferencias ──────────────────────────────────────────────────── */}
@@ -425,7 +425,7 @@ export default function ConfiguracionTab({
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-neutral-500">Se usa en el formulario de presupuesto.</p>
+            <p className="text-xs text-neutral-500">Se usa en el formulario de presupuesto.</p>
           </div>
 
           {/* Empresa default */}
@@ -435,14 +435,14 @@ export default function ConfiguracionTab({
               value={defaultEmpresa}
               onChange={(e) => setDefaultEmpresa(e.target.value)}
               aria-label="Empresa por defecto"
-              className="rounded-2xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
+              className="rounded-xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
             >
               <option value="">Sin empresa (Personal)</option>
               {companies.filter((c) => !c.deleted_at).map((c) => (
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </select>
-            <p className="text-[11px] text-neutral-500">Se resalta en el selector de empresa al registrar un ticket.</p>
+            <p className="text-xs text-neutral-500">Se resalta en el selector de empresa al registrar un ticket.</p>
           </div>
 
           {/* Notification hour */}
@@ -466,7 +466,7 @@ export default function ConfiguracionTab({
                 {String(notifHour).padStart(2, "0")}:00 hs
               </span>
             </div>
-            <p className="text-[11px] text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
+            <p className="text-xs text-neutral-500">El bot te manda el recordatorio a esta hora (UTC). Actualmente el recordatorio llega por Telegram.</p>
           </div>
         </div>
       </section>
@@ -539,7 +539,7 @@ export default function ConfiguracionTab({
                           <div className="flex items-center gap-1.5 mt-1">
                             {roleBadge(member.role)}
                             {statusDot(member.status)}
-                            <span className="text-[11px] text-neutral-500">{member.status}</span>
+                            <span className="text-xs text-neutral-500">{member.status}</span>
                           </div>
                         </td>
 
@@ -631,7 +631,7 @@ export default function ConfiguracionTab({
                               <Copy className="w-3 h-3 text-neutral-600" />
                             </button>
                           </div>
-                          <p className="text-[11px] text-neutral-500">Válido 30 min.</p>
+                          <p className="text-xs text-neutral-500">Válido 30 min.</p>
                         </div>
                       )}
                     </div>
@@ -655,7 +655,7 @@ export default function ConfiguracionTab({
             ) : (
               <div className="space-y-2">
                 {telegramLinks.map((link) => (
-                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 px-4 py-3">
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3">
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="font-medium text-neutral-900 text-sm">
                         {link.telegram_username ? `@${link.telegram_username}` : `ID ${link.telegram_user_id}`}
@@ -694,7 +694,7 @@ export default function ConfiguracionTab({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 space-y-1">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 space-y-1">
           <div className="text-sm font-medium text-neutral-900">{viewer.email}</div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-neutral-500">Rol de app:</span>
@@ -721,26 +721,26 @@ export default function ConfiguracionTab({
               placeholder={viewer.email}
               maxLength={50}
               aria-label="Nombre visible"
-              className="flex-1 rounded-2xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+              className="flex-1 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
             />
             <button
               type="button"
               onClick={() => void handleSaveDisplayName()}
               disabled={savingDisplayName}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
             >
               {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Guardar
             </button>
           </div>
-          <p className="text-[11px] text-neutral-500">Lo ven otros miembros del dashboard.</p>
+          <p className="text-xs text-neutral-500">Lo ven otros miembros del dashboard.</p>
         </div>
 
         <div className="space-y-3">
           {canConnectDrive && onDisconnectDrive && (
             <button
               onClick={() => void onDisconnectDrive()}
-              className="w-full flex items-center gap-3 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
             >
               <HardDrive className="w-4 h-4 text-neutral-500" />
               Desconectar Google Drive
@@ -752,7 +752,7 @@ export default function ConfiguracionTab({
             <button
               onClick={() => void handlePurgeDemo()}
               disabled={purgingDemo}
-              className="w-full flex items-center gap-3 rounded-2xl border border-amber-200 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-amber-200 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
             >
               {purgingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Limpiar datos de ejemplo
@@ -762,7 +762,7 @@ export default function ConfiguracionTab({
           {/* Export data */}
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
             <Download className="w-4 h-4 text-neutral-500" />
             Exportar mis datos (JSON)
@@ -772,7 +772,7 @@ export default function ConfiguracionTab({
             <button
               onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingDashboard}
-              className="w-full flex items-center gap-3 rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               {leavingDashboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
               Abandonar este dashboard
@@ -781,7 +781,7 @@ export default function ConfiguracionTab({
 
           <button
             onClick={() => void onSignOut()}
-            className="w-full flex items-center gap-3 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
             <LogOut className="w-4 h-4 text-neutral-500" />
             Cerrar sesión
@@ -811,17 +811,17 @@ export default function ConfiguracionTab({
                 sessions.map((s) => {
                   const isCurrent = currentSessionId !== null && s.id === currentSessionId;
                   return (
-                    <div key={s.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-neutral-50" : "border-neutral-200"}`}>
+                    <div key={s.id} className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-neutral-50" : "border-neutral-200"}`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <div className="text-xs font-medium text-neutral-700 truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
                           {isCurrent && (
-                            <span className="inline-flex items-center rounded-full bg-neutral-900 px-2 py-0.5 text-[10px] font-semibold text-white shrink-0">
+                            <span className="inline-flex items-center rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-semibold text-white shrink-0">
                               Esta sesión
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-neutral-500 mt-0.5">
+                        <div className="text-xs text-neutral-500 mt-0.5">
                           Iniciada {new Date(s.created_at).toLocaleString("es-AR")}
                           {s.not_after && ` · Expira ${new Date(s.not_after).toLocaleString("es-AR")}`}
                         </div>
@@ -847,12 +847,12 @@ export default function ConfiguracionTab({
         <div className="border-t border-red-100 pt-4">
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Borrar mi cuenta
           </button>
-          <p className="text-[11px] text-neutral-500 mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
+          <p className="text-xs text-neutral-500 mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
         </div>
       </section>
 

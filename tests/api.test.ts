@@ -146,6 +146,13 @@ function createSupabaseStub(
                 },
               };
             }
+            if (table === "empresas") {
+              return {
+                single() {
+                  return Promise.resolve({ data: { id: "saved-1", ...payload }, error: null });
+                },
+              };
+            }
             return Promise.resolve({ data: rows, error: null });
           },
           single() {

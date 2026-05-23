@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
 import { Sparkles, BarChart2, Trash2, ChevronRight, MessageCircle, X } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -41,18 +40,8 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative"
-      >
+    <div className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-md relative">
 
         {/* Skip button */}
         <button
@@ -170,7 +159,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
           </div>
         )}
 
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

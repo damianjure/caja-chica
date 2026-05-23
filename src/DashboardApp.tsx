@@ -1,50 +1,28 @@
-import { lazy, Suspense, useState, useEffect, useRef, type ReactNode } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { toast } from "sonner";
-import {
-  Send,
-  Trash2,
-  Copy,
-  Check,
-  TrendingDown,
-  TrendingUp,
-  MessageSquareText,
-  AlertCircle,
-  Loader2,
-  LogOut,
-  ShieldCheck,
-  LayoutGrid,
-  Building2,
-  ArrowUpDown,
-  Pencil,
-  X,
-  Settings,
-  Repeat,
-  Tag,
-} from 'lucide-react';
-import { api, ExtractedItem, Movimiento, Empresa, Categoria, AppViewer, Presupuesto, DashboardMembersResponse } from './services/api';
+import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp } from 'lucide-react';
+import { api, type Movimiento, type Empresa, type AppViewer } from './services/api';
 import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
-import { getPendingCompanyAssignment } from './dashboard/companyAssignment';
 import {
-  formatCurrency,
-  getCategorySummaries,
-  getCompanySummaries,
-  getCurrencyTotals,
-  getRecentExpenses,
-  getRecentIncomes,
-  getCurrentPeriod,
-  filterMovements,
-  getIncomeSummaries,
-  getIncomeTagSummaries,
-  getMonthlySummaries,
+  formatCurrency, getCategorySummaries, getCompanySummaries, getCurrencyTotals,
+  getRecentExpenses, getRecentIncomes, getCurrentPeriod,
+  getIncomeSummaries, getIncomeTagSummaries, getMonthlySummaries,
 } from './dashboard/summary';
-import { supabase } from './services/supabase';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
 import { ThemeMode, ThemePreference, ThemeToggle } from './components/ThemeToggle';
 import { SectionCard } from './components/dashboard/primitives';
 import { ModalShell } from './components/ui/ModalShell';
+import { MovementCards } from './components/dashboard/MovementCards';
+import { DashboardModals } from './components/dashboard/DashboardModals';
+import { useDashboardData } from './hooks/dashboard/useDashboardData';
+import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
+import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
+import { useComposer } from './hooks/dashboard/useComposer';
+import { type MovementEditForm, type ConfirmationModalState } from './types/dashboard';
+
+export type { MovementEditForm, ConfirmationModalState };
 
 const PREF_CURRENCY_KEY = 'caja-chica:default-currency';
 const PREF_EMPRESA_KEY = 'caja-chica:default-empresa';
@@ -58,7 +36,7 @@ function readDefaultEmpresa(): string {
   return window.localStorage.getItem(PREF_EMPRESA_KEY) ?? '';
 }
 
-interface DashboardAppProps {
+export interface DashboardAppProps {
   viewer: AppViewer;
   onSignOut: () => Promise<void> | void;
   theme: ThemeMode;
@@ -67,36 +45,17 @@ interface DashboardAppProps {
   onSetThemePreference: (p: ThemePreference) => void;
 }
 
-type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
+export type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
 
 const ResumenTab = lazy(() => import('./components/dashboard/tabs/ResumenTab'));
 const EmpresasTab = lazy(() => import('./components/dashboard/tabs/EmpresasTab'));
 const GastosTab = lazy(() => import('./components/dashboard/tabs/GastosTab'));
 const IngresosTab = lazy(() => import('./components/dashboard/tabs/IngresosTab'));
 const MovimientosTab = lazy(() => import('./components/dashboard/tabs/MovimientosTab'));
-const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })));
-const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((module) => ({ default: module.BotConnectionPanel })));
+const AdminPanel = lazy(() => import('./components/AdminPanel').then((m) => ({ default: m.AdminPanel })));
+const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((m) => ({ default: m.BotConnectionPanel })));
 const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/ConfiguracionTab'));
 const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/RecurrentesTab'));
-
-interface MovementEditForm {
-  tipo: 'ingreso' | 'egreso';
-  moneda: 'ARS' | 'USD';
-  monto: string;
-  categoria: string;
-  empresa: string;
-  descripcion: string;
-}
-
-interface ConfirmationModalState {
-  title: string;
-  description: string;
-  confirmLabel: string;
-  tone?: 'danger' | 'neutral';
-  requireText?: string;
-  details?: string;
-  onConfirm: () => Promise<void> | void;
-}
 
 const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
   { id: 'resumen', label: 'Resumen', description: 'Un vistazo de empresas, ingresos y gastos del período', icon: LayoutGrid },
@@ -108,14 +67,8 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
   { id: 'configuracion', label: 'Configuración', description: 'Cuenta, equipo, permisos y Drive', icon: Settings },
 ];
 
-
-// ModalShell extracted to src/components/ui/ModalShell.tsx for a11y + reuse.
-
 function normalizeMovement(item: Movimiento): Movimiento {
-  return {
-    ...item,
-    conciliado: item.conciliado ?? true,
-  };
+  return { ...item, conciliado: item.conciliado ?? true };
 }
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
@@ -125,1316 +78,306 @@ const VALID_TABS: ReadonlyArray<DashboardTab> = [
 
 function readPersistedTab(): DashboardTab {
   try {
-    const stored = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
-    if (stored && (VALID_TABS as ReadonlyArray<string>).includes(stored)) {
-      return stored as DashboardTab;
-    }
-  } catch {
-    /* ignore */
-  }
+    const stored = window.sessionStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    if (stored && (VALID_TABS as ReadonlyArray<string>).includes(stored)) return stored as DashboardTab;
+  } catch { /* ignore */ }
   return 'resumen';
 }
 
 export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference }: DashboardAppProps) {
   const initialBudgetPeriod = getCurrentPeriod();
   const [activeTab, setActiveTab] = useState<DashboardTab>(readPersistedTab);
-  const [showWizard, setShowWizard] = useState(
-    viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded'
-  );
+  const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
-    } catch {
-      /* ignore */
-    }
+    try { window.sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab); } catch { /* ignore */ }
   }, [activeTab]);
-  const [inputText, setInputText] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [history, setHistory] = useState<Movimiento[]>([]);
-  const [pendingItem, setPendingItem] = useState<ExtractedItem & { originalText: string } | null>(null);
-  const [customCompanies, setCustomCompanies] = useState<Empresa[]>([]);
-  const [categories, setCategories] = useState<Categoria[]>([]);
-  const [budgets, setBudgets] = useState<Presupuesto[]>([]);
-  const [budgetPeriod, setBudgetPeriod] = useState(initialBudgetPeriod);
-  const [budgetForm, setBudgetForm] = useState({
-    period: initialBudgetPeriod,
-    categoria: '',
-    moneda: readDefaultCurrency(),
-    monto: '',
+
+  const handleSignOut = () => {
+    try { window.sessionStorage.removeItem(ACTIVE_TAB_STORAGE_KEY); } catch { /* ignore */ }
+    return onSignOut();
+  };
+
+  const {
+    history, setHistory, customCompanies, setCustomCompanies, categories,
+    budgets, setBudgets, budgetPeriod, setBudgetPeriod, dashboardAccess,
+    isLoading, isLoadingCollaboration, isLoadingBudget, hasMore, loadingMore,
+    apiStatus, apiErrorMessage, loadData, loadCollaboration,
+  } = useDashboardData(viewer);
+
+  const {
+    selectedCompany, setSelectedCompany, movementType, setMovementType,
+    movementCurrency, setMovementCurrency, filteredMovimientos: filteredHistory, resetFilters,
+  } = useMovementsFilter(history);
+
+  const { pendingItem, setPendingItem, isAssigning, assignPendingMovement } = useCompanyAssignment();
+
+  const currentDashboardMember = dashboardAccess?.members.find((m) => m.user_id === viewer.id) ?? null;
+  const dashboardRole = currentDashboardMember?.role ?? 'owner';
+  const canWriteData = dashboardRole !== 'viewer';
+  const canConnectDrive = dashboardRole === 'owner';
+  const canUseDrive = canConnectDrive || (dashboardRole === 'editor' && currentDashboardMember?.permissions?.export_drive === true);
+
+  const showToast = (message: string, type: 'success' | 'warning' = 'success') => {
+    if (type === 'success') toast.success(message); else toast.error(message);
+  };
+
+  const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
+    categories, customCompanies, canWriteData,
+    onWarning: (msg) => showToast(msg, 'warning'),
+    onCommit: (event) => {
+      switch (event.type) {
+        case 'GESTIONAR_EMPRESA':
+          if (event.action === 'ADD') {
+            const exists = customCompanies.some((c) => c.nombre.toLowerCase() === event.companyName.toLowerCase());
+            if (!exists) void api.addEmpresa(event.companyName).then((e) => { setCustomCompanies((p) => [...p, e]); showToast(`Empresa "${event.companyName}" creada.`); });
+            else showToast(`La empresa "${event.companyName}" ya existe.`, 'warning');
+          }
+          break;
+        case 'ELIMINAR_MOVIMIENTO':
+          if (event.deletedId) { setHistory((p) => p.filter((i) => i.id !== event.deletedId)); showToast('Último movimiento eliminado.'); }
+          break;
+        case 'REGISTRAR':
+          setHistory((p) => [...event.saved, ...p]);
+          showToast(`${event.saved.length} transacciones registradas.`);
+          break;
+        case 'PENDING_COMPANY':
+          setPendingItem(event.item);
+          break;
+      }
+    },
   });
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<string>('all');
-  const [movementType, setMovementType] = useState<'all' | 'ingreso' | 'egreso'>('all');
-  const [movementCurrency, setMovementCurrency] = useState<'all' | 'ARS' | 'USD'>('all');
-  const [apiStatus, setApiStatus] = useState<'ready' | 'missing_url' | 'load_error'>('ready');
-  const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingCollaboration, setIsLoadingCollaboration] = useState(true);
-  const [isLoadingBudget, setIsLoadingBudget] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [dashboardAccess, setDashboardAccess] = useState<DashboardMembersResponse | null>(null);
+  const [selectedExpenseCompany, setSelectedExpenseCompany] = useState<string>('all');
+  const [budgetForm, setBudgetForm] = useState({ period: initialBudgetPeriod, categoria: '', moneda: readDefaultCurrency(), monto: '' });
   const [editingMovement, setEditingMovement] = useState<Movimiento | null>(null);
   const [movementEditForm, setMovementEditForm] = useState<MovementEditForm | null>(null);
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
   const [companyEditName, setCompanyEditName] = useState('');
-  const [selectedExpenseCompany, setSelectedExpenseCompany] = useState<string>('all');
   const [confirmationModal, setConfirmationModal] = useState<ConfirmationModalState | null>(null);
   const [confirmationInput, setConfirmationInput] = useState('');
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
-  const nextCursorRef = useRef<string | null>(null);
-  const prefersReducedMotion = useReducedMotion();
 
-  const companiesList = [
-    'all',
-    ...Array.from(new Set([
-      ...customCompanies.map((company) => company.nombre),
-      ...history.map((item) => item.empresa_nombre).filter(Boolean),
-    ])) as string[],
-  ];
+  const tabs = viewer.role === 'superadmin'
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Administración de la aplicación', icon: ShieldCheck }]
+    : BASE_TAB_CONFIG;
 
-  const filteredHistory = filterMovements(history, {
-    company: selectedCompany,
-    tipo: movementType,
-    moneda: movementCurrency,
-  });
-  const expenseCompanyOptions = companiesList;
-  const expenseHistory = selectedExpenseCompany === 'all'
-    ? history
-    : history.filter((item) => item.empresa_nombre === selectedExpenseCompany);
+  useEffect(() => {
+    const allowedIds = tabs.map((t) => t.id);
+    if (!allowedIds.includes(activeTab)) setActiveTab(tabs[0].id);
+  }, [viewer.id, viewer.role, activeTab, tabs]);
+
+  useEffect(() => {
+    resetFilters(); setSelectedExpenseCompany('all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer.id]);
+
+  const companiesList = ['all', ...Array.from(new Set([...customCompanies.map((c) => c.nombre), ...history.map((i) => i.empresa_nombre).filter(Boolean)])) as string[]];
+  const expenseHistory = selectedExpenseCompany === 'all' ? history : history.filter((i) => i.empresa_nombre === selectedExpenseCompany);
 
   const arsTotals = getCurrencyTotals(history, 'ARS');
   const usdTotals = getCurrencyTotals(history, 'USD');
   const companySummaries = getCompanySummaries(history);
   const categorySummaries = getCategorySummaries(history);
-  const filteredExpenseCategorySummaries = getCategorySummaries(
-    history,
-    selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany,
-  );
+  const filteredExpenseCategorySummaries = getCategorySummaries(history, selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany);
   const incomeSummaries = getIncomeSummaries(history);
   const incomeTagSummaries = getIncomeTagSummaries(history);
   const monthlySummaries = getMonthlySummaries(history);
   const expenseMonthlySummaries = getMonthlySummaries(expenseHistory);
-  const currentDashboardMember = dashboardAccess?.members.find((member) => member.user_id === viewer.id) ?? null;
-  const dashboardRole = currentDashboardMember?.role ?? 'owner';
-  const canWriteData = dashboardRole !== 'viewer';
-  const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Administración de la aplicación', icon: ShieldCheck }]
-    : BASE_TAB_CONFIG;
+  const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0];
 
-  // Normalize activeTab against the current viewer's allowed tabs.
-  // Without this, a localStorage value persisted by a previous (privileged) user
-  // can leave a non-privileged user sitting on a tab they shouldn't see (e.g. SuperAdmin).
-  useEffect(() => {
-    const allowedIds = tabs.map((t) => t.id);
-    if (!allowedIds.includes(activeTab)) {
-      setActiveTab(tabs[0].id);
-    }
-  }, [viewer.id, viewer.role, activeTab, tabs]);
-
-  const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
-  const monthlyChartDataArs = [...monthlySummaries]
-    .reverse()
-    .map((item) => ({
-      label: item.period.slice(5),
-      income: item.ingresosArs,
-      expense: item.gastosArs,
-      net: item.netoArs,
-    }))
-    .filter((item) => item.income > 0 || item.expense > 0);
-  const monthlyChartDataUsd = [...monthlySummaries]
-    .reverse()
-    .map((item) => ({
-      label: item.period.slice(5),
-      income: item.ingresosUsd,
-      expense: item.gastosUsd,
-      net: item.netoUsd,
-    }))
-    .filter((item) => item.income > 0 || item.expense > 0);
-  const expenseMonthlyChartData = [...expenseMonthlySummaries]
-    .reverse()
-    .map((item) => ({
-      label: item.period.slice(5),
-      income: item.ingresosArs,
-      expense: item.gastosArs,
-      net: item.netoArs,
-    }));
-  const topExpenseCategories = categorySummaries.slice(0, 5).map((category) => ({
-    label: category.name,
-    value: category.egresoArs,
-    secondary: `${category.movimientos} movimientos`,
-  }));
-  const topIncomeSources = incomeSummaries.slice(0, 5).map((income) => ({
-    label: income.name,
-    value: income.ars + income.usd,
-    valueLabel: `${formatCurrency(income.ars, 'ARS')} · ${formatCurrency(income.usd, 'USD')}`,
-    secondary: `${income.movimientos} movimientos`,
-    segments: [
-      { value: income.ars, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const },
-      { value: income.usd, colorClass: 'bg-emerald-300', label: 'Ingresos USD', currency: 'USD' as const },
-    ],
-  }));
-  const topIncomeTags = incomeTagSummaries.slice(0, 10).map((tag) => ({
-    label: tag.label,
-    value: formatCurrency(tag.ars, 'ARS'),
-    secondary: `${tag.movimientos} movimientos · ${formatCurrency(tag.usd, 'USD')} en USD`,
-  }));
-  const topCompanies = companySummaries.slice(0, 5).map((company) => ({
-    label: company.name,
-    value: company.ingresosArs + company.gastosArs,
-    valueLabel: formatCurrency(company.ingresosArs, 'ARS'),
-    secondary: `${company.movimientos} movimientos`,
-    supportingValue: `Saldo ${formatCurrency(company.saldoArs, 'ARS')}`,
-    segments: [
-      { value: company.ingresosArs, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const },
-      { value: company.gastosArs, colorClass: 'bg-red-500', label: 'Gastos ARS', currency: 'ARS' as const },
-    ],
-  }));
-  const expenseCompanies = getCompanySummaries(history)
-    .filter((company) => company.gastosArs > 0)
-    .slice(0, 8)
-    .map((company) => ({
-      label: company.name,
-      value: company.gastosArs,
-      secondary: `${company.movimientos} movimientos · saldo ${formatCurrency(company.saldoArs, 'ARS')}`,
-    }));
-  const recentExpenses = getRecentExpenses(
-    history,
-    selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany,
-    5,
-  );
+  const monthlyChartDataArs = [...monthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosArs, expense: i.gastosArs, net: i.netoArs })).filter((i) => i.income > 0 || i.expense > 0);
+  const monthlyChartDataUsd = [...monthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosUsd, expense: i.gastosUsd, net: i.netoUsd })).filter((i) => i.income > 0 || i.expense > 0);
+  const expenseMonthlyChartData = [...expenseMonthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosArs, expense: i.gastosArs, net: i.netoArs }));
+  const topExpenseCategories = categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` }));
+  const topIncomeSources = incomeSummaries.slice(0, 5).map((inc) => ({ label: inc.name, value: inc.ars + inc.usd, valueLabel: `${formatCurrency(inc.ars, 'ARS')} · ${formatCurrency(inc.usd, 'USD')}`, secondary: `${inc.movimientos} movimientos`, segments: [{ value: inc.ars, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: inc.usd, colorClass: 'bg-emerald-300', label: 'Ingresos USD', currency: 'USD' as const }] }));
+  const topIncomeTags = incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` }));
+  const topCompanies = companySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.ingresosArs + c.gastosArs, valueLabel: formatCurrency(c.ingresosArs, 'ARS'), secondary: `${c.movimientos} movimientos`, supportingValue: `Saldo ${formatCurrency(c.saldoArs, 'ARS')}`, segments: [{ value: c.ingresosArs, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: c.gastosArs, colorClass: 'bg-red-500', label: 'Gastos ARS', currency: 'ARS' as const }] }));
+  const expenseCompanies = getCompanySummaries(history).filter((c) => c.gastosArs > 0).slice(0, 8).map((c) => ({ label: c.name, value: c.gastosArs, secondary: `${c.movimientos} movimientos · saldo ${formatCurrency(c.saldoArs, 'ARS')}` }));
+  const recentExpenses = getRecentExpenses(history, selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany, 5);
   const recentIncomes = getRecentIncomes(history, 5);
-  const visibleIncomeCount = filteredHistory.filter((item) => item.tipo === 'ingreso').length;
-  const visibleExpenseCount = filteredHistory.filter((item) => item.tipo === 'egreso').length;
+  const visibleIncomeCount = filteredHistory.filter((i) => i.tipo === 'ingreso').length;
+  const visibleExpenseCount = filteredHistory.filter((i) => i.tipo === 'egreso').length;
 
-  const loadCollaboration = async () => {
-    try {
-      const data = await api.getDashboardMembers();
-      setDashboardAccess(data);
-    } catch (err) {
-      console.error('Failed to load collaboration data', err);
-    } finally {
-      setIsLoadingCollaboration(false);
-    }
-  };
+  const actualByCategory = history.filter((i) => i.tipo === 'egreso' && i.moneda === 'ARS' && getCurrentPeriod(new Date(i.created_at)) === budgetPeriod).reduce<Record<string, number>>((acc, i) => { const k = (i.categoria || 'Otros').toLowerCase(); acc[k] = (acc[k] || 0) + Number(i.monto || 0); return acc; }, {});
+  const budgetVsActual = budgets.filter((b) => b.moneda === 'ARS' && b.period === budgetPeriod).map((b) => { const actual = actualByCategory[b.categoria.toLowerCase()] || 0; return { ...b, actual, variance: b.monto - actual }; }).sort((a, b) => a.categoria.localeCompare(b.categoria));
 
-  const loadBudgets = async (period: string) => {
-    setIsLoadingBudget(true);
-    try {
-      const rows = await api.getPresupuestos(period);
-      setBudgets(rows);
-    } catch (err) {
-      console.error('Failed to load budgets', err);
-    } finally {
-      setIsLoadingBudget(false);
-    }
-  };
-
-  const loadData = async (append = false) => {
-    if (append) setLoadingMore(true);
-    else setIsLoading(true);
-
-    try {
-      const url = (import.meta as any).env.VITE_API_URL;
-      if (!url || url.includes('placeholder')) {
-        setApiStatus('missing_url');
-        setApiErrorMessage(null);
-        setIsLoading(false);
-        return;
-      }
-
-      const limit = 50;
-      const [movsPage, emps, cats] = await Promise.all([
-        api.getMovimientos(limit, append ? nextCursorRef.current : null),
-        api.getEmpresas(),
-        api.getCategorias(),
-      ]);
-      const normalizedItems = movsPage.items.map(normalizeMovement);
-
-      if (append) setHistory((prev) => [...prev, ...normalizedItems]);
-      else {
-        setHistory(normalizedItems);
-        setSelectedCompany('all');
-        setMovementType('all');
-        setMovementCurrency('all');
-        setSelectedExpenseCompany('all');
-      }
-
-      nextCursorRef.current = movsPage.nextCursor;
-      setHasMore(Boolean(movsPage.nextCursor));
-      setCustomCompanies(emps);
-      setCategories(cats);
-      setApiStatus('ready');
-      setApiErrorMessage(null);
-    } catch (err) {
-      console.error('Failed to load data', err);
-      setApiStatus('load_error');
-      setApiErrorMessage(err instanceof Error ? err.message : 'No se pudo cargar la información del dashboard.');
-    } finally {
-      setIsLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadData();
-    void loadCollaboration();
-  }, [viewer.id]);
-
-  useEffect(() => {
-    const url = (import.meta as any).env.VITE_API_URL;
-    if (!url || url.includes('placeholder')) {
-      setIsLoadingBudget(false);
-      return;
-    }
-    void loadBudgets(budgetPeriod);
-  }, [budgetPeriod]);
-
-  useEffect(() => {
-    if (!supabase) return;
-
-    const channel = supabase
-      .channel('realtime-movimientos')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movimientos' }, (payload) => {
-        const newMov = normalizeMovement(payload.new as Movimiento);
-        setHistory((prev) => {
-          if (prev.some((item) => item.id === newMov.id)) return prev;
-          return [newMov, ...prev];
-        });
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'movimientos' }, (payload) => {
-        setHistory((prev) => prev.filter((item) => item.id !== payload.old.id));
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'empresas' }, (payload) => {
-        const newEmp = payload.new as Empresa;
-        setCustomCompanies((prev) => (prev.some((item) => item.id === newEmp.id) ? prev : [...prev, newEmp]));
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'categorias' }, (payload) => {
-        const newCat = payload.new as Categoria;
-        setCategories((prev) => (prev.some((item) => item.id === newCat.id) ? prev : [...prev, newCat]));
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const showToast = (message: string, type: 'success' | 'warning' = 'success') => {
-    if (type === 'success') toast.success(message);
-    else toast.error(message);
-  };
-
-  const handleProcess = async () => {
-    if (!canWriteData) {
-      showToast('Tenés acceso viewer: solo lectura.', 'warning');
-      return;
-    }
-    if (!inputText.trim() || isProcessing) return;
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const result = await api.extract(inputText, categories);
-
-      if ('error' in result) {
-        setError(result.error === 'no_data_found' ? 'No se entendió el comando.' : result.error);
-      } else {
-        switch (result.intent) {
-          case 'GESTIONAR_EMPRESA': {
-            const typed = result as { action: string; companyName: string };
-            if (typed.action === 'ADD') {
-              const exists = customCompanies.some((company) => company.nombre.toLowerCase() === typed.companyName.toLowerCase());
-              if (!exists) {
-                const newEmp = await api.addEmpresa(typed.companyName);
-                setCustomCompanies((prev) => [...prev, newEmp]);
-                showToast(`Empresa "${typed.companyName}" creada.`);
-              } else {
-                showToast(`La empresa "${typed.companyName}" ya existe.`, 'warning');
-              }
-            }
-            break;
-          }
-          case 'ELIMINAR_MOVIMIENTO': {
-            const typed = result as { target: string };
-            if (typed.target === 'last') {
-              const response = await api.deleteLastMovimiento();
-              if (response.id) {
-                setHistory((prev) => prev.filter((item) => item.id !== response.id));
-                showToast('Último movimiento eliminado.');
-              }
-            }
-            break;
-          }
-          case 'REGISTRAR': {
-            const typed = result as { items: ExtractedItem[] };
-            const pendingAssignment = getPendingCompanyAssignment(typed.items, inputText);
-
-            if (pendingAssignment) {
-              setPendingItem(pendingAssignment);
-              showToast('Elegí la empresa antes de guardar el movimiento.');
-              break;
-            }
-
-            const saved = await api.saveMovimientos(typed.items, inputText);
-            setHistory((prev) => [...saved.map(normalizeMovement), ...prev]);
-            showToast(`${saved.length} transacciones registradas.`);
-            break;
-          }
-          default:
-            setError('Intención no soportada todavía.');
-        }
-
-        setInputText('');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al procesar.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const deleteItem = async (id: string) => {
+  const deleteItem = (id: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({
-      title: 'Eliminar movimiento',
-      description: 'Vas a borrar este movimiento del historial. La acción queda auditada y no se puede deshacer desde la UI.',
-      confirmLabel: 'Eliminar movimiento',
-      tone: 'danger',
-      onConfirm: async () => {
-        await api.deleteMovimiento(id);
-        setHistory((prev) => prev.filter((item) => item.id !== id));
-        showToast('Movimiento eliminado.', 'warning');
-      },
-    });
+    setConfirmationModal({ title: 'Eliminar movimiento', description: 'Vas a borrar este movimiento del historial. La acción queda auditada y no se puede deshacer desde la UI.', confirmLabel: 'Eliminar movimiento', tone: 'danger', onConfirm: async () => { await api.deleteMovimiento(id); setHistory((p) => p.filter((i) => i.id !== id)); showToast('Movimiento eliminado.', 'warning'); } });
   };
-
-  const deleteCompany = async (id: string, name: string) => {
+  const deleteCompany = (id: string, name: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({
-      title: `Desactivar ${name}`,
-      description: 'Esto hace soft delete, crea backup redundante y deja log de auditoría.',
-      details: 'Escribí ELIMINAR para confirmar.',
-      confirmLabel: 'Desactivar empresa',
-      tone: 'danger',
-      requireText: 'ELIMINAR',
-      onConfirm: async () => {
-        await api.deleteEmpresa(id);
-        setCustomCompanies((prev) => prev.filter((company) => company.id !== id));
-        if (selectedCompany === name) setSelectedCompany('all');
-        if (selectedExpenseCompany === name) setSelectedExpenseCompany('all');
-        showToast(`Empresa "${name}" desactivada.`, 'warning');
-      },
-    });
+    const movCount = history.filter((m) => m.empresa_nombre === name).length;
+    const description = movCount > 0
+      ? `Esta empresa tiene ${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}. Los movimientos quedan en el historial pero la empresa se desactiva. Soft delete + backup + log de auditoría.`
+      : 'Esta empresa no tiene movimientos asociados. Soft delete + log de auditoría.';
+    setConfirmationModal({ title: `Desactivar ${name}`, description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar empresa', tone: 'danger', requireText: 'ELIMINAR', onConfirm: async () => { await api.deleteEmpresa(id); setCustomCompanies((p) => p.filter((c) => c.id !== id)); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
   };
-
-  const deleteCategory = async (id: string, name: string) => {
+  const deleteCategory = (id: string, name: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({
-      title: `Eliminar categoría ${name}`,
-      description: 'Si todavía está en uso, la API la va a rechazar. Si no, se elimina del dashboard.',
-      confirmLabel: 'Eliminar categoría',
-      tone: 'danger',
-      onConfirm: async () => {
-        await api.deleteCategoria(id);
-        setCategories((prev) => prev.filter((category) => category.id !== id));
-        showToast(`Categoría "${name}" eliminada.`, 'warning');
-      },
-    });
+    setConfirmationModal({ title: `Eliminar categoría ${name}`, description: 'Si todavía está en uso, la API la va a rechazar. Si no, se elimina del dashboard.', confirmLabel: 'Eliminar categoría', tone: 'danger', onConfirm: async () => { await api.deleteCategoria(id); showToast(`Categoría "${name}" eliminada.`, 'warning'); } });
   };
 
   const saveBudget = async () => {
-    if (!canWriteData) {
-      showToast('Tenés acceso viewer: no podés editar presupuestos.', 'warning');
-      return;
-    }
-    const parsedAmount = Number(budgetForm.monto);
-    const categoria = budgetForm.categoria.trim();
-
-    if (!categoria || !Number.isFinite(parsedAmount)) {
-      showToast('Completá categoría y monto del presupuesto.', 'warning');
-      return;
-    }
-
+    if (!canWriteData) { showToast('Tenés acceso viewer: no podés editar presupuestos.', 'warning'); return; }
+    const parsedAmount = Number(budgetForm.monto); const categoria = budgetForm.categoria.trim();
+    if (!categoria || !Number.isFinite(parsedAmount)) { showToast('Completá categoría y monto del presupuesto.', 'warning'); return; }
     try {
-      const saved = await api.savePresupuesto({
-        period: budgetForm.period,
-        categoria,
-        moneda: budgetForm.moneda,
-        monto: parsedAmount,
-      });
-
-      setBudgets((prev) => {
-        const next = prev.filter(
-          (item) =>
-            !(
-              item.period === saved.period &&
-              item.categoria.toLowerCase() === saved.categoria.toLowerCase() &&
-              item.moneda === saved.moneda
-            ),
-        );
-        return [...next, saved].sort((a, b) => a.categoria.localeCompare(b.categoria));
-      });
-      setBudgetPeriod(saved.period);
-      setBudgetForm((prev) => ({ ...prev, categoria: '', monto: '', period: saved.period }));
+      const saved = await api.savePresupuesto({ period: budgetForm.period, categoria, moneda: budgetForm.moneda, monto: parsedAmount });
+      setBudgets((p) => { const n = p.filter((i) => !(i.period === saved.period && i.categoria.toLowerCase() === saved.categoria.toLowerCase() && i.moneda === saved.moneda)); return [...n, saved].sort((a, b) => a.categoria.localeCompare(b.categoria)); });
+      setBudgetPeriod(saved.period); setBudgetForm((p) => ({ ...p, categoria: '', monto: '', period: saved.period }));
       showToast(`Presupuesto guardado para ${saved.categoria}.`);
-    } catch {
-      showToast('No se pudo guardar el presupuesto.', 'warning');
-    }
+    } catch { showToast('No se pudo guardar el presupuesto.', 'warning'); }
   };
 
   const copyJson = (item: Movimiento) => {
     const { id, original_text, created_at, ...cleanData } = item;
     navigator.clipboard.writeText(JSON.stringify(cleanData, null, 2));
-    setCopiedId(item.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const loadMore = async () => {
-    if (!hasMore || loadingMore) return;
-    await loadData(true);
+    setCopiedId(item.id); setTimeout(() => setCopiedId(null), 2000);
   };
 
   const openMovementEditor = (item: Movimiento) => {
     setEditingMovement(item);
-    setMovementEditForm({
-      tipo: item.tipo as 'ingreso' | 'egreso',
-      moneda: item.moneda as 'ARS' | 'USD',
-      monto: String(item.monto ?? ''),
-      categoria: item.categoria || '',
-      empresa: item.empresa_nombre || 'Personal',
-      descripcion: item.descripcion || '',
-    });
+    setMovementEditForm({ tipo: item.tipo as 'ingreso' | 'egreso', moneda: item.moneda as 'ARS' | 'USD', monto: String(item.monto ?? ''), categoria: item.categoria || '', empresa: item.empresa_nombre || 'Personal', descripcion: item.descripcion || '' });
   };
-
   const saveMovementEdit = async () => {
     if (!editingMovement || !movementEditForm) return;
     const monto = Number(movementEditForm.monto);
-    if (!Number.isFinite(monto) || !movementEditForm.categoria.trim() || !movementEditForm.descripcion.trim()) {
-      showToast('Completá monto, categoría y descripción.', 'warning');
-      return;
-    }
-
+    if (!Number.isFinite(monto) || !movementEditForm.categoria.trim() || !movementEditForm.descripcion.trim()) { showToast('Completá monto, categoría y descripción.', 'warning'); return; }
     try {
-      await api.updateMovimiento(editingMovement.id, {
-        tipo: movementEditForm.tipo,
-        moneda: movementEditForm.moneda,
-        monto,
-        categoria: movementEditForm.categoria.trim(),
-        empresa: movementEditForm.empresa.trim() || 'Personal',
-        descripcion: movementEditForm.descripcion.trim(),
-      });
-
-      setHistory((prev) =>
-        prev.map((item) =>
-          item.id === editingMovement.id
-            ? {
-                ...item,
-                tipo: movementEditForm.tipo,
-                moneda: movementEditForm.moneda,
-                monto,
-                categoria: movementEditForm.categoria.trim(),
-                empresa_nombre: movementEditForm.empresa.trim() || 'Personal',
-                descripcion: movementEditForm.descripcion.trim(),
-              }
-            : item,
-        ),
-      );
-      setEditingMovement(null);
-      setMovementEditForm(null);
-      showToast('Movimiento actualizado.');
-    } catch {
-      showToast('No se pudo actualizar el movimiento.', 'warning');
-    }
+      await api.updateMovimiento(editingMovement.id, { tipo: movementEditForm.tipo, moneda: movementEditForm.moneda, monto, categoria: movementEditForm.categoria.trim(), empresa: movementEditForm.empresa.trim() || 'Personal', descripcion: movementEditForm.descripcion.trim() });
+      setHistory((p) => p.map((i) => i.id === editingMovement.id ? { ...i, tipo: movementEditForm.tipo, moneda: movementEditForm.moneda, monto, categoria: movementEditForm.categoria.trim(), empresa_nombre: movementEditForm.empresa.trim() || 'Personal', descripcion: movementEditForm.descripcion.trim() } : i));
+      setEditingMovement(null); setMovementEditForm(null); showToast('Movimiento actualizado.');
+    } catch { showToast('No se pudo actualizar el movimiento.', 'warning'); }
   };
-
-  const openCompanyEditor = (company: Empresa) => {
-    setEditingCompany(company);
-    setCompanyEditName(company.nombre);
-  };
-
+  const openCompanyEditor = (company: Empresa) => { setEditingCompany(company); setCompanyEditName(company.nombre); };
   const saveCompanyEdit = async () => {
     if (!editingCompany || !companyEditName.trim()) return;
-
     try {
       await api.updateEmpresa(editingCompany.id, companyEditName.trim());
-      const previousName = editingCompany.nombre;
-      const nextName = companyEditName.trim();
-      setCustomCompanies((prev) =>
-        prev.map((company) =>
-          company.id === editingCompany.id ? { ...company, nombre: nextName } : company,
-        ),
-      );
-      setHistory((prev) =>
-        prev.map((item) =>
-          item.empresa_nombre === previousName
-            ? { ...item, empresa_nombre: nextName }
-            : item,
-        ),
-      );
-      if (selectedCompany === previousName) setSelectedCompany(nextName);
-      setEditingCompany(null);
-      setCompanyEditName('');
-      showToast('Empresa actualizada.');
-    } catch {
-      showToast('No se pudo actualizar la empresa.', 'warning');
-    }
+      const prev = editingCompany.nombre; const next = companyEditName.trim();
+      setCustomCompanies((p) => p.map((c) => c.id === editingCompany.id ? { ...c, nombre: next } : c));
+      setHistory((p) => p.map((i) => i.empresa_nombre === prev ? { ...i, empresa_nombre: next } : i));
+      if (selectedCompany === prev) setSelectedCompany(next);
+      setEditingCompany(null); setCompanyEditName(''); showToast('Empresa actualizada.');
+    } catch { showToast('No se pudo actualizar la empresa.', 'warning'); }
   };
-
   const runConfirmation = async () => {
     if (!confirmationModal) return;
-    if (confirmationModal.requireText && confirmationInput !== confirmationModal.requireText) {
-      showToast(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning');
-      return;
-    }
-
+    if (confirmationModal.requireText && confirmationInput !== confirmationModal.requireText) { showToast(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning'); return; }
     setIsConfirmingAction(true);
-    try {
-      await confirmationModal.onConfirm();
-      setConfirmationModal(null);
-      setConfirmationInput('');
-    } catch {
-      showToast('No se pudo completar la acción.', 'warning');
-    } finally {
-      setIsConfirmingAction(false);
-    }
+    try { await confirmationModal.onConfirm(); setConfirmationModal(null); setConfirmationInput(''); }
+    catch { showToast('No se pudo completar la acción.', 'warning'); }
+    finally { setIsConfirmingAction(false); }
   };
 
-  const actualByCategory = history
-    .filter(
-      (item) =>
-        item.tipo === 'egreso' &&
-        item.moneda === 'ARS' &&
-        getCurrentPeriod(new Date(item.created_at)) === budgetPeriod,
-    )
-    .reduce<Record<string, number>>((acc, item) => {
-      const key = (item.categoria || 'Otros').toLowerCase();
-      acc[key] = (acc[key] || 0) + Number(item.monto || 0);
-      return acc;
-    }, {});
-
-  const budgetVsActual = budgets
-    .filter((item) => item.moneda === 'ARS' && item.period === budgetPeriod)
-    .map((budget) => {
-      const actual = actualByCategory[budget.categoria.toLowerCase()] || 0;
-      return {
-        ...budget,
-        actual,
-        variance: budget.monto - actual,
-      };
-    })
-    .sort((a, b) => a.categoria.localeCompare(b.categoria));
-
-  const assignPendingMovement = async (empresa: string) => {
-    if (!pendingItem) return;
-    setIsProcessing(true);
-    try {
-      const saved = await api.saveMovimientos([{ ...pendingItem, empresa }], pendingItem.originalText);
-      setHistory((prev) => [...saved.map(normalizeMovement), ...prev]);
-      setPendingItem(null);
-      showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`);
-    } catch {
-      showToast('No se pudo guardar el movimiento.', 'warning');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const renderComposer = () => (
-    <SectionCard
-      title="Centro de carga"
-      description="Usá lenguaje natural para registrar movimientos, crear empresas o borrar el último movimiento."
-    >
-      <div className="relative group">
-        <textarea
-          id="message-input"
-          className="w-full min-h-[140px] p-6 bg-white border border-neutral-200 rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg"
-          placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o 'Agregar empresa Casa'"
-          value={inputText}
-          onChange={(event) => setInputText(event.target.value)}
-          onKeyDown={(event) => event.ctrlKey && event.key === 'Enter' && handleProcess()}
-        />
-        <div className="absolute bottom-4 right-4 flex items-center gap-3">
-          <span className="text-xs text-neutral-400 hidden sm:block">Ctrl + Enter</span>
-          <button
-            id="process-button"
-            onClick={handleProcess}
-            disabled={!inputText.trim() || isProcessing}
-            className="flex items-center gap-2 bg-neutral-900 text-white border border-neutral-900 px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-text-2)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)]"
-          >
-            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {isProcessing ? 'Procesando...' : 'Enviar'}
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"
-        >
-          <AlertCircle className="w-4 h-4" />
-          {error}
-        </motion.div>
-      )}
-    </SectionCard>
-  );
-
-  const renderHistoryCards = () => (
-    <>
-      {filteredHistory.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-lg text-neutral-400">
-          <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
-          {selectedCompany === 'all' ? (
-            <>
-              <p className="font-medium text-neutral-500">Sin movimientos por ahora.</p>
-              <p className="text-sm mt-1">
-                {canWriteData
-                  ? 'Escribí un movimiento en el campo de arriba. Tipo: "pagué 4500 de luz".'
-                  : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-medium text-neutral-500">{`No hay datos para "${selectedCompany}"`}</p>
-              <p className="text-sm mt-1">Probá con otra empresa o sacá el filtro.</p>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredHistory.map((item, index) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
-                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1], delay: Math.min(index * 0.04, 0.16) }}
-                className="group bg-white border border-neutral-200 hover:border-neutral-300 rounded-lg p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${item.tipo === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                      {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-neutral-500 block leading-none mb-1">{item.categoria}</span>
-                      <span className="text-lg font-semibold text-neutral-900 tabular-nums">
-                        {item.monto !== null
-                          ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: item.moneda || 'ARS' }).format(item.monto)
-                          : 'Monto no especificado'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {canWriteData && (
-                      <button
-                        onClick={() => openMovementEditor(item)}
-                        className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => copyJson(item)}
-                      className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
-                      title="Copiar JSON"
-                    >
-                      {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                    {canWriteData && (
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-red-400"
-                        title="Borrar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm text-neutral-600 italic line-clamp-2">"{item.original_text}"</p>
-
-                  <div className="flex flex-wrap gap-2">
-                    {item.empresa_nombre && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Building2 className="w-3 h-3" />{item.empresa_nombre}</span>
-                    )}
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Tag className="w-3 h-3" />{item.descripcion}</span>
-                  </div>
-
-                  <div className="pt-3 border-t border-neutral-100">
-                    <span className="text-xs text-neutral-400 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {hasMore && filteredHistory.length > 0 && (
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="px-6 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-600 hover:border-neutral-400 disabled:opacity-50 transition-colors"
-          >
-            {loadingMore ? (
-              <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</span>
-            ) : 'Cargar más'}
-          </button>
-        </div>
-      )}
-    </>
-  );
-
-  const renderResumen = () => (
-    <ResumenTab
-      arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')}
-      arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')}
-      arsNeto={formatCurrency(arsTotals.neto, 'ARS')}
-      usdNeto={formatCurrency(usdTotals.neto, 'USD')}
-      companyCount={companySummaries.length}
-      monthlyChartDataArs={monthlyChartDataArs}
-      monthlyChartDataUsd={monthlyChartDataUsd}
-      topExpenseCategories={topExpenseCategories}
-      topCompanies={topCompanies}
-      topExpenseLabel={topExpenseCategories[0]?.label ?? 'Sin datos'}
-      topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'}
-      netPositive={arsTotals.neto >= 0}
-      canWriteData={canWriteData}
-    />
-  );
-
-  const renderEmpresas = () => (
-    <EmpresasTab
-      companySummaries={companySummaries}
-      topCompanies={topCompanies}
-      customCompanies={customCompanies}
-      canWriteData={canWriteData}
-      onEditCompany={openCompanyEditor}
-      onDeleteCompany={(company) => { void deleteCompany(company.id, company.nombre); }}
-      formatCurrency={formatCurrency}
-      history={history}
-      companiesList={companiesList}
-      canUseDrive={canUseDrive}
-      canConnectDrive={canConnectDrive}
-    />
-  );
-
-  const renderGastos = () => (
-    <GastosTab
-      arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')}
-      usdEgreso={formatCurrency(usdTotals.egreso, 'USD')}
-      categoryCount={filteredExpenseCategorySummaries.length}
-      budgetForm={budgetForm}
-      setBudgetForm={(updater) => setBudgetForm((prev) => updater(prev))}
-      budgetPeriod={budgetPeriod}
-      setBudgetPeriod={setBudgetPeriod}
-      initialBudgetPeriod={initialBudgetPeriod}
-      categories={categories}
-      canWriteData={canWriteData}
-      onSaveBudget={saveBudget}
-      isLoadingBudget={isLoadingBudget}
-      budgetVsActual={budgetVsActual}
-      categorySummaries={filteredExpenseCategorySummaries}
-      monthlyChartData={expenseMonthlyChartData}
-      expenseCompanyOptions={expenseCompanyOptions}
-      selectedExpenseCompany={selectedExpenseCompany}
-      setSelectedExpenseCompany={setSelectedExpenseCompany}
-      expenseCompanies={expenseCompanies}
-      recentExpenses={recentExpenses}
-      formatCurrency={formatCurrency}
-    />
-  );
-
-  const renderIngresos = () => (
-    <IngresosTab
-      arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')}
-      usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')}
-      sourceCount={incomeSummaries.length}
-      topIncomeSources={topIncomeSources}
-      incomeTags={topIncomeTags}
-      recentIncomes={recentIncomes}
-      formatCurrency={formatCurrency}
-    />
-  );
-
-  const canConnectDrive = dashboardRole === 'owner';
-  const canUseDrive =
-    canConnectDrive ||
-    (dashboardRole === 'editor' && currentDashboardMember?.permissions?.export_drive === true);
-
-  const renderMovimientos = () => (
-    <MovimientosTab
-      incomeCount={visibleIncomeCount}
-      expenseCount={visibleExpenseCount}
-      historyCount={filteredHistory.length}
-      canWriteData={canWriteData}
-      companiesList={companiesList}
-      selectedCompany={selectedCompany}
-      setSelectedCompany={setSelectedCompany}
-      movementType={movementType}
-      setMovementType={setMovementType}
-      movementCurrency={movementCurrency}
-      setMovementCurrency={setMovementCurrency}
-      customCompanies={customCompanies}
-      categories={categories}
-      onEditCompany={openCompanyEditor}
-      onDeleteCompany={(company) => { void deleteCompany(company.id, company.nombre); }}
-      onDeleteCategory={(category) => { void deleteCategory(category.id, category.nombre); }}
-      historyCards={renderHistoryCards()}
-    />
-  );
-
-  const renderRecurrentes = () => (
-    <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}>
-      <RecurrentesTab viewer={viewer} canWriteData={canWriteData} />
-    </Suspense>
-  );
-
-  const renderConfiguracion = () => (
-    <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}>
-      <ConfiguracionTab
-        viewer={viewer}
-        data={dashboardAccess}
-        loading={isLoadingCollaboration}
-        onRefresh={loadCollaboration}
-        canConnectDrive={canConnectDrive}
-        onSignOut={onSignOut}
-        companies={customCompanies}
-        themePreference={themePreference}
-        onSetThemePreference={onSetThemePreference}
-        onDisconnectDrive={canConnectDrive ? async () => {
-          try {
-            await api.disconnectDrive();
-            showToast('Drive desconectado.');
-          } catch {
-            showToast('No se pudo desconectar Drive.', 'warning');
-          }
-        } : undefined}
-      />
-    </Suspense>
-  );
-
-  const renderSuperAdmin = () => (
-    <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}>
-      <div className="space-y-6">
-        <BotConnectionPanel />
-        <AdminPanel viewer={viewer} />
-      </div>
-    </Suspense>
-  );
-
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'resumen':
-        return renderResumen();
-      case 'movimientos':
-        return renderMovimientos();
-      case 'gastos':
-        return renderGastos();
-      case 'ingresos':
-        return renderIngresos();
-      case 'recurrentes':
-        return renderRecurrentes();
-      case 'empresas':
-        return renderEmpresas();
-      case 'superadmin':
-        return renderSuperAdmin();
-      case 'configuracion':
-        return renderConfiguracion();
-      default:
-        return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <DashboardSkeleton />
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
 
   return (
     <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8">
-      {showWizard && viewer.is_dashboard_joiner && (
-        <WelcomeJoined
-          viewer={viewer}
-          onFinish={() => setShowWizard(false)}
-        />
-      )}
-      {showWizard && !viewer.is_dashboard_joiner && (
-        <WelcomeWizard
-          onFinish={() => setShowWizard(false)}
-        />
-      )}
-      <div className="max-w-7xl mx-auto space-y-8">
-        {apiStatus === 'missing_url' && (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3 text-amber-800 text-sm">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <p>
-              <strong>API no configurada:</strong> Los datos no se guardarán permanentemente.
-              Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.
-            </p>
-          </div>
-        )}
+      {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
+      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} />}
 
-        {apiStatus === 'load_error' && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3 text-red-700 text-sm">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p>
-              <strong>Error al cargar datos desde la API:</strong>{' '}
-              {apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}
-            </p>
-          </div>
-        )}
+      <div className="max-w-7xl mx-auto space-y-8">
+        {apiStatus === 'missing_url' && <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
+        {apiStatus === 'load_error' && <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
         <header>
-          {/* Elevated header panel: distinct surface + shadow lifts it above the canvas. */}
           <div className="space-y-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[var(--app-shadow-panel)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-4 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white text-xs font-bold">CC</span>
-                <span className="text-base font-semibold tracking-tight text-neutral-900">Caja Chica</span>
-              </div>
-              <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard Financiero</h1>
-              <p className="text-neutral-500">Un vistazo claro para saber si hay problemas financieros o económicos.</p>
-            </div>
-
-            <div className="flex items-center gap-3 self-start">
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
-              <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5">
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs text-neutral-700 truncate max-w-[200px]">{viewer.email}</span>
-                  <span className="text-xs text-neutral-400 truncate max-w-[200px]">
-                    {APP_ROLE_LABELS[viewer.role as AppRole] ?? viewer.role}
-                    {' · '}
-                    {DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}
-                    {dashboardRole === 'owner' ? ' de este dashboard' : ' este dashboard'}
-                  </span>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-4 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white text-xs font-bold">CC</span>
+                  <span className="text-base font-semibold tracking-tight text-neutral-900">Caja Chica</span>
                 </div>
-                <button
-                  onClick={() => void onSignOut()}
-                  className="inline-flex items-center justify-center h-8 w-8 shrink-0 rounded-md border border-red-200 bg-red-50 text-red-600 hover:border-red-400 active:scale-[0.94] transition"
-                  title="Cerrar sesión"
-                  aria-label="Cerrar sesión"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard Financiero</h1>
+                <p className="text-neutral-500">Un vistazo claro para saber si hay problemas financieros o económicos.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 self-start w-full lg:w-auto">
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
+                <div className="flex min-w-0 flex-1 lg:flex-none items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs text-neutral-700 truncate">{viewer.email}</span>
+                    <span className="text-xs text-neutral-500 truncate">{APP_ROLE_LABELS[viewer.role as AppRole] ?? viewer.role}{' · '}{DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}{dashboardRole === 'owner' ? ' de este dashboard' : ' este dashboard'}</span>
+                  </div>
+                  <button onClick={() => void handleSignOut()} className="inline-flex items-center justify-center h-11 w-11 shrink-0 rounded-md border border-red-200 bg-red-50 text-red-600 hover:border-red-400 active:scale-[0.94] transition" title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut className="w-4 h-4" /></button>
+                </div>
               </div>
             </div>
-          </div>
-
           </div>
         </header>
 
         {canWriteData && activeTab === 'movimientos' && (
           <div className="space-y-4">
-            {renderComposer()}
+            <SectionCard title="Centro de carga" description="Usá lenguaje natural para registrar movimientos, crear empresas o borrar el último movimiento.">
+              <div className="relative group">
+                <label htmlFor="message-input" className="sr-only">Movimiento en lenguaje natural</label>
+                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[140px] p-6 bg-white border border-neutral-200 rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o 'Agregar empresa Casa'" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
+                <div className="absolute bottom-4 right-4 flex items-center gap-3">
+                  <span className="text-xs text-neutral-500 hidden sm:block">Ctrl + Enter</span>
+                  <button id="process-button" onClick={() => void handleProcess()} disabled={!inputText.trim() || isProcessing} className="flex items-center gap-2 bg-neutral-900 text-white border border-neutral-900 px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-text-2)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)]">
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {isProcessing ? 'Procesando...' : 'Enviar'}
+                  </button>
+                </div>
+              </div>
+              {error && <div className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
+            </SectionCard>
           </div>
         )}
-
         {!canWriteData && activeTab === 'movimientos' && (
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
-            Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".
-          </div>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
         )}
 
         <section className="sticky top-3 z-20">
-          {/* Mobile: horizontal scroll strip */}
           <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
           </div>
-          {/* md+: grid with descriptions */}
           <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-3">
             <div className={`grid md:grid-cols-3 gap-3 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon className="w-4 h-4" />
-                      <span className="font-semibold">{tab.label}</span>
-                    </div>
-                    <p className={`text-xs leading-relaxed ${isActive ? 'text-neutral-300' : 'text-neutral-500'}`}>{tab.description}</p>
-                  </button>
-                );
-              })}
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}><div className="flex items-center gap-2 mb-2"><Icon className="w-4 h-4" /><span className="font-semibold">{tab.label}</span></div><p className={`text-xs leading-relaxed ${isActive ? 'text-neutral-300' : 'text-neutral-500'}`}>{tab.description}</p></button>; })}
             </div>
           </div>
         </section>
 
         <main>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -8 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: [0.23, 1, 0.32, 1] }}
-            >
+          <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
-                {renderActiveTab()}
+                {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} topExpenseLabel={topExpenseCategories[0]?.label ?? 'Sin datos'} topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} />}
+                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} canWriteData={canWriteData} companiesList={companiesList} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} customCompanies={customCompanies} categories={categories} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onDeleteCategory={(c) => deleteCategory(c.id, c.nombre)} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
+                {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} budgetForm={budgetForm} setBudgetForm={(u) => setBudgetForm((p) => u(p))} budgetPeriod={budgetPeriod} setBudgetPeriod={setBudgetPeriod} initialBudgetPeriod={initialBudgetPeriod} categories={categories} canWriteData={canWriteData} onSaveBudget={saveBudget} isLoadingBudget={isLoadingBudget} budgetVsActual={budgetVsActual} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
+                {activeTab === 'ingresos' && <IngresosTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')} sourceCount={incomeSummaries.length} topIncomeSources={topIncomeSources} incomeTags={topIncomeTags} recentIncomes={recentIncomes} formatCurrency={formatCurrency} />}
+                {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
+                {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); setCustomCompanies((p) => [...p, e]); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}
+                {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><div className="space-y-6"><BotConnectionPanel /><AdminPanel viewer={viewer} /></div></Suspense>}
+                {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} /></Suspense>}
               </Suspense>
-            </motion.div>
-          </AnimatePresence>
+            </div>
         </main>
 
-        {editingMovement && movementEditForm && (
-          <ModalShell title="Editar movimiento" onClose={() => {
-            setEditingMovement(null);
-            setMovementEditForm(null);
-          }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <select
-                value={movementEditForm.tipo}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, tipo: event.target.value as 'ingreso' | 'egreso' } : prev)}
-                className="rounded-md border border-neutral-200 px-4 py-3"
-              >
-                <option value="ingreso">Ingreso</option>
-                <option value="egreso">Egreso</option>
-              </select>
-              <select
-                value={movementEditForm.moneda}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, moneda: event.target.value as 'ARS' | 'USD' } : prev)}
-                className="rounded-md border border-neutral-200 px-4 py-3"
-              >
-                <option value="ARS">ARS</option>
-                <option value="USD">USD</option>
-              </select>
-              <input
-                value={movementEditForm.monto}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, monto: event.target.value } : prev)}
-                type="number"
-                className="rounded-md border border-neutral-200 px-4 py-3"
-                placeholder="Monto"
-              />
-              <input
-                value={movementEditForm.categoria}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, categoria: event.target.value } : prev)}
-                className="rounded-md border border-neutral-200 px-4 py-3"
-                placeholder="Categoría"
-              />
-              <input
-                value={movementEditForm.empresa}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, empresa: event.target.value } : prev)}
-                className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2"
-                placeholder="Empresa"
-              />
-              <textarea
-                value={movementEditForm.descripcion}
-                onChange={(event) => setMovementEditForm((prev) => prev ? { ...prev, descripcion: event.target.value } : prev)}
-                className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2 min-h-[120px]"
-                placeholder="Descripción"
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setEditingMovement(null);
-                  setMovementEditForm(null);
-                }}
-                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void saveMovementEdit()}
-                className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium"
-              >
-                Guardar cambios
-              </button>
-            </div>
-          </ModalShell>
-        )}
+        <DashboardModals
+          editingMovement={editingMovement} movementEditForm={movementEditForm} setMovementEditForm={setMovementEditForm}
+          onCloseMovementEdit={() => { setEditingMovement(null); setMovementEditForm(null); }} onSaveMovementEdit={() => void saveMovementEdit()}
+          editingCompany={editingCompany} companyEditName={companyEditName} setCompanyEditName={setCompanyEditName}
+          onCloseCompanyEdit={() => { setEditingCompany(null); setCompanyEditName(''); }} onSaveCompanyEdit={() => void saveCompanyEdit()}
+          pendingItem={pendingItem} isAssigning={isAssigning} companiesList={companiesList} readDefaultEmpresa={readDefaultEmpresa}
+          onAssignCompany={(empresa) => void assignPendingMovement(empresa, (saved) => { setHistory((p) => [...saved, ...p]); showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`); }, () => showToast('No se pudo guardar el movimiento.', 'warning'))}
+          onCancelPending={() => setPendingItem(null)}
+          confirmationModal={confirmationModal} confirmationInput={confirmationInput} setConfirmationInput={setConfirmationInput}
+          isConfirmingAction={isConfirmingAction}
+          onCloseConfirmation={() => { if (!isConfirmingAction) { setConfirmationModal(null); setConfirmationInput(''); } }}
+          onRunConfirmation={() => void runConfirmation()}
+        />
 
-        {editingCompany && (
-          <ModalShell title="Editar empresa" onClose={() => {
-            setEditingCompany(null);
-            setCompanyEditName('');
-          }}>
-            <div className="space-y-4">
-              <input
-                value={companyEditName}
-                onChange={(event) => setCompanyEditName(event.target.value)}
-                className="w-full rounded-md border border-neutral-200 px-4 py-3"
-                placeholder="Nombre de empresa"
-              />
-              <p className="text-sm text-neutral-500">
-                Esto renombra la empresa para el dashboard. Los movimientos visibles también se actualizan en la UI.
-              </p>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setEditingCompany(null);
-                  setCompanyEditName('');
-                }}
-                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void saveCompanyEdit()}
-                className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium"
-              >
-                Guardar cambios
-              </button>
-            </div>
-          </ModalShell>
-        )}
-
-        {pendingItem && (
-          <ModalShell
-            title="Asignar empresa"
-            onClose={() => {
-              if (isProcessing) return;
-              setPendingItem(null);
-            }}
-          >
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4">
-                <div className="text-xs font-bold uppercase tracking-widest text-neutral-400">Movimiento pendiente de empresa</div>
-                <p className="mt-2 text-lg font-semibold text-neutral-900">¿A qué empresa cargamos esto?</p>
-                <p className="mt-2 text-sm italic text-neutral-500">"{pendingItem.originalText}"</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {companiesList
-                  .filter((company) => company !== 'all')
-                  .map((company) => {
-                    const isDefault = company === readDefaultEmpresa();
-                    return (
-                      <button
-                        key={company}
-                        onClick={() => void assignPendingMovement(company)}
-                        disabled={isProcessing}
-                        className={`rounded-2xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${
-                          isDefault
-                            ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-text-2)]'
-                            : 'border-neutral-200 bg-white text-neutral-900 hover:border-[var(--app-text-2)]'
-                        }`}
-                      >
-                        {company}
-                        {isDefault && <span className="ml-2 text-xs uppercase tracking-widest opacity-70">default</span>}
-                      </button>
-                    );
-                  })}
-                <button
-                  onClick={() => void assignPendingMovement('Personal')}
-                  disabled={isProcessing}
-                  className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-left font-medium text-neutral-600 transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
-                >
-                  Sin empresa (Personal)
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setPendingItem(null)}
-                disabled={isProcessing}
-                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700"
-              >
-                Cancelar registro
-              </button>
-            </div>
-          </ModalShell>
-        )}
-
-        <AnimatePresence>
-        {confirmationModal && (
-          <ModalShell
-            title={confirmationModal.title}
-            onClose={() => {
-              if (isConfirmingAction) return;
-              setConfirmationModal(null);
-              setConfirmationInput('');
-            }}
-          >
-            <div className="space-y-4">
-              <div className={`rounded-2xl border px-4 py-4 text-sm ${
-                confirmationModal.tone === 'danger'
-                  ? 'border-red-200 bg-red-50 text-red-800'
-                  : 'border-neutral-200 bg-neutral-50 text-neutral-700'
-              }`}>
-                <p>{confirmationModal.description}</p>
-                {confirmationModal.details ? <p className="mt-2 font-medium">{confirmationModal.details}</p> : null}
-              </div>
-
-              {confirmationModal.requireText ? (
-                <input
-                  value={confirmationInput}
-                  onChange={(event) => setConfirmationInput(event.target.value)}
-                  className="w-full rounded-md border border-neutral-200 px-4 py-3"
-                  placeholder={`Escribí ${confirmationModal.requireText}`}
-                />
-              ) : null}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setConfirmationModal(null);
-                  setConfirmationInput('');
-                }}
-                className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 hover:border-[var(--app-text-2)] active:scale-[0.97] transition duration-150"
-                disabled={isConfirmingAction}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => void runConfirmation()}
-                disabled={isConfirmingAction}
-                className={`rounded-md border px-5 py-3 font-medium text-white active:scale-[0.97] transition duration-150 ${
-                  confirmationModal.tone === 'danger' ? 'bg-red-600 border-red-600 hover:border-red-300' : 'bg-neutral-900 border-neutral-900 hover:border-[var(--app-text-2)]'
-                } disabled:opacity-60`}
-              >
-                {isConfirmingAction ? 'Confirmando...' : confirmationModal.confirmLabel}
-              </button>
-            </div>
-          </ModalShell>
-        )}
-        </AnimatePresence>
-
-        <footer className="pt-12 pb-8 border-t border-neutral-100 text-center">
-          <p className="text-xs text-neutral-400">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>
+        <footer className="pt-12 pb-8 border-t border-neutral-200 text-center">
+          <p className="text-xs text-neutral-500">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>
         </footer>
       </div>
     </div>

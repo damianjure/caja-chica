@@ -14,6 +14,8 @@ export interface PendingExtraction {
   pendingNewCompanyName: string | null;
   pendingSuggestNombre: string | null;
   empresaOptions: Array<{ id: string; nombre: string }> | null;
+  /** When set, confirming the review updates this existing movement instead of inserting a new one. */
+  editMovementId: string | null;
 }
 
 export type ExtractionField = "monto" | "empresa" | "categoria" | "descripcion" | "tipo" | "moneda";
@@ -55,6 +57,7 @@ export function createPendingExtraction(args: {
   pendingNewCompanyName?: string | null;
   pendingSuggestNombre?: string | null;
   empresaOptions?: Array<{ id: string; nombre: string }> | null;
+  editMovementId?: string | null;
 }): PendingExtraction {
   const id = `${args.chatId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const entry: PendingExtraction = {
@@ -71,6 +74,7 @@ export function createPendingExtraction(args: {
     pendingNewCompanyName: args.pendingNewCompanyName ?? null,
     pendingSuggestNombre: args.pendingSuggestNombre ?? null,
     empresaOptions: args.empresaOptions ?? null,
+    editMovementId: args.editMovementId ?? null,
   };
   pendingExtractions.set(id, entry);
   return entry;

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
 import { Users, MessageCircle, ChevronRight, X } from 'lucide-react';
 import { api, type AppViewer } from '../services/api';
 
@@ -27,18 +26,8 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative"
-      >
+    <div className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-md relative">
         {/* Skip button */}
         <button
           onClick={finish}
@@ -120,7 +109,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             </button>
           </div>
         )}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

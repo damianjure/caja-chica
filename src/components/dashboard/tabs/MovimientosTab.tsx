@@ -46,7 +46,7 @@ export default function MovimientosTab({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard label="Ingresos" value={String(incomeCount)} tone="success" />
-        <MetricCard label="Egresos" value={String(expenseCount)} tone="danger" />
+        <MetricCard label="Gastos" value={String(expenseCount)} tone="danger" />
         <MetricCard label="Total movimientos" value={String(historyCount)} />
       </div>
 
@@ -99,11 +99,11 @@ export default function MovimientosTab({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-4">
             {[
               { id: 'all', label: 'Todos' },
               { id: 'ingreso', label: 'Ingresos' },
-              { id: 'egreso', label: 'Egresos' },
+              { id: 'egreso', label: 'Gastos' },
             ].map((filter) => (
               <button
                 key={filter.id}
@@ -136,7 +136,7 @@ export default function MovimientosTab({
             ))}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-100 pt-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-200 pt-4">
             <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mr-2">Categorías:</span>
             {categories.map((category) => (
               <div key={category.id} className="inline-flex items-center gap-1 rounded-full bg-neutral-100 py-1 pl-3 pr-1.5">

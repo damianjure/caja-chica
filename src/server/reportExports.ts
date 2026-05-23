@@ -1,6 +1,13 @@
 import type { Movimiento } from "../services/api";
 import type { ReportExportFormat, ReportFilters } from "../reports/shared";
 
+interface SaldosRow {
+  empresa: string;
+  ingresos: number;
+  egresos: number;
+  saldo_neto: number;
+}
+
 function escapeCsvCell(value: unknown) {
   const text = String(value ?? "");
   if (/[",\n]/.test(text)) {
@@ -114,7 +121,7 @@ export function buildReportPdf(args: {
   const lines = [
     `Caja Chica - ${args.fileName}`,
     `Período: ${args.periodLabel}`,
-    `Empresa: ${args.filters.company === "all" ? "Todas" : args.filters.company}`,
+    `Empresa: ${args.filters.companies.length === 0 || args.filters.companies.includes("all") ? "Todas" : args.filters.companies.join(", ")}`,
     `Tipo: ${args.filters.tipo}`,
     `Moneda: ${args.filters.moneda}`,
     `Movimientos: ${args.movements.length}`,
@@ -128,6 +135,70 @@ export function buildReportPdf(args: {
   ];
 
   return buildPdfBuffer(lines);
+}
+
+export function buildSaldosReport(args: {
+  format: ReportExportFormat;
+  fileName: string;
+  periodLabel: string;
+  filters: ReportFilters;
+  movements: Movimiento[];
+}): { mimeType: string; buffer: Buffer } {
+  const { movements, filters } = args;
+
+  // Filter by companies if specified
+  const visibleMovements =
+    filters.companies.length === 0 || filters.companies.includes("all")
+      ? movements
+      : movements.filter((m) => filters.companies.includes(m.empresa_nombre));
+
+  // Aggregate by empresa_nombre
+  const byCompany = new Map<string, SaldosRow>();
+  for (const m of visibleMovements) {
+    const empresa = m.empresa_nombre ?? "Sin empresa";
+    if (!byCompany.has(empresa)) {
+      byCompany.set(empresa, { empresa, ingresos: 0, egresos: 0, saldo_neto: 0 });
+    }
+    const row = byCompany.get(empresa)!;
+    const amount = Number(m.monto || 0);
+    if (m.tipo === "ingreso") row.ingresos += amount;
+    else row.egresos += amount;
+    row.saldo_neto = row.ingresos - row.egresos;
+  }
+
+  const dataRows = Array.from(byCompany.values());
+  const total: SaldosRow = {
+    empresa: "Total",
+    ingresos: dataRows.reduce((s, r) => s + r.ingresos, 0),
+    egresos: dataRows.reduce((s, r) => s + r.egresos, 0),
+    saldo_neto: dataRows.reduce((s, r) => s + r.saldo_neto, 0),
+  };
+  const rows = [...dataRows, total];
+
+  if (args.format === "csv") {
+    const header = ["Empresa", "Ingresos", "Egresos", "Saldo Neto"];
+    const csvRows = [
+      header,
+      ...rows.map((r) => [r.empresa, r.ingresos, r.egresos, r.saldo_neto]),
+    ];
+    const csv = csvRows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+    return { mimeType: "text/csv;charset=utf-8", buffer: Buffer.from(csv, "utf8") };
+  }
+
+  // PDF
+  const lines = [
+    `Caja Chica - ${args.fileName}`,
+    `Período: ${args.periodLabel}`,
+    `Empresa: ${filters.companies.length === 0 || filters.companies.includes("all") ? "Todas" : filters.companies.join(", ")}`,
+    "",
+    "Empresa               | Ingresos  | Egresos   | Saldo Neto",
+    "--------------------------------------------------------------",
+    ...rows.map(
+      (r) =>
+        `${r.empresa.padEnd(22)}| ${String(r.ingresos).padEnd(10)}| ${String(r.egresos).padEnd(10)}| ${r.saldo_neto}`,
+    ),
+  ];
+  return { mimeType: "application/pdf", buffer: buildPdfBuffer(lines) };
 }
 
 export function buildReportFile(args: {

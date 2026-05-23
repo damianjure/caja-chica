@@ -227,7 +227,7 @@ function RecurrenteModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200 hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
@@ -348,7 +348,7 @@ export default function RecurrentesTab({
           <div className="flex justify-end mb-4">
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100 hover:border-[var(--app-text-2)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200 hover:border-[var(--app-text-2)] transition-colors"
             >
               <Plus className="w-4 h-4" />
               Nuevo recurrente

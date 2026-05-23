@@ -1,4 +1,4 @@
-import { MetricCard, PlaceholderPanel, SectionCard } from '../primitives';
+import { EmptyState, MetricCard, PlaceholderPanel, SectionCard } from '../primitives';
 import { HorizontalBarList } from '../Charts';
 
 export default function IngresosTab({
@@ -43,7 +43,7 @@ export default function IngresosTab({
               <div key={tag.label} className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-neutral-900">{tag.label}</div>
-                  <div className="text-sm font-semibold text-green-600">{tag.value}</div>
+                  <div className="text-sm font-semibold text-green-600" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
                 </div>
                 {tag.secondary ? <div className="mt-1 text-xs text-neutral-500">{tag.secondary}</div> : null}
               </div>
@@ -54,7 +54,11 @@ export default function IngresosTab({
 
       <SectionCard title="Últimos 5 ingresos" description="Los cobros más recientes para detectar rápido origen, categoría y moneda sin abrir el historial completo.">
         {recentIncomes.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay ingresos para mostrar.</p>
+          <EmptyState
+            title="Sin ingresos cargados todavía."
+            hint='Probá escribiendo algo como "cobré 50000 de Acme" en el campo de arriba.'
+            cta="Cargá un ingreso desde el composer."
+          />
         ) : (
           <div className="space-y-3">
             {recentIncomes.map((income) => (
@@ -67,7 +71,7 @@ export default function IngresosTab({
                     </div>
                     <div className="mt-1 text-xs text-neutral-500">{new Date(income.created_at).toLocaleString('es-AR')}</div>
                   </div>
-                  <div className="text-sm font-semibold text-green-600">{formatCurrency(income.monto, income.moneda)}</div>
+                  <div className="text-sm font-semibold text-green-600" aria-label={`Ingreso ${formatCurrency(income.monto, income.moneda)}`}><span aria-hidden="true">↑ </span>{formatCurrency(income.monto, income.moneda)}</div>
                 </div>
               </div>
             ))}

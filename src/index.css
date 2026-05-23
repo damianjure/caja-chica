@@ -105,6 +105,11 @@
     --app-shadow-sm: 0 1px 2px rgba(40, 30, 10, 0.06);
     --app-shadow-md: 0 4px 12px -2px rgba(40, 30, 10, 0.10), 0 1px 3px rgba(40, 30, 10, 0.06);
     --app-shadow-panel: 0 8px 24px -6px rgba(40, 30, 10, 0.14), 0 2px 6px rgba(40, 30, 10, 0.06);
+    /* Chart tokens — semantic, theme-aware. */
+    --chart-income: oklch(58% 0.130 150);
+    --chart-expense: oklch(56% 0.155 28);
+    --chart-net: oklch(36% 0.060 165);
+    --chart-baseline: oklch(80% 0.012 158);
   }
 
   [data-theme="dark"] {
@@ -136,6 +141,31 @@
     --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --app-shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.4);
     --app-shadow-panel: 0 10px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --chart-income: oklch(72% 0.140 150);
+    --chart-expense: oklch(70% 0.150 28);
+    --chart-net: oklch(80% 0.045 165);
+    --chart-baseline: oklch(45% 0.018 158);
+  }
+
+  @keyframes app-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes app-fade-in-down {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes app-scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes app-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes app-card-in {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
   }
 
   html {
@@ -190,6 +220,17 @@
 }
 
 @layer utilities {
+  .anim-fade-in { animation: app-fade-in 180ms var(--ease-out-quart, cubic-bezier(0.165, 0.84, 0.44, 1)) both; }
+  .anim-fade-in-down { animation: app-fade-in-down 180ms var(--ease-out-quart, cubic-bezier(0.165, 0.84, 0.44, 1)) both; }
+  .anim-scale-in { animation: app-scale-in 200ms var(--ease-out-quart, cubic-bezier(0.165, 0.84, 0.44, 1)) both; }
+  .anim-backdrop-in { animation: app-backdrop-in 160ms ease-out both; }
+  .anim-card-in { animation: app-card-in 180ms var(--ease-out-quart, cubic-bezier(0.165, 0.84, 0.44, 1)) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .anim-fade-in, .anim-fade-in-down, .anim-scale-in, .anim-backdrop-in, .anim-card-in {
+      animation: none;
+    }
+  }
+
   .bg-white {
     background-color: var(--app-surface-1) !important;
   }
@@ -256,6 +297,24 @@
   .border-rose-100,
   .border-rose-200 {
     border-color: var(--app-red-border) !important;
+  }
+
+  /*
+    Hover border highlight for clickable elements.
+    The resting `.border-neutral-200` / `.border-red-200` overrides above use
+    `!important`, which otherwise beats non-important `hover:` utilities and
+    kills the hover state. These `:hover` rules are also `!important` and have
+    higher specificity, so the hover border wins. Works in light + dark via
+    theme-aware vars.
+  */
+  .hover\:border-\[var\(--app-text-2\)\]:hover {
+    border-color: var(--app-text-2) !important;
+  }
+
+  .hover\:border-red-300:hover,
+  .hover\:border-red-400:hover,
+  .hover\:border-red-500:hover {
+    border-color: var(--app-red-text) !important;
   }
 
   .text-red-500,

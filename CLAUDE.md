@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-22 (post key rotation)
+## Fuente de verdad única — 2026-05-23 (post god-components-refactor + audit follow-ups)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -75,10 +75,10 @@ Integraciones principales:
   - sin SDK extra, `fetch` directo + graceful fallback si `BREVO_API_KEY` ausente
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
-### Estado deploy (2026-05-12)
+### Estado deploy (2026-05-23)
 - Frontend ✔ deployado en `caja-chica-bot.web.app`
-- Backend ✔ deployado en Cloud Run
-- Tests: 156 total / 154 pass / 2 skip / 0 fail
+- Backend ✔ deployado en Cloud Run rev `caja-chica-00035-rz4`
+- Tests: 280 total / 278 pass / 2 skip / 0 fail
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
 - **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
@@ -257,14 +257,51 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - **Brevo live send test**: ✔ verificado (messageId `<202605212120.80852709198@smtp-relay.mailin.fr>`).
 - **Smoke test Personas DB-level**: ✔ verificado vía supabase MCP (insert dashboard_invitations dummy → query merge JS → resend update last_reminder_at → role-edit → cleanup).
 
+### Cambios 2026-05-23 (SDD god-components-refactor + audit follow-ups)
+- **SDD `god-components-refactor`** ✔ archived (engram #606, archive obs #601-#606):
+  - **Slice A**: `DashboardApp.tsx` 1471→384 LoC. 4 hooks bajo `src/hooks/dashboard/` (useDashboardData, useMovementsFilter, useCompanyAssignment, useComposer) + `src/types/dashboard.ts` + `MovementCards.tsx` + `DashboardModals.tsx` extraídos.
+  - **Slice B**: `ConfiguracionTab.tsx` 996→103 LoC. 4 secciones bajo `src/components/dashboard/tabs/configuracion/` (PreferenciasSection, MiembrosSection, TelegramSection, CuentaSection). CuentaSection 372 LoC (W1 aceptado).
+  - **Slice C**: `server.ts` 2722→201 LoC. 11 módulos bajo `src/bot/` (deps, sessions, keyboards, utils, menu, extraction, index + commands/movements|entities|reports|recurring). `movements.ts` 1041 LoC (W2 aceptado — split pendiente).
+  - Tests 278 pass / 0 fail. tsc clean.
+- **Audit follow-ups — todos los items Media + Baja del informe UX/UI**:
+  - **A1**: Touch targets 44×44 (logout, edit/delete pills, revoke session button)
+  - **A2**: aria-label en composer + EmpresasTab + PersonasPanel inputs
+  - **A3**: `role="img"`+`aria-label` summary en TrendBars, `role="list"`/`role="listitem"` en HorizontalBarList
+  - **A4**: ↑/↓ arrow prefix en montos ingreso/egreso (Ingresos/GastosTab + TrendBars net label)
+  - **A5**: `text-neutral-400` → `text-neutral-500` en texto crítico (role label header, Ctrl+Enter hint, footer copy, MovementCards date, DashboardModals label, PreferenciasSection hs UTC, PersonasPanel secondary)
+  - **B1**: "Egreso/Egresos" → "Gasto/Gastos" en UI + bot keyboards/replies (DB egreso preserved)
+  - **B2**: `escapeMd()` helper aplicado en todos los replies bot con valores user-provided
+  - **B3**: Botón "← Atrás" en flujos multi-step `/informes` (rb:temporalidad/alcance/tipo/format) + `/recurrente` (rec_back:tipo/moneda)
+  - **B4**: Error checking en `/empresas`, `/categorias`, `/saldos`, `/buscar` (antes silent failures)
+  - **B5**: `splitForTelegram(text, 3900)` chunking en `/saldos` (Telegram 4096 char limit)
+  - **B6**: Paginación `/buscar` con "Mostrar más" callback `srch:offset:query` + peek-next
+  - **B7**: `ctx: any` → `Context` (grammy) en utils, menu, extraction, movements, recurring, reports
+  - **B8**: `replyExpiredSession()` helper con InlineKeyboard restart button (`rec_start` / `rp_start`)
+  - **B9**: Confirmación borrar empresa muestra count de movimientos asociados (web + bot `/borrarempresa` + `del_emp_pick`)
+  - **C5**: `React.memo` en MovementCards
+  - **C7**: motion (127KB raw / 42KB gzip) **removido completamente**. Reemplazado por CSS keyframes (`anim-fade-in`, `anim-fade-in-down`, `anim-scale-in`, `anim-backdrop-in`, `anim-card-in`) + `prefers-reduced-motion` guard. Affected: DashboardApp, MovementCards, DashboardModals, ModalShell, WelcomeWizard, WelcomeJoined. `npm uninstall motion`. Vite manualChunks limpiado.
+  - **D1**: Radius normalizado — containers `rounded-xl` (LoginScreen, AdminPanel, BotConnectionPanel `3xl`→`xl`; ChartCard, ModalShell, WelcomeWizard, WelcomeJoined `2xl`→`xl`).
+  - **D2**: `border-neutral-100` → `border-neutral-200` sweep (12 archivos componentes).
+  - **D3**: ResumenTab grid `sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5` (antes `md:grid-cols-2 xl:grid-cols-5` dejaba 5ª card sola).
+  - **D4**: Chart colors → tokens semánticos `--chart-income/expense/net/baseline` (theme-aware, OKLCH), aplicado en TrendBars + HorizontalBarList + ResumenTab legend.
+  - **D5**: `EmptyState` primitive (title+hint+canWrite+cta) aplicado en Resumen monthly + Ingresos recent + Gastos recent.
+  - **D6**: BudgetComparisonList labels uppercase tracking-widest tabular-nums.
+  - **D7**: Verificado ya implementado (LoginScreen `blocked` + `secondaryActionLabel="Salir y usar otra cuenta"`).
+  - **C6**: Verificado no hay `window.location.reload()`. OAuth callback usa `replaceState` + state update.
+- **Deploys 2026-05-23**:
+  - Frontend `caja-chica-bot.web.app` (3 deploys: post-Slice-C, post-media, post-baja)
+  - Backend Cloud Run `caja-chica-00035-rz4` (post-baja)
+- **Tests**: 278 pass / 0 fail / 2 skip
+- **Bundle delta C7**: motion chunk 127.97 kB / 41.97 kB gzip → 0
+
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere sesión real)
 3. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
-4. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1)
+4. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1 obsoleto post-archive)
 5. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión: implementar o eliminar
-6. Aplicar radius semantic tokens en componentes (hoy usan rounded-2xl/3xl tailwind directo)
-7. Migración label "Gasto" en otras pantallas: hoy egreso wire, label inconsistente entre app y bot
+6. **W2 deuda**: `src/bot/commands/movements.ts` 1041 LoC → split en `movements-commands.ts` + `movements-callbacks.ts`
+7. **C4**: React Query / SWR adoption — diferido (refactor grande, discutir scope antes)
 
 ---
 

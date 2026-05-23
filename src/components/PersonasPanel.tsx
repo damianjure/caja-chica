@@ -203,7 +203,7 @@ function ActionMenu({
 
           {canChangeRole && (
             <>
-              <div className="my-1 border-t border-neutral-100" />
+              <div className="my-1 border-t border-neutral-200" />
               <button
                 onClick={() => {
                   onChangeRole(persona.role === "editor" ? "viewer" : "editor");
@@ -221,7 +221,7 @@ function ActionMenu({
 
           {canRevoke && (
             <>
-              <div className="my-1 border-t border-neutral-100" />
+              <div className="my-1 border-t border-neutral-200" />
               <button
                 onClick={() => {
                   onRevoke();
@@ -363,6 +363,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] gap-3">
           <input
+            aria-label="Email para invitar"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -372,6 +373,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           />
           {scope === "dashboard" && (
             <select
+              aria-label="Rol del invitado"
               value={role}
               onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
               className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm"
@@ -456,7 +458,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                   <div className="flex items-center gap-2 flex-wrap">
                     <StatusBadge status={persona.status} />
                     <RoleBadge role={persona.role} scope={scope} />
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-neutral-500">
                       {relativeTime(persona.last_action_at)}
                     </span>
                   </div>

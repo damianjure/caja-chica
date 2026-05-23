@@ -1,5 +1,4 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { motion } from "motion/react";
 import { X } from "lucide-react";
 
 interface ModalShellProps {
@@ -91,24 +90,18 @@ export function ModalShell({
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]"
+    <div
+      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]"
       style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 42%, transparent)" }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+      <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleIdRef.current}
         aria-describedby={description ? descriptionIdRef.current : undefined}
-        className={`w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-neutral-300 overflow-hidden flex flex-col`}
+        className={`anim-scale-in w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-xl shadow-2xl border border-neutral-300 overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-6 py-4 border-b border-neutral-200 flex items-start justify-between gap-4 shrink-0">
@@ -132,7 +125,7 @@ export function ModalShell({
           </button>
         </header>
         <div className="overflow-y-auto px-6 py-5">{children}</div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

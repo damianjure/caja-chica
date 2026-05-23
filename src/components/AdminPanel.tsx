@@ -312,7 +312,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   };
 
   return (
-    <section className="bg-white border border-neutral-300 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+    <section className="bg-white border border-neutral-300 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-neutral-900 text-white">
           <Shield className="w-4 h-4" />

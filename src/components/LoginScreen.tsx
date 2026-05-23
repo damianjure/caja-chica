@@ -37,7 +37,7 @@ export function LoginScreen({
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white border border-neutral-200 rounded-3xl shadow-sm p-8 space-y-6">
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-sm p-8 space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-neutral-900 text-white rounded-xl">

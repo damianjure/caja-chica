@@ -62,7 +62,8 @@ export interface ReportExportRequest {
   month?: string;
   from?: string;
   to?: string;
-  company: string;
+  /** Normalized from legacy `company` or new `companies` field. Empty = all. */
+  companies: string[];
   tipo: ReportMovementType;
   moneda: ReportCurrency;
   destination: ReportDestination;
@@ -445,11 +446,27 @@ export function parseReportExportRequest(value: unknown): ReportExportRequest | 
   if (
     !isReportFormat(payload.format) ||
     !isReportPeriod(payload.period) ||
-    typeof payload.company !== "string" ||
     !isReportMovementType(payload.tipo) ||
     !isReportCurrency(payload.moneda)
   ) {
     return null;
+  }
+
+  // Normalize companies: accept `companies` array OR legacy `company` string.
+  // Priority: non-empty `companies` array → trim/drop empties.
+  // Else: `company` string → [] if "all"/empty, else [company.trim()].
+  // Output: always string[]. Empty array means "all companies".
+  let companies: string[];
+  if (Array.isArray(payload.companies)) {
+    companies = payload.companies
+      .filter((c): c is string => typeof c === "string")
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0);
+  } else if (typeof payload.company === "string") {
+    const trimmed = payload.company.trim();
+    companies = trimmed === "" || trimmed === "all" ? [] : [trimmed];
+  } else {
+    companies = [];
   }
 
   // WARNING-19: validate destination — default to 'local' if not provided
@@ -460,7 +477,7 @@ export function parseReportExportRequest(value: unknown): ReportExportRequest | 
   const request: ReportExportRequest = {
     format: payload.format,
     period: payload.period,
-    company: payload.company.trim() || "all",
+    companies,
     tipo: payload.tipo,
     moneda: payload.moneda,
     destination,

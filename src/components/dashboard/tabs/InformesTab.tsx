@@ -78,13 +78,13 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
   }, []);
 
   const reportRequestBase = useMemo<ReportExportRequest>(
-    () => ({ format: "csv", period, anchorDate, month, from, to, company, tipo, moneda }),
+    () => ({ format: "csv", period, anchorDate, month, from, to, companies: company === "all" ? [] : [company], tipo, moneda }),
     [anchorDate, company, from, month, moneda, period, tipo, to],
   );
 
   const previewRange = resolveReportDateRange(reportRequestBase);
   const previewMovements = previewRange
-    ? filterMovementsForReport(history, { company, tipo, moneda }, previewRange)
+    ? filterMovementsForReport(history, { companies: company === "all" ? [] : [company], tipo, moneda }, previewRange)
     : [];
 
   const exportReport = async (format: "csv" | "pdf", destination: "local" | "drive" = "local") => {
@@ -253,7 +253,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                 <select className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" value={tipo} onChange={(event) => setTipo(event.target.value as ReportExportRequest["tipo"])}>
                   <option value="all">Todos</option>
                   <option value="ingreso">Ingresos</option>
-                  <option value="egreso">Egresos</option>
+                  <option value="egreso">Gastos</option>
                 </select>
               </label>
 

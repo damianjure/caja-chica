@@ -1,4 +1,5 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import type { Empresa, Movimiento } from '../../../services/api';
 import { ChartCard, HorizontalBarList } from '../Charts';
@@ -23,6 +24,7 @@ export default function EmpresasTab({
   canWriteData,
   onEditCompany,
   onDeleteCompany,
+  onCreateCompany,
   formatCurrency,
   history,
   companiesList,
@@ -35,14 +37,53 @@ export default function EmpresasTab({
   canWriteData: boolean;
   onEditCompany: (company: Empresa) => void;
   onDeleteCompany: (company: Empresa) => void;
+  onCreateCompany: (nombre: string) => Promise<void>;
   formatCurrency: (amount: number, currency: 'ARS' | 'USD') => string;
   history: Movimiento[];
   companiesList: string[];
   canUseDrive: boolean;
   canConnectDrive: boolean;
 }) {
+  const [newCompany, setNewCompany] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    const trimmed = newCompany.trim();
+    if (!trimmed || creating) return;
+    setCreating(true);
+    try {
+      await onCreateCompany(trimmed);
+      setNewCompany('');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {canWriteData && (
+        <SectionCard title="Agregar empresa" description="Registrá una empresa para poder editarla y borrarla.">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              aria-label="Nombre de la empresa"
+              value={newCompany}
+              onChange={(event) => setNewCompany(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') void handleCreate(); }}
+              placeholder="Nombre de la empresa"
+              className="flex-1 rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+            />
+            <button
+              onClick={() => void handleCreate()}
+              disabled={!newCompany.trim() || creating}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+            >
+              <Plus className="w-4 h-4" />
+              {creating ? 'Creando...' : 'Agregar'}
+            </button>
+          </div>
+        </SectionCard>
+      )}
+
       <SectionCard title="Comparación por empresa" description="Mirá cada unidad con ingresos, gastos y saldo neto por moneda.">
         {companySummaries.length === 0 ? (
           <p className="text-sm text-neutral-500">Todavía no hay movimientos para comparar empresas.</p>
@@ -67,7 +108,8 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onEditCompany(item);
                           }}
-                          className="p-2 rounded-xl border border-neutral-200 text-neutral-700 hover:border-[var(--app-text-2)]"
+                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-neutral-200 text-neutral-700 hover:border-[var(--app-text-2)]"
+                          aria-label="Editar empresa"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -76,7 +118,8 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onDeleteCompany(item);
                           }}
-                          className="p-2 rounded-xl border border-red-200 text-red-600 hover:border-red-400"
+                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-red-200 text-red-600 hover:border-red-400"
+                          aria-label="Borrar empresa"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

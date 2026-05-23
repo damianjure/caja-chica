@@ -10,8 +10,10 @@ export type ReportPeriod = "day" | "week" | "month" | "range";
 export type ReportMovementType = "all" | "ingreso" | "egreso";
 export type ReportCurrency = "all" | "ARS" | "USD";
 
+export type ReportTipo = "ingreso" | "egreso" | "saldos";
+
 export interface ReportFilters {
-  company: string;
+  companies: string[];
   tipo: ReportMovementType;
   moneda: ReportCurrency;
 }
@@ -97,7 +99,11 @@ export function filterMovementsForReport(
   return history.filter((item) => {
     const createdAt = new Date(item.created_at);
     if (createdAt < range.start || createdAt > range.end) return false;
-    if (filters.company !== "all" && item.empresa_nombre !== filters.company) return false;
+    if (
+      filters.companies.length > 0 &&
+      !filters.companies.includes("all") &&
+      !filters.companies.includes(item.empresa_nombre)
+    ) return false;
     if (filters.tipo !== "all" && item.tipo !== filters.tipo) return false;
     if (filters.moneda !== "all" && item.moneda !== filters.moneda) return false;
     return true;

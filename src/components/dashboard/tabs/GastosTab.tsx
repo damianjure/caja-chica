@@ -1,6 +1,6 @@
 import type { Categoria, Presupuesto } from '../../../services/api';
 import { BudgetComparisonList, HorizontalBarList, TrendBars } from '../Charts';
-import { MetricCard, SectionCard } from '../primitives';
+import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import { SectionLoadingState } from '../LoadingStates';
 
 interface CategorySummaryView {
@@ -161,7 +161,7 @@ export default function GastosTab({
                   <div className="text-xs text-neutral-500">{category.movimientos} movimientos</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-red-600">{formatCurrency(category.egresoArs, 'ARS')}</div>
+                  <div className="font-semibold text-red-600" aria-label={`Gasto ${formatCurrency(category.egresoArs, 'ARS')}`}><span aria-hidden="true">↓ </span>{formatCurrency(category.egresoArs, 'ARS')}</div>
                   <div className="text-xs text-neutral-500">{formatCurrency(category.egresoUsd, 'USD')}</div>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function GastosTab({
 
       <SectionCard
         title="Gastos por empresa"
-        description="Separá rápido qué empresa está traccionando más egreso en ARS dentro del período visible."
+        description="Separá rápido qué empresa está traccionando más gasto en ARS dentro del período visible."
       >
         <HorizontalBarList items={expenseCompanies.map((item) => ({ ...item, accent: 'danger' as const }))} emptyLabel="Todavía no hay empresas con egresos." />
       </SectionCard>
@@ -182,7 +182,12 @@ export default function GastosTab({
         description={selectedExpenseCompany === 'all' ? 'Los últimos egresos del dashboard completo.' : `Los últimos egresos de ${selectedExpenseCompany}.`}
       >
         {recentExpenses.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay gastos para mostrar.</p>
+          <EmptyState
+            title="Sin gastos cargados todavía."
+            hint='Probá con "pagué 4500 de luz" en el campo de arriba — el bot lo entiende.'
+            canWrite={canWriteData}
+            cta="Cargá un gasto desde el composer."
+          />
         ) : (
           <div className="space-y-3">
             {recentExpenses.map((expense) => (
@@ -195,7 +200,7 @@ export default function GastosTab({
                     </div>
                     <div className="mt-1 text-xs text-neutral-500">{new Date(expense.created_at).toLocaleString('es-AR')}</div>
                   </div>
-                  <div className="text-sm font-semibold text-red-600">{formatCurrency(expense.monto, expense.moneda)}</div>
+                  <div className="text-sm font-semibold text-red-600" aria-label={`Gasto ${formatCurrency(expense.monto, expense.moneda)}`}><span aria-hidden="true">↓ </span>{formatCurrency(expense.monto, expense.moneda)}</div>
                 </div>
               </div>
             ))}

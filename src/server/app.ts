@@ -869,6 +869,50 @@ export function createApp({
         return res.status(403).json({ error: "forbidden" });
       }
 
+      // Auto-register companies referenced by free text so they become
+      // editable/deletable entities in the dashboard.
+      const referencedCompanies = [
+        ...new Set(
+          payload.items
+            .map((item) => (item.empresa || "Personal").trim())
+            .filter((name) => name.length > 0 && name !== "Personal"),
+        ),
+      ];
+      if (referencedCompanies.length > 0 && canManageEmpresasOp(scope)) {
+        const { data: existing } = await applyDataScope(
+          supabase.from("empresas").select("nombre").is("deleted_at", null),
+          session,
+          scope,
+        );
+        const existingNames = new Set((existing ?? []).map((e: any) => e.nombre));
+        const empresaOwnership = scope.dashboardId
+          ? { owner_user_id: session.userId, dashboard_id: scope.dashboardId }
+          : { owner_user_id: session.userId };
+        for (const nombre of referencedCompanies) {
+          if (existingNames.has(nombre)) continue;
+          const { data: empresa, error: empresaError } = await supabase
+            .from("empresas")
+            .insert([{ nombre, ...empresaOwnership }])
+            .select()
+            .single();
+          if (empresaError) {
+            console.error("Auto-register empresa error:", empresaError);
+            continue;
+          }
+          if (empresa?.id) {
+            await logEntityMutation({
+              session,
+              scope,
+              source: "web",
+              action: "create",
+              entityType: "empresa",
+              entityId: empresa.id,
+              afterData: empresa,
+            });
+          }
+        }
+      }
+
       const saved: any[] = [];
       for (const item of payload.items) {
         const { data, error } = await supabase
@@ -923,9 +967,12 @@ export function createApp({
         return res.status(403).json({ error: "forbidden" });
       }
 
+      const empresaOwnership = scope.dashboardId
+        ? { owner_user_id: session.userId, dashboard_id: scope.dashboardId }
+        : { owner_user_id: session.userId };
       const { data, error } = await supabase
         .from("empresas")
-        .insert([{ nombre: payload.nombre, ...buildWriteOwnership(session, scope) }])
+        .insert([{ nombre: payload.nombre, ...empresaOwnership }])
         .select()
         .single();
       if (error) throw error;
@@ -1635,7 +1682,7 @@ export function createApp({
         period_month: payload.month ?? null,
         period_from: payload.from ?? null,
         period_to: payload.to ?? null,
-        company: payload.company,
+        company: payload.companies.join(", ") || "all",
         tipo: payload.tipo,
         moneda: payload.moneda,
         total_movements: filteredMovements.length,
@@ -1657,7 +1704,7 @@ export function createApp({
           created_at: record?.created_at ?? new Date().toISOString(),
           totalMovements: filteredMovements.length,
           periodLabel: range.label,
-          company: payload.company,
+          company: payload.companies.join(", ") || "all",
           tipo: payload.tipo,
           moneda: payload.moneda,
           destination: wantsDrive ? "drive" : "local",

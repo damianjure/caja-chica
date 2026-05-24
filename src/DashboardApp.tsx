@@ -1,7 +1,9 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp } from 'lucide-react';
-import { api, type Movimiento, type Empresa, type AppViewer } from './services/api';
+import { api, type Movimiento, type Empresa, type Presupuesto, type AppViewer, type PaginatedMovimientos } from './services/api';
+import type { InfiniteData } from '@tanstack/react-query';
 import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
@@ -67,10 +69,6 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
   { id: 'configuracion', label: 'Configuración', description: 'Cuenta, equipo, permisos y Drive', icon: Settings },
 ];
 
-function normalizeMovement(item: Movimiento): Movimiento {
-  return { ...item, conciliado: item.conciliado ?? true };
-}
-
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
 const VALID_TABS: ReadonlyArray<DashboardTab> = [
   'resumen', 'movimientos', 'gastos', 'ingresos', 'recurrentes', 'empresas', 'superadmin', 'configuracion',
@@ -86,6 +84,7 @@ function readPersistedTab(): DashboardTab {
 
 export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference }: DashboardAppProps) {
   const initialBudgetPeriod = getCurrentPeriod();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<DashboardTab>(readPersistedTab);
   const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
 
@@ -99,8 +98,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   };
 
   const {
-    history, setHistory, customCompanies, setCustomCompanies, categories,
-    budgets, setBudgets, budgetPeriod, setBudgetPeriod, dashboardAccess,
+    history, customCompanies, categories,
+    budgets, budgetPeriod, setBudgetPeriod, dashboardAccess,
     isLoading, isLoadingCollaboration, isLoadingBudget, hasMore, loadingMore,
     apiStatus, apiErrorMessage, loadData, loadCollaboration,
   } = useDashboardData(viewer);
@@ -122,6 +121,52 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (type === 'success') toast.success(message); else toast.error(message);
   };
 
+  const prependMovements = (items: Movimiento[]) => {
+    queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(['movimientos'], (old) => {
+      if (!old) return old;
+      const firstPage = old.pages[0];
+      const deduped = items.filter((n) => !firstPage.items.some((i) => i.id === n.id));
+      return { ...old, pages: [{ ...firstPage, items: [...deduped, ...firstPage.items] }, ...old.pages.slice(1)] };
+    });
+  };
+
+  const removeMovement = (id: string) => {
+    queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(['movimientos'], (old) => {
+      if (!old) return old;
+      return { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.filter((i) => i.id !== id) })) };
+    });
+  };
+
+  const patchMovement = (id: string, patch: Partial<Movimiento>) => {
+    queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(['movimientos'], (old) => {
+      if (!old) return old;
+      return { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.map((i) => i.id === id ? { ...i, ...patch } : i) })) };
+    });
+  };
+
+  const patchMovementsByCompany = (prevName: string, nextName: string) => {
+    queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(['movimientos'], (old) => {
+      if (!old) return old;
+      return { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.map((i) => i.empresa_nombre === prevName ? { ...i, empresa_nombre: nextName } : i) })) };
+    });
+  };
+
+  const appendEmpresa = (e: Empresa) => {
+    queryClient.setQueryData<Empresa[]>(['empresas'], (prev = []) =>
+      prev.some((c) => c.id === e.id) ? prev : [...prev, e],
+    );
+  };
+
+  const removeEmpresa = (id: string) => {
+    queryClient.setQueryData<Empresa[]>(['empresas'], (prev = []) => prev.filter((c) => c.id !== id));
+  };
+
+  const patchEmpresa = (id: string, nombre: string) => {
+    queryClient.setQueryData<Empresa[]>(['empresas'], (prev = []) =>
+      prev.map((c) => c.id === id ? { ...c, nombre } : c),
+    );
+  };
+
   const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
     categories, customCompanies, canWriteData,
     onWarning: (msg) => showToast(msg, 'warning'),
@@ -130,15 +175,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         case 'GESTIONAR_EMPRESA':
           if (event.action === 'ADD') {
             const exists = customCompanies.some((c) => c.nombre.toLowerCase() === event.companyName.toLowerCase());
-            if (!exists) void api.addEmpresa(event.companyName).then((e) => { setCustomCompanies((p) => [...p, e]); showToast(`Empresa "${event.companyName}" creada.`); });
+            if (!exists) void api.addEmpresa(event.companyName).then((e) => { appendEmpresa(e); showToast(`Empresa "${event.companyName}" creada.`); });
             else showToast(`La empresa "${event.companyName}" ya existe.`, 'warning');
           }
           break;
         case 'ELIMINAR_MOVIMIENTO':
-          if (event.deletedId) { setHistory((p) => p.filter((i) => i.id !== event.deletedId)); showToast('Último movimiento eliminado.'); }
+          if (event.deletedId) { removeMovement(event.deletedId); showToast('Último movimiento eliminado.'); }
           break;
         case 'REGISTRAR':
-          setHistory((p) => [...event.saved, ...p]);
+          prependMovements(event.saved);
           showToast(`${event.saved.length} transacciones registradas.`);
           break;
         case 'PENDING_COMPANY':
@@ -206,7 +251,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const deleteItem = (id: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({ title: 'Eliminar movimiento', description: 'Vas a borrar este movimiento del historial. La acción queda auditada y no se puede deshacer desde la UI.', confirmLabel: 'Eliminar movimiento', tone: 'danger', onConfirm: async () => { await api.deleteMovimiento(id); setHistory((p) => p.filter((i) => i.id !== id)); showToast('Movimiento eliminado.', 'warning'); } });
+    setConfirmationModal({ title: 'Eliminar movimiento', description: 'Vas a borrar este movimiento del historial. La acción queda auditada y no se puede deshacer desde la UI.', confirmLabel: 'Eliminar movimiento', tone: 'danger', onConfirm: async () => { await api.deleteMovimiento(id); removeMovement(id); showToast('Movimiento eliminado.', 'warning'); } });
   };
   const deleteCompany = (id: string, name: string) => {
     if (!canWriteData) return;
@@ -215,7 +260,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     const description = movCount > 0
       ? `Esta empresa tiene ${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}. Los movimientos quedan en el historial pero la empresa se desactiva. Soft delete + backup + log de auditoría.`
       : 'Esta empresa no tiene movimientos asociados. Soft delete + log de auditoría.';
-    setConfirmationModal({ title: `Desactivar ${name}`, description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar empresa', tone: 'danger', requireText: 'ELIMINAR', onConfirm: async () => { await api.deleteEmpresa(id); setCustomCompanies((p) => p.filter((c) => c.id !== id)); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
+    setConfirmationModal({ title: `Desactivar ${name}`, description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar empresa', tone: 'danger', requireText: 'ELIMINAR', onConfirm: async () => { await api.deleteEmpresa(id); removeEmpresa(id); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
   };
   const deleteCategory = (id: string, name: string) => {
     if (!canWriteData) return;
@@ -229,7 +274,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (!categoria || !Number.isFinite(parsedAmount)) { showToast('Completá categoría y monto del presupuesto.', 'warning'); return; }
     try {
       const saved = await api.savePresupuesto({ period: budgetForm.period, categoria, moneda: budgetForm.moneda, monto: parsedAmount });
-      setBudgets((p) => { const n = p.filter((i) => !(i.period === saved.period && i.categoria.toLowerCase() === saved.categoria.toLowerCase() && i.moneda === saved.moneda)); return [...n, saved].sort((a, b) => a.categoria.localeCompare(b.categoria)); });
+      queryClient.setQueryData<Presupuesto[]>(['presupuestos', saved.period], (p = []) => { const n = p.filter((i) => !(i.period === saved.period && i.categoria.toLowerCase() === saved.categoria.toLowerCase() && i.moneda === saved.moneda)); return [...n, saved].sort((a, b) => a.categoria.localeCompare(b.categoria)); });
       setBudgetPeriod(saved.period); setBudgetForm((p) => ({ ...p, categoria: '', monto: '', period: saved.period }));
       showToast(`Presupuesto guardado para ${saved.categoria}.`);
     } catch { showToast('No se pudo guardar el presupuesto.', 'warning'); }
@@ -251,7 +296,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (!Number.isFinite(monto) || !movementEditForm.categoria.trim() || !movementEditForm.descripcion.trim()) { showToast('Completá monto, categoría y descripción.', 'warning'); return; }
     try {
       await api.updateMovimiento(editingMovement.id, { tipo: movementEditForm.tipo, moneda: movementEditForm.moneda, monto, categoria: movementEditForm.categoria.trim(), empresa: movementEditForm.empresa.trim() || 'Personal', descripcion: movementEditForm.descripcion.trim() });
-      setHistory((p) => p.map((i) => i.id === editingMovement.id ? { ...i, tipo: movementEditForm.tipo, moneda: movementEditForm.moneda, monto, categoria: movementEditForm.categoria.trim(), empresa_nombre: movementEditForm.empresa.trim() || 'Personal', descripcion: movementEditForm.descripcion.trim() } : i));
+      patchMovement(editingMovement.id, { tipo: movementEditForm.tipo, moneda: movementEditForm.moneda, monto, categoria: movementEditForm.categoria.trim(), empresa_nombre: movementEditForm.empresa.trim() || 'Personal', descripcion: movementEditForm.descripcion.trim() });
       setEditingMovement(null); setMovementEditForm(null); showToast('Movimiento actualizado.');
     } catch { showToast('No se pudo actualizar el movimiento.', 'warning'); }
   };
@@ -261,8 +306,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     try {
       await api.updateEmpresa(editingCompany.id, companyEditName.trim());
       const prev = editingCompany.nombre; const next = companyEditName.trim();
-      setCustomCompanies((p) => p.map((c) => c.id === editingCompany.id ? { ...c, nombre: next } : c));
-      setHistory((p) => p.map((i) => i.empresa_nombre === prev ? { ...i, empresa_nombre: next } : i));
+      patchEmpresa(editingCompany.id, next);
+      patchMovementsByCompany(prev, next);
       if (selectedCompany === prev) setSelectedCompany(next);
       setEditingCompany(null); setCompanyEditName(''); showToast('Empresa actualizada.');
     } catch { showToast('No se pudo actualizar la empresa.', 'warning'); }
@@ -355,7 +400,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} budgetForm={budgetForm} setBudgetForm={(u) => setBudgetForm((p) => u(p))} budgetPeriod={budgetPeriod} setBudgetPeriod={setBudgetPeriod} initialBudgetPeriod={initialBudgetPeriod} categories={categories} canWriteData={canWriteData} onSaveBudget={saveBudget} isLoadingBudget={isLoadingBudget} budgetVsActual={budgetVsActual} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
                 {activeTab === 'ingresos' && <IngresosTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')} sourceCount={incomeSummaries.length} topIncomeSources={topIncomeSources} incomeTags={topIncomeTags} recentIncomes={recentIncomes} formatCurrency={formatCurrency} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
-                {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); setCustomCompanies((p) => [...p, e]); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}
+                {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><div className="space-y-6"><BotConnectionPanel /><AdminPanel viewer={viewer} /></div></Suspense>}
                 {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} /></Suspense>}
               </Suspense>
@@ -368,7 +413,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           editingCompany={editingCompany} companyEditName={companyEditName} setCompanyEditName={setCompanyEditName}
           onCloseCompanyEdit={() => { setEditingCompany(null); setCompanyEditName(''); }} onSaveCompanyEdit={() => void saveCompanyEdit()}
           pendingItem={pendingItem} isAssigning={isAssigning} companiesList={companiesList} readDefaultEmpresa={readDefaultEmpresa}
-          onAssignCompany={(empresa) => void assignPendingMovement(empresa, (saved) => { setHistory((p) => [...saved, ...p]); showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`); }, () => showToast('No se pudo guardar el movimiento.', 'warning'))}
+          onAssignCompany={(empresa) => void assignPendingMovement(empresa, (saved) => { prependMovements(saved); showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`); }, () => showToast('No se pudo guardar el movimiento.', 'warning'))}
           onCancelPending={() => setPendingItem(null)}
           confirmationModal={confirmationModal} confirmationInput={confirmationInput} setConfirmationInput={setConfirmationInput}
           isConfirmingAction={isConfirmingAction}

@@ -1,5 +1,11 @@
-import { useState, useEffect, useRef, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
-import { api, type Movimiento, type Empresa, type Categoria, type Presupuesto, type DashboardMembersResponse, type AppViewer } from '../../services/api';
+import { useState, useEffect } from 'react';
+import {
+  useQuery,
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
+import { api, type Movimiento, type Empresa, type Categoria, type Presupuesto, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
 import { supabase } from '../../services/supabase';
 import { getCurrentPeriod } from '../../dashboard/summary';
 
@@ -7,130 +13,82 @@ function normalizeMovement(item: Movimiento): Movimiento {
   return { ...item, conciliado: item.conciliado ?? true };
 }
 
+function isApiUrlMissing(): boolean {
+  const url = (import.meta as any).env.VITE_API_URL;
+  return !url || url.includes('placeholder');
+}
+
 export interface DashboardDataResult {
   history: Movimiento[];
-  setHistory: Dispatch<SetStateAction<Movimiento[]>>;
   customCompanies: Empresa[];
-  setCustomCompanies: Dispatch<SetStateAction<Empresa[]>>;
   categories: Categoria[];
-  setCategories: Dispatch<SetStateAction<Categoria[]>>;
   budgets: Presupuesto[];
-  setBudgets: Dispatch<SetStateAction<Presupuesto[]>>;
   budgetPeriod: string;
-  setBudgetPeriod: Dispatch<SetStateAction<string>>;
+  setBudgetPeriod: (period: string) => void;
   dashboardAccess: DashboardMembersResponse | null;
-  setDashboardAccess: Dispatch<SetStateAction<DashboardMembersResponse | null>>;
   isLoading: boolean;
   isLoadingCollaboration: boolean;
   isLoadingBudget: boolean;
-  setIsLoadingBudget: Dispatch<SetStateAction<boolean>>;
   hasMore: boolean;
   loadingMore: boolean;
   apiStatus: 'ready' | 'missing_url' | 'load_error';
   apiErrorMessage: string | null;
-  nextCursorRef: MutableRefObject<string | null>;
-  loadData: (append?: boolean) => Promise<void>;
-  loadCollaboration: () => Promise<void>;
-  loadBudgets: (period: string) => Promise<void>;
+  loadData: (append?: boolean) => void;
+  loadCollaboration: () => void;
+  loadBudgets: (period: string) => void;
 }
 
 export function useDashboardData(viewer: AppViewer): DashboardDataResult {
-  const initialBudgetPeriod = getCurrentPeriod();
-  const [history, setHistory] = useState<Movimiento[]>([]);
-  const [customCompanies, setCustomCompanies] = useState<Empresa[]>([]);
-  const [categories, setCategories] = useState<Categoria[]>([]);
-  const [budgets, setBudgets] = useState<Presupuesto[]>([]);
-  const [budgetPeriod, setBudgetPeriod] = useState(initialBudgetPeriod);
-  const [dashboardAccess, setDashboardAccess] = useState<DashboardMembersResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingCollaboration, setIsLoadingCollaboration] = useState(true);
-  const [isLoadingBudget, setIsLoadingBudget] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'ready' | 'missing_url' | 'load_error'>('ready');
-  const [apiErrorMessage, setApiErrorMessage] = useState<string | null>(null);
-  const nextCursorRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
+  const [budgetPeriod, setBudgetPeriod] = useState(getCurrentPeriod);
+  const apiMissing = isApiUrlMissing();
 
-  const loadCollaboration = async () => {
-    try {
-      const data = await api.getDashboardMembers();
-      setDashboardAccess(data);
-    } catch (err) {
-      console.error('Failed to load collaboration data', err);
-    } finally {
-      setIsLoadingCollaboration(false);
-    }
-  };
+  // --- dashboardAccess ---
+  const collaborationQuery = useQuery<DashboardMembersResponse>({
+    queryKey: ['dashboardMembers'],
+    queryFn: api.getDashboardMembers,
+    enabled: !apiMissing,
+  });
 
-  const loadBudgets = async (period: string) => {
-    setIsLoadingBudget(true);
-    try {
-      const rows = await api.getPresupuestos(period);
-      setBudgets(rows);
-    } catch (err) {
-      console.error('Failed to load budgets', err);
-    } finally {
-      setIsLoadingBudget(false);
-    }
-  };
+  // --- budgets ---
+  const budgetsQuery = useQuery<Presupuesto[]>({
+    queryKey: ['presupuestos', budgetPeriod],
+    queryFn: () => api.getPresupuestos(budgetPeriod),
+    enabled: !apiMissing,
+  });
 
-  const loadData = async (append = false) => {
-    if (append) setLoadingMore(true);
-    else setIsLoading(true);
+  // --- empresas ---
+  const empresasQuery = useQuery<Empresa[]>({
+    queryKey: ['empresas'],
+    queryFn: api.getEmpresas,
+    enabled: !apiMissing,
+  });
 
-    try {
-      const url = (import.meta as any).env.VITE_API_URL;
-      if (!url || url.includes('placeholder')) {
-        setApiStatus('missing_url');
-        setApiErrorMessage(null);
-        setIsLoading(false);
-        return;
-      }
+  // --- categorias ---
+  const categoriasQuery = useQuery<Categoria[]>({
+    queryKey: ['categorias'],
+    queryFn: api.getCategorias,
+    enabled: !apiMissing,
+  });
 
-      const limit = 50;
-      const [movsPage, emps, cats] = await Promise.all([
-        api.getMovimientos(limit, append ? nextCursorRef.current : null),
-        api.getEmpresas(),
-        api.getCategorias(),
-      ]);
-      const normalizedItems = movsPage.items.map(normalizeMovement);
+  // --- movimientos (infinite) ---
+  const movimientosQuery = useInfiniteQuery<
+    PaginatedMovimientos,
+    Error,
+    InfiniteData<PaginatedMovimientos>,
+    readonly ['movimientos'],
+    string | null
+  >({
+    queryKey: ['movimientos'] as const,
+    queryFn: ({ pageParam }) => api.getMovimientos(50, pageParam),
+    initialPageParam: null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: !apiMissing,
+  });
 
-      if (append) {
-        setHistory((prev) => [...prev, ...normalizedItems]);
-      } else {
-        setHistory(normalizedItems);
-      }
+  const history = movimientosQuery.data?.pages.flatMap((p) => p.items.map(normalizeMovement)) ?? [];
 
-      nextCursorRef.current = movsPage.nextCursor;
-      setHasMore(Boolean(movsPage.nextCursor));
-      setCustomCompanies(emps);
-      setCategories(cats);
-      setApiStatus('ready');
-      setApiErrorMessage(null);
-    } catch (err) {
-      console.error('Failed to load data', err);
-      setApiStatus('load_error');
-      setApiErrorMessage(err instanceof Error ? err.message : 'No se pudo cargar la información del dashboard.');
-    } finally {
-      setIsLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadData();
-    void loadCollaboration();
-  }, [viewer.id]);
-
-  useEffect(() => {
-    const url = (import.meta as any).env.VITE_API_URL;
-    if (!url || url.includes('placeholder')) {
-      setIsLoadingBudget(false);
-      return;
-    }
-    void loadBudgets(budgetPeriod);
-  }, [budgetPeriod]);
-
+  // --- realtime channel ---
   useEffect(() => {
     if (!supabase) return;
 
@@ -138,51 +96,118 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
       .channel('realtime-movimientos')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movimientos' }, (payload) => {
         const newMov = normalizeMovement(payload.new as Movimiento);
-        setHistory((prev) => {
-          if (prev.some((item) => item.id === newMov.id)) return prev;
-          return [newMov, ...prev];
-        });
+        queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(
+          ['movimientos'],
+          (old) => {
+            if (!old) return old;
+            const firstPage = old.pages[0];
+            if (firstPage.items.some((i) => i.id === newMov.id)) return old;
+            const updatedFirstPage = { ...firstPage, items: [newMov, ...firstPage.items] };
+            return { ...old, pages: [updatedFirstPage, ...old.pages.slice(1)] };
+          },
+        );
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'movimientos' }, (payload) => {
-        setHistory((prev) => prev.filter((item) => item.id !== payload.old.id));
+        const deletedId = (payload.old as { id: string }).id;
+        queryClient.setQueryData<InfiniteData<PaginatedMovimientos>>(
+          ['movimientos'],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                items: page.items.filter((i) => i.id !== deletedId),
+              })),
+            };
+          },
+        );
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'empresas' }, (payload) => {
         const newEmp = payload.new as Empresa;
-        setCustomCompanies((prev) => (prev.some((item) => item.id === newEmp.id) ? prev : [...prev, newEmp]));
+        queryClient.setQueryData<Empresa[]>(['empresas'], (prev = []) =>
+          prev.some((i) => i.id === newEmp.id) ? prev : [...prev, newEmp],
+        );
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'categorias' }, (payload) => {
         const newCat = payload.new as Categoria;
-        setCategories((prev) => (prev.some((item) => item.id === newCat.id) ? prev : [...prev, newCat]));
+        queryClient.setQueryData<Categoria[]>(['categorias'], (prev = []) =>
+          prev.some((i) => i.id === newCat.id) ? prev : [...prev, newCat],
+        );
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
+
+  // Re-fetch when viewer changes
+  useEffect(() => {
+    if (apiMissing) return;
+    void queryClient.invalidateQueries({ queryKey: ['movimientos'] });
+    void queryClient.invalidateQueries({ queryKey: ['empresas'] });
+    void queryClient.invalidateQueries({ queryKey: ['categorias'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboardMembers'] });
+    // budgets refetch automatically via budgetPeriod key
+  }, [viewer.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- apiStatus derivation ---
+  const hasQueryError =
+    movimientosQuery.isError || empresasQuery.isError || categoriasQuery.isError;
+  const queryError =
+    movimientosQuery.error ?? empresasQuery.error ?? categoriasQuery.error;
+
+  const apiStatus: 'ready' | 'missing_url' | 'load_error' = apiMissing
+    ? 'missing_url'
+    : hasQueryError
+    ? 'load_error'
+    : 'ready';
+
+  const apiErrorMessage: string | null =
+    apiStatus === 'load_error'
+      ? queryError instanceof Error
+        ? queryError.message
+        : 'No se pudo cargar la información del dashboard.'
+      : null;
+
+  // --- thin wrappers (loadData / loadCollaboration / loadBudgets) ---
+  const loadData = (append = false) => {
+    if (append) {
+      void movimientosQuery.fetchNextPage();
+    } else {
+      void movimientosQuery.refetch();
+    }
+  };
+
+  const loadCollaboration = () => {
+    void collaborationQuery.refetch();
+  };
+
+  const loadBudgets = (period: string) => {
+    setBudgetPeriod(period);
+  };
+
+  const isLoading =
+    movimientosQuery.isLoading ||
+    empresasQuery.isLoading ||
+    categoriasQuery.isLoading;
 
   return {
     history,
-    setHistory,
-    customCompanies,
-    setCustomCompanies,
-    categories,
-    setCategories,
-    budgets,
-    setBudgets,
+    customCompanies: empresasQuery.data ?? [],
+    categories: categoriasQuery.data ?? [],
+    budgets: budgetsQuery.data ?? [],
     budgetPeriod,
-    setBudgetPeriod,
-    dashboardAccess,
-    setDashboardAccess,
+    setBudgetPeriod: loadBudgets,
+    dashboardAccess: collaborationQuery.data ?? null,
     isLoading,
-    isLoadingCollaboration,
-    isLoadingBudget,
-    setIsLoadingBudget,
-    hasMore,
-    loadingMore,
+    isLoadingCollaboration: collaborationQuery.isLoading,
+    isLoadingBudget: budgetsQuery.isLoading || budgetsQuery.isFetching,
+    hasMore: movimientosQuery.hasNextPage ?? false,
+    loadingMore: movimientosQuery.isFetchingNextPage,
     apiStatus,
     apiErrorMessage,
-    nextCursorRef,
     loadData,
     loadCollaboration,
     loadBudgets,

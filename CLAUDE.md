@@ -257,6 +257,27 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - **Brevo live send test**: ✔ verificado (messageId `<202605212120.80852709198@smtp-relay.mailin.fr>`).
 - **Smoke test Personas DB-level**: ✔ verificado vía supabase MCP (insert dashboard_invitations dummy → query merge JS → resend update last_reminder_at → role-edit → cleanup).
 
+### Cambios 2026-05-24 (C4: @tanstack/react-query adoption)
+- **`@tanstack/react-query` v5** instalado como dep de producción.
+- **`src/main.tsx`**: `QueryClientProvider` wrappea `<App />` con `staleTime: 30s`, `gcTime: 5min`, `retry: 1`, `refetchOnWindowFocus: false`.
+- **`src/hooks/dashboard/useDashboardData.ts`** migrado completamente:
+  - `dashboardAccess` → `useQuery(['dashboardMembers'])`
+  - `budgets` → `useQuery(['presupuestos', budgetPeriod])` — se re-fetcha automáticamente al cambiar período
+  - `customCompanies` → `useQuery(['empresas'])`
+  - `categories` → `useQuery(['categorias'])`
+  - `history` → `useInfiniteQuery(['movimientos'])` con `getNextPageParam` → `nextCursor`; pages aplanadas via `flatMap`
+  - Canal Supabase realtime ahora muta cache via `queryClient.setQueryData` en lugar de `useState` setters
+  - `loadData(append)` = `append ? fetchNextPage() : refetch()`; `loadCollaboration()` = `refetch()`; `loadBudgets(period)` = `setBudgetPeriod(period)`
+  - Interface pública ya NO expone `setHistory`, `setCustomCompanies`, `setBudgets`, `setDashboardAccess`, `nextCursorRef`, `setIsLoadingBudget`
+- **`src/DashboardApp.tsx`** call sites migrados:
+  - Helpers `prependMovements`, `removeMovement`, `patchMovement`, `patchMovementsByCompany`, `appendEmpresa`, `removeEmpresa`, `patchEmpresa` vía `useQueryClient`
+  - `saveBudget` usa `queryClient.setQueryData(['presupuestos', period], ...)`
+  - `deleteItem`, `deleteCompany`, `saveMovementEdit`, `saveCompanyEdit`, `onCreateCompany`, `onAssignCompany` actualizados
+- **Query keys**: `['movimientos']`, `['empresas']`, `['categorias']`, `['presupuestos', period]`, `['dashboardMembers']`
+- **apiStatus**: gated con `enabled: !apiMissing`; derivado de `isError` y `error` de las queries
+- **Tests**: 278 pass / 0 fail / 2 skip — sin cambios en tests (hook es frontend-only)
+- **Build**: ✔ limpio; react-query suma ~45KB gzip al chunk principal
+
 ### Cambios 2026-05-23 (SDD god-components-refactor + audit follow-ups)
 - **SDD `god-components-refactor`** ✔ archived (engram #606, archive obs #601-#606):
   - **Slice A**: `DashboardApp.tsx` 1471→384 LoC. 4 hooks bajo `src/hooks/dashboard/` (useDashboardData, useMovementsFilter, useCompanyAssignment, useComposer) + `src/types/dashboard.ts` + `MovementCards.tsx` + `DashboardModals.tsx` extraídos.
@@ -293,6 +314,7 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
   - Backend Cloud Run `caja-chica-00035-rz4` (post-baja)
 - **Tests**: 278 pass / 0 fail / 2 skip
 - **Bundle delta C7**: motion chunk 127.97 kB / 41.97 kB gzip → 0
+- **W2 split** (2026-05-23): `src/bot/commands/movements.ts` 1041 LoC → `movements.ts` ~380 LoC (helpers + bot.command registrations) + `movements-callbacks.ts` ~380 LoC (bot.callbackQuery + bot.on message/audio handlers). `src/bot/index.ts` unchanged.
 
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
@@ -300,8 +322,7 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 3. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
 4. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1 obsoleto post-archive)
 5. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión: implementar o eliminar
-6. **W2 deuda**: `src/bot/commands/movements.ts` 1041 LoC → split en `movements-commands.ts` + `movements-callbacks.ts`
-7. **C4**: React Query / SWR adoption — diferido (refactor grande, discutir scope antes)
+6. ~~**W2 deuda**: `src/bot/commands/movements.ts` 1041 LoC~~ ✔ completado 2026-05-23: `movements.ts` ~380 LoC (helpers + commands) + `movements-callbacks.ts` ~380 LoC (callbacks + message/audio handlers)
 
 ---
 

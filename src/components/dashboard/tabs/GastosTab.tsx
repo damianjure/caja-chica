@@ -1,7 +1,5 @@
-import type { Categoria, Presupuesto } from '../../../services/api';
-import { BudgetComparisonList, HorizontalBarList, TrendBars } from '../Charts';
+import { HorizontalBarList, TrendBars } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
-import { SectionLoadingState } from '../LoadingStates';
 
 interface CategorySummaryView {
   name: string;
@@ -10,27 +8,11 @@ interface CategorySummaryView {
   movimientos: number;
 }
 
-export interface BudgetFormState {
-  period: string;
-  categoria: string;
-  moneda: 'ARS' | 'USD';
-  monto: string;
-}
-
 export default function GastosTab({
   arsEgreso,
   usdEgreso,
   categoryCount,
-  budgetForm,
-  setBudgetForm,
-  budgetPeriod,
-  setBudgetPeriod,
-  initialBudgetPeriod,
-  categories,
   canWriteData,
-  onSaveBudget,
-  isLoadingBudget,
-  budgetVsActual,
   categorySummaries,
   monthlyChartData,
   expenseCompanyOptions,
@@ -43,16 +25,7 @@ export default function GastosTab({
   arsEgreso: string;
   usdEgreso: string;
   categoryCount: number;
-  budgetForm: BudgetFormState;
-  setBudgetForm: (updater: (prev: BudgetFormState) => BudgetFormState) => void;
-  budgetPeriod: string;
-  setBudgetPeriod: (value: string) => void;
-  initialBudgetPeriod: string;
-  categories: Categoria[];
   canWriteData: boolean;
-  onSaveBudget: () => Promise<void>;
-  isLoadingBudget: boolean;
-  budgetVsActual: Array<Presupuesto & { actual: number; variance: number }>;
   categorySummaries: CategorySummaryView[];
   monthlyChartData: Array<{ label: string; income: number; expense: number; net: number }>;
   expenseCompanyOptions: string[];
@@ -69,70 +42,6 @@ export default function GastosTab({
         <MetricCard label="Gasto total USD" value={usdEgreso} tone="danger" />
         <MetricCard label="Categorías activas" value={String(categoryCount)} />
       </div>
-
-      {false /* presupuesto UI hidden — data/API preserved */ && <SectionCard title="Presupuesto vs real" description="Presupuestos reales por categoría para el período elegido.">
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_120px_120px_auto] gap-3">
-          <input
-            type="month"
-            value={budgetForm.period}
-            onChange={(event) => {
-              const normalized = event.target.value || initialBudgetPeriod;
-              setBudgetForm((prev) => ({ ...prev, period: normalized }));
-              setBudgetPeriod(normalized);
-            }}
-            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
-          />
-          <input
-            list="budget-categories"
-            value={budgetForm.categoria}
-            onChange={(event) => setBudgetForm((prev) => ({ ...prev, categoria: event.target.value }))}
-            placeholder="Categoría"
-            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
-          />
-          <datalist id="budget-categories">
-            {categories.map((category) => (
-              <option key={category.id} value={category.nombre} />
-            ))}
-          </datalist>
-          <select
-            value={budgetForm.moneda}
-            onChange={(event) => setBudgetForm((prev) => ({ ...prev, moneda: event.target.value as 'ARS' | 'USD' }))}
-            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
-          >
-            <option value="ARS">ARS</option>
-            <option value="USD">USD</option>
-          </select>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={budgetForm.monto}
-            onChange={(event) => setBudgetForm((prev) => ({ ...prev, monto: event.target.value }))}
-            placeholder="Monto"
-            className="rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
-          />
-          {canWriteData && (
-            <button onClick={() => void onSaveBudget()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)]">
-              Guardar presupuesto
-            </button>
-          )}
-        </div>
-
-        {isLoadingBudget ? (
-          <SectionLoadingState message={`Cargando presupuestos de ${budgetPeriod}...`} />
-        ) : budgetVsActual.length === 0 ? (
-          <p className="text-sm text-neutral-500">No hay presupuestos cargados para {budgetPeriod}. Empezá agregando uno arriba.</p>
-        ) : (
-          <BudgetComparisonList
-            items={budgetVsActual.map((row) => ({
-              label: `${row.categoria} · ${row.period}`,
-              budget: row.monto,
-              actual: row.actual,
-              variance: row.variance,
-            }))}
-          />
-        )}
-      </SectionCard>}
 
       <SectionCard title="Categorías de gasto" description="Top de categorías reales sobre los movimientos cargados.">
         <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">

@@ -2,14 +2,14 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp } from 'lucide-react';
-import { api, type Movimiento, type Empresa, type Presupuesto, type AppViewer, type PaginatedMovimientos } from './services/api';
+import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos } from './services/api';
 import type { InfiniteData } from '@tanstack/react-query';
 import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
 import {
   formatCurrency, getCategorySummaries, getCompanySummaries, getCurrencyTotals,
-  getRecentExpenses, getRecentIncomes, getCurrentPeriod,
+  getRecentExpenses, getRecentIncomes,
   getIncomeSummaries, getIncomeTagSummaries, getMonthlySummaries,
 } from './dashboard/summary';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
@@ -26,13 +26,7 @@ import { type MovementEditForm, type ConfirmationModalState } from './types/dash
 
 export type { MovementEditForm, ConfirmationModalState };
 
-const PREF_CURRENCY_KEY = 'caja-chica:default-currency';
 const PREF_EMPRESA_KEY = 'caja-chica:default-empresa';
-
-function readDefaultCurrency(): 'ARS' | 'USD' {
-  const v = window.localStorage.getItem(PREF_CURRENCY_KEY);
-  return v === 'USD' ? 'USD' : 'ARS';
-}
 
 function readDefaultEmpresa(): string {
   return window.localStorage.getItem(PREF_EMPRESA_KEY) ?? '';
@@ -83,7 +77,6 @@ function readPersistedTab(): DashboardTab {
 }
 
 export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference }: DashboardAppProps) {
-  const initialBudgetPeriod = getCurrentPeriod();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<DashboardTab>(readPersistedTab);
   const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
@@ -99,8 +92,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const {
     history, customCompanies, categories,
-    budgets, budgetPeriod, setBudgetPeriod, dashboardAccess,
-    isLoading, isLoadingCollaboration, isLoadingBudget, hasMore, loadingMore,
+    dashboardAccess,
+    isLoading, isLoadingCollaboration, hasMore, loadingMore,
     apiStatus, apiErrorMessage, loadData, loadCollaboration,
   } = useDashboardData(viewer);
 
@@ -195,7 +188,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedExpenseCompany, setSelectedExpenseCompany] = useState<string>('all');
-  const [budgetForm, setBudgetForm] = useState({ period: initialBudgetPeriod, categoria: '', moneda: readDefaultCurrency(), monto: '' });
   const [editingMovement, setEditingMovement] = useState<Movimiento | null>(null);
   const [movementEditForm, setMovementEditForm] = useState<MovementEditForm | null>(null);
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
@@ -245,9 +237,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const visibleIncomeCount = filteredHistory.filter((i) => i.tipo === 'ingreso').length;
   const visibleExpenseCount = filteredHistory.filter((i) => i.tipo === 'egreso').length;
 
-  const actualByCategory = history.filter((i) => i.tipo === 'egreso' && i.moneda === 'ARS' && getCurrentPeriod(new Date(i.created_at)) === budgetPeriod).reduce<Record<string, number>>((acc, i) => { const k = (i.categoria || 'Otros').toLowerCase(); acc[k] = (acc[k] || 0) + Number(i.monto || 0); return acc; }, {});
-  const budgetVsActual = budgets.filter((b) => b.moneda === 'ARS' && b.period === budgetPeriod).map((b) => { const actual = actualByCategory[b.categoria.toLowerCase()] || 0; return { ...b, actual, variance: b.monto - actual }; }).sort((a, b) => a.categoria.localeCompare(b.categoria));
-
   const deleteItem = (id: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
@@ -266,18 +255,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (!canWriteData) return;
     setConfirmationInput('');
     setConfirmationModal({ title: `Eliminar categoría ${name}`, description: 'Si todavía está en uso, la API la va a rechazar. Si no, se elimina del dashboard.', confirmLabel: 'Eliminar categoría', tone: 'danger', onConfirm: async () => { await api.deleteCategoria(id); showToast(`Categoría "${name}" eliminada.`, 'warning'); } });
-  };
-
-  const saveBudget = async () => {
-    if (!canWriteData) { showToast('Tenés acceso viewer: no podés editar presupuestos.', 'warning'); return; }
-    const parsedAmount = Number(budgetForm.monto); const categoria = budgetForm.categoria.trim();
-    if (!categoria || !Number.isFinite(parsedAmount)) { showToast('Completá categoría y monto del presupuesto.', 'warning'); return; }
-    try {
-      const saved = await api.savePresupuesto({ period: budgetForm.period, categoria, moneda: budgetForm.moneda, monto: parsedAmount });
-      queryClient.setQueryData<Presupuesto[]>(['presupuestos', saved.period], (p = []) => { const n = p.filter((i) => !(i.period === saved.period && i.categoria.toLowerCase() === saved.categoria.toLowerCase() && i.moneda === saved.moneda)); return [...n, saved].sort((a, b) => a.categoria.localeCompare(b.categoria)); });
-      setBudgetPeriod(saved.period); setBudgetForm((p) => ({ ...p, categoria: '', monto: '', period: saved.period }));
-      showToast(`Presupuesto guardado para ${saved.categoria}.`);
-    } catch { showToast('No se pudo guardar el presupuesto.', 'warning'); }
   };
 
   const copyJson = (item: Movimiento) => {
@@ -397,7 +374,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} topExpenseLabel={topExpenseCategories[0]?.label ?? 'Sin datos'} topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} />}
                 {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} canWriteData={canWriteData} companiesList={companiesList} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} customCompanies={customCompanies} categories={categories} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onDeleteCategory={(c) => deleteCategory(c.id, c.nombre)} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
-                {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} budgetForm={budgetForm} setBudgetForm={(u) => setBudgetForm((p) => u(p))} budgetPeriod={budgetPeriod} setBudgetPeriod={setBudgetPeriod} initialBudgetPeriod={initialBudgetPeriod} categories={categories} canWriteData={canWriteData} onSaveBudget={saveBudget} isLoadingBudget={isLoadingBudget} budgetVsActual={budgetVsActual} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
+                {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} canWriteData={canWriteData} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
                 {activeTab === 'ingresos' && <IngresosTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')} sourceCount={incomeSummaries.length} topIncomeSources={topIncomeSources} incomeTags={topIncomeTags} recentIncomes={recentIncomes} formatCurrency={formatCurrency} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}

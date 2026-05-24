@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   useQuery,
   useInfiniteQuery,
   useQueryClient,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { api, type Movimiento, type Empresa, type Categoria, type Presupuesto, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
+import { api, type Movimiento, type Empresa, type Categoria, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
 import { supabase } from '../../services/supabase';
-import { getCurrentPeriod } from '../../dashboard/summary';
 
 function normalizeMovement(item: Movimiento): Movimiento {
   return { ...item, conciliado: item.conciliado ?? true };
@@ -22,38 +21,25 @@ export interface DashboardDataResult {
   history: Movimiento[];
   customCompanies: Empresa[];
   categories: Categoria[];
-  budgets: Presupuesto[];
-  budgetPeriod: string;
-  setBudgetPeriod: (period: string) => void;
   dashboardAccess: DashboardMembersResponse | null;
   isLoading: boolean;
   isLoadingCollaboration: boolean;
-  isLoadingBudget: boolean;
   hasMore: boolean;
   loadingMore: boolean;
   apiStatus: 'ready' | 'missing_url' | 'load_error';
   apiErrorMessage: string | null;
   loadData: (append?: boolean) => void;
   loadCollaboration: () => void;
-  loadBudgets: (period: string) => void;
 }
 
 export function useDashboardData(viewer: AppViewer): DashboardDataResult {
   const queryClient = useQueryClient();
-  const [budgetPeriod, setBudgetPeriod] = useState(getCurrentPeriod);
   const apiMissing = isApiUrlMissing();
 
   // --- dashboardAccess ---
   const collaborationQuery = useQuery<DashboardMembersResponse>({
     queryKey: ['dashboardMembers'],
     queryFn: api.getDashboardMembers,
-    enabled: !apiMissing,
-  });
-
-  // --- budgets ---
-  const budgetsQuery = useQuery<Presupuesto[]>({
-    queryKey: ['presupuestos', budgetPeriod],
-    queryFn: () => api.getPresupuestos(budgetPeriod),
     enabled: !apiMissing,
   });
 
@@ -149,7 +135,6 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     void queryClient.invalidateQueries({ queryKey: ['empresas'] });
     void queryClient.invalidateQueries({ queryKey: ['categorias'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboardMembers'] });
-    // budgets refetch automatically via budgetPeriod key
   }, [viewer.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- apiStatus derivation ---
@@ -171,7 +156,7 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
         : 'No se pudo cargar la información del dashboard.'
       : null;
 
-  // --- thin wrappers (loadData / loadCollaboration / loadBudgets) ---
+  // --- thin wrappers ---
   const loadData = (append = false) => {
     if (append) {
       void movimientosQuery.fetchNextPage();
@@ -184,10 +169,6 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     void collaborationQuery.refetch();
   };
 
-  const loadBudgets = (period: string) => {
-    setBudgetPeriod(period);
-  };
-
   const isLoading =
     movimientosQuery.isLoading ||
     empresasQuery.isLoading ||
@@ -197,19 +178,14 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     history,
     customCompanies: empresasQuery.data ?? [],
     categories: categoriasQuery.data ?? [],
-    budgets: budgetsQuery.data ?? [],
-    budgetPeriod,
-    setBudgetPeriod: loadBudgets,
     dashboardAccess: collaborationQuery.data ?? null,
     isLoading,
     isLoadingCollaboration: collaborationQuery.isLoading,
-    isLoadingBudget: budgetsQuery.isLoading || budgetsQuery.isFetching,
     hasMore: movimientosQuery.hasNextPage ?? false,
     loadingMore: movimientosQuery.isFetchingNextPage,
     apiStatus,
     apiErrorMessage,
     loadData,
     loadCollaboration,
-    loadBudgets,
   };
 }

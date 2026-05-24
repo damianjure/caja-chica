@@ -316,13 +316,20 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - **Bundle delta C7**: motion chunk 127.97 kB / 41.97 kB gzip → 0
 - **W2 split** (2026-05-23): `src/bot/commands/movements.ts` 1041 LoC → `movements.ts` ~380 LoC (helpers + bot.command registrations) + `movements-callbacks.ts` ~380 LoC (bot.callbackQuery + bot.on message/audio handlers). `src/bot/index.ts` unchanged.
 
+### Cambios 2026-05-24 (dead code cleanup)
+- **CollaborationPanel.tsx**: ya borrado previamente (verificado — no existe). Item obsoleto.
+- **Presupuesto UI eliminada**: removida de `GastosTab.tsx`. Removidas también:
+  - `BudgetFormState`, `budgetForm`, `setBudgetForm`, `saveBudget`, `budgetVsActual`, `actualByCategory`, `initialBudgetPeriod` en `DashboardApp.tsx`
+  - `budgets`, `budgetPeriod`, `setBudgetPeriod`, `isLoadingBudget`, `loadBudgets`, `Presupuesto` query en `useDashboardData.ts`
+  - `BudgetComparisonList` componente eliminado de `Charts.tsx`
+  - `readDefaultCurrency`, `PREF_CURRENCY_KEY` cleanup (siguen en `PreferenciasSection.tsx`)
+  - Backend endpoints `/api/presupuestos` y tests preservados (data/API intactos)
+- Tests 278 pass / 0 fail. tsc + build clean. Deploy frontend.
+
 ### Pendiente
 1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere sesión real)
 3. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
-4. Decidir borrar `CollaborationPanel.tsx` dead code (verify W1 obsoleto post-archive)
-5. Presupuesto UI oculta con `{false && ...}` en `GastosTab.tsx` — decisión: implementar o eliminar
-6. ~~**W2 deuda**: `src/bot/commands/movements.ts` 1041 LoC~~ ✔ completado 2026-05-23: `movements.ts` ~380 LoC (helpers + commands) + `movements-callbacks.ts` ~380 LoC (callbacks + message/audio handlers)
 
 ---
 

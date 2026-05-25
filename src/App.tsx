@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 
 import DashboardApp from "./DashboardApp";
@@ -35,6 +36,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(resolvePreference);
   const [theme, setTheme] = useState<ThemeMode>(() => preferenceToTheme(resolvePreference()));
+  const queryClient = useQueryClient();
 
   const inviteToken = useMemo(
     () => (typeof window === "undefined" ? null : getInviteTokenFromUrl(new URL(window.location.href))),
@@ -152,7 +154,9 @@ export default function App() {
   const handleSignOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
-    // Clear per-user UI state so the next user does not inherit it.
+    // Clear per-user UI state and cached financial data so the next user
+    // does not inherit it (React Query stays mounted above auth).
+    queryClient.clear();
     try {
       window.localStorage.removeItem('caja-chica:activeTab');
     } catch {

@@ -7,6 +7,13 @@ export interface MovementEditForm {
   descripcion: string;
 }
 
+export interface ConfirmationPreview {
+  title: string;
+  meta?: string;
+  amount?: string;
+  arrow?: 'up' | 'down';
+}
+
 export interface ConfirmationModalState {
   title: string;
   description: string;
@@ -14,5 +21,6 @@ export interface ConfirmationModalState {
   tone?: 'danger' | 'neutral';
   requireText?: string;
   details?: string;
+  preview?: ConfirmationPreview;
   onConfirm: () => Promise<void> | void;
 }

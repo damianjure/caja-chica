@@ -240,21 +240,29 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const deleteItem = (id: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({ title: 'Eliminar movimiento', description: 'Vas a borrar este movimiento del historial. La acción queda auditada y no se puede deshacer desde la UI.', confirmLabel: 'Eliminar movimiento', tone: 'danger', onConfirm: async () => { await api.deleteMovimiento(id); removeMovement(id); showToast('Movimiento eliminado.', 'warning'); } });
+    const mov = history.find((m) => m.id === id);
+    const preview = mov ? {
+      title: mov.descripcion || 'Sin descripción',
+      meta: `${mov.empresa_nombre || 'Personal'} · ${mov.categoria || 'Sin categoría'} · ${new Date(mov.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`,
+      amount: mov.monto != null ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: mov.moneda || 'ARS', maximumFractionDigits: 0 }).format(mov.monto) : undefined,
+      arrow: (mov.tipo === 'ingreso' ? 'up' : 'down') as 'up' | 'down',
+    } : undefined;
+    setConfirmationModal({ title: 'Eliminar movimiento', description: '¿Seguro? Se quita del historial visible. Queda en el log de auditoría y no se puede deshacer desde acá.', confirmLabel: 'Sí, eliminar', tone: 'danger', preview, onConfirm: async () => { await api.deleteMovimiento(id); removeMovement(id); showToast('Movimiento eliminado.', 'warning'); } });
   };
   const deleteCompany = (id: string, name: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
     const movCount = history.filter((m) => m.empresa_nombre === name).length;
     const description = movCount > 0
-      ? `Esta empresa tiene ${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}. Los movimientos quedan en el historial pero la empresa se desactiva. Soft delete + backup + log de auditoría.`
-      : 'Esta empresa no tiene movimientos asociados. Soft delete + log de auditoría.';
-    setConfirmationModal({ title: `Desactivar ${name}`, description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar empresa', tone: 'danger', requireText: 'ELIMINAR', onConfirm: async () => { await api.deleteEmpresa(id); removeEmpresa(id); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
+      ? `Tiene ${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}. Los movimientos quedan en el historial; la empresa se desactiva con soft delete + backup + log.`
+      : 'Sin movimientos asociados. Soft delete + log de auditoría.';
+    const preview = { title: name, meta: `${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}` };
+    setConfirmationModal({ title: 'Desactivar empresa', description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar', tone: 'danger', requireText: 'ELIMINAR', preview, onConfirm: async () => { await api.deleteEmpresa(id); removeEmpresa(id); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
   };
   const deleteCategory = (id: string, name: string) => {
     if (!canWriteData) return;
     setConfirmationInput('');
-    setConfirmationModal({ title: `Eliminar categoría ${name}`, description: 'Si todavía está en uso, la API la va a rechazar. Si no, se elimina del dashboard.', confirmLabel: 'Eliminar categoría', tone: 'danger', onConfirm: async () => { await api.deleteCategoria(id); showToast(`Categoría "${name}" eliminada.`, 'warning'); } });
+    setConfirmationModal({ title: 'Eliminar categoría', description: 'Si todavía está en uso, la API la va a rechazar. Si no, se elimina del dashboard.', confirmLabel: 'Sí, eliminar', tone: 'danger', preview: { title: name }, onConfirm: async () => { await api.deleteCategoria(id); showToast(`Categoría "${name}" eliminada.`, 'warning'); } });
   };
 
   const copyJson = (item: Movimiento) => {
@@ -291,7 +299,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   };
   const runConfirmation = async () => {
     if (!confirmationModal) return;
-    if (confirmationModal.requireText && confirmationInput !== confirmationModal.requireText) { showToast(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning'); return; }
+    if (confirmationModal.requireText && confirmationInput.trim().toUpperCase() !== confirmationModal.requireText.toUpperCase()) { showToast(`Escribí ${confirmationModal.requireText} para confirmar.`, 'warning'); return; }
     setIsConfirmingAction(true);
     try { await confirmationModal.onConfirm(); setConfirmationModal(null); setConfirmationInput(''); }
     catch { showToast('No se pudo completar la acción.', 'warning'); }

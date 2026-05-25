@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento, type Empresa } from '../../services/api';
 import { ModalShell } from '../ui/ModalShell';
+import { ConfirmDestructive } from '../ui/ConfirmDestructive';
 import { type MovementEditForm, type ConfirmationModalState } from '../../types/dashboard';
 import { type PendingCompanyItem } from '../../hooks/dashboard/useCompanyAssignment';
 
@@ -107,26 +108,15 @@ export function DashboardModals({
       )}
 
       {confirmationModal && (
-          <ModalShell title={confirmationModal.title} onClose={onCloseConfirmation}>
-            <div className="space-y-4">
-              <div className={`rounded-2xl border px-4 py-4 text-sm ${confirmationModal.tone === 'danger' ? 'border-red-200 bg-red-50 text-red-800' : 'border-neutral-200 bg-neutral-50 text-neutral-700'}`}>
-                <p>{confirmationModal.description}</p>
-                {confirmationModal.details ? <p className="mt-2 font-medium">{confirmationModal.details}</p> : null}
-              </div>
-              {confirmationModal.requireText ? (
-                <input value={confirmationInput} onChange={(e) => setConfirmationInput(e.target.value)} className="w-full rounded-md border border-neutral-200 px-4 py-3" placeholder={`Escribí ${confirmationModal.requireText}`} />
-              ) : null}
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={onCloseConfirmation} disabled={isConfirmingAction} className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 hover:border-[var(--app-text-2)] active:scale-[0.97] transition duration-150">Cancelar</button>
-              <button onClick={onRunConfirmation} disabled={isConfirmingAction}
-                className={`rounded-md border px-5 py-3 font-medium text-white active:scale-[0.97] transition duration-150 ${confirmationModal.tone === 'danger' ? 'bg-red-600 border-red-600 hover:border-red-300' : 'bg-neutral-900 border-neutral-900 hover:border-[var(--app-text-2)]'} disabled:opacity-60`}
-              >
-                {isConfirmingAction ? 'Confirmando...' : confirmationModal.confirmLabel}
-              </button>
-            </div>
-          </ModalShell>
-        )}
+        <ConfirmDestructive
+          state={confirmationModal}
+          inputValue={confirmationInput}
+          setInputValue={setConfirmationInput}
+          isWorking={isConfirmingAction}
+          onCancel={onCloseConfirmation}
+          onConfirm={onRunConfirmation}
+        />
+      )}
     </>
   );
 }

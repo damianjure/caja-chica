@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ModalShellProps {
@@ -89,9 +90,12 @@ export function ModalShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+  // Render into document.body via portal so that CSS `transform` on any
+  // ancestor (e.g. anim-fade-in on tab panels) cannot create a containing
+  // block that traps `position: fixed` and clips the backdrop.
+  return createPortal(
     <div
-      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[4px]"
+      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[4px]"
       style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 70%, transparent)" }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
@@ -126,6 +130,7 @@ export function ModalShell({
         </header>
         <div className="overflow-y-auto px-6 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

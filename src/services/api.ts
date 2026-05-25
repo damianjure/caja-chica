@@ -83,6 +83,49 @@ export interface AppUser {
   created_at: string;
 }
 
+export interface AdminDashboardTreeOwner {
+  user_id: string;
+  email: string | null;
+  app_role: AppRole | null;
+  app_status: AppUserStatus | null;
+  joined_at: string;
+}
+
+export interface AdminDashboardTreeMember {
+  user_id: string;
+  email: string | null;
+  app_role: AppRole | null;
+  app_status: AppUserStatus | null;
+  dashboard_role: "editor" | "viewer";
+  membership_status: string;
+  joined_at: string;
+}
+
+export interface AdminDashboardTreePendingInvitation {
+  id: string;
+  email: string;
+  role: "editor" | "viewer";
+  status: "pending";
+  expires_at: string | null;
+  created_at: string;
+  invite_url: string;
+}
+
+export interface AdminDashboardTreeNode {
+  dashboard_id: string;
+  dashboard_name: string;
+  created_at: string;
+  owner: AdminDashboardTreeOwner | null;
+  members: AdminDashboardTreeMember[];
+  pending_invitations: AdminDashboardTreePendingInvitation[];
+}
+
+export interface AdminDashboardsTree {
+  dashboards: AdminDashboardTreeNode[];
+  orphan_users: AppUser[];
+  pending_app_invitations: AppInvitation[];
+}
+
 export interface AdminUserDetail {
   user: AppUser & {
     display_name?: string | null;
@@ -481,6 +524,10 @@ export const api = {
 
   async getAdminUsers(): Promise<AppUser[]> {
     return fetchApi("/api/admin/users");
+  },
+
+  async getAdminDashboardsTree(): Promise<AdminDashboardsTree> {
+    return fetchApi("/api/admin/dashboards-tree");
   },
 
   async getAdminInvitations(): Promise<AppInvitation[]> {

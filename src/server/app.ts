@@ -1765,6 +1765,99 @@ export function createApp({
     }
   });
 
+  // Returns dashboards-as-tree: each dashboard with its owner + members + pending invites,
+  // plus orphan users (no dashboard membership) and pending app-level invitations.
+  // Replaces the flat user list in the Super Admin panel.
+  app.get("/api/admin/dashboards-tree", requireSession, requireAdmin, async (_req, res) => {
+    try {
+      const [dashboardsRes, membersRes, dashInvitesRes, usersRes, appInvitesRes] = await Promise.all([
+        supabase.from("dashboards").select("id, name, personal_for_user_id, created_at").order("created_at", { ascending: true }),
+        supabase.from("dashboard_members").select("id, dashboard_id, user_id, role, status, created_at, app_users(email, role, status)").order("created_at", { ascending: true }),
+        supabase.from("dashboard_invitations").select("id, dashboard_id, email, role, status, expires_at, created_at, invite_token").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("app_users").select("user_id, email, role, status, created_at"),
+        supabase.from("user_invitations").select("id, email, role, status, invite_token, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),
+      ]);
+
+      if (dashboardsRes.error) throw dashboardsRes.error;
+      if (membersRes.error) throw membersRes.error;
+      if (dashInvitesRes.error) throw dashInvitesRes.error;
+      if (usersRes.error) throw usersRes.error;
+      if (appInvitesRes.error) throw appInvitesRes.error;
+
+      const dashboards = dashboardsRes.data ?? [];
+      const members = (membersRes.data ?? []) as any[];
+      const dashInvites = dashInvitesRes.data ?? [];
+      const users = usersRes.data ?? [];
+      const appInvites = (appInvitesRes.data ?? []).map((inv: any) => ({
+        ...inv,
+        invite_url: `${publicAppUrl || ""}/?invite=${inv.invite_token}`,
+      }));
+
+      const membersByDash = new Map<string, any[]>();
+      const userHasMembership = new Set<string>();
+      for (const m of members) {
+        userHasMembership.add(m.user_id);
+        const arr = membersByDash.get(m.dashboard_id) ?? [];
+        arr.push(m);
+        membersByDash.set(m.dashboard_id, arr);
+      }
+
+      const invitesByDash = new Map<string, any[]>();
+      for (const inv of dashInvites) {
+        const arr = invitesByDash.get(inv.dashboard_id) ?? [];
+        arr.push({
+          ...inv,
+          invite_url: `${publicAppUrl || ""}/?invite=${inv.invite_token}`,
+        });
+        invitesByDash.set(inv.dashboard_id, arr);
+      }
+
+      const tree = dashboards.map((d: any) => {
+        const dashMembers = membersByDash.get(d.id) ?? [];
+        const ownerMember = dashMembers.find((m: any) => m.role === "owner");
+        const nonOwnerMembers = dashMembers
+          .filter((m: any) => m.role !== "owner")
+          .map((m: any) => ({
+            user_id: m.user_id,
+            email: m.app_users?.email ?? null,
+            app_role: m.app_users?.role ?? null,
+            app_status: m.app_users?.status ?? null,
+            dashboard_role: m.role,
+            membership_status: m.status,
+            joined_at: m.created_at,
+          }));
+
+        return {
+          dashboard_id: d.id,
+          dashboard_name: d.name,
+          created_at: d.created_at,
+          owner: ownerMember
+            ? {
+                user_id: ownerMember.user_id,
+                email: ownerMember.app_users?.email ?? null,
+                app_role: ownerMember.app_users?.role ?? null,
+                app_status: ownerMember.app_users?.status ?? null,
+                joined_at: ownerMember.created_at,
+              }
+            : null,
+          members: nonOwnerMembers,
+          pending_invitations: invitesByDash.get(d.id) ?? [],
+        };
+      });
+
+      const orphanUsers = users.filter((u: any) => !userHasMembership.has(u.user_id));
+
+      res.json({
+        dashboards: tree,
+        orphan_users: orphanUsers,
+        pending_app_invitations: appInvites,
+      });
+    } catch (err) {
+      console.error("[admin] dashboards-tree error:", err);
+      res.status(500).json({ error: "failed_to_fetch" });
+    }
+  });
+
   app.get("/api/admin/invitations", requireSession, requireAdmin, async (_req, res) => {
     try {
       const { data, error } = await supabase

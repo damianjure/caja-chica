@@ -16,6 +16,8 @@ import { toast } from "sonner";
 
 import {
   api,
+  AdminDashboardsTree,
+  AdminDashboardTreeNode,
   AdminUserDetail,
   AppInvitation,
   AppRole,
@@ -68,6 +70,7 @@ const statusBadge: Record<
 
 export function AdminPanel({ viewer }: AdminPanelProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [tree, setTree] = useState<AdminDashboardsTree | null>(null);
   const [invitations, setInvitations] = useState<AppInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -84,11 +87,13 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [loadedUsers, loadedInvitations] = await Promise.all([
+      const [loadedUsers, loadedTree, loadedInvitations] = await Promise.all([
         api.getAdminUsers(),
+        api.getAdminDashboardsTree(),
         api.getAdminInvitations(),
       ]);
       setUsers(loadedUsers);
+      setTree(loadedTree);
       setInvitations(loadedInvitations);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudieron cargar los datos de admin.");
@@ -370,15 +375,10 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <UsersList
-            users={users}
+          <DashboardTreeView
+            tree={tree}
             viewerId={viewer.id}
-            isSuperadmin={isSuperadmin}
-            actingKey={actingKey}
-            onSelect={setSelectedUserId}
-            onQuickStatus={(userId, email, newStatus) =>
-              requestStatusChange(newStatus, userId, email)
-            }
+            onSelectUser={setSelectedUserId}
           />
 
           <div className="space-y-3">
@@ -463,6 +463,178 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         />
       )}
     </section>
+  );
+}
+
+interface DashboardTreeViewProps {
+  tree: AdminDashboardsTree | null;
+  viewerId: string;
+  onSelectUser: (userId: string) => void;
+}
+
+function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewProps) {
+  if (!tree) {
+    return (
+      <div className="py-8 flex items-center justify-center text-neutral-500">
+        <Loader2 className="w-5 h-5 animate-spin" />
+      </div>
+    );
+  }
+
+  const { dashboards, orphan_users, pending_app_invitations } = tree;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-600">
+          Dashboards y miembros
+        </h3>
+        <span className="text-xs text-neutral-500">{dashboards.length} dashboards</span>
+      </div>
+
+      <ul className="space-y-3">
+        {dashboards.map((node) => (
+          <DashboardTreeNode
+            key={node.dashboard_id}
+            node={node}
+            viewerId={viewerId}
+            onSelectUser={onSelectUser}
+          />
+        ))}
+      </ul>
+
+      {orphan_users.length > 0 && (
+        <details className="border border-dashed border-neutral-300 rounded-xl px-4 py-3 bg-neutral-50">
+          <summary className="cursor-pointer text-sm font-medium text-neutral-700">
+            Cuentas sin dashboard ({orphan_users.length})
+          </summary>
+          <ul className="mt-3 space-y-1.5">
+            {orphan_users.map((u) => (
+              <li key={u.user_id} className="text-sm text-neutral-700 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSelectUser(u.user_id)}
+                  className="text-left hover:underline truncate"
+                >
+                  {u.email}
+                </button>
+                <span className="text-xs text-neutral-500">{APP_ROLE_LABELS[u.role]}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {pending_app_invitations.length > 0 && (
+        <details className="border border-dashed border-amber-300 rounded-xl px-4 py-3 bg-amber-50">
+          <summary className="cursor-pointer text-sm font-medium text-neutral-700">
+            Invitaciones del sistema pendientes ({pending_app_invitations.length})
+          </summary>
+          <ul className="mt-3 space-y-1.5">
+            {pending_app_invitations.map((inv) => (
+              <li key={inv.id} className="text-sm text-neutral-700 flex items-center justify-between gap-2">
+                <span className="truncate">{inv.email}</span>
+                <span className="text-xs text-neutral-500">{APP_ROLE_LABELS[inv.role]}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+interface DashboardTreeNodeProps {
+  node: AdminDashboardTreeNode;
+  viewerId: string;
+  onSelectUser: (userId: string) => void;
+  key?: string;
+}
+
+function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodeProps) {
+  const isViewerOwner = node.owner?.user_id === viewerId;
+  const totalCount = node.members.length + node.pending_invitations.length;
+
+  return (
+    <li className="border border-neutral-300 rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50/50">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          {node.owner ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onSelectUser(node.owner!.user_id)}
+                className="text-sm font-semibold text-neutral-900 truncate hover:underline"
+                title="Ver detalle"
+              >
+                {node.owner.email ?? "(sin email)"}
+              </button>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-900 text-white">
+                Dueño
+              </span>
+              {node.owner.app_role && (
+                <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+                  {APP_ROLE_LABELS[node.owner.app_role]}
+                </span>
+              )}
+              {isViewerOwner && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                  Vos
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-sm text-neutral-500 italic">Sin dueño</span>
+          )}
+        </div>
+        <div className="mt-1 text-xs text-neutral-500 truncate">
+          {node.dashboard_name} · {totalCount} {totalCount === 1 ? "miembro" : "miembros"}
+        </div>
+      </div>
+
+      {totalCount === 0 ? (
+        <div className="px-4 py-3 text-xs text-neutral-500 italic">Sin miembros adicionales.</div>
+      ) : (
+        <ul className="divide-y divide-neutral-100">
+          {node.members.map((m) => (
+            <li key={`m-${m.user_id}`} className="px-4 py-2 flex items-center gap-2 min-w-0">
+              <span className="text-neutral-400 text-xs">└─</span>
+              <button
+                type="button"
+                onClick={() => onSelectUser(m.user_id)}
+                className="text-sm text-neutral-900 truncate hover:underline flex-1 text-left"
+              >
+                {m.email ?? "(sin email)"}
+              </button>
+              <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+                {m.dashboard_role === "editor" ? "Puede editar" : "Puede ver"}
+              </span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full border ${
+                  m.membership_status === "active"
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-neutral-100 text-neutral-600 border-neutral-300"
+                }`}
+              >
+                {m.membership_status === "active" ? "Activo" : m.membership_status}
+              </span>
+            </li>
+          ))}
+          {node.pending_invitations.map((inv) => (
+            <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0">
+              <span className="text-neutral-400 text-xs">└─</span>
+              <span className="text-sm text-neutral-700 truncate flex-1 italic">{inv.email}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+                {inv.role === "editor" ? "Puede editar" : "Puede ver"}
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                Invitado
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 

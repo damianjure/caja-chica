@@ -323,9 +323,9 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           <Shield className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Operador · Usuarios del sistema</h2>
+          <h2 className="text-xl font-bold">Super Admin · Cuentas y dashboards</h2>
           <p className="text-sm text-neutral-600">
-            Todas las cuentas registradas e invitaciones activas. Solo vos ves esta tabla.
+            Cada invitación crea una cuenta independiente con su propio dashboard. Solo vos ves esta tabla.
           </p>
         </div>
       </div>

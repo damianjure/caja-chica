@@ -1776,7 +1776,7 @@ export function createApp({
     try {
       const [dashboardsRes, membersRes, dashInvitesRes, usersRes, appInvitesRes] = await Promise.all([
         supabase.from("dashboards").select("id, name, personal_for_user_id, created_at").order("created_at", { ascending: true }),
-        supabase.from("dashboard_members").select("id, dashboard_id, user_id, role, status, created_at, app_users(email, role, status)").order("created_at", { ascending: true }),
+        supabase.from("dashboard_members").select("id, dashboard_id, user_id, role, status, created_at, app_users!dashboard_members_user_id_fkey(email, role, status)").order("created_at", { ascending: true }),
         supabase.from("dashboard_invitations").select("id, dashboard_id, email, role, status, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("app_users").select("user_id, email, role, status, created_at"),
         supabase.from("user_invitations").select("id, email, role, status, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),

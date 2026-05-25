@@ -340,10 +340,34 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
   - `tests/telegramCompanyResolution.test.ts`: +3 tests (formatted CUIT priority, 11-digit normalization, fuzzy fallback).
   - Tests 281 pass / 0 fail / 2 skip (de 278 anteriores).
   - Commit `9dbf3e1`.
-- **Label rename Operador→Super Admin, Usuario→Miembro** (commit `50b20cc`):
-  - `src/services/labels.ts`: `APP_ROLE_LABELS.superadmin` = "Super Admin" (antes "Operador"), `.member` = "Miembro" (antes "Usuario"). DB enums intactos.
-  - Razón: alineación con Slack/Notion/Stripe/Vercel/GitHub. "Operador" no se usa en SaaS moderno; "Usuario" es ambiguo (todos los logueados son usuarios).
-  - `AdminPanel.tsx`: 2 hardcoded label maps reemplazados por `APP_ROLE_LABELS` lookups.
+- **Label rename: vocabulario UI alineado con SaaS estándar** (commit `50b20cc`):
+  - **DB enums intactos** (`app_role` = `superadmin`/`admin`/`member`; `dashboard_member_role` = `owner`/`editor`/`viewer`). Cambio solo en labels visibles al usuario.
+  - **Mapping completo**:
+
+    | Tier | DB enum | Label anterior | Label nuevo | Industria |
+    |---|---|---|---|---|
+    | identity (sistema) | `superadmin` | Operador | **Super Admin** | Slack/Google Workspace |
+    | identity (sistema) | `admin` | Admin | **Admin** *(sin cambio)* | universal |
+    | identity (sistema) | `member` | Usuario | **Miembro** | Slack/Notion/Linear/GitHub |
+    | resource (dashboard) | `owner` | Dueño | **Dueño** *(sin cambio)* | Notion/Stripe |
+    | resource (dashboard) | `editor` | Puede editar | **Puede editar** *(sin cambio)* | Notion verb-phrase |
+    | resource (dashboard) | `viewer` | Puede ver | **Puede ver** *(sin cambio)* | Notion verb-phrase |
+
+  - **Razones del rename**:
+    - "Operador" no se usa en SaaS moderno (Slack/Notion/Stripe/Vercel/GitHub usan "Owner" o "Super Admin"). Connotación de "telefonista" o "admin técnico", no de "el que manda".
+    - "Usuario" es ambiguo: todos los logueados son "usuarios" en sentido literal. El rol busca decir "sin permisos elevados" → "Miembro" es más preciso y alinea con industria.
+    - **Dueño / Puede editar / Puede ver mantenidos**: ya estaban alineados con Notion-style verb-phrases ("Can edit", "Can view"). Funcionan bien en español.
+  - **Files tocados**:
+    - `src/services/labels.ts`: `APP_ROLE_LABELS.superadmin` / `.member` + comentario del modelo actualizado.
+    - `src/components/AdminPanel.tsx`: 2 hardcoded label maps (línea 343 select options, línea 703 role pill map) reemplazados por `APP_ROLE_LABELS` lookups.
+  - **Impacto en DB**: cero. `app_role` enum sigue siendo `(superadmin, admin, member)`.
+  - **Impacto en API**: cero. Endpoints y JSON responses siguen usando los strings DB (`superadmin`, `admin`, `member`). Solo cambia lo que UI muestra al usuario final.
+  - **Impacto en lógica de permisos**: cero. `can(member, action)` y RLS policies usan enums DB, no labels.
+  - **Lugares donde el usuario ve el cambio**:
+    - `AdminPanel` (superadmin only): dropdown de roles al invitar, role pills en lista de usuarios.
+    - `PersonasPanel` (en ConfiguracionTab): tabla de personas y form de invitación (consume `APP_ROLE_LABELS`).
+    - Badge tooltips: `badgeTooltip()` helper sigue retornando hints en español de `APP_ROLE_HINTS`.
+    - Email templates: NO afectados (usan rol como string técnico).
 - **Inter Variable self-host** (commit `6036cb1`):
   - `public/fonts/InterVariable.woff2` (344K) bajado de rsms.me/inter
   - `src/index.css`: `@font-face` declaration con `format("woff2-variations")`

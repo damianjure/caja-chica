@@ -1,19 +1,21 @@
 // Centralized UI vocabulary for Caja Chica.
 // Keeps DB enums (app_role, dashboard_member_role) intact — only changes labels.
 //
-// Naming model (Notion + Slack convergence, 2026-05-21):
-//   - identity nouns at the system level: Operador / Admin / Usuario
+// Naming model (Slack/Notion/Stripe alignment, revised 2026-05-25):
+//   - identity nouns at the system level: Super Admin / Admin / Miembro
 //   - capability verb-phrases at the resource level: Dueño / Puede editar / Puede ver
 //
-// See /tmp/vocab-full-mockup.html for the full visual reference.
+// Previous labels (Operador / Usuario) replaced because:
+//   - "Operador" is non-standard in modern SaaS; industry uses "Owner" or "Super Admin"
+//   - "Usuario" is ambiguous (everyone logged in is a user); industry uses "Member"
 
 export type AppRole = "superadmin" | "admin" | "member";
 export type DashboardRole = "owner" | "editor" | "viewer";
 
 export const APP_ROLE_LABELS: Record<AppRole, string> = {
-  superadmin: "Operador",
+  superadmin: "Super Admin",
   admin: "Admin",
-  member: "Usuario",
+  member: "Miembro",
 };
 
 export const DASHBOARD_ROLE_LABELS: Record<DashboardRole, string> = {

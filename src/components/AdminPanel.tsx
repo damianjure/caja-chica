@@ -340,9 +340,9 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           aria-label="Rol de la invitación"
           className="rounded-2xl border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
         >
-          <option value="member">Usuario</option>
-          <option value="admin">Admin</option>
-          {isSuperadmin && <option value="superadmin">Operador</option>}
+          <option value="member">{APP_ROLE_LABELS.member}</option>
+          <option value="admin">{APP_ROLE_LABELS.admin}</option>
+          {isSuperadmin && <option value="superadmin">{APP_ROLE_LABELS.superadmin}</option>}
         </select>
         <button
           type="button"
@@ -700,7 +700,7 @@ function UserDetailModal({
                     inactive: "bg-white border-red-300 text-red-800 hover:border-red-500",
                   },
                 }[r];
-                const roleLabel = { member: "Usuario", admin: "Admin", superadmin: "Operador" }[r];
+                const roleLabel = APP_ROLE_LABELS[r];
                 return (
                   <button
                     key={r}

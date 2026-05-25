@@ -108,7 +108,17 @@ export interface AdminDashboardTreePendingInvitation {
   status: "pending";
   expires_at: string | null;
   created_at: string;
-  invite_url: string;
+  // SECURITY: invite_token / invite_url intentionally excluded from this shape.
+  // Bearer tokens are not enumerable via /api/admin/dashboards-tree.
+}
+
+export interface AdminDashboardTreeAppInvitation {
+  id: string;
+  email: string;
+  role: AppRole;
+  status: "pending";
+  expires_at: string | null;
+  created_at: string;
 }
 
 export interface AdminDashboardTreeNode {
@@ -123,7 +133,7 @@ export interface AdminDashboardTreeNode {
 export interface AdminDashboardsTree {
   dashboards: AdminDashboardTreeNode[];
   orphan_users: AppUser[];
-  pending_app_invitations: AppInvitation[];
+  pending_app_invitations: AdminDashboardTreeAppInvitation[];
 }
 
 export interface AdminUserDetail {

@@ -1768,14 +1768,18 @@ export function createApp({
   // Returns dashboards-as-tree: each dashboard with its owner + members + pending invites,
   // plus orphan users (no dashboard membership) and pending app-level invitations.
   // Replaces the flat user list in the Super Admin panel.
-  app.get("/api/admin/dashboards-tree", requireSession, requireAdmin, async (_req, res) => {
+  //
+  // SECURITY: superadmin-only because the response cross-cuts every tenant dashboard.
+  // Invite tokens are NOT included in the response (bearer links must not be enumerable
+  // even by superadmin) — UI uses dedicated revoke/resend endpoints if needed.
+  app.get("/api/admin/dashboards-tree", requireSession, requireSuperadmin, async (_req, res) => {
     try {
       const [dashboardsRes, membersRes, dashInvitesRes, usersRes, appInvitesRes] = await Promise.all([
         supabase.from("dashboards").select("id, name, personal_for_user_id, created_at").order("created_at", { ascending: true }),
         supabase.from("dashboard_members").select("id, dashboard_id, user_id, role, status, created_at, app_users(email, role, status)").order("created_at", { ascending: true }),
-        supabase.from("dashboard_invitations").select("id, dashboard_id, email, role, status, expires_at, created_at, invite_token").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("dashboard_invitations").select("id, dashboard_id, email, role, status, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),
         supabase.from("app_users").select("user_id, email, role, status, created_at"),
-        supabase.from("user_invitations").select("id, email, role, status, invite_token, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),
+        supabase.from("user_invitations").select("id, email, role, status, expires_at, created_at").eq("status", "pending").order("created_at", { ascending: false }),
       ]);
 
       if (dashboardsRes.error) throw dashboardsRes.error;
@@ -1788,10 +1792,10 @@ export function createApp({
       const members = (membersRes.data ?? []) as any[];
       const dashInvites = dashInvitesRes.data ?? [];
       const users = usersRes.data ?? [];
-      const appInvites = (appInvitesRes.data ?? []).map((inv: any) => ({
-        ...inv,
-        invite_url: `${publicAppUrl || ""}/?invite=${inv.invite_token}`,
-      }));
+      // SECURITY: do NOT include invite_token or invite_url in the tree response.
+      // Tokens are bearer secrets — superadmin uses dedicated /resend or /revoke
+      // endpoints to act on invites, never enumerates raw URLs.
+      const appInvites = appInvitesRes.data ?? [];
 
       const membersByDash = new Map<string, any[]>();
       const userHasMembership = new Set<string>();
@@ -1805,10 +1809,7 @@ export function createApp({
       const invitesByDash = new Map<string, any[]>();
       for (const inv of dashInvites) {
         const arr = invitesByDash.get(inv.dashboard_id) ?? [];
-        arr.push({
-          ...inv,
-          invite_url: `${publicAppUrl || ""}/?invite=${inv.invite_token}`,
-        });
+        arr.push(inv);
         invitesByDash.set(inv.dashboard_id, arr);
       }
 

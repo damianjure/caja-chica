@@ -2253,3 +2253,102 @@ test("editor recibe 403 al intentar cambiar permisos de un miembro", async () =>
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
 });
+
+test("admin (non-superadmin) recibe 403 en /api/admin/dashboards-tree", async () => {
+  await withServer(
+    {
+      resolveSession: async () => adminSession,
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/admin/dashboards-tree`, {
+        headers: { Authorization: "Bearer valid-token" },
+      });
+      assert.equal(res.status, 403);
+      assert.deepEqual(await res.json(), { error: "forbidden" });
+    },
+  );
+});
+
+test("/api/admin/dashboards-tree no expone invite_token ni invite_url", async () => {
+  const superadminSession: AppSession = {
+    userId: "super-1",
+    email: "super@example.com",
+    role: "superadmin",
+    status: "active",
+  };
+
+  const stubResponses: Record<string, unknown> = {
+    dashboards: [
+      { id: "dash-1", name: "Mi dashboard", personal_for_user_id: "user-1", created_at: "2026-01-01" },
+    ],
+    dashboard_members: [
+      {
+        id: "m-1",
+        dashboard_id: "dash-1",
+        user_id: "user-1",
+        role: "owner",
+        status: "active",
+        created_at: "2026-01-01",
+        app_users: { email: "owner@example.com", role: "member", status: "active" },
+      },
+    ],
+    dashboard_invitations: [
+      {
+        id: "inv-1",
+        dashboard_id: "dash-1",
+        email: "guest@example.com",
+        role: "editor",
+        status: "pending",
+        expires_at: null,
+        created_at: "2026-05-01",
+      },
+    ],
+    app_users: [],
+    user_invitations: [
+      {
+        id: "uinv-1",
+        email: "newone@example.com",
+        role: "member",
+        status: "pending",
+        expires_at: null,
+        created_at: "2026-05-01",
+      },
+    ],
+  };
+
+  const supabase = {
+    from(table: string) {
+      const payload = stubResponses[table] ?? [];
+      const chain: any = {
+        select: () => chain,
+        eq: () => chain,
+        order: () => Promise.resolve({ data: payload, error: null }),
+      };
+      return chain;
+    },
+    rpc: async () => ({ data: null, error: null }),
+    auth: { admin: {} },
+  } as any;
+
+  await withServer(
+    {
+      resolveSession: async () => superadminSession,
+      supabase,
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/admin/dashboards-tree`, {
+        headers: { Authorization: "Bearer valid-token" },
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+
+      const serialized = JSON.stringify(body);
+      assert.ok(!serialized.includes("invite_token"), "response must not include invite_token");
+      assert.ok(!serialized.includes("invite_url"), "response must not include invite_url");
+
+      assert.equal(body.dashboards.length, 1);
+      assert.equal(body.dashboards[0].pending_invitations.length, 1);
+      assert.equal(body.pending_app_invitations.length, 1);
+    },
+  );
+});

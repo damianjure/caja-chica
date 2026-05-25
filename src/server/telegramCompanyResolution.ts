@@ -1,6 +1,7 @@
 export interface TelegramCompanyOption {
   id?: string;
   nombre: string;
+  cuit?: string | null;
 }
 
 export interface TelegramDraftItem {
@@ -21,6 +22,22 @@ function normalizeName(value: string) {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function normalizeCuit(value: string | null | undefined) {
+  const digits = value?.replace(/\D/g, '') ?? '';
+  return digits.length === 11 ? digits : null;
+}
+
+const cuitPattern = /\b(?:\d{2}-\d{8}-\d|\d{11})\b/g;
+
+function extractCuitCandidates(value: string) {
+  const matches = value.match(cuitPattern) ?? [];
+  return [...new Set(matches.map(normalizeCuit).filter((cuit): cuit is string => cuit !== null))];
+}
+
+function stripCuitCandidates(value: string) {
+  return value.replace(cuitPattern, ' ').trim();
 }
 
 function levenshtein(a: string, b: string) {
@@ -85,7 +102,7 @@ export async function getTopEmpresasForDashboard(
 
   let empresasQuery = supabase
     .from("empresas")
-    .select("id, nombre, created_at")
+    .select("id, nombre, cuit, created_at")
     .is("deleted_at", null);
   if (scope.dashboardId) {
     empresasQuery = empresasQuery.eq("dashboard_id", scope.dashboardId);
@@ -124,7 +141,7 @@ export async function getTopEmpresasForDashboard(
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  return sorted.slice(0, limit).map((e: any) => ({ id: e.id, nombre: e.nombre }));
+  return sorted.slice(0, limit).map((e: any) => ({ id: e.id, nombre: e.nombre, cuit: e.cuit ?? null }));
 }
 
 export function resolveTelegramCompany(
@@ -134,7 +151,18 @@ export function resolveTelegramCompany(
   const raw = item.empresa?.trim() ?? '';
   if (!raw) return { kind: 'missing' };
 
-  const normalizedInput = normalizeName(raw);
+  const cuitCandidates = extractCuitCandidates(raw);
+  if (cuitCandidates.length > 0) {
+    const cuitSet = new Set(cuitCandidates);
+    const cuitMatch = companies.find((company) => {
+      const companyCuit = normalizeCuit(company.cuit);
+      return companyCuit !== null && cuitSet.has(companyCuit);
+    });
+    if (cuitMatch) return { kind: 'exact', company: cuitMatch };
+  }
+
+  const fuzzyRaw = cuitCandidates.length > 0 ? stripCuitCandidates(raw) || raw : raw;
+  const normalizedInput = normalizeName(fuzzyRaw);
   if (!normalizedInput) return { kind: 'missing' };
 
   const normalizedCompanies = companies

@@ -52,11 +52,11 @@ function parseTelegramMovementEditInput(input: string | undefined) {
 
 export async function listTelegramCompanies(supabase: BotDeps["supabase"], linked: TelegramLinkRecord): Promise<TelegramCompanyOption[]> {
   const { data, error } = await applyTelegramDataScope(
-    supabase.from("empresas").select("id, nombre, deleted_at").order("nombre", { ascending: true }),
+    supabase.from("empresas").select("id, nombre, cuit, deleted_at").order("nombre", { ascending: true }),
     linked,
   ).is("deleted_at", null);
   if (error) throw error;
-  return (data ?? []).map((entry: any) => ({ id: entry.id, nombre: entry.nombre }));
+  return (data ?? []).map((entry: any) => ({ id: entry.id, nombre: entry.nombre, cuit: entry.cuit ?? null }));
 }
 
 export async function cancelPendingTelegramMovements(supabase: BotDeps["supabase"], chatId: number) {

@@ -34,3 +34,45 @@ test('deja unresolved cuando la similitud es floja', () => {
   const result = resolveTelegramCompany({ empresa: 'cualquier cosa' }, companies);
   assert.deepEqual(result, { kind: 'unresolved' });
 });
+
+
+test('resuelve por CUIT formateado antes que por nombre', () => {
+  const cuitCompanies = [
+    { id: '1', nombre: 'Servicios Delta', cuit: '30-11111111-1' },
+    { id: '2', nombre: 'Taller Central', cuit: '30-22222222-2' },
+  ];
+
+  const result = resolveTelegramCompany({ empresa: 'Servicios Delta 30-22222222-2' }, cuitCompanies);
+
+  assert.equal(result.kind, 'exact');
+  if (result.kind === 'exact') {
+    assert.equal(result.company.nombre, 'Taller Central');
+  }
+});
+
+test('resuelve por CUIT con 11 dígitos aunque la empresa guarde formato con guiones', () => {
+  const cuitCompanies = [
+    { id: '1', nombre: 'Servicios Delta', cuit: '30-12345678-9' },
+    { id: '2', nombre: 'Distribuidora Norte', cuit: null },
+  ];
+
+  const result = resolveTelegramCompany({ empresa: '30123456789' }, cuitCompanies);
+
+  assert.equal(result.kind, 'exact');
+  if (result.kind === 'exact') {
+    assert.equal(result.company.nombre, 'Servicios Delta');
+  }
+});
+
+test('si detecta CUIT sin match cae a la lógica fuzzy existente', () => {
+  const cuitCompanies = [
+    { id: '1', nombre: 'Taller Central', cuit: '30-22222222-2' },
+  ];
+
+  const result = resolveTelegramCompany({ empresa: 'tayer central 30-99999999-9' }, cuitCompanies);
+
+  assert.equal(result.kind, 'suggest');
+  if (result.kind === 'suggest') {
+    assert.equal(result.company.nombre, 'Taller Central');
+  }
+});

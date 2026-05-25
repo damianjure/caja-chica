@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-23 (post god-components-refactor + audit follow-ups)
+## Fuente de verdad única — 2026-05-25 (post Codex review fixes + CUIT matching + label rename)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -75,10 +75,10 @@ Integraciones principales:
   - sin SDK extra, `fetch` directo + graceful fallback si `BREVO_API_KEY` ausente
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
-### Estado deploy (2026-05-23)
+### Estado deploy (2026-05-25)
 - Frontend ✔ deployado en `caja-chica-bot.web.app`
-- Backend ✔ deployado en Cloud Run rev `caja-chica-00035-rz4`
-- Tests: 280 total / 278 pass / 2 skip / 0 fail
+- Backend ✔ deployado en Cloud Run rev `caja-chica-00036-flj` (CUIT matching)
+- Tests: 283 total / 281 pass / 2 skip / 0 fail
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
 - **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
@@ -326,10 +326,53 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
   - Backend endpoints `/api/presupuestos` y tests preservados (data/API intactos)
 - Tests 278 pass / 0 fail. tsc + build clean. Deploy frontend.
 
+### Cambios 2026-05-25 (Codex review fixes + CUIT matching + label rename + tooling)
+- **Codex CLI integrado** (plugin `openai-codex` 0.133.0, auth ChatGPT). Commands disponibles: `/codex:review`, `/codex:adversarial-review`, `/codex:rescue` (companion subcommand: `task`), `/codex:status`, `/codex:result`, `/codex:cancel`, `/codex:setup`.
+- **Codex adversarial-review working tree** → 2 bugs reales en `ConfirmDestructive.tsx`:
+  - **[high]** Escape race: handler con `[]` deps cerraba sobre `isWorking` inicial; usuario apretaba Escape mientras operación destructiva in-flight y modal se cerraba pero op seguía. Fix: refs `isWorkingRef`/`onCancelRef` sincronizados cada render.
+  - **[medium]** Typed-confirm UX inconsistente: modal habilitaba botón con `.trim().toUpperCase()` pero `runConfirmation()` en `DashboardApp.tsx:302` exigía case-sensitive exact match. Fix: normalizar igual en ambos lados.
+- **Codex review --base origin/main** → 1 finding P1:
+  - **[P1]** React Query cache leak cross-account: `QueryClient` vive arriba de auth, keys globales (`['movimientos']`, `['empresas']`, `['categorias']`, `['dashboardMembers']`) leakaban datos del user anterior hasta 30s post-logout. Fix: `queryClient.clear()` en `handleSignOut` (App.tsx). `useQueryClient` import agregado.
+- Commit `6be2ad4`: los 3 fixes + ConfirmDestructive integrado en DashboardModals + nuevo tipo en `types/dashboard.ts`.
+- **CUIT matching en `resolveTelegramCompany()`** (delegado a Codex task, 3m background):
+  - `src/server/telegramCompanyResolution.ts`: agrega `cuit?: string | null` a `TelegramCompanyOption`, `normalizeCuit()` (digits only, valida 11), `cuitPattern` regex (`XX-XXXXXXXX-X` o `\d{11}`), `extractCuitCandidates()`, `stripCuitCandidates()`. Resolver prioriza match por CUIT antes de fuzzy name.
+  - `src/bot/commands/movements.ts`: `listTelegramCompanies()` selecciona/mapea `cuit`.
+  - `tests/telegramCompanyResolution.test.ts`: +3 tests (formatted CUIT priority, 11-digit normalization, fuzzy fallback).
+  - Tests 281 pass / 0 fail / 2 skip (de 278 anteriores).
+  - Commit `9dbf3e1`.
+- **Label rename Operador→Super Admin, Usuario→Miembro** (commit `50b20cc`):
+  - `src/services/labels.ts`: `APP_ROLE_LABELS.superadmin` = "Super Admin" (antes "Operador"), `.member` = "Miembro" (antes "Usuario"). DB enums intactos.
+  - Razón: alineación con Slack/Notion/Stripe/Vercel/GitHub. "Operador" no se usa en SaaS moderno; "Usuario" es ambiguo (todos los logueados son usuarios).
+  - `AdminPanel.tsx`: 2 hardcoded label maps reemplazados por `APP_ROLE_LABELS` lookups.
+- **Inter Variable self-host** (commit `6036cb1`):
+  - `public/fonts/InterVariable.woff2` (344K) bajado de rsms.me/inter
+  - `src/index.css`: `@font-face` declaration con `format("woff2-variations")`
+  - `index.html`: preload `<link rel="preload" as="font" .../>`
+  - Eliminada dependencia Google Fonts CDN (LCP más rápido + privacidad).
+- **`.trailmark/entrypoints.toml`** (commit `6036cb1`):
+  - Declara taint sources: `express-api`, `telegram-bot-handlers`, `cron-jobs`, `google-oauth-callback`, `supabase-auth-hook`.
+  - Habilita análisis automático de blast radius desde input no confiable.
+- **Security hardening (sesión previa, commit `6bdf06e`)**:
+  - `email.ts`: `sanitizeHeader()` strip CRLF en sender/recipient/subject (defense-in-depth); `AbortController` timeout 10s en fetch a Brevo.
+  - `demoSeed.purgeDemoData()`: errores Supabase ahora se loguean (antes silenciados).
+  - `demoSeed.ensurePersonalDashboard()`: dashboard name cap 60 chars.
+  - `npm audit fix`: protobufjs CVE-DoS + ws CVE-uninitialized-memory → 0 vulnerabilidades.
+- **Tooling instalado**:
+  - `trailmark 0.3.1` (uv tool install). Hotspot detectado: `createApp` complexity 309 (deuda estructural, no vuln).
+  - `semgrep 1.163.0` (uv tool install). 1 finding `cors-misconfiguration` en `app.ts:115` = false positive (allowlist check antes de reflect).
+- **GCP `balancediario` cleanup**: ya `PROJECT_DELETE_INACTIVE`, no requiere acción (en gracia desde antes).
+- **Onboarding DB programmatic check**: 4 app_users en DB (`damianjure`/`criptodiscord` cleaned/completed, `damianjuregpt`/`carlosdjure` en `pending`). 0 demo data — purge OK o nunca seeded. Próximo login de pending users dispara `ensureOnboardingSeed` y wizard.
+- **`.firebase/` untrack** (commit `f6d59cc`): cache ya en `.gitignore` pero estaba tracked desde antes; `git rm --cached` cierra el ruido en `git status`.
+- **Backend Cloud Run revisions**: `caja-chica-00013-wcv` (security hardening) → `caja-chica-00036-flj` (CUIT matching).
+- **Frontend Firebase Hosting**: 5+ deploys hoy (post cada commit relevante).
+
 ### Pendiente
-1. CUIT matching en `resolveTelegramCompany()` — columna `empresas.cuit` existe en DB, lógica no implementada
-2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere sesión real)
-3. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
+1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
+2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
+3. Refactor `createApp` (complexity 309 según trailmark) — deuda estructural, no vuln activa. Candidato para `/codex:rescue --background --effort high "split createApp into Express routers"`
+4. Spacing rhythm tokens (`--space-tight/snug/comfort/relaxed/section/hero` + `.stack-*` utilities) listos en `index.css` pero no aplicados aún a ConfiguracionTab (963 LOC) / InformesTab (378 LOC)
+5. Brevo API key visible en historial chat de sesión 2026-05-25 (`xkeysib-...`) — usuario decidió no revocar por ahora
+6. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
 
 ---
 

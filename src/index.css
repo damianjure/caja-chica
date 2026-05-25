@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+}
+
 /*
   Inter Variable self-hosted. woff2 in /public/fonts/.
   Variable axes: wght 100-900, slnt -10 to 0.

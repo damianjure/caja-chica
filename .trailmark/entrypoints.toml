@@ -1,0 +1,32 @@
+# Trailmark entrypoint declarations for taint analysis.
+# Declares trust boundaries: where untrusted user input enters the system.
+
+[[entrypoints]]
+name = "express-api"
+description = "HTTP API exposed at /api/* — receives requests from browsers and bots"
+files = ["src/server/app.ts", "server.ts"]
+trust = "untrusted"
+
+[[entrypoints]]
+name = "telegram-bot-handlers"
+description = "grammY message/callback handlers — receives untrusted Telegram user input"
+files = ["src/bot/index.ts", "src/bot/commands/**/*.ts", "src/bot/extraction.ts"]
+trust = "untrusted"
+
+[[entrypoints]]
+name = "cron-jobs"
+description = "node-cron scheduled jobs — internal trigger but operates on user data"
+files = ["server.ts"]
+trust = "internal"
+
+[[entrypoints]]
+name = "google-oauth-callback"
+description = "Drive OAuth callback — external redirect, state validated"
+files = ["src/server/app.ts"]
+trust = "untrusted"
+
+[[entrypoints]]
+name = "supabase-auth-hook"
+description = "Auth trigger — receives Supabase auth events"
+files = ["src/server/app.ts"]
+trust = "internal"

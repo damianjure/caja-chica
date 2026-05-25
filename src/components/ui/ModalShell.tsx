@@ -91,8 +91,8 @@ export function ModalShell({
 
   return (
     <div
-      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]"
-      style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 42%, transparent)" }}
+      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[4px]"
+      style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 70%, transparent)" }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div

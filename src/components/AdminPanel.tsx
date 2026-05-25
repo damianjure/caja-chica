@@ -557,7 +557,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
 
   return (
     <li className="border border-neutral-300 rounded-xl bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50/50">
+      <div className="px-4 py-3 border-b border-neutral-200">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {node.owner ? (
             <>
@@ -569,16 +569,16 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               >
                 {node.owner.email ?? "(sin email)"}
               </button>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-900 text-white">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral-900 text-white">
                 Dueño
               </span>
               {node.owner.app_role && (
-                <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+                <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-700 bg-neutral-50">
                   {APP_ROLE_LABELS[node.owner.app_role]}
                 </span>
               )}
               {isViewerOwner && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-600 text-white">
                   Vos
                 </span>
               )}
@@ -587,7 +587,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
             <span className="text-sm text-neutral-500 italic">Sin dueño</span>
           )}
         </div>
-        <div className="mt-1 text-xs text-neutral-500 truncate">
+        <div className="mt-1 text-xs text-neutral-600 truncate">
           {node.dashboard_name} · {totalCount} {totalCount === 1 ? "miembro" : "miembros"}
         </div>
       </div>
@@ -606,28 +606,34 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               >
                 {m.email ?? "(sin email)"}
               </button>
-              <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-800 bg-neutral-50">
                 {m.dashboard_role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full border ${
+                className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
                   m.membership_status === "active"
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-neutral-100 text-neutral-600 border-neutral-300"
+                    ? "bg-green-100 text-green-800 border-green-300"
+                    : m.membership_status === "revoked"
+                      ? "bg-red-100 text-red-800 border-red-300"
+                      : "bg-neutral-200 text-neutral-700 border-neutral-400"
                 }`}
               >
-                {m.membership_status === "active" ? "Activo" : m.membership_status}
+                {m.membership_status === "active"
+                  ? "Activo"
+                  : m.membership_status === "revoked"
+                    ? "Sin acceso"
+                    : m.membership_status}
               </span>
             </li>
           ))}
           {node.pending_invitations.map((inv) => (
-            <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0">
-              <span className="text-neutral-400 text-xs">└─</span>
-              <span className="text-sm text-neutral-700 truncate flex-1 italic">{inv.email}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">
+            <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0 bg-amber-50/30">
+              <span className="text-neutral-500 text-xs">└─</span>
+              <span className="text-sm text-neutral-800 truncate flex-1 italic">{inv.email}</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-800 bg-white">
                 {inv.role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
                 Invitado
               </span>
             </li>

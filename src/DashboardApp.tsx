@@ -197,7 +197,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Operador', description: 'Administración de la aplicación', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: 'Cuentas, dashboards, invitaciones', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   useEffect(() => {

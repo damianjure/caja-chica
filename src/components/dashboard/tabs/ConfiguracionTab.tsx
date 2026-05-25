@@ -4,7 +4,6 @@ import type { Empresa } from "../../../services/api";
 import { type ThemePreference } from "../../ThemeToggle";
 import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
-import { TelegramSection } from "./configuracion/TelegramSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
 
 interface ConfiguracionTabProps {
@@ -77,11 +76,6 @@ export default function ConfiguracionTab({
             data={data}
             loading={loading}
             onRefresh={onRefresh}
-            showNotice={showNotice}
-            setError={setError}
-          />
-          <TelegramSection
-            data={data}
             showNotice={showNotice}
             setError={setError}
           />

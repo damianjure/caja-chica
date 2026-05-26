@@ -207,10 +207,13 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     ).eq("id", movId).limit(1);
     const movement = rows?.[0];
     if (!movement) return ctx.reply("Movimiento no encontrado.");
-    await supabase.from("movimientos").update({
+    let delQuery = supabase.from("movimientos").update({
       deleted_at: new Date().toISOString(),
       deleted_by_user_id: linked.userId,
     }).eq("id", movId);
+    if (linked.dashboardId) delQuery = delQuery.eq("dashboard_id", linked.dashboardId);
+    else delQuery = delQuery.eq("owner_user_id", linked.ownerUserId as string);
+    await delQuery;
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,

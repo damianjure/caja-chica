@@ -455,6 +455,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
       moneda: parsed.moneda,
     }).eq("id", last.id);
     if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
+    else updateQuery = updateQuery.eq("owner_user_id", linked.ownerUserId as string);
     await updateQuery;
     await insertBotAuditLog(supabase, {
       linked,
@@ -489,6 +490,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
       moneda: parsed.moneda,
     }).eq("id", last.id);
     if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
+    else updateQuery = updateQuery.eq("owner_user_id", linked.ownerUserId as string);
     await updateQuery;
     await insertBotAuditLog(supabase, {
       linked,

@@ -113,10 +113,11 @@ export async function seedDemoData(
   const { error: movErr } = await supabase.from("movimientos").insert(movRows);
   if (movErr) throw movErr;
 
-  await supabase
+  const { error: stateErr } = await supabase
     .from("app_users")
     .update({ onboarding_state: "seeded" })
     .eq("user_id", session.userId);
+  if (stateErr) console.error("[demoSeed] Failed to set onboarding_state=seeded:", stateErr);
 
   void empresa;
 }

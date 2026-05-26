@@ -65,8 +65,9 @@ export async function getMaintenanceState(supabase: SupabaseLike): Promise<Maint
     .single();
 
   if (error) {
-    // If table doesn't exist yet (during migration), fall back to none.
     console.warn("[maintenance] Could not read maintenance_windows:", error.message ?? error);
+    // Return stale cache if available — preserves active/grace state on transient DB errors.
+    if (maintenanceCache.cachedAt > 0) return maintenanceCache.state;
     return { status: "none", started_at: null, scheduled_at: null, grace_ends_at: null, estimated_end_at: null, message: null };
   }
 

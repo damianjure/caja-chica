@@ -122,7 +122,7 @@ if (bot) {
         }
 
         if (shouldProcess) {
-          await supabase.from("movimientos").insert([{
+          const { error: insertErr } = await supabase.from("movimientos").insert([{
             ...(r.dashboard_id && r.created_by_user_id
               ? { dashboard_id: r.dashboard_id, created_by_user_id: r.created_by_user_id }
               : { owner_user_id: r.owner_user_id }),
@@ -136,6 +136,7 @@ if (bot) {
             conciliado: true,
             conciliado_notas: null,
           }]);
+          if (insertErr) throw insertErr;
           await supabase.from("recurrentes").update({ last_processed: today.toISOString() }).eq("id", r.id);
           if (r.chat_id) {
             bot.api.sendMessage(r.chat_id, `🔄 *Recurrente Registrado:* ${r.descripcion}\n💰 ${r.monto} ${r.moneda}`, { parse_mode: "Markdown" });

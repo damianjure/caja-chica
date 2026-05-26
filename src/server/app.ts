@@ -802,6 +802,11 @@ export function createApp({
       supabase.from("categorias").select("*").eq(scopeFilter.col, scopeFilter.val),
     ]);
 
+    if (mov.error || emp.error || cat.error) {
+      console.error("[export] DB error:", mov.error ?? emp.error ?? cat.error);
+      return res.status(500).json({ error: "export_failed" });
+    }
+
     const filename = `caja-chica-export-${new Date().toISOString().slice(0, 10)}.json`;
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -1117,13 +1122,17 @@ export function createApp({
 
       const beforeData = [last];
 
-      await supabase
-        .from("movimientos")
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by_user_id: session.userId,
-        })
-        .eq("id", last.id);
+      await applyDataScope(
+        supabase
+          .from("movimientos")
+          .update({
+            deleted_at: new Date().toISOString(),
+            deleted_by_user_id: session.userId,
+          })
+          .eq("id", last.id),
+        session,
+        scope,
+      );
 
       await logEntityMutation({
         session,
@@ -1664,10 +1673,14 @@ export function createApp({
         code,
       );
       const encryptedToken = encryptToken(refreshToken, tokenEncryptionKey!);
-      await supabase.from("drive_connections").upsert(
+      const { error: upsertErr } = await supabase.from("drive_connections").upsert(
         [{ owner_user_id: pending.userId, refresh_token_enc: encryptedToken, updated_at: new Date().toISOString() }],
         { onConflict: "owner_user_id" },
       );
+      if (upsertErr) {
+        console.error("[drive] Failed to save tokens:", upsertErr);
+        return res.redirect(`${fallbackUrl}?driveError=save_failed`);
+      }
       res.redirect(`${fallbackUrl}?driveConnected=true`);
     } catch {
       res.redirect(`${fallbackUrl}?driveError=exchange_failed`);
@@ -2429,7 +2442,7 @@ export function createApp({
       if (payload.telegram_preauth) {
         const telegramToken = randomBytes(24).toString("hex");
         const telegramTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        const { data: tTokenData } = await supabase
+        const { data: tTokenData, error: tTokenErr } = await supabase
           .from("telegram_invite_tokens")
           .insert({
             token: telegramToken,
@@ -2441,8 +2454,12 @@ export function createApp({
           })
           .select()
           .single();
-        telegramTokenId = tTokenData?.id ?? null;
-        telegramDeepLink = buildTelegramDeepLink(telegramToken) ?? undefined;
+        if (tTokenErr) {
+          console.error("[invitations] Failed to create telegram invite token:", tTokenErr);
+        } else {
+          telegramTokenId = tTokenData?.id ?? null;
+          telegramDeepLink = buildTelegramDeepLink(telegramToken) ?? undefined;
+        }
       }
 
       const sevenDaysFromNow = new Date(new Date(now).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();

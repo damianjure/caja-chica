@@ -100,40 +100,46 @@ export default function MovimientosTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-4">
-            {[
-              { id: 'all', label: 'Todos' },
-              { id: 'ingreso', label: 'Ingresos' },
-              { id: 'egreso', label: 'Gastos' },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setMovementType(filter.id as 'all' | 'ingreso' | 'egreso')}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
-                  movementType === filter.id
-                    ? 'bg-neutral-900 text-white'
-                    : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-            {[
-              { id: 'all', label: 'Todas las monedas' },
-              { id: 'ARS', label: 'ARS' },
-              { id: 'USD', label: 'USD' },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setMovementCurrency(filter.id as 'all' | 'ARS' | 'USD')}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
-                  movementCurrency === filter.id
-                    ? 'bg-neutral-900 text-white'
-                    : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
+            <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'ingreso', label: 'Ingresos' },
+                { id: 'egreso', label: 'Gastos' },
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  aria-pressed={movementType === filter.id}
+                  onClick={() => setMovementType(filter.id as 'all' | 'ingreso' | 'egreso')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
+                    movementType === filter.id
+                      ? 'bg-neutral-900 text-white'
+                      : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <div role="group" aria-label="Filtrar por moneda" className="flex flex-wrap gap-2">
+              {[
+                { id: 'all', label: 'Todas las monedas' },
+                { id: 'ARS', label: 'ARS' },
+                { id: 'USD', label: 'USD' },
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  aria-pressed={movementCurrency === filter.id}
+                  onClick={() => setMovementCurrency(filter.id as 'all' | 'ARS' | 'USD')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
+                    movementCurrency === filter.id
+                      ? 'bg-neutral-900 text-white'
+                      : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-200 pt-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Users, MessageCircle, ChevronRight, X } from 'lucide-react';
 import { api, type AppViewer } from '../services/api';
 
@@ -13,6 +13,9 @@ type Step = 'welcome' | 'telegram';
 export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: WelcomeJoinedProps) {
   const [step, setStep] = useState<Step>('welcome');
   const [finishing, setFinishing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { dialogRef.current?.focus(); }, []);
 
   const finish = async () => {
     setFinishing(true);
@@ -26,8 +29,18 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
   };
 
   return (
-    <div className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative">
+    <div
+      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onKeyDown={(e) => { if (e.key === 'Escape' && !finishing) void finish(); }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="joined-title"
+        tabIndex={-1}
+        className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
+      >
         {/* Skip button */}
         <button
           onClick={finish}
@@ -44,7 +57,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
               <Users className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h2 id="joined-title" className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Te sumaron a un dashboard compartido
               </h2>
               <p className="text-neutral-500 text-sm leading-relaxed">

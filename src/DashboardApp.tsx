@@ -324,8 +324,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} />}
 
       <div className="max-w-7xl mx-auto space-y-8">
-        {apiStatus === 'missing_url' && <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
-        {apiStatus === 'load_error' && <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
+        {apiStatus === 'missing_url' && <div role="status" className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
+        {apiStatus === 'load_error' && <div role="alert" className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
         <MaintenanceBanner status={maintenanceStatus} />
 
@@ -368,7 +368,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   </button>
                 </div>
               </div>
-              {error && <div className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
+              {error && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
             </SectionCard>
           </div>
         )}

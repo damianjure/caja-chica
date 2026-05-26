@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sparkles, BarChart2, Trash2, ChevronRight, MessageCircle, X } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -13,6 +13,9 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [loadingLink, setLoadingLink] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { dialogRef.current?.focus(); }, []);
 
   const loadTelegramLink = async () => {
     if (deepLink) return;
@@ -40,8 +43,18 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
   };
 
   return (
-    <div className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative">
+    <div
+      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onKeyDown={(e) => { if (e.key === 'Escape' && !finishing) void finish(false); }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wizard-title"
+        tabIndex={-1}
+        className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
+      >
 
         {/* Skip button */}
         <button
@@ -69,7 +82,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
               <Sparkles className="w-8 h-8 text-indigo-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h2 id="wizard-title" className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
                 Bienvenido a Caja Chica
               </h2>
               <p className="text-neutral-500 text-sm leading-relaxed">

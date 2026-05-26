@@ -147,6 +147,7 @@ function ActionMenu({
 }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -156,13 +157,38 @@ function ActionMenu({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+    if (!open) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const items = Array.from(
+        ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
+      );
+      if (!items.length) return;
+      const idx = items.indexOf(document.activeElement as HTMLElement);
+      const next =
+        e.key === "ArrowDown"
+          ? (idx + 1) % items.length
+          : (idx - 1 + items.length) % items.length;
+      items[next]?.focus();
+    }
+  };
+
   const canResend = persona.status === "pending" || persona.status === "expired";
   const canRevoke = persona.status !== "revoked";
   const canChangeRole = persona.status !== "revoked" && persona.type === "dashboard";
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" onKeyDown={handleKeyDown}>
       <button
+        ref={triggerRef}
+        id="action-trigger"
+        aria-expanded={open}
+        aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-text-2)]"
       >
@@ -171,8 +197,14 @@ function ActionMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+        <div
+          role="menu"
+          aria-labelledby="action-trigger"
+          className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg"
+        >
           <button
+            role="menuitem"
+            tabIndex={-1}
             onClick={() => {
               onCopyLink();
               setOpen(false);
@@ -185,6 +217,8 @@ function ActionMenu({
 
           {canResend && (
             <button
+              role="menuitem"
+              tabIndex={-1}
               disabled={loadingResend}
               onClick={() => {
                 onResend();
@@ -205,6 +239,8 @@ function ActionMenu({
             <>
               <div className="my-1 border-t border-neutral-200" />
               <button
+                role="menuitem"
+                tabIndex={-1}
                 onClick={() => {
                   onChangeRole(persona.role === "editor" ? "viewer" : "editor");
                   setOpen(false);
@@ -223,6 +259,8 @@ function ActionMenu({
             <>
               <div className="my-1 border-t border-neutral-200" />
               <button
+                role="menuitem"
+                tabIndex={-1}
                 onClick={() => {
                   onRevoke();
                   setOpen(false);

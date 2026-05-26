@@ -44,10 +44,11 @@ export default function GastosTab({
       </div>
 
       <SectionCard title="Categorías de gasto" description="Top de categorías reales sobre los movimientos cargados.">
-        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div role="group" aria-label="Filtrar por empresa" className="mb-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {expenseCompanyOptions.map((company) => (
             <button
               key={company}
+              aria-pressed={selectedExpenseCompany === company}
               onClick={() => setSelectedExpenseCompany(company)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedExpenseCompany === company

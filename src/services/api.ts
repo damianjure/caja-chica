@@ -348,6 +348,15 @@ export interface Recurrente {
   day_of_month: number | null;
 }
 
+export interface MaintenanceStatus {
+  status: "none" | "grace" | "active" | "scheduled";
+  started_at: string | null;
+  scheduled_at: string | null;
+  grace_ends_at: string | null;
+  estimated_end_at: string | null;
+  message: string | null;
+}
+
 export type RecurrenteRequest = {
   monto: number;
   tipo: 'egreso' | 'ingreso';
@@ -721,5 +730,28 @@ export const api = {
 
   async deleteRecurrente(id: string): Promise<void> {
     return fetchApi(`/api/recurrentes/${id}`, { method: "DELETE" });
+  },
+
+  // Maintenance
+  async getMaintenanceStatus(): Promise<MaintenanceStatus> {
+    return fetchApi("/api/maintenance/status");
+  },
+
+  async activateMaintenance(opts: { message?: string; estimatedEnd?: string }): Promise<MaintenanceStatus> {
+    return fetchApi("/api/maintenance/activate", {
+      method: "POST",
+      body: JSON.stringify({ message: opts.message, estimatedEnd: opts.estimatedEnd }),
+    });
+  },
+
+  async scheduleMaintenance(opts: { scheduledAt: string; message?: string; estimatedEnd?: string }): Promise<MaintenanceStatus> {
+    return fetchApi("/api/maintenance/schedule", {
+      method: "POST",
+      body: JSON.stringify({ scheduledAt: opts.scheduledAt, message: opts.message, estimatedEnd: opts.estimatedEnd }),
+    });
+  },
+
+  async endMaintenance(): Promise<MaintenanceStatus> {
+    return fetchApi("/api/maintenance/end", { method: "POST" });
   },
 };

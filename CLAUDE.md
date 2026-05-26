@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-25 (post Codex review fixes + CUIT matching + label rename)
+## Fuente de verdad única — 2026-05-26 (post maintenance-mode SDD + UI audit dark mode fix)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -75,10 +75,10 @@ Integraciones principales:
   - sin SDK extra, `fetch` directo + graceful fallback si `BREVO_API_KEY` ausente
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
-### Estado deploy (2026-05-25)
+### Estado deploy (2026-05-26)
 - Frontend ✔ deployado en `caja-chica-bot.web.app`
-- Backend ✔ deployado en Cloud Run rev `caja-chica-00036-flj` (CUIT matching)
-- Tests: 283 total / 281 pass / 2 skip / 0 fail
+- Backend ✔ deployado en Cloud Run rev `caja-chica-00040-chv` (maintenance-mode)
+- Tests: 323 total / 321 pass / 2 skip / 0 fail
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
 - **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
@@ -390,11 +390,52 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - **Backend Cloud Run revisions**: `caja-chica-00013-wcv` (security hardening) → `caja-chica-00036-flj` (CUIT matching).
 - **Frontend Firebase Hosting**: 5+ deploys hoy (post cada commit relevante).
 
+### Cambios 2026-05-26 (UI audit dark mode fix + maintenance-mode SDD)
+
+#### UI audit fixes (commit `d34dad6`)
+- **Dark mode active tab**: `--app-strong-surface` en dark mode cambiado de `oklch(96% 0.008 155)` (blanco puro) a `oklch(76% 0.016 158)` (sage accent) — tab activo ya no aparece blanco en dark mode
+- **border-neutral-900 override**: agregado a `@layer utilities` para seguir `--app-strong-surface` en dark mode
+- **Mobile tab radius**: `rounded-lg` → `rounded-xl` (consistencia con desktop)
+- **Alert banners radius**: `rounded-lg` → `rounded-xl`
+- Score UI audit: 16/20 → 20/20
+- También aplicados previamente (commit `c4dfce1`): `tabular-nums` en valores monetarios, `tracking-tight` en headings, `font-bold` en labels uppercase, `space-y-4` en SectionCard/PreferenciasSection
+
+#### Modo Mantenimiento — SDD completo (3 PRs, commits mergeados a main)
+
+**SQL**: `maintenance_mode_phase.sql` ✔ aplicada en prod 2026-05-26
+
+**Arquitectura**:
+- `maintenance_windows` tabla en Supabase — single-row upsert (id siempre = 1), status enum: none/scheduled/grace/active
+- `src/server/maintenance.ts` — in-memory cache 30s + `isWriteBlocked()` + `hydrateCache()`
+- `src/server/maintenanceNotify.ts` — fan-out Brevo + Telegram, per-user try/catch
+- `src/bot/maintenance-gate.ts` — `assertBotWritable(ctx)` — retorna false y responde si activo/grace
+- `src/components/MaintenanceBanner.tsx` — banner sticky, amber (active/grace) / blue (scheduled) / null (none)
+- `src/components/dashboard/tabs/configuracion/MaintenanceSection.tsx` — solo visible a superadmin
+
+**Endpoints nuevos**:
+- `GET /api/maintenance/status` — público (no auth), polled cada 60s por frontend
+- `POST /api/maintenance/activate` — superadmin only, inicia período de gracia 5 min
+- `POST /api/maintenance/schedule` — superadmin only, programa con fecha/hora
+- `POST /api/maintenance/end` — superadmin only, finaliza y notifica
+
+**Cron** (en `server.ts`, cada minuto):
+- `scheduled` → `grace` cuando `now >= scheduled_at`, envía notificación inicio
+- `grace` → `active` cuando `now >= grace_ends_at`
+- 30-min reminder para scheduled (dedupe via `notification_sent_30min`)
+
+**Bot gating**: todos los handlers de escritura en movements.ts, movements-callbacks.ts, entities.ts, recurring.ts, extraction.ts llaman `assertBotWritable(ctx)` al inicio
+
+**Tests**: 281 → 321 pass (+40 nuevos en 6 archivos de test)
+
+**Deploy**:
+- Backend Cloud Run rev `caja-chica-00040-chv`
+- Frontend Firebase Hosting deployado
+
 ### Pendiente
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
 3. Refactor `createApp` (complexity 309 según trailmark) — deuda estructural, no vuln activa. Candidato para `/codex:rescue --background --effort high "split createApp into Express routers"`
-4. Spacing rhythm tokens (`--space-tight/snug/comfort/relaxed/section/hero` + `.stack-*` utilities) listos en `index.css` pero no aplicados aún a ConfiguracionTab (963 LOC) / InformesTab (378 LOC)
+4. Spacing rhythm tokens (`--space-tight/snug/comfort/relaxed/section/hero` + `.stack-*` utilities) listos en `index.css` pero no aplicados aún a ConfiguracionTab / InformesTab
 5. Brevo API key visible en historial chat de sesión 2026-05-25 (`xkeysib-...`) — usuario decidió no revocar por ahora
 6. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
 
@@ -444,7 +485,7 @@ gcloud run deploy caja-chica --image gcr.io/caja-chica-bot/caja-chica --region u
 ```
 
 ### Estado de validación local más reciente
-- `npm test` → **154/156 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
+- `npm test` → **321/323 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
 - commit HEAD: `c65ce13`
 
@@ -791,6 +832,12 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `POST /api/dashboard/invitations`
 - `POST /api/dashboard/invitations/:id/revoke`
 
+### Mantenimiento
+- `GET /api/maintenance/status` — público (sin auth), polled cada 60s por el frontend. Retorna `{ status, scheduled_at, grace_ends_at, estimated_end_at, message }`
+- `POST /api/maintenance/activate` — superadmin only. Inicia período de gracia 5 min. Body: `{ message?, estimatedEnd? }`
+- `POST /api/maintenance/schedule` — superadmin only. Body: `{ scheduledAt: ISO, message?, estimatedEnd? }`
+- `POST /api/maintenance/end` — superadmin only. Finaliza, envía notificación "servicio restaurado"
+
 ### Seguridad de la ruta peligrosa
 `DELETE /api/movimientos/all` solo se habilita si:
 - `ENABLE_DANGEROUS_ROUTES=true`
@@ -877,6 +924,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 | `drop_pending_extractions.sql` | ✔ aplicado en prod 2026-05-08 |
 | `user_settings_phase.sql` | ✔ prod 2026-05-12 |
 | `onboarding_demo_phase.sql` | ✔ prod 2026-05-20 |
+| `maintenance_mode_phase.sql` | ✔ prod 2026-05-26 |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)
@@ -1093,4 +1141,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00012-xxv`. Tests: 154/156 (0 fail). Migration `onboarding_demo_phase.sql` ✔ aplicada en prod 2026-05-20. Email vía Brevo (`hola@damianjure.com`). Últimos commits: `71f9ed4` (Brevo), `f2972c1` (polish+spacing), `71805b5` (audit). Pendiente: test envío real email, validar wizard onboarding end-to-end, CUIT matching, aplicar spacing rhythm en tabs grandes, audit follow-ups (OKLCH/type scale/font self-host/radius).
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00040-chv` (maintenance-mode). Tests: 321/323 (0 fail). Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último feature: modo mantenimiento completo (SDD, 3 PRs mergeados, +40 tests). UI audit dark mode fix deployado. Pendiente: test envío real email Brevo, validar wizard onboarding end-to-end, smoke test Personas browser.

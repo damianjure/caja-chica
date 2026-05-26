@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   ChevronDown,
   Copy,
@@ -157,7 +157,7 @@ function ActionMenu({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
       setOpen(false);
       triggerRef.current?.focus();
@@ -165,7 +165,7 @@ function ActionMenu({
     if (!open) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const items = Array.from(
+      const items: HTMLElement[] = Array.from(
         ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
       );
       if (!items.length) return;
@@ -174,7 +174,8 @@ function ActionMenu({
         e.key === "ArrowDown"
           ? (idx + 1) % items.length
           : (idx - 1 + items.length) % items.length;
-      items[next]?.focus();
+      const target = items[next];
+      if (target) target.focus();
     }
   };
 

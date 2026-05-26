@@ -12,6 +12,8 @@ import { loadRuntimeEnv } from "./src/server/env.ts";
 import { addMonth, computeNextRun } from "./src/server/recurrentes.ts";
 import { registerBotHandlers, registerBotCommands } from "./src/bot/index.ts";
 import type { BotDeps } from "./src/bot/deps.ts";
+import { hydrateCache, reconcileTransitions } from "./src/server/maintenance.ts";
+import { notifyMaintenance } from "./src/server/maintenanceNotify.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -148,6 +150,18 @@ if (bot) {
   console.warn("⚠️ TELEGRAM_BOT_TOKEN no configurado. El bot no se iniciará.");
 }
 
+// Maintenance mode cron — every minute
+cron.schedule("* * * * *", async () => {
+  try {
+    await reconcileTransitions(
+      supabase as unknown as Parameters<typeof reconcileTransitions>[0],
+      (type) => notifyMaintenance(supabase as any, bot, { type }),
+    );
+  } catch (err) {
+    console.error("[cron:maintenance] Unexpected error:", err);
+  }
+});
+
 // Invite reminder cron — daily at 10:00 UTC
 cron.schedule("0 10 * * *", async () => {
   try {
@@ -182,6 +196,11 @@ const app = createApp({
   googleDriveClientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
   googleDriveRedirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
+});
+
+// Hydrate maintenance cache on startup so first request reads from cache, not DB.
+hydrateCache(supabase as any).catch((err) => {
+  console.warn("[maintenance] Startup hydration failed (non-fatal):", err);
 });
 
 const server = app.listen(PORT, "0.0.0.0", () => {

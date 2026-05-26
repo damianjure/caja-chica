@@ -6,6 +6,7 @@ import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkR
 import { resolveTelegramCompany, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
+import { assertBotWritable } from "../maintenance-gate.ts";
 
 export type PendingMovementPayload = {
   item: {
@@ -400,6 +401,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("borrar_ultimo_ingreso", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_own_movimiento");
     if (!linked) return;
     const last = await getLastMovementByType(supabase, linked, "ingreso");
@@ -416,6 +418,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("borrar_ultimo_egreso", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_own_movimiento");
     if (!linked) return;
     const last = await getLastMovementByType(supabase, linked, "egreso");
@@ -432,6 +435,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("editar_ultimo_ingreso", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const parsed = parseTelegramMovementEditInput(ctx.match);
@@ -465,6 +469,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("editar_ultimo_egreso", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const parsed = parseTelegramMovementEditInput(ctx.match);

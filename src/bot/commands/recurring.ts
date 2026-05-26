@@ -3,11 +3,13 @@ import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, replyExpiredSession } from "../utils.ts";
 import { pendingRecurrenceSessions, getRecurrenceSession } from "../sessions.ts";
+import { assertBotWritable } from "../maintenance-gate.ts";
 
 export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
   const { supabase } = deps;
 
   async function startRecurringFlow(ctx: Context) {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     pendingRecurrenceSessions.set(ctx.chat.id, {

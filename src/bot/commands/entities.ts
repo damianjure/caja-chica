@@ -2,6 +2,7 @@ import { InlineKeyboard } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, insertBotAuditLog, buildTelegramEntityOwnership } from "../utils.ts";
+import { assertBotWritable } from "../maintenance-gate.ts";
 import { setInputSession } from "../sessions.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
 
@@ -79,6 +80,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("agregarempresa", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const name = ctx.match;
@@ -89,6 +91,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("agregarcategoria", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const name = ctx.match;
@@ -99,6 +102,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.command("borrarempresa", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_empresa");
     if (!linked) return;
     const name = ctx.match?.trim();
@@ -173,6 +177,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery("add_emp", async (ctx) => {
     ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     setInputSession(ctx.chat.id, "empresa", linked);
@@ -181,6 +186,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery("add_cat", async (ctx) => {
     ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     setInputSession(ctx.chat.id, "categoria", linked);
@@ -241,6 +247,7 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^confirm_delete_emp_(.+)$/, async (ctx) => {
     ctx.answerCallbackQuery("Desactivando...");
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_empresa");
     if (!linked) return;
     const empresaId = ctx.match[1];

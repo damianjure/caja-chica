@@ -2,6 +2,7 @@ import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
 import { requireTelegramCan } from "./utils.ts";
 import { buildEmpresaSelectorKeyboard } from "./utils.ts";
+import { assertBotWritable } from "./maintenance-gate.ts";
 import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkRecord } from "../server/telegramAccess.ts";
 import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
 import { MediaGroupBuffer } from "../server/mediaGroupBuffer.ts";
@@ -49,6 +50,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
   const { supabase, genAI, botToken } = deps;
 
   bot.on("message:photo", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
 
@@ -145,6 +147,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.on("message:document", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
 
@@ -186,6 +189,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
   // Extraction review callbacks
   bot.callbackQuery(/^er:confirm:(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const extractionId = ctx.match[1];
     const entry = getPendingExtraction(extractionId);
     if (!entry || entry.chatId !== ctx.chat.id) {
@@ -259,6 +263,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.callbackQuery(/^er:co:([^:]+):(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const extractionId = ctx.match[1];
     const action = ctx.match[2];
     const entry = getPendingExtraction(extractionId);

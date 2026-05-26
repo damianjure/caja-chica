@@ -196,6 +196,7 @@ const app = createApp({
   googleDriveClientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
   googleDriveRedirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
+  bot: bot ?? null,
 });
 
 // Hydrate maintenance cache on startup so first request reads from cache, not DB.

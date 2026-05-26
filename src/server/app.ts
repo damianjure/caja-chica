@@ -80,6 +80,7 @@ export interface AppDeps {
   googleDriveClientSecret?: string;
   googleDriveRedirectUri?: string;
   tokenEncryptionKey?: string;
+  bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
 }
 
 export type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
@@ -157,6 +158,7 @@ export function createApp({
   googleDriveClientSecret,
   googleDriveRedirectUri,
   tokenEncryptionKey,
+  bot,
 }: AppDeps) {
   const app = express();
 
@@ -623,7 +625,7 @@ export function createApp({
         notification_sent_30min: false,
       } as any);
       // Fire-and-forget notifications — failures must not block response
-      notifyMaintenance(supabase, null, { type: "start", message: state.message ?? undefined, estimatedEnd: state.estimated_end_at ?? undefined })
+      notifyMaintenance(supabase, bot ?? null, { type: "start", message: state.message ?? undefined, estimatedEnd: state.estimated_end_at ?? undefined })
         .catch((err) => console.error("[maintenance] activate notify failed:", err));
       return res.json(state);
     } catch (err) {
@@ -663,7 +665,7 @@ export function createApp({
         grace_ends_at: null,
         notification_sent_30min: false,
       } as any);
-      notifyMaintenance(supabase, null, { type: "end" })
+      notifyMaintenance(supabase, bot ?? null, { type: "end" })
         .catch((err) => console.error("[maintenance] end notify failed:", err));
       return res.json(state);
     } catch (err) {

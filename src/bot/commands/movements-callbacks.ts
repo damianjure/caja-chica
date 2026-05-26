@@ -2,6 +2,7 @@ import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram } from "../utils.ts";
+import { assertBotWritable } from "../maintenance-gate.ts";
 import { setInputSession } from "../sessions.ts";
 import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, getTopEmpresasForDashboard } from "../../server/telegramCompanyResolution.ts";
@@ -40,6 +41,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^del_last:(ingreso|egreso)$/, async (ctx) => {
     await ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const tipo = ctx.match[1] as "ingreso" | "egreso";
@@ -69,6 +71,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^edit_last:(ingreso|egreso)$/, async (ctx) => {
     await ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const tipo = ctx.match[1] as "ingreso" | "egreso";
@@ -130,6 +133,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery("borrar_last_egreso", async (ctx) => {
     ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_own_movimiento");
     if (!linked) return;
     const last = await getLastMovementByType(supabase, linked, "egreso");
@@ -146,6 +150,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   });
 
   bot.callbackQuery(/^set_cat_([\w-]+)_(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const movId = ctx.match[1];
@@ -192,6 +197,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^confirm_delete_mov_(.+)$/, async (ctx) => {
     ctx.answerCallbackQuery("Borrando...");
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "delete_own_movimiento");
     if (!linked) return;
     const movId = ctx.match[1];
@@ -222,6 +228,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   });
 
   bot.callbackQuery(/^tcp:([\w-]+):(y|o|p)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const pendingId = ctx.match[1];
@@ -266,6 +273,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   });
 
   bot.callbackQuery(/^tca:([\w-]+):(p|\d+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const pendingId = ctx.match[1];
@@ -315,10 +323,12 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         return;
       }
       if (inputSession.kind === "empresa") {
+        if (!await assertBotWritable(ctx)) return;
         const { createEmpresaFromBot } = await import("./entities.ts");
         const result = await createEmpresaFromBot(supabase, inputSession.linked, value);
         await ctx.reply(result.ok ? `✅ Empresa *${escapeMd(value)}* agregada.` : "❌ No se pudo agregar la empresa. Intentá de nuevo.", { parse_mode: "Markdown" });
       } else if (inputSession.kind === "categoria") {
+        if (!await assertBotWritable(ctx)) return;
         const { createCategoriaFromBot } = await import("./entities.ts");
         const ok = await createCategoriaFromBot(supabase, inputSession.linked, value);
         await ctx.reply(ok ? `✅ Categoría *${escapeMd(value)}* agregada.` : "❌ No se pudo agregar la categoría. Intentá de nuevo.", { parse_mode: "Markdown" });
@@ -423,6 +433,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         if (!descripcion) {
           return ctx.reply("❌ La descripción no puede estar vacía. Mandame una descripción corta:");
         }
+        if (!await assertBotWritable(ctx)) return;
         pendingRecurrenceSessions.delete(ctx.chat.id);
         const linked = recSession.linked;
         const { error } = await supabase.from("recurrentes").insert([{
@@ -483,6 +494,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       }
     }
 
+    if (!await assertBotWritable(ctx)) return;
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
     try {
       await processTelegramFinancialText(supabase, genAI, ctx, {
@@ -496,6 +508,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   // Audio handlers
   bot.on("message:voice", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
@@ -527,6 +540,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   });
 
   bot.on("message:audio", async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");

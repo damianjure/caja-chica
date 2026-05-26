@@ -301,3 +301,100 @@ test("POST /api/movimientos returns 503 during grace period", async () => {
   );
   makeNoneCache();
 });
+
+// ---------------------------------------------------------------------------
+// 10. POST /api/maintenance/activate — Telegram notification IS attempted when bot is wired
+// ---------------------------------------------------------------------------
+
+test("POST /api/maintenance/activate calls bot.api.sendMessage when bot is provided in deps", async () => {
+  makeNoneCache();
+
+  let sendMessageCalled = false;
+  const mockBot = {
+    api: {
+      sendMessage: async (_chatId: string | number, _text: string, _opts?: unknown) => {
+        sendMessageCalled = true;
+        return {};
+      },
+    },
+  };
+
+  const supabaseWithTelegramLinks = (() => {
+    const baseRow = { id: 1, status: "grace", started_at: null, scheduled_at: null, grace_ends_at: new Date(Date.now() + 300_000).toISOString(), estimated_end_at: null, message: null, notification_sent_30min: false };
+    return {
+      from(table: string) {
+        const api: any = {
+          select(..._args: unknown[]) { return api; },
+          eq(..._args: unknown[]) { return api; },
+          is(..._args: unknown[]) { return api; },
+          not(..._args: unknown[]) { return api; },
+          order(..._args: unknown[]) { return api; },
+          limit(_n: number) {
+            if (table === "telegram_links") {
+              const p: any = Promise.resolve({ data: [{ telegram_chat_id: "12345", user_id: "u1" }], error: null });
+              p.single = () => Promise.resolve({ data: null, error: null });
+              return p;
+            }
+            const p: any = Promise.resolve({ data: [], error: null });
+            p.single = () => Promise.resolve({ data: null, error: null });
+            return p;
+          },
+          single() {
+            if (table === "maintenance_windows") return Promise.resolve({ data: baseRow, error: null });
+            return Promise.resolve({ data: null, error: null });
+          },
+          insert(..._args: unknown[]) {
+            return { select() { return Promise.resolve({ data: [{ id: "x" }], error: null }); } };
+          },
+          upsert(_payload: unknown) {
+            return {
+              select(_c?: string) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { ...baseRow, ...((_payload as any) ?? {}) }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(_payload: unknown) {
+            return { eq(..._args: unknown[]) { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+        return api;
+      },
+      rpc(_fn: string, _args?: unknown) { return Promise.resolve({ data: null, error: null }); },
+      auth: { admin: { deleteUser: async () => ({ error: null }) } },
+    } as any;
+  })();
+
+  const app = createApp({
+    supabase: supabaseWithTelegramLinks,
+    genAI: { models: { async generateContent() { return { text: '{"intent":"REGISTRAR","items":[]}' }; } } },
+    allowedOrigins: ["http://localhost:5173"],
+    botActive: false,
+    bot: mockBot,
+    resolveSession: async () => superadminSession,
+  });
+
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/maintenance/activate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
+      body: JSON.stringify({ message: "Deploying update" }),
+    });
+    assert.equal(res.status, 200);
+    // Give the fire-and-forget notification a moment to run
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(sendMessageCalled, true, "bot.api.sendMessage should have been called");
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  }
+
+  makeNoneCache();
+});

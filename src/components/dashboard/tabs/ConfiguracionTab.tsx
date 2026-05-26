@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
-import { type AppViewer, type DashboardMembersResponse, type MaintenanceStatus } from "../../../services/api";
+import { type AppViewer, type DashboardMembersResponse } from "../../../services/api";
 import type { Empresa } from "../../../services/api";
 import { type ThemePreference } from "../../ThemeToggle";
 import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
-import { MaintenanceSection } from "./configuracion/MaintenanceSection";
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -18,7 +17,6 @@ interface ConfiguracionTabProps {
   companies: Empresa[];
   themePreference: ThemePreference;
   onSetThemePreference: (p: ThemePreference) => void;
-  maintenanceStatus?: MaintenanceStatus;
 }
 
 export default function ConfiguracionTab({
@@ -32,7 +30,6 @@ export default function ConfiguracionTab({
   companies,
   themePreference,
   onSetThemePreference,
-  maintenanceStatus,
 }: ConfiguracionTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,14 +58,6 @@ export default function ConfiguracionTab({
       )}
       {notice && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
-      )}
-
-      {viewer.role === "superadmin" && (
-        <MaintenanceSection
-          currentStatus={maintenanceStatus}
-          showNotice={showNotice}
-          setError={setError}
-        />
       )}
 
       <PreferenciasSection

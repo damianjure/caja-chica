@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Loader2, Wrench, Calendar, CheckCircle2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type MaintenanceStatus } from "../../../../services/api";
 
 interface MaintenanceSectionProps {
-  currentStatus: MaintenanceStatus | undefined;
   showNotice: (msg: string) => void;
   setError: (msg: string | null) => void;
 }
@@ -41,8 +40,14 @@ function StatusChip({ status }: { status: MaintenanceStatus["status"] }) {
   return null;
 }
 
-export function MaintenanceSection({ currentStatus, showNotice, setError }: MaintenanceSectionProps) {
+export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionProps) {
   const queryClient = useQueryClient();
+  const { data: currentStatus } = useQuery<MaintenanceStatus>({
+    queryKey: ["maintenanceStatus"],
+    queryFn: () => api.getMaintenanceStatus(),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
 
   // Immediate activation fields
   const [activateMessage, setActivateMessage] = useState("");

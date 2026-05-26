@@ -557,7 +557,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
 
   return (
     <li className="border border-neutral-300 rounded-xl bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-neutral-300">
+      <div className="px-4 py-3 border-b-2 border-[var(--app-text-3)]">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {node.owner ? (
             <>
@@ -595,7 +595,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
       {totalCount === 0 ? (
         <div className="px-4 py-3 text-xs text-neutral-500 italic">Sin miembros adicionales.</div>
       ) : (
-        <ul className="divide-y divide-neutral-100/50">
+        <ul className="divide-y divide-neutral-100/20">
           {node.members.map((m) => (
             <li key={`m-${m.user_id}`} className="px-4 py-2 flex items-center gap-2 min-w-0">
               <span className="text-neutral-400 text-xs">└─</span>

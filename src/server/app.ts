@@ -25,6 +25,8 @@ import {
   parseUpdateMovimientoRequest,
 } from "./validation.ts";
 import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
+import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
+import { notifyMaintenance } from "./maintenanceNotify.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
@@ -574,6 +576,101 @@ export function createApp({
     }
     next();
   };
+
+  // Blocks all write methods during grace and active maintenance.
+  // GET requests always pass. /api/maintenance/* and /api/health are exempt.
+  const maintenanceWriteGuard: RequestHandler = (req, res, next) => {
+    const method = req.method.toUpperCase();
+    if (method === "GET" || method === "OPTIONS") return next();
+    const path = req.path;
+    if (path.startsWith("/api/maintenance/") || path === "/api/health") return next();
+    if (isWriteBlocked()) {
+      return res.status(503).json({
+        code: "MAINTENANCE_ACTIVE",
+        message: "El sistema está en mantenimiento. Intentá de nuevo en unos minutos.",
+      });
+    }
+    next();
+  };
+
+  // Apply maintenance write guard globally — before any write routes.
+  app.use(maintenanceWriteGuard);
+
+  // ---------------------------------------------------------------------------
+  // Maintenance endpoints
+  // ---------------------------------------------------------------------------
+
+  // GET /api/maintenance/status — public, no auth required
+  app.get("/api/maintenance/status", async (_req, res) => {
+    try {
+      const state = await getMaintenanceState(supabase);
+      return res.json(state);
+    } catch (err) {
+      console.error("GET /api/maintenance/status:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  // POST /api/maintenance/activate — superadmin only
+  app.post("/api/maintenance/activate", requireSession, requireSuperadmin, async (req, res) => {
+    try {
+      const graceEndsAt = new Date(Date.now() + 5 * 60_000).toISOString();
+      const state = await setMaintenanceStatus(supabase, {
+        status: "grace",
+        grace_ends_at: graceEndsAt,
+        message: typeof req.body?.message === "string" ? req.body.message : null,
+        estimated_end_at: typeof req.body?.estimatedEnd === "string" ? req.body.estimatedEnd : null,
+        notification_sent_30min: false,
+      } as any);
+      // Fire-and-forget notifications — failures must not block response
+      notifyMaintenance(supabase, null, { type: "start", message: state.message ?? undefined, estimatedEnd: state.estimated_end_at ?? undefined })
+        .catch((err) => console.error("[maintenance] activate notify failed:", err));
+      return res.json(state);
+    } catch (err) {
+      console.error("POST /api/maintenance/activate:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  // POST /api/maintenance/schedule — superadmin only
+  app.post("/api/maintenance/schedule", requireSession, requireSuperadmin, async (req, res) => {
+    try {
+      const { scheduledAt, message, estimatedEnd } = req.body ?? {};
+      if (!scheduledAt || typeof scheduledAt !== "string") {
+        return res.status(400).json({ error: "scheduledAt is required (ISO string)" });
+      }
+      const state = await setMaintenanceStatus(supabase, {
+        status: "scheduled",
+        scheduled_at: scheduledAt,
+        message: typeof message === "string" ? message : null,
+        estimated_end_at: typeof estimatedEnd === "string" ? estimatedEnd : null,
+        notification_sent_30min: false,
+      } as any);
+      return res.json(state);
+    } catch (err) {
+      console.error("POST /api/maintenance/schedule:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
+  // POST /api/maintenance/end — superadmin only
+  app.post("/api/maintenance/end", requireSession, requireSuperadmin, async (req, res) => {
+    try {
+      const state = await setMaintenanceStatus(supabase, {
+        status: "none",
+        started_at: null,
+        scheduled_at: null,
+        grace_ends_at: null,
+        notification_sent_30min: false,
+      } as any);
+      notifyMaintenance(supabase, null, { type: "end" })
+        .catch((err) => console.error("[maintenance] end notify failed:", err));
+      return res.json(state);
+    } catch (err) {
+      console.error("POST /api/maintenance/end:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
 
   app.get("/api/me", requireSession, async (req, res) => {
     const session = getSession(req);

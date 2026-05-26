@@ -423,15 +423,17 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           <button
             onClick={() => void load()}
             className="p-1.5 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 hover:border-[var(--app-text-2)]"
-            title="Actualizar"
+            title="Actualizar lista"
+            aria-label="Actualizar lista"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-neutral-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
+          <div role="status" className="flex items-center gap-3 py-8 text-neutral-500 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Cargando personas...
           </div>
         ) : personas.length === 0 ? (
           <div className="rounded-xl border border-dashed border-neutral-200 px-6 py-10 text-center">
@@ -468,7 +470,8 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 <button
                   onClick={() => void handleCopyLink(persona)}
                   className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:border-[var(--app-text-2)]"
-                  title="Copiar link"
+                  title="Copiar link de invitación"
+                  aria-label="Copiar link de invitación"
                 >
                   <Copy className="w-3.5 h-3.5" />
                 </button>

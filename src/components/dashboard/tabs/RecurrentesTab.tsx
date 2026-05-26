@@ -3,6 +3,7 @@ import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
 import { SectionCard } from '../primitives';
+import { ConfirmModal } from '../../ui/ConfirmModal';
 
 const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
   diario: 'Diario',
@@ -105,12 +106,19 @@ function RecurrenteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+    >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurrente-modal-title"
         className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+        <h2 id="recurrente-modal-title" className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
           {form === initial && initial.monto === '' ? 'Nuevo recurrente' : 'Editar recurrente'}
         </h2>
 
@@ -251,6 +259,7 @@ export default function RecurrentesTab({
   const [editing, setEditing] = useState<Recurrente | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -356,13 +365,18 @@ export default function RecurrentesTab({
           </div>
         )}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+          <div className="flex items-center gap-3 py-8 text-neutral-500 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Cargando recurrentes...
           </div>
         ) : recurrentes.length === 0 ? (
-          <p className="text-sm text-neutral-500 py-6 text-center">
-            Sin recurrentes. {canWriteData ? 'Creá el primero para automatizar cargas.' : ''}
-          </p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin recurrentes todavía</p>
+            <p className="text-sm text-neutral-500 mb-4">Creá tu primer movimiento recurrente para automatizar registros periódicos.</p>
+            {canWriteData && (
+              <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white">+ Nuevo recurrente</button>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             {recurrentes.map((r) => (
@@ -427,7 +441,7 @@ export default function RecurrentesTab({
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(r.id)}
+                      onClick={() => setDeleteTarget(r.id)}
                       disabled={deletingId === r.id}
                       className="p-2 rounded-lg border border-transparent text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:border-red-400 transition-colors disabled:opacity-50"
                       title="Eliminar"
@@ -456,6 +470,17 @@ export default function RecurrentesTab({
           initial={recurrenteToForm(editing)}
           onClose={() => setEditing(null)}
           onSave={handleUpdate}
+        />
+      )}
+
+      {deleteTarget !== null && (
+        <ConfirmModal
+          title="Borrar recurrente"
+          description={`¿Borrar "${recurrentes.find((r) => r.id === deleteTarget)?.descripcion ?? ''}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Borrar"
+          tone="danger"
+          onConfirm={async () => { const id = deleteTarget; setDeleteTarget(null); await handleDelete(id); }}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </div>

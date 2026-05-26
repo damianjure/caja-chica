@@ -65,15 +65,15 @@ function MovementCardsImpl({
                 </div>
                 <div className="flex items-center gap-1">
                   {canWriteData && (
-                    <button onClick={() => onEdit(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar">
+                    <button onClick={() => onEdit(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar movimiento" aria-label="Editar movimiento">
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => onCopy(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar JSON">
+                  <button onClick={() => onCopy(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
                     {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar">
+                    <button onClick={() => onDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}

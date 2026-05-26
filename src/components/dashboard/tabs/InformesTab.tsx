@@ -204,7 +204,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Período</span>
-                <select className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}>
+                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}>
                   <option value="day">Día</option>
                   <option value="week">Semana</option>
                   <option value="month">Mes</option>
@@ -215,7 +215,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
               {(period === "day" || period === "week") && (
                 <label className="space-y-1 text-sm text-neutral-600">
                   <span className="font-medium text-neutral-800">{period === "day" ? "Fecha" : "Fecha ancla"}</span>
-                  <input className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
+                  <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
                 </label>
               )}
 
@@ -230,18 +230,18 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                 <>
                   <label className="space-y-1 text-sm text-neutral-600">
                     <span className="font-medium text-neutral-800">Desde</span>
-                    <input className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+                    <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
                   </label>
                   <label className="space-y-1 text-sm text-neutral-600">
                     <span className="font-medium text-neutral-800">Hasta</span>
-                    <input className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+                    <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
                   </label>
                 </>
               )}
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Empresa</span>
-                <select className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" value={company} onChange={(event) => setCompany(event.target.value)}>
+                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={company} onChange={(event) => setCompany(event.target.value)}>
                   {companiesList.map((item) => (
                     <option key={item} value={item}>{item === "all" ? "Todas las empresas" : item}</option>
                   ))}
@@ -250,7 +250,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Tipo</span>
-                <select className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" value={tipo} onChange={(event) => setTipo(event.target.value as ReportExportRequest["tipo"])}>
+                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={tipo} onChange={(event) => setTipo(event.target.value as ReportExportRequest["tipo"])}>
                   <option value="all">Todos</option>
                   <option value="ingreso">Ingresos</option>
                   <option value="egreso">Gastos</option>
@@ -259,7 +259,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Moneda</span>
-                <select className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" value={moneda} onChange={(event) => setMoneda(event.target.value as ReportExportRequest["moneda"])}>
+                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={moneda} onChange={(event) => setMoneda(event.target.value as ReportExportRequest["moneda"])}>
                   <option value="all">Todas</option>
                   <option value="ARS">ARS</option>
                   <option value="USD">USD</option>
@@ -342,8 +342,8 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
               ) : (
                 exportsHistory.slice(0, 8).map((item) => (
                   <div key={item.id} className="rounded-xl border border-neutral-200 bg-white p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-neutral-900">{item.file_name}</div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+                      <div className="font-medium text-neutral-900 truncate min-w-0 flex-1">{item.file_name}</div>
                       <div className="flex items-center gap-1">
                         {item.destination === "drive" && item.drive_url ? (
                           <a

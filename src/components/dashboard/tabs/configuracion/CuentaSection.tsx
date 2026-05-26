@@ -224,7 +224,7 @@ export function CuentaSection({
         {/* Display name */}
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Nombre visible</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={displayName}
@@ -238,7 +238,7 @@ export function CuentaSection({
               type="button"
               onClick={() => void handleSaveDisplayName()}
               disabled={savingDisplayName}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
             >
               {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Guardar

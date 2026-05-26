@@ -86,7 +86,10 @@ export default function EmpresasTab({
 
       <SectionCard title="Comparación por empresa" description="Mirá cada unidad con ingresos, gastos y saldo neto por moneda.">
         {companySummaries.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay movimientos para comparar empresas.</p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin empresas todavía</p>
+            <p className="text-sm text-neutral-500">Las empresas se agregan automáticamente al registrar movimientos, o podés crearlas desde aquí.</p>
+          </div>
         ) : (
           <div className="space-y-6">
             <ChartCard title="Ranking de ingresos ARS" description="Vista rápida de qué empresa o frente comercial mueve más caja.">

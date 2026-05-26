@@ -60,13 +60,13 @@ export function PreferenciasSection({
   };
 
   return (
-    <section className="bg-white border border-neutral-200 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
+    <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-neutral-900 text-white">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Preferencias</h2>
+          <h2 className="text-xl font-bold tracking-tight dark:text-neutral-100">Preferencias</h2>
           <p className="text-sm text-neutral-500">Configuración personal del dashboard.</p>
         </div>
       </div>
@@ -108,7 +108,7 @@ export function PreferenciasSection({
             value={defaultEmpresa}
             onChange={(e) => setDefaultEmpresa(e.target.value)}
             aria-label="Empresa por defecto"
-            className="rounded-xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white w-full max-w-xs"
+            className="rounded-xl border border-neutral-300 dark:border-neutral-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900 bg-white dark:bg-neutral-800 dark:text-neutral-100 w-full max-w-xs"
           >
             <option value="">Sin empresa (Personal)</option>
             {companies.filter((c) => !c.deleted_at).map((c) => (

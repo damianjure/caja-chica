@@ -123,8 +123,8 @@ function RecurrenteModal({
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Monto</label>
               <input
                 type="number"
@@ -162,7 +162,7 @@ function RecurrenteModal({
               </select>
             </div>
 
-            <div className={form.frecuencia === 'mensual' ? '' : 'col-span-2'}>
+            <div className={form.frecuencia === 'mensual' ? '' : 'col-span-1 sm:col-span-2'}>
               <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Frecuencia</label>
               <select
                 value={form.frecuencia}
@@ -212,7 +212,7 @@ function RecurrenteModal({
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Descripción</label>
               <input
                 type="text"

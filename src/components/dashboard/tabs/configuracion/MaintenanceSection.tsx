@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Wrench, Calendar, CheckCircle2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type MaintenanceStatus } from "../../../../services/api";
+import { ConfirmModal } from "../../../ui/ConfirmModal";
 
 interface MaintenanceSectionProps {
   showNotice: (msg: string) => void;
@@ -191,33 +192,23 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
             </div>
           </div>
 
-          {!showActivateConfirm ? (
-            <button
-              onClick={() => setShowActivateConfirm(true)}
-              disabled={isLive || activating}
-              className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              <Wrench className="w-4 h-4" />
-              Activar mantenimiento inmediato
-            </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-neutral-700">¿Confirmar activación?</span>
-              <button
-                onClick={() => void handleActivate()}
-                disabled={activating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40 transition"
-              >
-                {activating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Sí, activar
-              </button>
-              <button
-                onClick={() => setShowActivateConfirm(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-neutral-600 border border-neutral-200 hover:border-neutral-400 transition"
-              >
-                Cancelar
-              </button>
-            </div>
+          <button
+            onClick={() => setShowActivateConfirm(true)}
+            disabled={isLive || activating}
+            className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            <Wrench className="w-4 h-4" />
+            Activar mantenimiento inmediato
+          </button>
+          {showActivateConfirm && (
+            <ConfirmModal
+              title="Activar modo mantenimiento"
+              description="Todos los usuarios quedarán sin acceso a escritura. Se enviará notificación por email y Telegram."
+              confirmLabel="Activar"
+              tone="danger"
+              onConfirm={async () => { await handleActivate(); }}
+              onCancel={() => setShowActivateConfirm(false)}
+            />
           )}
         </div>
 
@@ -278,33 +269,23 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               <CheckCircle2 className="w-4 h-4" />
               Finalizar mantenimiento
             </h3>
-            {!showEndConfirm ? (
-              <button
-                onClick={() => setShowEndConfirm(true)}
-                disabled={ending}
-                className="inline-flex items-center gap-2 rounded-md bg-[var(--app-red-text)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Finalizar mantenimiento
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-[var(--app-red-text)]">¿Finalizar y volver a modo normal?</span>
-                <button
-                  onClick={() => void handleEnd()}
-                  disabled={ending}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-red-text)] px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition"
-                >
-                  {ending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  Sí, finalizar
-                </button>
-                <button
-                  onClick={() => setShowEndConfirm(false)}
-                  className="rounded-md px-3 py-1.5 text-sm text-neutral-600 border border-neutral-200 hover:border-neutral-400 transition"
-                >
-                  Cancelar
-                </button>
-              </div>
+            <button
+              onClick={() => setShowEndConfirm(true)}
+              disabled={ending}
+              className="inline-flex items-center gap-2 rounded-md bg-[var(--app-red-text)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Finalizar mantenimiento
+            </button>
+            {showEndConfirm && (
+              <ConfirmModal
+                title="Finalizar mantenimiento"
+                description="El servicio volverá a modo normal y se notificará a los usuarios."
+                confirmLabel="Finalizar"
+                tone="danger"
+                onConfirm={async () => { await handleEnd(); }}
+                onCancel={() => setShowEndConfirm(false)}
+              />
             )}
           </div>
         )}

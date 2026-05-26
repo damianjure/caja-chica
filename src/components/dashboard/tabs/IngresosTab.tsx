@@ -28,7 +28,10 @@ export default function IngresosTab({
 
       <SectionCard title="Ingresos por empresa / origen" description="Acá ves de dónde viene la plata: empresa, frente comercial o descripción visible del cobro.">
         {topIncomeSources.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay ingresos cargados.</p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin ingresos todavía</p>
+            <p className="text-sm text-neutral-500">Registrá tu primer ingreso desde el campo de texto.</p>
+          </div>
         ) : (
           <HorizontalBarList items={topIncomeSources} emptyLabel="Todavía no hay ingresos cargados." />
         )}
@@ -36,7 +39,10 @@ export default function IngresosTab({
 
       <SectionCard title="Etiquetas de ingresos" description="10 etiquetas frecuentes para entender más rápido qué tipo de ingreso entra sin leer uno por uno.">
         {incomeTags.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay ingresos suficientes para proponer etiquetas.</p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin etiquetas todavía</p>
+            <p className="text-sm text-neutral-500">Las etiquetas aparecen cuando hay ingresos con categoría o descripción.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {incomeTags.map((tag) => (

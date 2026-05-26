@@ -40,8 +40,8 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         {/* Step 1: Welcome */}
         {step === 'welcome' && (
           <div className="p-8 flex flex-col items-center text-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center">
-              <Users className="w-8 h-8 text-indigo-600" />
+            <div className="w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center">
+              <Users className="w-8 h-8 text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
@@ -77,8 +77,8 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         {step === 'telegram' && (
           <div className="p-8 flex flex-col gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-5 h-5 text-sky-600" />
+              <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-neutral-900 dark:text-white">Sumar Telegram</h3>

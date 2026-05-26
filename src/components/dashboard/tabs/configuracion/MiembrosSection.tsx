@@ -540,6 +540,9 @@ function PersonCard({
                     >
                       <button
                         type="button"
+                        role="switch"
+                        aria-checked={active ? "true" : "false"}
+                        aria-label={def.label}
                         disabled={permLoading || isCurrentUser}
                         onClick={() => void onTogglePerm(def.key, active)}
                         className={`mt-0.5 w-[18px] h-[18px] rounded-md flex items-center justify-center shrink-0 border transition-all disabled:opacity-50 ${
@@ -551,6 +554,7 @@ function PersonCard({
                       >
                         {active && <Check className="w-3 h-3" />}
                         {permLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                        <span className="sr-only">{active ? "Activo" : "Inactivo"}</span>
                       </button>
                       <div>
                         <p className="text-sm font-medium text-neutral-800 dark:text-[var(--app-text-1)] leading-tight">

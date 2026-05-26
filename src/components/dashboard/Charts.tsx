@@ -46,7 +46,7 @@ export function TrendBars({
     : `Gráfico de evolución mensual en ${currency}: ${data.length} meses. ${data.map((item) => `${item.label}: ingresos ${formatCompact(item.income, currency)}, gastos ${formatCompact(item.expense, currency)}, saldo ${formatCompact(item.net, currency)}`).join('; ')}.`;
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-6" role="img" aria-label={summary}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:grid-cols-6" role="img" aria-label={summary}>
       {data.map((item) => {
         const incomeHeight = `${Math.max((item.income / max) * 100, item.income > 0 ? 10 : 0)}%`;
         const expenseHeight = `${Math.max((item.expense / max) * 100, item.expense > 0 ? 10 : 0)}%`;

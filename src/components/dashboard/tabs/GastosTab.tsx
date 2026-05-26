@@ -60,7 +60,10 @@ export default function GastosTab({
           ))}
         </div>
         {categorySummaries.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay gastos para analizar.</p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin categorías todavía</p>
+            <p className="text-sm text-neutral-500">Las categorías aparecen cuando cargás gastos con etiqueta.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {categorySummaries.slice(0, 10).map((category) => (
@@ -119,7 +122,10 @@ export default function GastosTab({
 
       <SectionCard title="Evolución mensual" description="La evolución te muestra si el ritmo del gasto acompaña o se come al ingreso en cada mes.">
         {monthlyChartData.length === 0 ? (
-          <p className="text-sm text-neutral-500">Sin movimientos suficientes para construir evolución mensual.</p>
+          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
+            <p className="font-semibold text-neutral-700 mb-1">Sin datos suficientes</p>
+            <p className="text-sm text-neutral-500">La evolución mensual aparece cuando tenés movimientos en más de un mes.</p>
+          </div>
         ) : (
           <TrendBars data={monthlyChartData} currency="ARS" />
         )}

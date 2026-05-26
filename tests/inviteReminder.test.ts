@@ -64,7 +64,7 @@ function makeQueryChain(rows: Row[], updatedIds: string[]) {
   return chain;
 }
 
-function makeSupabase(appRows: Row[], dashRows: Row[]) {
+function makeSupabase(appRows: Row[], dashRows: Row[], appUserRows: Row[] = []) {
   const appUpdated: string[] = [];
   const dashUpdated: string[] = [];
 
@@ -72,6 +72,7 @@ function makeSupabase(appRows: Row[], dashRows: Row[]) {
     from(table: string) {
       if (table === "user_invitations") return makeQueryChain(appRows, appUpdated);
       if (table === "dashboard_invitations") return makeQueryChain(dashRows, dashUpdated);
+      if (table === "app_users") return makeQueryChain(appUserRows, []);
       throw new Error(`Unexpected table: ${table}`);
     },
     _appUpdated: appUpdated,
@@ -109,7 +110,7 @@ describe("processInviteReminders", () => {
         {
           id: "inv-1",
           email: "user@example.com",
-          invite_url: "https://example.com/invite/abc",
+          invite_token: "token-abc",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -132,7 +133,7 @@ describe("processInviteReminders", () => {
         {
           id: "inv-2",
           email: "user2@example.com",
-          invite_url: "https://example.com/invite/def",
+          invite_token: "token-def",
           status: "pending",
           created_at: daysAgo(5),
           expires_at: daysFromNow(2),
@@ -155,15 +156,16 @@ describe("processInviteReminders", () => {
         {
           id: "dash-1",
           email: "collab@example.com",
-          invite_url: "https://example.com/invite/xyz",
+          invite_token: "token-dash-1",
           role: "editor",
-          inviter_email: "owner@example.com",
+          invited_by_user_id: "owner-1",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
           last_reminder_at: null,
         },
       ],
+      [{ user_id: "owner-1", email: "owner@example.com" }],
     );
     const opts = makeOpts();
 
@@ -181,7 +183,7 @@ describe("processInviteReminders", () => {
         {
           id: "a1",
           email: "a1@example.com",
-          invite_url: "https://example.com/invite/a1",
+          invite_token: "token-a1",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -190,7 +192,7 @@ describe("processInviteReminders", () => {
         {
           id: "a2",
           email: "a2@example.com",
-          invite_url: "https://example.com/invite/a2",
+          invite_token: "token-a2",
           status: "pending",
           created_at: daysAgo(5),
           expires_at: daysFromNow(2),
@@ -212,7 +214,7 @@ describe("processInviteReminders", () => {
         {
           id: "fail-1",
           email: "fail@example.com",
-          invite_url: "https://example.com/invite/fail",
+          invite_token: "token-fail",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -221,7 +223,7 @@ describe("processInviteReminders", () => {
         {
           id: "ok-1",
           email: "ok@example.com",
-          invite_url: "https://example.com/invite/ok",
+          invite_token: "token-ok",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -253,7 +255,7 @@ describe("processInviteReminders", () => {
         {
           id: "app-1",
           email: "app@example.com",
-          invite_url: "https://example.com/invite/app",
+          invite_token: "token-app",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -264,9 +266,8 @@ describe("processInviteReminders", () => {
         {
           id: "dash-2",
           email: "dash@example.com",
-          invite_url: "https://example.com/invite/dash",
+          invite_token: "token-dash-2",
           role: "viewer",
-          inviter_email: "boss@example.com",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),
@@ -288,7 +289,7 @@ describe("processInviteReminders", () => {
         {
           id: "cnt-1",
           email: "cnt@example.com",
-          invite_url: "https://example.com/invite/cnt",
+          invite_token: "token-cnt",
           status: "pending",
           created_at: daysAgo(4),
           expires_at: daysFromNow(3),

@@ -2366,10 +2366,16 @@ export function createApp({
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
-        invitations = (data ?? []).map((invitation: any) => ({
-          ...invitation,
-          invite_url: `${publicAppUrl || ""}/?invite=${invitation.invite_token}`,
-        }));
+        const canSeeTokens = scope.membershipRole === "owner" || scope.membershipRole === null;
+        invitations = (data ?? []).map((invitation: any) => {
+          const base = { ...invitation };
+          if (canSeeTokens) {
+            base.invite_url = `${publicAppUrl || ""}/?invite=${invitation.invite_token}`;
+          } else {
+            delete base.invite_token;
+          }
+          return base;
+        });
       } catch (error) {
         if (!isMissingSchemaArtifactError(error)) throw error;
       }
@@ -2439,6 +2445,7 @@ export function createApp({
         telegramDeepLink = buildTelegramDeepLink(telegramToken) ?? undefined;
       }
 
+      const sevenDaysFromNow = new Date(new Date(now).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const invitationPayload = {
         dashboard_id: scope.dashboardId,
         email: payload.email,
@@ -2447,7 +2454,7 @@ export function createApp({
         invited_by_user_id: session.userId,
         accepted_user_id: acceptedNow ? existingUser.user_id : null,
         accepted_at: acceptedNow ? now : null,
-        expires_at: null,
+        expires_at: acceptedNow ? null : sevenDaysFromNow,
         invite_token: inviteToken,
         ...(payload.telegram_preauth
           ? { telegram_preauth: true, telegram_invite_token_id: telegramTokenId }
@@ -2484,7 +2491,7 @@ export function createApp({
               role: "member",
               status: "pending",
               invited_by: session.userId,
-              expires_at: null,
+              expires_at: sevenDaysFromNow,
             },
             { onConflict: "email" },
           );
@@ -2871,8 +2878,8 @@ export function createApp({
 
       const personas: PersonaRecord[] = [];
 
-      // App-scope invitations (user_invitations) — visible to admins and owners
-      if (!scopeFilter || scopeFilter === "app") {
+      // App-scope invitations (user_invitations) — visible to admins/superadmins only
+      if (isAdmin && (!scopeFilter || scopeFilter === "app")) {
         const { data: uiRows, error: uiErr } = await supabase
           .from("user_invitations")
           .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at")
@@ -2963,14 +2970,17 @@ export function createApp({
   async function lookupPersonaInvite(
     id: string,
     dashboardId: string | null,
+    isAdmin: boolean = false,
   ): Promise<{ table: "user_invitations" | "dashboard_invitations"; row: any } | null> {
-    // Try user_invitations first
-    const { data: uiRows } = await supabase
-      .from("user_invitations")
-      .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by")
-      .eq("id", id)
-      .limit(1);
-    if (uiRows?.[0]) return { table: "user_invitations", row: uiRows[0] };
+    // Try user_invitations — only admins/superadmins may act on app-level invitations
+    if (isAdmin) {
+      const { data: uiRows } = await supabase
+        .from("user_invitations")
+        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by")
+        .eq("id", id)
+        .limit(1);
+      if (uiRows?.[0]) return { table: "user_invitations", row: uiRows[0] };
+    }
 
     // Try dashboard_invitations (must belong to the caller's dashboard)
     if (dashboardId) {
@@ -3002,7 +3012,7 @@ export function createApp({
         return res.status(403).json({ error: "forbidden" });
       }
 
-      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId);
+      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId, isAdmin);
       if (!found) return res.status(404).json({ error: "not_found" });
 
       const { table, row } = found;
@@ -3076,13 +3086,13 @@ export function createApp({
         return res.status(400).json({ error: "invalid_role" });
       }
 
-      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId);
+      const found = await lookupPersonaInvite(req.params.id, scope.dashboardId, isAdmin);
       if (!found) return res.status(404).json({ error: "not_found" });
 
       const { table, row } = found;
 
       if (table === "user_invitations") {
-        // App scope: owner or admin can update role (member ↔ admin); only superadmin can set superadmin
+        // App scope: only admins/superadmins can update role (member ↔ admin)
         if (!validAppRoles.includes(newRole as string)) {
           return res.status(400).json({ error: "invalid_role_for_scope" });
         }
@@ -3294,9 +3304,18 @@ export function createApp({
         if (!parsed) return res.status(400).json({ error: "invalid_frecuencia" });
         updates.frecuencia = p.frecuencia;
       }
-      if (p.categoria !== undefined) updates.categoria = p.categoria;
-      if (p.empresa_nombre !== undefined) updates.empresa_nombre = p.empresa_nombre;
-      if (p.descripcion !== undefined) updates.descripcion = p.descripcion;
+      if (p.categoria !== undefined) {
+        if (typeof p.categoria !== "string") return res.status(400).json({ error: "invalid_categoria" });
+        updates.categoria = p.categoria.trim().slice(0, 100) || null;
+      }
+      if (p.empresa_nombre !== undefined) {
+        if (typeof p.empresa_nombre !== "string") return res.status(400).json({ error: "invalid_empresa_nombre" });
+        updates.empresa_nombre = p.empresa_nombre.trim().slice(0, 120) || null;
+      }
+      if (p.descripcion !== undefined) {
+        if (typeof p.descripcion !== "string") return res.status(400).json({ error: "invalid_descripcion" });
+        updates.descripcion = p.descripcion.trim().slice(0, 500) || null;
+      }
 
       if (p.day_of_month !== undefined) {
         if (p.day_of_month === null) {

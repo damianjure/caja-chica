@@ -26,30 +26,35 @@ export interface InviteReminderOpts {
     role: string,
     inviterEmail: string,
   ) => Promise<void>;
+  /** Base URL for constructing invite links (e.g. "https://caja-chica-bot.web.app"). */
+  baseUrl?: string;
 }
 
-type InviteRow = {
+type AppInviteRow = {
   id: string;
   email: string;
-  invite_url: string;
+  invite_token: string;
   status: string;
   created_at: string;
   expires_at: string | null;
   last_reminder_at: string | null;
+};
+
+type DashInviteRow = AppInviteRow & {
   role?: string;
-  inviter_email?: string;
+  invited_by_user_id?: string | null;
 };
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-function needsReminder(row: InviteRow, now: Date): boolean {
+function needsReminder(row: AppInviteRow, now: Date): boolean {
   const created = new Date(row.created_at);
   if (now.getTime() - created.getTime() < THREE_DAYS_MS) return false;
 
   if (row.expires_at !== null && row.expires_at !== undefined) {
     const expires = new Date(row.expires_at);
-    if (expires <= now) return false; // already expired naturally
+    if (expires <= now) return false;
   }
 
   if (row.last_reminder_at !== null && row.last_reminder_at !== undefined) {
@@ -69,6 +74,7 @@ export async function processInviteReminders(
     opts.sendDashboardEmail ??
     ((to: string, url: string, role: string, inviterEmail: string) =>
       sendDashboardInvitationEmail(to, url, role, inviterEmail));
+  const baseUrl = opts.baseUrl ?? "";
 
   const now = new Date();
   let sent = 0;
@@ -76,24 +82,31 @@ export async function processInviteReminders(
   // ---- user_invitations (app-level) ----
   const appQuery = supabase
     .from("user_invitations")
-    .select("id, email, invite_url, status, created_at, expires_at, last_reminder_at") as Promise<{
-      data: InviteRow[] | null;
+    .select("id, email, invite_token, status, created_at, expires_at, last_reminder_at") as Promise<{
+      data: AppInviteRow[] | null;
       error: unknown;
     }>;
 
-  const { data: appRows } = await appQuery;
+  const { data: appRows, error: appError } = await appQuery;
+  if (appError) {
+    console.error("[inviteReminder] Failed to fetch user_invitations:", appError);
+  }
   for (const row of appRows ?? []) {
     if (row.status !== "pending") continue;
     if (!needsReminder(row, now)) continue;
     try {
-      await sendApp(row.email, row.invite_url);
-      await (
+      const url = `${baseUrl}/?invite=${row.invite_token}`;
+      await sendApp(row.email, url);
+      const updateResult = await (
         supabase
           .from("user_invitations")
           .update({ last_reminder_at: now.toISOString() }) as Record<string, unknown> & {
-            eq: (col: string, val: string) => Promise<unknown>;
+            eq: (col: string, val: string) => Promise<{ error: unknown }>;
           }
       ).eq("id", row.id);
+      if (updateResult?.error) {
+        console.error("[inviteReminder] Failed to update last_reminder_at for app invite", row.id, updateResult.error);
+      }
       sent++;
     } catch (err) {
       console.error("[inviteReminder] Failed for app invite", row.id, err);
@@ -104,27 +117,67 @@ export async function processInviteReminders(
   const dashQuery = supabase
     .from("dashboard_invitations")
     .select(
-      "id, email, invite_url, role, inviter_email, status, created_at, expires_at, last_reminder_at",
-    ) as Promise<{ data: InviteRow[] | null; error: unknown }>;
+      "id, email, invite_token, role, invited_by_user_id, status, created_at, expires_at, last_reminder_at",
+    ) as Promise<{ data: DashInviteRow[] | null; error: unknown }>;
 
-  const { data: dashRows } = await dashQuery;
+  const { data: dashRows, error: dashError } = await dashQuery;
+  if (dashError) {
+    console.error("[inviteReminder] Failed to fetch dashboard_invitations:", dashError);
+  }
+
+  // Batch-resolve inviter emails from app_users
+  const inviterIds = [...new Set(
+    (dashRows ?? [])
+      .map((r) => r.invited_by_user_id)
+      .filter((id): id is string => typeof id === "string"),
+  )];
+
+  const inviterEmailMap: Record<string, string> = {};
+  if (inviterIds.length > 0) {
+    try {
+      const { data: userRows, error: userErr } = await (
+        supabase
+          .from("app_users")
+          .select("user_id, email") as unknown as Promise<{
+            data: Array<{ user_id: string; email: string }> | null;
+            error: unknown;
+          }>
+      );
+      if (userErr) {
+        console.error("[inviteReminder] Failed to fetch inviter emails:", userErr);
+      }
+      for (const u of userRows ?? []) {
+        if (inviterIds.includes(u.user_id)) {
+          inviterEmailMap[u.user_id] = u.email;
+        }
+      }
+    } catch (err) {
+      console.error("[inviteReminder] Failed to fetch inviter emails:", err);
+    }
+  }
+
   for (const row of dashRows ?? []) {
     if (row.status !== "pending") continue;
     if (!needsReminder(row, now)) continue;
     try {
+      const url = `${baseUrl}/?invite=${row.invite_token}`;
+      const inviterEmail = (row.invited_by_user_id && inviterEmailMap[row.invited_by_user_id]) || "";
       await sendDash(
         row.email,
-        row.invite_url,
+        url,
         row.role ?? "viewer",
-        row.inviter_email ?? "",
+        inviterEmail,
       );
-      await (
+      const updateResult = await (
         supabase
           .from("dashboard_invitations")
           .update({ last_reminder_at: now.toISOString() }) as Record<string, unknown> & {
-            eq: (col: string, val: string) => Promise<unknown>;
+            eq: (col: string, val: string) => Promise<{ error: unknown }>;
           }
       ).eq("id", row.id);
+      if (updateResult?.error) {
+        console.error("[inviteReminder] Failed to update last_reminder_at for dashboard invite", row.id, updateResult.error);
+      }
       sent++;
     } catch (err) {
       console.error("[inviteReminder] Failed for dashboard invite", row.id, err);

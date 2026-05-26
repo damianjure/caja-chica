@@ -312,7 +312,7 @@ test("GET /api/personas — viewer (non-owner member) gets 403", async () => {
   );
 });
 
-test("GET /api/personas — owner sees merged user_invitations + dashboard_invitations", async () => {
+test("GET /api/personas — owner sees only dashboard_invitations (not app-level user_invitations)", async () => {
   await withPersonasServer(
     {
       userInvitations: [pendingAppInvite, acceptedAppInvite],
@@ -326,7 +326,8 @@ test("GET /api/personas — owner sees merged user_invitations + dashboard_invit
       });
       assert.equal(res.status, 200);
       const body = await res.json() as unknown[];
-      assert.equal(body.length, 3);
+      // owner cannot see user_invitations (app-level) — only admins/superadmins can
+      assert.equal(body.length, 1);
     },
   );
 });
@@ -337,7 +338,7 @@ test("GET /api/personas — status derivation: accepted_at set → active", asyn
       userInvitations: [acceptedAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -357,7 +358,7 @@ test("GET /api/personas — status derivation: expires_at in the past → expire
       userInvitations: [expiredAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -377,7 +378,7 @@ test("GET /api/personas — status derivation: raw_status=revoked → revoked", 
       userInvitations: [revokedAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -405,7 +406,7 @@ test("GET /api/personas — last_action_at = max(accepted_at, last_reminder_at, 
       userInvitations: [inviteWithReminder],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -428,7 +429,7 @@ test("GET /api/personas — ordered by last_action_at DESC", async () => {
       userInvitations: [older, newer],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -447,7 +448,7 @@ test("GET /api/personas — filter ?status=pending returns only pending records"
       userInvitations: [pendingAppInvite, acceptedAppInvite, expiredAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas?status=pending`, {
         headers: bearerHeader(),
@@ -504,7 +505,7 @@ test("GET /api/personas — response shape matches PersonaRecord interface", asy
       userInvitations: [pendingAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -535,7 +536,7 @@ test("GET /api/personas — invite_url uses publicAppUrl for app invitations", a
       userInvitations: [pendingAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -628,7 +629,7 @@ test("GET /api/personas — type field is 'app' for user_invitations", async () 
       userInvitations: [pendingAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas`, {
         headers: bearerHeader(),
@@ -856,7 +857,7 @@ test("POST /api/personas/:id/resend — 409 when invite already accepted", async
       userInvitations: [acceptedAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${acceptedAppInvite.id}/resend`, {
@@ -875,7 +876,7 @@ test("POST /api/personas/:id/resend — 409 when invite revoked", async () => {
       userInvitations: [revokedAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${revokedAppInvite.id}/resend`, {
@@ -906,14 +907,14 @@ test("POST /api/personas/:id/resend — viewer caller gets 403", async () => {
   );
 });
 
-test("POST /api/personas/:id/resend — owner resends app invite successfully (200)", async () => {
+test("POST /api/personas/:id/resend — superadmin resends app invite successfully (200)", async () => {
   const emails: any[] = [];
   await withResendServer(
     {
       userInvitations: [pendingAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${pendingAppInvite.id}/resend`, {
@@ -953,7 +954,7 @@ test("POST /api/personas/:id/resend — expired token gets regenerated (200, new
       userInvitations: [expiredAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${expiredAppInvite.id}/resend`, {
@@ -1095,14 +1096,14 @@ test("PATCH /api/personas/:id/role — 400 on invalid role value", async () => {
   );
 });
 
-test("PATCH /api/personas/:id/role — owner changes pending app invite role (200)", async () => {
+test("PATCH /api/personas/:id/role — superadmin changes pending app invite role (200)", async () => {
   const emails: any[] = [];
   await withResendServer(
     {
       userInvitations: [pendingAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${pendingAppInvite.id}/role`, {
@@ -1167,7 +1168,7 @@ test("PATCH /api/personas/:id/role — cannot change role on accepted app invite
       userInvitations: [acceptedAppInvite],
       dashboardMembers: [ownerDashboardMember],
     },
-    ownerSession,
+    superadminSession,
     emails,
     async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/personas/${acceptedAppInvite.id}/role`, {

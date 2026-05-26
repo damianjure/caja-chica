@@ -165,7 +165,7 @@ cron.schedule("* * * * *", async () => {
 // Invite reminder cron — daily at 10:00 UTC
 cron.schedule("0 10 * * *", async () => {
   try {
-    const { sent } = await processInviteReminders(supabase as unknown as Parameters<typeof processInviteReminders>[0]);
+    const { sent } = await processInviteReminders(supabase as unknown as Parameters<typeof processInviteReminders>[0], { baseUrl: dashboardUrl });
     console.log(`[cron:inviteReminder] Done. Sent: ${sent}`);
   } catch (err) {
     console.error("[cron:inviteReminder] Unexpected error:", err);

@@ -126,8 +126,12 @@ export function CuentaSection({
     }
   };
 
-  const handleExportData = () => {
-    window.open(api.getExportUrl(), "_blank");
+  const handleExportData = async () => {
+    try {
+      await api.downloadMyExport();
+    } catch {
+      setError("No se pudo exportar los datos.");
+    }
   };
 
   const loadSessions = async () => {

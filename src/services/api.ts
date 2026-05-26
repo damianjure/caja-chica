@@ -677,8 +677,20 @@ export const api = {
     return fetchApi("/api/me", { method: "DELETE" });
   },
 
-  getExportUrl(): string {
-    return `${API_BASE}/api/me/export`;
+  async downloadMyExport(): Promise<void> {
+    const session = supabase ? await supabase.auth.getSession() : null;
+    const accessToken = session?.data.session?.access_token;
+    const res = await fetch(`${API_BASE}/api/me/export`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
+    if (!res.ok) throw new ApiError(`Export failed: ${res.status}`, res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "caja-chica-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
   },
 
   async listPersonas(filters?: PersonaFilters): Promise<PersonaRecord[]> {

@@ -322,7 +322,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             </div>
           </div>
 
-          <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5">
             <div className="mb-3 inline-flex rounded-xl bg-white p-2 text-neutral-700 shadow-sm">
               <FolderOpen className="h-5 w-5" />
             </div>

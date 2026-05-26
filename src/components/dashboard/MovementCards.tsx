@@ -21,7 +21,7 @@ function MovementCardsImpl({
 }: MovementCardsProps) {
   if (filteredHistory.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-lg text-neutral-400">
+      <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-xl text-neutral-400">
         <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
         {selectedCompany === 'all' ? (
           <>
@@ -47,11 +47,11 @@ function MovementCardsImpl({
             <div
               key={item.id}
               style={{ animationDelay: `${Math.min(index * 40, 160)}ms` }}
-              className="anim-card-in group bg-white border border-neutral-200 hover:border-neutral-300 rounded-lg p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
+              className="anim-card-in group bg-white border border-neutral-200 hover:border-neutral-300 rounded-xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${item.tipo === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`p-2 rounded-md ${item.tipo === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                     {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
                   <div>
@@ -65,15 +65,15 @@ function MovementCardsImpl({
                 </div>
                 <div className="flex items-center gap-1">
                   {canWriteData && (
-                    <button onClick={() => onEdit(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]" title="Editar">
+                    <button onClick={() => onEdit(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar">
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => onCopy(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-[var(--app-text-2)]" title="Copiar JSON">
+                  <button onClick={() => onCopy(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar JSON">
                     {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-lg border border-transparent hover:border-red-400" title="Borrar">
+                    <button onClick={() => onDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}

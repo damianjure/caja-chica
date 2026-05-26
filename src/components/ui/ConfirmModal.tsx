@@ -73,7 +73,7 @@ export function ConfirmModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-2xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
             />
           </label>
         )}
@@ -89,7 +89,7 @@ export function ConfirmModal({
               onChange={(e) => setConfirmInput(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className="w-full rounded-2xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
             />
           </label>
         )}
@@ -99,7 +99,7 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={submitting}
-            className="flex-1 rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] disabled:opacity-50"
+            className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -107,7 +107,7 @@ export function ConfirmModal({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={!canConfirm}
-            className={`flex-1 rounded-2xl px-4 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${confirmClasses}`}
+            className={`flex-1 rounded-md px-4 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${confirmClasses}`}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {confirmLabel}

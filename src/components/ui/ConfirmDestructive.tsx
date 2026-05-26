@@ -101,7 +101,7 @@ export function ConfirmDestructive({
         aria-modal="true"
         aria-labelledby="confirm-destructive-title"
         aria-describedby="confirm-destructive-desc"
-        className="anim-scale-in w-full max-w-[400px] bg-white border border-neutral-200 rounded-xl shadow-2xl p-6"
+        className="anim-scale-in w-full max-w-[400px] bg-white border border-neutral-200 rounded-2xl shadow-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-3.5">
@@ -115,7 +115,7 @@ export function ConfirmDestructive({
         </p>
 
         {state.preview && (
-          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-lg mb-4 tabular-nums">
+          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-md mb-4 tabular-nums">
             <div className="min-w-0 flex flex-col gap-0.5">
               <span className="text-[13px] font-medium text-neutral-900 truncate">{state.preview.title}</span>
               {state.preview.meta && (
@@ -150,7 +150,7 @@ export function ConfirmDestructive({
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={state.requireText}
               autoComplete="off"
-              className="w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
             />
           </div>
         )}
@@ -161,7 +161,7 @@ export function ConfirmDestructive({
             type="button"
             onClick={onCancel}
             disabled={isWorking}
-            className="flex-1 h-[38px] px-3.5 rounded-lg text-[13.5px] font-medium text-neutral-700 bg-transparent border border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] transition disabled:opacity-50"
+            className="flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-neutral-700 bg-transparent border border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] transition disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -169,7 +169,7 @@ export function ConfirmDestructive({
             type="button"
             onClick={onConfirm}
             disabled={isWorking || !requireTextOk}
-            className={`flex-1 h-[38px] px-3.5 rounded-lg text-[13.5px] font-medium text-white border active:scale-[0.97] transition disabled:opacity-50 ${
+            className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-white border active:scale-[0.97] transition disabled:opacity-50 ${
               isDanger
                 ? 'bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700'
                 : 'bg-neutral-900 border-neutral-900 hover:bg-neutral-800'

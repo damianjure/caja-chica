@@ -41,7 +41,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
 
   return (
     <div className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-md relative">
+      <div className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative">
 
         {/* Skip button */}
         <button

@@ -361,7 +361,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         )}
         {!canWriteData && activeTab === 'movimientos' && (
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
         )}
 
         <section className="sticky top-3 z-20">

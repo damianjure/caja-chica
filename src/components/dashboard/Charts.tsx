@@ -53,7 +53,7 @@ export function TrendBars({
         const netOffset = item.net === 0 ? '50%' : `${Math.min(85, Math.max(22, 50 - (item.net / max) * 28))}%`;
 
         return (
-          <div key={item.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+          <div key={item.label} className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
             <div className="mb-3 flex h-40 items-end justify-center gap-3 relative">
               <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2" style={{ backgroundColor: 'var(--chart-baseline)' }} />
               <div

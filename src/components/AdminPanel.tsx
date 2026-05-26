@@ -337,13 +337,13 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="usuario@empresa.com"
           aria-label="Email a invitar"
-          className="rounded-2xl border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+          className="rounded-md border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as AppRole)}
           aria-label="Rol de la invitación"
-          className="rounded-2xl border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+          className="rounded-md border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
         >
           <option value="member">{APP_ROLE_LABELS.member}</option>
           <option value="admin">{APP_ROLE_LABELS.admin}</option>
@@ -353,7 +353,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           type="button"
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -389,7 +389,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               {invitations.map((invitation) => (
                 <div
                   key={invitation.id}
-                  className="border border-neutral-300 rounded-2xl px-4 py-3 space-y-3"
+                  className="border border-neutral-300 rounded-xl px-4 py-3 space-y-3"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
                     <div className="min-w-0 flex-1">
@@ -667,7 +667,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
           return (
             <div
               key={user.user_id}
-              className="border border-neutral-300 rounded-2xl px-4 py-3 min-w-0 flex flex-col gap-3"
+              className="border border-neutral-300 rounded-xl px-4 py-3 min-w-0 flex flex-col gap-3"
             >
               <div className="flex items-center justify-between gap-3 min-w-0">
                 <div className="min-w-0 flex-1">
@@ -951,7 +951,7 @@ interface StatProps {
 
 function Stat({ label, value }: StatProps) {
   return (
-    <div className="border border-neutral-300 rounded-2xl py-3 px-2">
+    <div className="border border-neutral-300 rounded-xl py-3 px-2">
       <div className="text-2xl font-bold text-neutral-900">{value}</div>
       <div className="text-xs uppercase tracking-widest text-neutral-600 mt-0.5">
         {label}

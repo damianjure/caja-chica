@@ -208,13 +208,13 @@ function InviteForm({ onInvited }: InviteFormProps) {
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
           placeholder="colaborador@empresa.com"
-          className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
+          className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
         />
         <select
           aria-label="Rol del invitado"
           value={role}
           onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-          className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
+          className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
         >
           <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
           <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>
@@ -222,7 +222,7 @@ function InviteForm({ onInvited }: InviteFormProps) {
         <button
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
           Invitar
@@ -475,7 +475,7 @@ function PersonCard({
   return (
     <div
       className={[
-        "rounded-2xl border overflow-hidden transition-all",
+        "rounded-xl border overflow-hidden transition-all",
         isOwner
           ? "border-neutral-300 bg-[var(--app-surface-1)] dark:border-[var(--app-border-strong,_var(--app-border))]"
           : expanded
@@ -823,7 +823,7 @@ export function MiembrosSection({
 
   return (
     <>
-      <section className="bg-white dark:bg-[var(--app-surface-1)] border border-neutral-200 dark:border-[var(--app-border)] rounded-2xl shadow-sm overflow-hidden">
+      <section className="bg-white dark:bg-[var(--app-surface-1)] border border-neutral-200 dark:border-[var(--app-border)] rounded-xl shadow-sm overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-5 space-y-5">
           <div className="flex items-center gap-3">
@@ -849,7 +849,7 @@ export function MiembrosSection({
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
           ) : personas.length === 0 && !ownerMember ? (
-            <div className="rounded-2xl border border-dashed border-neutral-200 dark:border-[var(--app-border)] px-6 py-12 text-center">
+            <div className="rounded-xl border border-dashed border-neutral-200 dark:border-[var(--app-border)] px-6 py-12 text-center">
               <div className="text-3xl mb-3 opacity-40">👥</div>
               <h4 className="text-sm font-semibold text-neutral-700 dark:text-[var(--app-text-1)]">
                 Tu equipo está vacío

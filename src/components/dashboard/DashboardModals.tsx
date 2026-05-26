@@ -78,7 +78,7 @@ export function DashboardModals({
       {pendingItem && (
         <ModalShell title="Asignar empresa" onClose={() => { if (!isAssigning) onCancelPending(); }}>
           <div className="space-y-5">
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-4">
               <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Movimiento pendiente de empresa</div>
               <p className="mt-2 text-lg font-semibold text-neutral-900">¿A qué empresa cargamos esto?</p>
               <p className="mt-2 text-sm italic text-neutral-500">"{pendingItem.originalText}"</p>
@@ -88,14 +88,14 @@ export function DashboardModals({
                 const isDefault = company === readDefaultEmpresa();
                 return (
                   <button key={company} onClick={() => onAssignCompany(company)} disabled={isAssigning}
-                    className={`rounded-2xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-text-2)]' : 'border-neutral-200 bg-white text-neutral-900 hover:border-[var(--app-text-2)]'}`}
+                    className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-text-2)]' : 'border-neutral-200 bg-white text-neutral-900 hover:border-[var(--app-text-2)]'}`}
                   >
                     {company}{isDefault && <span className="ml-2 text-xs uppercase tracking-widest opacity-70">default</span>}
                   </button>
                 );
               })}
               <button onClick={() => onAssignCompany('Personal')} disabled={isAssigning}
-                className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-left font-medium text-neutral-600 transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
+                className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-left font-medium text-neutral-600 transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
               >
                 Sin empresa (Personal)
               </button>

@@ -171,7 +171,7 @@ function ActionMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-2xl border border-neutral-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
           <button
             onClick={() => {
               onCopyLink();
@@ -369,28 +369,28 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
             placeholder="colaborador@empresa.com"
-            className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm"
+            className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm"
           />
           {scope === "dashboard" && (
             <select
               aria-label="Rol del invitado"
               value={role}
               onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-              className="rounded-2xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm"
+              className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm"
             >
               <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
               <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>
             </select>
           )}
           {scope === "app" && (
-            <div className="flex items-center rounded-2xl border border-neutral-200 px-4 py-3 text-sm text-neutral-500">
+            <div className="flex items-center rounded-md border border-neutral-200 px-4 py-3 text-sm text-neutral-500">
               {APP_ROLE_LABELS.member}
             </div>
           )}
           <button
             onClick={() => void handleInvite()}
             disabled={submitting || !email.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -434,7 +434,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : personas.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-200 px-6 py-10 text-center">
+          <div className="rounded-xl border border-dashed border-neutral-200 px-6 py-10 text-center">
             <h4 className="text-sm font-semibold text-neutral-700">{ACTION_LABELS.emptyTeamTitle}</h4>
             <p className="mt-1 text-sm text-neutral-500">{ACTION_LABELS.emptyTeamBody}</p>
           </div>
@@ -443,7 +443,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             {personas.map((persona) => (
               <div
                 key={persona.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-neutral-200 px-4 py-3"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3"
               >
                 {/* Avatar */}
                 <div className="shrink-0 w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600 uppercase">

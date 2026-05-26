@@ -105,7 +105,7 @@ export function ModalShell({
         aria-modal="true"
         aria-labelledby={titleIdRef.current}
         aria-describedby={description ? descriptionIdRef.current : undefined}
-        className={`anim-scale-in w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-xl shadow-2xl border border-neutral-300 overflow-hidden flex flex-col`}
+        className={`anim-scale-in w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-neutral-300 overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-6 py-4 border-b border-neutral-200 flex items-start justify-between gap-4 shrink-0">

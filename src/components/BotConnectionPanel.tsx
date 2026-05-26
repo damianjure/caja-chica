@@ -64,13 +64,13 @@ export function BotConnectionPanel() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {notice && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           {notice}
         </div>
       )}
@@ -82,7 +82,7 @@ export function BotConnectionPanel() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-neutral-200 px-4 py-4 flex flex-col gap-2">
+          <div className="rounded-xl border border-neutral-200 px-4 py-4 flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
               Estado
             </span>
@@ -102,7 +102,7 @@ export function BotConnectionPanel() {
             <button
               onClick={() => void handleCreateToken()}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-2xl bg-neutral-900 border border-neutral-900 px-4 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-4 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {creating ? (
                 <>
@@ -122,7 +122,7 @@ export function BotConnectionPanel() {
                 href={status.telegramDeepLink}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-4 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)]"
+                className="inline-flex items-center gap-2 rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)]"
               >
                 Abrir Telegram
               </a>
@@ -130,7 +130,7 @@ export function BotConnectionPanel() {
           </div>
 
           {status?.pendingToken && (
-            <div className="space-y-3 rounded-2xl border border-neutral-200 px-4 py-4">
+            <div className="space-y-3 rounded-xl border border-neutral-200 px-4 py-4">
               <div className="text-sm text-neutral-600">
                 Si el deep link no abre bien, copiá este comando y mandáselo al bot:
               </div>

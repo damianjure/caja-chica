@@ -9,7 +9,7 @@ export function MetricCard({ label, value, tone = 'neutral' }: { label: string; 
   }[tone];
 
   return (
-    <div className="bg-white px-5 py-4 rounded-lg border border-neutral-200 shadow-[var(--app-shadow-sm)]">
+    <div className="bg-white px-5 py-4 rounded-xl border border-neutral-200 shadow-[var(--app-shadow-sm)]">
       <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest block mb-2">{label}</span>
       <div className={`text-2xl font-bold tracking-tight tabular-nums ${toneClass}`}>{value}</div>
     </div>
@@ -32,7 +32,7 @@ export function SectionCard({ title, description, children }: { title: string; d
 
 export function PlaceholderPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-600">
+    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-600">
       <div className="font-semibold text-neutral-900 mb-1">{title}</div>
       <p className="leading-relaxed">{body}</p>
     </div>
@@ -51,7 +51,7 @@ export function EmptyState({
   cta?: string;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
+    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
       <p className="text-sm font-medium text-neutral-700">{title}</p>
       {hint && <p className="mt-2 text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">{hint}</p>}
       {canWrite && cta && (

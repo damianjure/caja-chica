@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-26 (post maintenance-mode SDD + UI audit dark mode fix)
+## Fuente de verdad única — 2026-05-26 (post UI audit 3 rondas + security fixes Codex)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -75,9 +75,9 @@ Integraciones principales:
   - sin SDK extra, `fetch` directo + graceful fallback si `BREVO_API_KEY` ausente
 - **Auditoría de seguridad completa 2026-05-04 (judgment-day)** — ver sección 14
 
-### Estado deploy (2026-05-26)
-- Frontend ✔ deployado en `caja-chica-bot.web.app`
-- Backend ✔ deployado en Cloud Run rev `caja-chica-00040-chv` (maintenance-mode)
+### Estado deploy (2026-05-26 — sesión extendida)
+- Frontend ✔ deployado en `caja-chica-bot.web.app` (último deploy: UI audit round 3)
+- Backend ✔ deployado en Cloud Run rev `caja-chica-00040-chv` (maintenance-mode, sin cambios de backend esta sesión)
 - Tests: 323 total / 321 pass / 2 skip / 0 fail
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
@@ -431,6 +431,47 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - Backend Cloud Run rev `caja-chica-00040-chv`
 - Frontend Firebase Hosting deployado
 
+### Cambios 2026-05-26 (sesión extendida — security fixes + UI audit 3 rondas)
+
+#### Security fixes Codex adversarial review (9 fixes, commits `app.ts`/`demoSeed.ts`/`maintenance.ts`/`movements.ts`/`movements-callbacks.ts`/`server.ts`)
+- `DELETE /api/movimientos/last`: wrapped con `applyDataScope` (scope de ownership)
+- Telegram preauth: check `tTokenErr` antes de construir `telegramDeepLink`
+- Drive OAuth callback: check `upsertErr`, redirect a `driveError=save_failed`
+- GDPR export `GET /api/me/export`: check `mov.error || emp.error || cat.error`, retorna 500
+- `demoSeed.ts`: error logging en update `onboarding_state=seeded`
+- `maintenance.ts`: fail-closed en error de Supabase (usa stale cache si existe, si no retorna `status: "none"`)
+- `movements.ts`: scope `owner_user_id` para non-dashboard users en `editar_ultimo_ingreso/egreso`
+- `movements-callbacks.ts`: scope en `confirm_delete_mov_` delete
+- `server.ts` cron recurrentes: check `insertErr` antes de avanzar `last_processed`
+
+#### UI audit round 1 (commit `1f6401b`)
+- RecurrentesTab: delete confirm, dialog semantics, empty/loading states
+- DashboardApp: tab nav ARIA (`role="tablist"`, `aria-selected`)
+- MovementCards: "Copiar JSON" → "Copiar movimiento" + aria-labels
+- CuentaSection: `flex-col sm:flex-row` mobile layout
+- PreferenciasSection: dark mode CSS vars tokens
+- InformesTab: dark mode + history `flex-wrap`
+- PersonasPanel: loading text + aria-labels
+- EmpresasTab: structured empty state
+
+#### UI audit round 2 (commit `62e0eb0`)
+- GastosTab + IngresosTab: unified empty states
+- RecurrentesTab: modal `grid-cols-1 sm:grid-cols-2`
+- MaintenanceSection: `ConfirmModal` para activate+end
+- WelcomeJoined: `bg-neutral-900` (reemplaza indigo/sky gradient)
+- BotConnectionPanel + TelegramSection: `rounded-md` → `rounded-xl`
+- `index.css`: eliminado `@font-face` Inter duplicado
+- Charts.tsx: TrendBars `grid-cols-1 sm:grid-cols-2`
+- MiembrosSection: `role="switch"` + `aria-checked` + `sr-only`
+- DashboardApp: composer full-width button mobile
+
+#### UI audit round 3 (commits `39fdb95`, `d9f6165`)
+- PersonasPanel ActionMenu: `aria-expanded`, `aria-haspopup="menu"`, `role="menu"/"menuitem"`, Arrow+Escape keyboard navigation. TS fix: named `KeyboardEvent` import + `HTMLElement[]` explicit type.
+- WelcomeWizard + WelcomeJoined: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, focus-on-mount via `useRef`, Escape handler en backdrop
+- MovimientosTab: `aria-pressed` en filter chips tipo/moneda, `role="group"` wrappers
+- GastosTab: `aria-pressed` en filter chips empresa, `role="group"` wrapper
+- DashboardApp: `role="status"` en banner `missing_url`, `role="alert"` en `load_error` + composer error
+
 ### Pendiente
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
@@ -487,7 +528,7 @@ gcloud run deploy caja-chica --image gcr.io/caja-chica-bot/caja-chica --region u
 ### Estado de validación local más reciente
 - `npm test` → **321/323 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `c65ce13`
+- commit HEAD: `d9f6165`
 
 ### Cómo correr tests correctamente
 ```bash
@@ -505,8 +546,8 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - Vite 6
 - TypeScript
 - Tailwind CSS v4
-- motion
 - lucide-react
+- sonner (toasts)
 
 ### Backend
 - Express
@@ -1141,4 +1182,4 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00040-chv` (maintenance-mode). Tests: 321/323 (0 fail). Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último feature: modo mantenimiento completo (SDD, 3 PRs mergeados, +40 tests). UI audit dark mode fix deployado. Pendiente: test envío real email Brevo, validar wizard onboarding end-to-end, smoke test Personas browser.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00040-chv` (maintenance-mode). Tests: 321/323 (0 fail). Commit HEAD: `d9f6165`. Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último trabajo: 9 security fixes (Codex adversarial) + UI audit 3 rondas completas (a11y, dark mode, ARIA). motion removido. tsc clean. Pendiente: test envío real email Brevo, validar wizard onboarding end-to-end, smoke test Personas browser, refactor createApp.

@@ -60,7 +60,7 @@ export function PreferenciasSection({
   };
 
   return (
-    <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
+    <section className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-neutral-900 text-white">
           <SlidersHorizontal className="w-4 h-4" />
@@ -71,7 +71,7 @@ export function PreferenciasSection({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="stack-comfort">
         {/* Tema */}
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Tema</p>

@@ -129,27 +129,27 @@ export default function EmpresasTab({
                   <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Ingresos ARS</div>
-                      <div className="font-medium text-green-600">{formatCurrency(company.ingresosArs, 'ARS')}</div>
+                      <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Gastos ARS</div>
-                      <div className="font-medium text-red-600">{formatCurrency(company.gastosArs, 'ARS')}</div>
+                      <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Saldo ARS</div>
-                      <div className={`font-medium ${company.saldoArs >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoArs, 'ARS')}</div>
+                      <div className={`font-medium tabular-nums ${company.saldoArs >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Ingresos USD</div>
-                      <div className="font-medium text-green-600">{formatCurrency(company.ingresosUsd, 'USD')}</div>
+                      <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosUsd, 'USD')}</div>
                     </div>
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Gastos USD</div>
-                      <div className="font-medium text-red-600">{formatCurrency(company.gastosUsd, 'USD')}</div>
+                      <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosUsd, 'USD')}</div>
                     </div>
                     <div>
                       <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Saldo USD</div>
-                      <div className={`font-medium ${company.saldoUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoUsd, 'USD')}</div>
+                      <div className={`font-medium tabular-nums ${company.saldoUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoUsd, 'USD')}</div>
                     </div>
                   </div>
                 </div>

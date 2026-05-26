@@ -196,7 +196,7 @@ export function CuentaSection({
             <Settings className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Cuenta</h2>
+            <h2 className="text-xl font-bold tracking-tight">Cuenta</h2>
             <p className="text-sm text-neutral-500">Sesión, integraciones y acceso.</p>
           </div>
         </div>
@@ -219,7 +219,7 @@ export function CuentaSection({
 
         {/* Display name */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Nombre visible</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Nombre visible</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -296,7 +296,7 @@ export function CuentaSection({
         {/* Active sessions */}
         <div className="space-y-3 border-t border-neutral-200 pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Sesiones activas</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Sesiones activas</p>
             {!sessionsLoaded && (
               <button
                 onClick={() => void loadSessions()}

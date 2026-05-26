@@ -307,7 +307,7 @@ function TelegramCardSection({
 
   return (
     <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-[var(--app-border)]">
-      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Telegram</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Telegram</p>
 
       {freshToken ? (
         <div className="space-y-2">
@@ -527,7 +527,7 @@ function PersonCard({
           {/* Permissions — editors only */}
           {isEditor && (
             <div className="mb-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-500 dark:text-[var(--app-text-3)] mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-500 dark:text-[var(--app-text-3)] mb-2">
                 Permisos extra
               </p>
               <div className="space-y-0.5">
@@ -831,7 +831,7 @@ export function MiembrosSection({
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Equipo</h2>
+              <h2 className="text-xl font-bold tracking-tight">Equipo</h2>
               <p className="text-sm text-neutral-500 dark:text-[var(--app-text-3)]">
                 Quién tiene acceso a este dashboard y qué puede hacer.
               </p>

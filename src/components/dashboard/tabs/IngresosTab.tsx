@@ -43,7 +43,7 @@ export default function IngresosTab({
               <div key={tag.label} className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-neutral-900">{tag.label}</div>
-                  <div className="text-sm font-semibold text-green-600" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
+                  <div className="text-sm font-semibold text-green-600 tabular-nums" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
                 </div>
                 {tag.secondary ? <div className="mt-1 text-xs text-neutral-500">{tag.secondary}</div> : null}
               </div>
@@ -71,7 +71,7 @@ export default function IngresosTab({
                     </div>
                     <div className="mt-1 text-xs text-neutral-500">{new Date(income.created_at).toLocaleString('es-AR')}</div>
                   </div>
-                  <div className="text-sm font-semibold text-green-600" aria-label={`Ingreso ${formatCurrency(income.monto, income.moneda)}`}><span aria-hidden="true">↑ </span>{formatCurrency(income.monto, income.moneda)}</div>
+                  <div className="text-sm font-semibold text-green-600 tabular-nums" aria-label={`Ingreso ${formatCurrency(income.monto, income.moneda)}`}><span aria-hidden="true">↑ </span>{formatCurrency(income.monto, income.moneda)}</div>
                 </div>
               </div>
             ))}

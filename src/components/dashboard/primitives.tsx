@@ -25,7 +25,7 @@ export function SectionCard({ title, description, children }: { title: string; d
           <p className="text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-prose">{description}</p>
         )}
       </header>
-      <div className="space-y-5">{children}</div>
+      <div className="space-y-4">{children}</div>
     </section>
   );
 }

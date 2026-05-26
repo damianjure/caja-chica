@@ -70,8 +70,8 @@ export default function GastosTab({
                   <div className="text-xs text-neutral-500">{category.movimientos} movimientos</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-red-600" aria-label={`Gasto ${formatCurrency(category.egresoArs, 'ARS')}`}><span aria-hidden="true">↓ </span>{formatCurrency(category.egresoArs, 'ARS')}</div>
-                  <div className="text-xs text-neutral-500">{formatCurrency(category.egresoUsd, 'USD')}</div>
+                  <div className="font-semibold text-red-600 tabular-nums" aria-label={`Gasto ${formatCurrency(category.egresoArs, 'ARS')}`}><span aria-hidden="true">↓ </span>{formatCurrency(category.egresoArs, 'ARS')}</div>
+                  <div className="text-xs text-neutral-500 tabular-nums">{formatCurrency(category.egresoUsd, 'USD')}</div>
                 </div>
               </div>
             ))}
@@ -109,7 +109,7 @@ export default function GastosTab({
                     </div>
                     <div className="mt-1 text-xs text-neutral-500">{new Date(expense.created_at).toLocaleString('es-AR')}</div>
                   </div>
-                  <div className="text-sm font-semibold text-red-600" aria-label={`Gasto ${formatCurrency(expense.monto, expense.moneda)}`}><span aria-hidden="true">↓ </span>{formatCurrency(expense.monto, expense.moneda)}</div>
+                  <div className="text-sm font-semibold text-red-600 tabular-nums" aria-label={`Gasto ${formatCurrency(expense.monto, expense.moneda)}`}><span aria-hidden="true">↓ </span>{formatCurrency(expense.monto, expense.moneda)}</div>
                 </div>
               </div>
             ))}

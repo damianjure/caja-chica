@@ -56,7 +56,7 @@ export function BotConnectionPanel() {
           <Bot className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Vincular bot de Telegram</h2>
+          <h2 className="text-xl font-bold tracking-tight">Vincular bot de Telegram</h2>
           <p className="text-sm text-neutral-500">
             El bot ahora es multiusuario real: solo procesa chats vinculados a tu cuenta.
           </p>
@@ -83,7 +83,7 @@ export function BotConnectionPanel() {
       ) : (
         <div className="space-y-4">
           <div className="rounded-xl border border-neutral-200 px-4 py-4 flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+            <span className="text-xs uppercase tracking-widest text-neutral-500 font-bold">
               Estado
             </span>
             <span className="font-medium text-neutral-900">

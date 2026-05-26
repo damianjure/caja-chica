@@ -66,21 +66,21 @@ export function PreferenciasSection({
           <SlidersHorizontal className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Preferencias</h2>
+          <h2 className="text-xl font-bold tracking-tight">Preferencias</h2>
           <p className="text-sm text-neutral-500">Configuración personal del dashboard.</p>
         </div>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Tema */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Tema</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Tema</p>
           <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
         </div>
 
         {/* Moneda default */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Moneda por defecto</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Moneda por defecto</p>
           <div className="flex gap-2" role="group" aria-label="Moneda por defecto">
             {(["ARS", "USD"] as const).map((c) => (
               <button
@@ -103,7 +103,7 @@ export function PreferenciasSection({
 
         {/* Empresa default */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Empresa por defecto</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Empresa por defecto</p>
           <select
             value={defaultEmpresa}
             onChange={(e) => setDefaultEmpresa(e.target.value)}
@@ -121,7 +121,7 @@ export function PreferenciasSection({
         {/* Notification hour */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Hora del recordatorio</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Hora del recordatorio</p>
             {savingNotifHour && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
           </div>
           <div className="flex items-center gap-2.5">

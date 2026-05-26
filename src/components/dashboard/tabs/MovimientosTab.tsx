@@ -53,7 +53,7 @@ export default function MovimientosTab({
       <SectionCard title="Transacciones filtrables" description="Filtrá por empresa y revisá el historial con trazabilidad sobre el texto original. Todo lo cargado entra como conciliado por defecto.">
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 id="history-title" className="text-xl font-semibold">Historial de movimientos</h2>
+            <h2 id="history-title" className="text-xl font-semibold tracking-tight">Historial de movimientos</h2>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
               {companiesList.map((company) => {

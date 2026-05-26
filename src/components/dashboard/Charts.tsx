@@ -57,7 +57,7 @@ export function TrendBars({
             <div className="mb-3 flex h-40 items-end justify-center gap-3 relative">
               <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2" style={{ backgroundColor: 'var(--chart-baseline)' }} />
               <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full px-2 py-1 text-xs font-semibold shadow-sm text-white"
+                className="absolute left-1/2 -translate-x-1/2 rounded-full px-2 py-1 text-xs font-semibold shadow-sm text-white tabular-nums"
                 style={{ top: netOffset, backgroundColor: item.net >= 0 ? 'var(--chart-net)' : 'var(--chart-expense)' }}
                 title={`Saldo ${formatCompact(item.net, currency)}`}
               >
@@ -114,7 +114,7 @@ export function HorizontalBarList({
               <div className="text-sm font-medium text-neutral-900">{item.label}</div>
               {item.secondary ? <div className="text-xs text-neutral-500">{item.secondary}</div> : null}
             </div>
-            <div className="text-sm font-semibold text-neutral-900 text-right">{item.valueLabel ?? formatCompact(item.value, currency)}</div>
+            <div className="text-sm font-semibold text-neutral-900 text-right tabular-nums">{item.valueLabel ?? formatCompact(item.value, currency)}</div>
           </div>
           {item.supportingValue ? (
             <div className="flex items-center justify-between gap-3 text-xs text-neutral-500">

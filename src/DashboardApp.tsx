@@ -314,8 +314,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} />}
 
       <div className="max-w-7xl mx-auto space-y-8">
-        {apiStatus === 'missing_url' && <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
-        {apiStatus === 'load_error' && <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
+        {apiStatus === 'missing_url' && <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
+        {apiStatus === 'load_error' && <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
         <header>
           <div className="space-y-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[var(--app-shadow-panel)]">
@@ -367,7 +367,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <section className="sticky top-3 z-20">
           <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-neutral-900 text-white border-neutral-900 shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-neutral-700 border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-text-2)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
           </div>
           <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-3">

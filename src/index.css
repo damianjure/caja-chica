@@ -132,7 +132,7 @@
     --app-text-2: oklch(84% 0.012 158);
     --app-text-3: oklch(71% 0.014 160);
     --app-text-4: oklch(58% 0.016 160);
-    --app-strong-surface: oklch(96% 0.008 155);
+    --app-strong-surface: oklch(76% 0.016 158);
     --app-strong-text: oklch(18.5% 0.009 165);
     --app-red-surface: oklch(26.2% 0.025 30);
     --app-red-border: oklch(38.5% 0.054 30);
@@ -261,6 +261,10 @@
 
   .bg-neutral-900 {
     background-color: var(--app-strong-surface) !important;
+  }
+
+  .border-neutral-900 {
+    border-color: var(--app-strong-surface) !important;
   }
 
   .text-white {

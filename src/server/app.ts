@@ -38,6 +38,7 @@ import { createPresupuestosRouter } from "./routes/presupuestos.ts";
 import { createDriveRouter } from "./routes/drive.ts";
 import { createInformesRouter } from "./routes/informes.ts";
 import { createDashboardRouter } from "./routes/dashboard.ts";
+import { createCronsRouter } from "./routes/crons.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
@@ -92,6 +93,7 @@ export interface AppDeps {
   googleDriveRedirectUri?: string;
   tokenEncryptionKey?: string;
   bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
+  cronSecret?: string;
 }
 
 export type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
@@ -170,6 +172,7 @@ export function createApp({
   googleDriveRedirectUri,
   tokenEncryptionKey,
   bot,
+  cronSecret,
 }: AppDeps) {
   const app = express();
 
@@ -761,6 +764,12 @@ export function createApp({
   app.use(createDriveRouter(routeContext));
   app.use(createInformesRouter(routeContext));
   app.use(createDashboardRouter(routeContext));
+  app.use(createCronsRouter({
+    supabase,
+    bot: bot ?? null,
+    dashboardUrl: publicAppUrl ?? "",
+    cronSecret,
+  }));
 
   return app;
 }

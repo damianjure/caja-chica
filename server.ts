@@ -1,5 +1,4 @@
 import { Bot, webhookCallback } from "grammy";
-import cron from "node-cron";
 
 loadRuntimeEnv();
 
@@ -7,13 +6,10 @@ loadRuntimeEnv();
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
 import { createApp } from "./src/server/app.ts";
-import { processInviteReminders } from "./src/server/inviteReminders.ts";
 import { loadRuntimeEnv } from "./src/server/env.ts";
-import { addMonth, computeNextRun } from "./src/server/recurrentes.ts";
 import { registerBotHandlers, registerBotCommands } from "./src/bot/index.ts";
 import type { BotDeps } from "./src/bot/deps.ts";
-import { hydrateCache, reconcileTransitions } from "./src/server/maintenance.ts";
-import { notifyMaintenance } from "./src/server/maintenanceNotify.ts";
+import { hydrateCache } from "./src/server/maintenance.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -52,126 +48,9 @@ if (bot) {
     });
   }
 
-  // --- CRON JOBS ---
-
-  // Reminder cron: runs every minute, checks each user's notification_hour + minute
-  cron.schedule("* * * * *", async () => {
-    const now = new Date();
-    const currentHour = now.getUTCHours();
-    const currentMinute = now.getUTCMinutes();
-
-    const { data: telegramUsers } = await supabase
-      .from("usuarios")
-      .select("chat_id, user_id")
-      .eq("reminders_enabled", true)
-      .not("chat_id", "is", null);
-
-    if (!telegramUsers?.length) return;
-
-    const userIds = telegramUsers.map((u) => u.user_id).filter(Boolean) as string[];
-
-    const { data: appUsers } = await supabase
-      .from("app_users")
-      .select("user_id, notification_hour, notification_minute")
-      .in("user_id", userIds);
-
-    const scheduleMap = new Map<string, { hour: number; minute: number }>(
-      appUsers?.map((u) => [u.user_id, { hour: u.notification_hour ?? 21, minute: u.notification_minute ?? 0 }]) ?? [],
-    );
-
-    for (const u of telegramUsers) {
-      if (!u.chat_id) continue;
-      const notif = scheduleMap.get(u.user_id) ?? { hour: 21, minute: 0 };
-      if (notif.hour !== currentHour || notif.minute !== currentMinute) continue;
-      try {
-        await bot.api.sendMessage(u.chat_id, "🔔 *Recordatorio:* No te olvides de registrar tus gastos del día. 💸", { parse_mode: "Markdown" });
-      } catch (err) {
-        console.error(`[cron:reminder] failed to send to chat_id=${u.chat_id}:`, err);
-      }
-    }
-  });
-
-  // Recurrentes cron: daily at 08:00 UTC
-  cron.schedule("0 8 * * *", async () => {
-    const today = new Date();
-    const { data: recs } = await supabase.from("recurrentes").select("*");
-
-    for (const r of recs ?? []) {
-      if (!r.is_active || r.deleted_at) continue;
-
-      try {
-        let shouldProcess = false;
-        const last = r.last_processed ? new Date(r.last_processed) : null;
-
-        if (!last) shouldProcess = true;
-        else {
-          const diff = today.getTime() - last.getTime();
-          const days = diff / (1000 * 3600 * 24);
-          if (r.frecuencia === "diario" && days >= 1) shouldProcess = true;
-          if (r.frecuencia === "semanal" && days >= 7) shouldProcess = true;
-          if (r.frecuencia === "quincenal" && days >= 14) shouldProcess = true;
-          if (r.frecuencia === "mensual") {
-            const nextRun = computeNextRun("mensual", last, typeof r.day_of_month === "number" ? r.day_of_month : null, today);
-            if (nextRun && today >= nextRun) shouldProcess = true;
-          }
-          if (r.frecuencia === "anual") {
-            let nextRun = addMonth(last);
-            for (let i = 0; i < 11; i++) nextRun = addMonth(nextRun);
-            if (today >= nextRun) shouldProcess = true;
-          }
-        }
-
-        if (shouldProcess) {
-          const { error: insertErr } = await supabase.from("movimientos").insert([{
-            ...(r.dashboard_id && r.created_by_user_id
-              ? { dashboard_id: r.dashboard_id, created_by_user_id: r.created_by_user_id }
-              : { owner_user_id: r.owner_user_id }),
-            monto: Math.abs(r.monto),
-            tipo: r.tipo,
-            moneda: r.moneda,
-            categoria: r.categoria,
-            empresa_nombre: r.empresa_nombre,
-            descripcion: r.descripcion + " (Recurrente)",
-            original_text: "System Generated",
-            conciliado: true,
-            conciliado_notas: null,
-          }]);
-          if (insertErr) throw insertErr;
-          await supabase.from("recurrentes").update({ last_processed: today.toISOString() }).eq("id", r.id);
-          if (r.chat_id) {
-            bot.api.sendMessage(r.chat_id, `🔄 *Recurrente Registrado:* ${r.descripcion}\n💰 ${r.monto} ${r.moneda}`, { parse_mode: "Markdown" });
-          }
-        }
-      } catch (recErr) {
-        console.error(`[cron:recurrentes] Error processing recurrente id=${r.id}:`, recErr);
-      }
-    }
-  });
 } else {
   console.warn("⚠️ TELEGRAM_BOT_TOKEN no configurado. El bot no se iniciará.");
 }
-
-// Maintenance mode cron — every minute
-cron.schedule("* * * * *", async () => {
-  try {
-    await reconcileTransitions(
-      supabase as unknown as Parameters<typeof reconcileTransitions>[0],
-      (type) => notifyMaintenance(supabase as any, bot, { type }),
-    );
-  } catch (err) {
-    console.error("[cron:maintenance] Unexpected error:", err);
-  }
-});
-
-// Invite reminder cron — daily at 10:00 UTC
-cron.schedule("0 10 * * *", async () => {
-  try {
-    const { sent } = await processInviteReminders(supabase as unknown as Parameters<typeof processInviteReminders>[0], { baseUrl: dashboardUrl });
-    console.log(`[cron:inviteReminder] Done. Sent: ${sent}`);
-  } catch (err) {
-    console.error("[cron:inviteReminder] Unexpected error:", err);
-  }
-});
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://caja-chica-bot.web.app").split(",");
@@ -198,6 +77,7 @@ const app = createApp({
   googleDriveRedirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
   bot: bot ?? null,
+  cronSecret: process.env.CRON_SECRET,
 });
 
 // Hydrate maintenance cache on startup so first request reads from cache, not DB.

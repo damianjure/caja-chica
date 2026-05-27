@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-26 (post UI audit 3 rondas + security fixes Codex)
+## Fuente de verdad única — 2026-05-26 (post crons-to-cloud-scheduler — Cloud Run min=0)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -77,8 +77,58 @@ Integraciones principales:
 
 ### Estado deploy (2026-05-26 — sesión extendida)
 - Frontend ✔ deployado en `caja-chica-bot.web.app` (último deploy: UI audit round 3)
-- Backend ✔ deployado en Cloud Run rev `caja-chica-00040-chv` (maintenance-mode, sin cambios de backend esta sesión)
-- Tests: 323 total / 321 pass / 2 skip / 0 fail
+- Backend ✔ deployado en Cloud Run rev `caja-chica-00045-dpj` (crons-to-cloud-scheduler + `min-instances=0`)
+- Tests: 345 total / 343 pass / 2 skip / 0 fail
+- Branch: `refactor/crons-to-cloud-scheduler` (commit `cbb6db1`) — PR pendiente de crear
+
+### Cambios 2026-05-26 (crons-to-cloud-scheduler — SDD completo + deploy)
+
+Migración de los 4 crons in-process (`node-cron`) a endpoints HTTP gatillados por Cloud Scheduler. Habilita Cloud Run `min-instances=0`. **Ahorro estimado: ~$58/mes** (Cloud Run idle vCPU pasa de ~$61 a ~$3).
+
+SDD `crons-to-cloud-scheduler` archivado (engram #639–#646: explore → propose → spec → design → tasks → apply → verify → archive).
+
+**Código (commit `cbb6db1`):**
+- `src/server/cronJobs/reminders.ts` (nuevo) — `runDailyReminders({ supabase, bot })` extraído desde `server.ts:58-92`
+- `src/server/cronJobs/recurrentes.ts` (nuevo) — `runRecurrentes({ supabase, bot })` extraído desde `server.ts:95-149`
+- `src/server/routes/crons.ts` (nuevo) — `createCronsRouter` + middleware `requireCronSecret` con `crypto.timingSafeEqual` y fail-closed
+- `src/server/app.ts` — `cronSecret?: string` agregado a `AppDeps`, router montado en `/api/crons`
+- `server.ts` — `cron.schedule()` × 4 + `import cron from "node-cron"` eliminados
+- `package.json` — `node-cron` + `@types/node-cron` desinstalados
+- Tests: +22 (343 pass / 2 skip / 0 fail). Cobertura: middleware (timing-safe, length pre-check, fail-closed cuando `CRON_SECRET` ausente), bot null guard, 4 endpoints OK, 500 en exception
+- CLAUDE.md secciones 10/12/16 actualizadas
+
+**Infra (deployada):**
+- Cloud Run rev `caja-chica-00045-dpj` con env var `CRON_SECRET` + `min-instances=0`
+- Service account `cron-invoker@caja-chica-bot.iam.gserviceaccount.com` con `roles/run.invoker`
+- 4 Cloud Scheduler jobs (us-west2, todos ENABLED):
+  - `crons-reminders` schedule `* * * * *` → `POST /api/crons/reminders`
+  - `crons-maintenance` schedule `* * * * *` → `POST /api/crons/maintenance`
+  - `crons-recurrentes` schedule `0 8 * * *` → `POST /api/crons/recurrentes`
+  - `crons-invite-reminders` schedule `0 10 * * *` → `POST /api/crons/invite-reminders`
+- Header `X-Cron-Secret` en cada job + retry config default Cloud Scheduler
+- API `cloudscheduler.googleapis.com` habilitada
+- API `secretmanager.googleapis.com` habilitada
+- Secret backeado en Secret Manager: `caja-chica-cron-secret v1` (recovery)
+
+**Smoke test prod:**
+- `POST /api/crons/maintenance` sin header → `401` ✔
+- `POST /api/crons/maintenance` con secret incorrecto → `401` ✔
+- `POST /api/crons/maintenance` con secret correcto → `{"ok":true}` ✔
+- `POST /api/crons/reminders` con secret correcto → `{"ok":true,"sent":0}` ✔
+- `POST /api/crons/recurrentes` con secret correcto → `{"ok":true,"processed":0}` ✔
+- `POST /api/crons/invite-reminders` con secret correcto → `{"ok":true,"sent":0}` ✔
+- Force-run de los 4 jobs vía Cloud Scheduler → todos sin errores ✔
+
+**Rotación CRON_SECRET:**
+1. Generar nuevo: `openssl rand -base64 32`
+2. `gcloud run services update caja-chica --update-env-vars CRON_SECRET=<nuevo> --region us-west2`
+3. Para cada job: `gcloud scheduler jobs update http <job> --location=us-west2 --update-headers="X-Cron-Secret=<nuevo>"`
+4. Verificar con `curl -X POST -H "X-Cron-Secret: <nuevo>" <URL>/api/crons/maintenance`
+5. Bumpear versión en Secret Manager: `echo -n "<nuevo>" | gcloud secrets versions add caja-chica-cron-secret --data-file=-`
+
+**Pendiente próximas 24h:**
+- Verificar logs Cloud Scheduler — confirmar `crons-recurrentes` corre 08:00 UTC y `crons-invite-reminders` corre 10:00 UTC sin errores
+- Crear PR desde branch `refactor/crons-to-cloud-scheduler` (gh CLI no autenticado localmente)
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
 - **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
@@ -526,9 +576,9 @@ gcloud run deploy caja-chica --image gcr.io/caja-chica-bot/caja-chica --region u
 ```
 
 ### Estado de validación local más reciente
-- `npm test` → **321/323 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
+- `npm test` → **343/345 OK** (2 skip intencionales, 0 fail; sweeps con `unrefInterval`, runner no cuelga)
 - `npm run lint` → **OK**
-- commit HEAD: `d9f6165`
+- commit HEAD: `cbb6db1` (branch `refactor/crons-to-cloud-scheduler`)
 
 ### Cómo correr tests correctamente
 ```bash
@@ -554,7 +604,6 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - TypeScript
 - tsx
 - grammY
-- node-cron
 - dotenv
 - **googleapis** ← Drive integration
 
@@ -562,7 +611,9 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 - Supabase
 - Firebase Hosting
 - Docker
-- Cloud Run
+- Cloud Run (`min-instances=0` desde 2026-05-26)
+- Cloud Scheduler (4 jobs disparan `/api/crons/*`)
+- Secret Manager (backup `CRON_SECRET`)
 
 ### IA
 - `@google/genai`
@@ -610,20 +661,29 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 │   ├── reports/
 │   │   └── shared.ts
 │   ├── server/
-│   │   ├── app.ts
+│   │   ├── app.ts                 ← createApp + monta routers (incluye crons)
+│   │   ├── cronJobs/              ← lógica pura de crons (sin HTTP)
+│   │   │   ├── reminders.ts       ← runDailyReminders({supabase, bot}) → {sent}
+│   │   │   └── recurrentes.ts     ← runRecurrentes({supabase, bot}) → {processed}
+│   │   ├── routes/
+│   │   │   ├── crons.ts           ← createCronsRouter + requireCronSecret middleware
+│   │   │   └── ...                ← otros routers (admin, dashboard, drive, empresas, informes, maintenance, me, movimientos, presupuestos, telegram)
 │   │   ├── demoSeed.ts            ← ensurePersonalDashboard() + seedDemoData() + purgeDemoData()
 │   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
-│   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Resend
+│   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Brevo
 │   │   ├── env.ts
 │   │   ├── errors.ts
 │   │   ├── extractionReview.ts    ← inline keyboard confirm/edit flow para fotos; TTL 10min
 │   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT para fotos
+│   │   ├── inviteReminders.ts     ← processInviteReminders (Cloud Scheduler 10h UTC)
+│   │   ├── maintenance.ts         ← reconcileTransitions + cache + hydrate
+│   │   ├── maintenanceNotify.ts   ← fan-out Brevo + Telegram
 │   │   ├── mediaGroupBuffer.ts    ← debounce genérico para álbumes Telegram (1500ms)
 │   │   ├── permissions.ts         ← can(member, action) helper
 │   │   ├── reportExports.ts
 │   │   ├── telegramAccess.ts      ← resolveViaNewLinks() + fallback legacy
 │   │   ├── telegramAudio.ts       ← extracción desde audio/voz
-│   │   ├── telegramCompanyResolution.ts ← resolución de empresa por nombre
+│   │   ├── telegramCompanyResolution.ts ← resolución de empresa por nombre + CUIT
 │   │   ├── telegramMedia.ts       ← extractFromPhoto() + extractFromMultiplePhotos() + inferMediaMimeType()
 │   │   └── validation.ts          ← PendingExtractionData + isPendingExtractionData + parseReportExportRequest
 │   └── services/
@@ -633,6 +693,10 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 │   ├── api.test.ts
 │   ├── auth-redirect.test.ts
 │   ├── company-assignment.test.ts
+│   ├── crons.test.ts              ← endpoints HTTP /api/crons/* (auth + dispatch)
+│   ├── cronJobs/
+│   │   ├── reminders.test.ts      ← runDailyReminders unit tests (bot null, hour match, errors)
+│   │   └── recurrentes.test.ts    ← runRecurrentes unit tests (frecuencias, bot null, idempotencia)
 │   ├── dashboardSummary.test.ts
 │   ├── env.test.ts
 │   ├── mediaGroupBuffer.test.ts   ← 5 tests del debounce buffer
@@ -1046,6 +1110,21 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 - Cloud Run / proyecto GCP: `caja-chica-bot`
 - imagen: `gcr.io/caja-chica-bot/caja-chica`
 - servicio Cloud Run: `caja-chica` región `us-west2`
+- **`min-instances=0` desde 2026-05-26** (rev `caja-chica-00045-dpj`) — instancia se apaga cuando no hay tráfico
+- `max-instances=20`, `concurrency=80`, `CPU=1`, `memory=512Mi`
+- cold start estimado: 2-5s en primera request post-idle (bot Telegram tolera; Cloud Scheduler timeout 30s)
+
+### Cloud Scheduler (us-west2)
+4 jobs disparan los endpoints `/api/crons/*` con header `X-Cron-Secret`:
+- `crons-reminders` — `* * * * *`
+- `crons-maintenance` — `* * * * *`
+- `crons-recurrentes` — `0 8 * * *`
+- `crons-invite-reminders` — `0 10 * * *`
+
+Service account: `cron-invoker@caja-chica-bot.iam.gserviceaccount.com` (`roles/run.invoker`).
+
+### Secret Manager
+- `caja-chica-cron-secret` v1 — backup del valor `CRON_SECRET` (Cloud Run env var + Cloud Scheduler headers). Permite recovery si se pierde.
 
 ### Checklist de deploy (estado actual)
 | Paso | Estado |
@@ -1060,6 +1139,11 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | `user_settings_phase.sql` en Supabase prod | ✔ aplicado 2026-05-12 |
 | Deploy frontend Firebase Hosting (user settings) | ✔ deployado 2026-05-12 |
 | Deploy backend Cloud Run (user settings) | ✔ deployado 2026-05-12 |
+| `CRON_SECRET` env var en Cloud Run | ✔ configurada 2026-05-26 |
+| Deploy backend con cron endpoints | ✔ rev `caja-chica-00044-5vv` (2026-05-26) |
+| 4 Cloud Scheduler jobs creados + smoke-tested | ✔ 2026-05-26 |
+| Cloud Run `min-instances=0` | ✔ rev `caja-chica-00045-dpj` (2026-05-26) |
+| Secret backeado en Secret Manager | ✔ `caja-chica-cron-secret v1` (2026-05-26) |
 
 ---
 
@@ -1161,6 +1245,8 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 17. álbumes Telegram: debounce 1500ms porque cada foto llega en update separado; un solo call a Gemini para el batch
 18. `pending_extractions` tabla borrada — sesiones foto/ticket viven en Map en memoria. **Single-instance invariant**: Cloud Run max=1. Si autoscale > 1, migrar Map → tabla Supabase.
 19. Tests corren con `node --import tsx --test` — Node.js runner nativo, sin Jest/Vitest
+20. **Crons externos via Cloud Scheduler** (2026-05-26) — los 4 jobs corren como HTTP triggers desde Cloud Scheduler, no in-process. Habilita `min-instances=0` (ahorro ~$58/mes). Trade-off: cold start 2-5s en primera request. Auth: `X-Cron-Secret` header con `crypto.timingSafeEqual` y fail-closed.
+21. **Idempotencia obligatoria en cron endpoints** — Cloud Scheduler reintenta en 5xx. `runRecurrentes` ya idempotente via `last_processed`; `processInviteReminders` via `last_reminder_at`; `reconcileTransitions` ya idempotente por diseño (transiciones de estado); `runDailyReminders` peor caso = doble mensaje al usuario (aceptable).
 
 ---
 
@@ -1189,13 +1275,17 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 - `/Users/damian/Dev/Boteado/src/server/gemini.ts`
 - `/Users/damian/Dev/Boteado/src/server/email.ts`
 - `/Users/damian/Dev/Boteado/src/server/reportExports.ts`
+- `/Users/damian/Dev/Boteado/src/server/routes/crons.ts` ← endpoints `/api/crons/*` + auth middleware
+- `/Users/damian/Dev/Boteado/src/server/cronJobs/reminders.ts`
+- `/Users/damian/Dev/Boteado/src/server/cronJobs/recurrentes.ts`
 - `/Users/damian/Dev/Boteado/src/reports/shared.ts`
 - `/Users/damian/Dev/Boteado/src/services/api.ts`
 - `/Users/damian/Dev/Boteado/server.ts`
 - `/Users/damian/Dev/Boteado/tests/api.test.ts`
+- `/Users/damian/Dev/Boteado/tests/crons.test.ts`
 
 ---
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run revision `caja-chica-00040-chv` (maintenance-mode). Tests: 321/323 (0 fail). Commit HEAD: `d9f6165`. Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último trabajo: 9 security fixes (Codex adversarial) + UI audit 3 rondas completas (a11y, dark mode, ARIA). motion removido. tsc clean. Pendiente: test envío real email Brevo, validar wizard onboarding end-to-end, smoke test Personas browser, refactor createApp.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run rev `caja-chica-00045-dpj` con `min-instances=0`. Tests: 343/345 (0 fail). Commit HEAD: `cbb6db1` (branch `refactor/crons-to-cloud-scheduler`). Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último trabajo: SDD `crons-to-cloud-scheduler` — 4 crons in-process migrados a HTTP endpoints (`/api/crons/*` con `X-Cron-Secret` + `timingSafeEqual` + fail-closed) gatillados por 4 Cloud Scheduler jobs en us-west2; `node-cron` removido; `min-instances=0` deployado (ahorro ~$58/mes). Secret backup en Secret Manager `caja-chica-cron-secret v1`. Pendiente: crear PR (gh no autenticado), verificar logs Scheduler próximas 24h (08h y 10h UTC), test envío real email Brevo, validar wizard onboarding end-to-end, refactor createApp.

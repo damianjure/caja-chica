@@ -879,6 +879,14 @@ Archivo principal: `/Users/damian/Dev/Boteado/src/server/app.ts`
 - `POST /api/maintenance/schedule` — superadmin only. Body: `{ scheduledAt: ISO, message?, estimatedEnd? }`
 - `POST /api/maintenance/end` — superadmin only. Finaliza, envía notificación "servicio restaurado"
 
+### Crons (Cloud Scheduler HTTP triggers)
+Auth: header `X-Cron-Secret` con comparación timing-safe (`crypto.timingSafeEqual`). Fail-closed: si `CRON_SECRET` no está seteado, todas las peticiones son rechazadas con 401.
+
+- `POST /api/crons/reminders` — dispara `runDailyReminders`. Retorna `{ ok: true, sent: N }`
+- `POST /api/crons/recurrentes` — dispara `runRecurrentes`. Retorna `{ ok: true, processed: N }`
+- `POST /api/crons/maintenance` — dispara `reconcileTransitions`. Retorna `{ ok: true }`
+- `POST /api/crons/invite-reminders` — dispara `processInviteReminders`. Retorna `{ ok: true, sent: N }`
+
 ### Seguridad de la ruta peligrosa
 `DELETE /api/movimientos/all` solo se habilita si:
 - `ENABLE_DANGEROUS_ROUTES=true`
@@ -934,13 +942,20 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 
 ## 12. Cron jobs
 
-### Recordatorio diario
-- cron: `0 21 * * *`
-- `for...of` con try/catch por usuario (no forEach)
+Los crons ya NO corren in-process con `node-cron`. Cloud Scheduler dispara los endpoints HTTP `/api/crons/*` en el schedule definido. Los cuerpos lógicos están en `src/server/cronJobs/reminders.ts` y `src/server/cronJobs/recurrentes.ts`.
 
-### Recurrentes
-- cron: `0 8 * * *`
-- `for...of` con try/catch por entrada (no forEach)
+| Job | Endpoint | Schedule | Auth |
+|-----|----------|----------|------|
+| Recordatorio diario | `POST /api/crons/reminders` | `* * * * *` (cada minuto, filtra por hora/minuto del usuario) | `X-Cron-Secret` |
+| Recurrentes | `POST /api/crons/recurrentes` | `0 8 * * *` (08:00 UTC) | `X-Cron-Secret` |
+| Maintenance reconcile | `POST /api/crons/maintenance` | `* * * * *` | `X-Cron-Secret` |
+| Invite reminders | `POST /api/crons/invite-reminders` | `0 10 * * *` (10:00 UTC) | `X-Cron-Secret` |
+
+### Rotación de CRON_SECRET
+Actualizar `CRON_SECRET` en Cloud Run env vars y en el header del Cloud Scheduler job simultáneamente. No hay mecanismo in-app de rotación.
+
+### Cold start
+Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen seguro. En caso de fallo, Cloud Scheduler reintenta.
 
 ---
 
@@ -1070,6 +1085,7 @@ Runtime: `/Users/damian/Dev/Boteado/server.ts`
 ### Hardening
 - `ENABLE_DANGEROUS_ROUTES`
 - `ADMIN_API_TOKEN`
+- `CRON_SECRET` ← shared secret para endpoints `/api/crons/*` (Cloud Scheduler header `X-Cron-Secret`). Fail-closed: si no está seteado, todos los requests a `/api/crons/*` devuelven 401. Generar: `openssl rand -hex 32`
 
 ### IA
 - `GEMINI_API_KEY`

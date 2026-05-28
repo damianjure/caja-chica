@@ -44,14 +44,17 @@ export function EmptyState({
   hint,
   canWrite = true,
   cta,
+  icon,
 }: {
   title: string;
   hint?: string;
   canWrite?: boolean;
   cta?: string;
+  icon?: ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
+      {icon && <div className="flex justify-center mb-3 text-neutral-400">{icon}</div>}
       <p className="text-sm font-medium text-neutral-700">{title}</p>
       {hint && <p className="mt-2 text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">{hint}</p>}
       {canWrite && cta && (

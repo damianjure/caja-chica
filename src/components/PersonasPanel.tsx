@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
+  AlertCircle,
+  CheckCircle2,
   ChevronDown,
+  Clock,
   Copy,
   Link,
   Loader2,
@@ -64,11 +67,20 @@ const STATUS_LABELS: Record<PersonaStatus, string> = {
   revoked: VOCAB_STATUS_LABELS.revoked,
 };
 
+const STATUS_ICONS: Record<PersonaStatus, typeof Clock> = {
+  pending: Clock,
+  active: CheckCircle2,
+  expired: AlertCircle,
+  revoked: XCircle,
+};
+
 function StatusBadge({ status }: { status: PersonaStatus }) {
+  const Icon = STATUS_ICONS[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}
     >
+      <Icon className="w-3 h-3 shrink-0" strokeWidth={2} />
       {STATUS_LABELS[status]}
     </span>
   );

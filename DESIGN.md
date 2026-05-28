@@ -196,6 +196,12 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **Categoría:** pill `surface-3` con la acción de eliminar inline (ícono chico que enrojece en hover).
 - **Badge de estado:** pill con color semántico de baja saturación, variante dark con `bg-{color}-500/15 + text-{color}-200`.
 
+### Modals
+- **Portal rule:** Todo modal o dialog que use `position: fixed` para el backdrop DEBE renderizarse con `createPortal(document.body)`. Sin portal, el `fixed` queda atrapado en ancestros con `transform` (ej. `anim-fade-in` en tab panels) y el backdrop no cubre la pantalla completa.
+- **Backdrop:** `fixed inset-0 z-[200] backdrop-blur-[2px]` + `color-mix(in srgb, var(--app-text-1) 42%, transparent)`.
+- **Shell (`ModalShell`):** `rounded-2xl`, `max-h-[90vh]`, scroll interno en el body.
+- **Compact dialogs (`ConfirmModal`, `ConfirmDestructive`):** `rounded-2xl`, `max-w-[400px]`, sin header separado.
+
 ### Cards / Containers
 - **Corner Style:** `rounded-xl` (1rem) tarjetas estándar; `rounded-2xl` (1.5rem) solo para shells de modal y paneles hero.
 - **Background:** `surface-1` sobre el lienzo `canvas`.

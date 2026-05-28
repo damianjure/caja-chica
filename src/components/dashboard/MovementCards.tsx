@@ -96,7 +96,7 @@ function MovementCardsImpl({
       </div>
       {hasMore && (
         <div className="flex justify-center pt-4">
-          <button onClick={onLoadMore} disabled={loadingMore} className="px-6 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-600 hover:border-neutral-400 disabled:opacity-50 transition-colors">
+          <button onClick={onLoadMore} disabled={loadingMore} className="px-6 py-2 bg-white border border-neutral-200 rounded-md text-sm font-medium text-neutral-600 hover:border-neutral-400 disabled:opacity-50 transition-colors">
             {loadingMore ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</span> : 'Cargar más'}
           </button>
         </div>

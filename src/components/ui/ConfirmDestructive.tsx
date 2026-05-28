@@ -1,4 +1,5 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle } from 'lucide-react';
 import type { ConfirmationModalState } from '../../types/dashboard';
 
@@ -89,9 +90,9 @@ export function ConfirmDestructive({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+  return createPortal(
     <div
-      className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
       style={{ backgroundColor: 'color-mix(in srgb, var(--app-text-1) 42%, transparent)' }}
       onClick={() => { if (!isWorking) onCancel(); }}
     >
@@ -179,6 +180,7 @@ export function ConfirmDestructive({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

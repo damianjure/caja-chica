@@ -1,4 +1,5 @@
 
+import { BarChart2 } from 'lucide-react';
 import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
 import { EmptyState, MetricCard } from '../primitives';
 
@@ -48,6 +49,7 @@ export default function ResumenTab(props: ResumenTabProps) {
                 hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
                 canWrite={props.canWriteData}
                 cta="Cargá tu primer movimiento desde el campo de arriba."
+                icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
               />
             ) : (
               <TrendBars data={props.monthlyChartDataArs} currency="ARS" />

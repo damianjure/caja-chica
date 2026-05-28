@@ -374,7 +374,7 @@ export default function RecurrentesTab({
             <p className="font-semibold text-neutral-700 mb-1">Sin recurrentes todavía</p>
             <p className="text-sm text-neutral-500 mb-4">Creá tu primer movimiento recurrente para automatizar registros periódicos.</p>
             {canWriteData && (
-              <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white">+ Nuevo recurrente</button>
+              <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white">+ Nuevo recurrente</button>
             )}
           </div>
         ) : (
@@ -473,16 +473,25 @@ export default function RecurrentesTab({
         />
       )}
 
-      {deleteTarget !== null && (
-        <ConfirmModal
-          title="Borrar recurrente"
-          description={`¿Borrar "${recurrentes.find((r) => r.id === deleteTarget)?.descripcion ?? ''}"? Esta acción no se puede deshacer.`}
-          confirmLabel="Borrar"
-          tone="danger"
-          onConfirm={async () => { const id = deleteTarget; setDeleteTarget(null); await handleDelete(id); }}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
+      {deleteTarget !== null && (() => {
+        const r = recurrentes.find((x) => x.id === deleteTarget);
+        return (
+          <ConfirmModal
+            title="Borrar recurrente"
+            description="Esta acción no se puede deshacer."
+            confirmLabel="Borrar"
+            tone="danger"
+            preview={r ? {
+              title: r.descripcion || 'Sin descripción',
+              meta: `${FRECUENCIA_LABELS[r.frecuencia]} · ${r.tipo === 'egreso' ? 'Gasto' : 'Ingreso'} · ${r.moneda}`,
+              amount: `$ ${r.monto.toLocaleString('es-AR')}`,
+              arrow: r.tipo === 'egreso' ? 'down' : 'up',
+            } : undefined}
+            onConfirm={async () => { const id = deleteTarget; setDeleteTarget(null); await handleDelete(id); }}
+            onCancel={() => setDeleteTarget(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

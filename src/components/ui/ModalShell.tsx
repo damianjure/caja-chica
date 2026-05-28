@@ -95,8 +95,8 @@ export function ModalShell({
   // block that traps `position: fixed` and clips the backdrop.
   return createPortal(
     <div
-      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[4px]"
-      style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 70%, transparent)" }}
+      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 42%, transparent)" }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
@@ -123,7 +123,7 @@ export function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-neutral-300 hover:border-[var(--app-text-2)] active:scale-[0.94] transition-transform text-neutral-700 shrink-0"
+            className="inline-flex items-center justify-center h-11 w-11 rounded-md border border-neutral-300 hover:border-[var(--app-text-2)] active:scale-[0.94] transition-transform text-neutral-700 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

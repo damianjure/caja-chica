@@ -55,7 +55,7 @@ export function DashboardModals({
             <input value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2" placeholder="Empresa" />
             <textarea value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="rounded-md border border-neutral-200 px-4 py-3 md:col-span-2 min-h-[120px]" placeholder="Descripción" />
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCloseMovementEdit} className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700">Cancelar</button>
             <button onClick={onSaveMovementEdit} className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium">Guardar cambios</button>
           </div>
@@ -68,7 +68,7 @@ export function DashboardModals({
             <input value={companyEditName} onChange={(e) => setCompanyEditName(e.target.value)} className="w-full rounded-md border border-neutral-200 px-4 py-3" placeholder="Nombre de empresa" />
             <p className="text-sm text-neutral-500">Esto renombra la empresa para el dashboard. Los movimientos visibles también se actualizan en la UI.</p>
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCloseCompanyEdit} className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700">Cancelar</button>
             <button onClick={onSaveCompanyEdit} className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium">Guardar cambios</button>
           </div>
@@ -101,7 +101,7 @@ export function DashboardModals({
               </button>
             </div>
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCancelPending} disabled={isAssigning} className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700">Cancelar registro</button>
           </div>
         </ModalShell>

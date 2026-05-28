@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, FileSpreadsheet, FolderOpen, HardDriveUpload, Loader2, Unlink } from "lucide-react";
+import { Download, ExternalLink, FileSpreadsheet, FileX, FolderOpen, HardDriveUpload, Loader2, Unlink } from "lucide-react";
 
 import { filterMovementsForReport, resolveReportDateRange, type ReportExportRequest, type ReportPeriod } from "../../../reports/shared";
 import { api, type DriveStatus, type Movimiento, type ReportExportRecord } from "../../../services/api";
@@ -176,7 +176,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             {driveStatus.connected ? (
               <button
                 onClick={() => void disconnectDrive()}
-                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:border-rose-400"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-[var(--app-surface-1)] px-4 py-2 text-sm font-medium text-rose-700 hover:border-rose-400"
               >
                 <Unlink className="h-4 w-4" />
                 Desconectar Drive
@@ -184,7 +184,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             ) : (
               <button
                 onClick={() => void connectDrive()}
-                className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2 text-sm font-medium text-white hover:border-[var(--app-text-2)]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] px-4 py-2 text-sm font-medium hover:border-[var(--app-border-strong)]"
               >
                 <HardDriveUpload className="h-4 w-4" />
                 Conectar Google Drive
@@ -204,7 +204,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Período</span>
-                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}>
+                <select className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}>
                   <option value="day">Día</option>
                   <option value="week">Semana</option>
                   <option value="month">Mes</option>
@@ -215,14 +215,14 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
               {(period === "day" || period === "week") && (
                 <label className="space-y-1 text-sm text-neutral-600">
                   <span className="font-medium text-neutral-800">{period === "day" ? "Fecha" : "Fecha ancla"}</span>
-                  <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
+                  <input className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
                 </label>
               )}
 
               {period === "month" && (
                 <label className="space-y-1 text-sm text-neutral-600">
                   <span className="font-medium text-neutral-800">Mes</span>
-                  <input className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+                  <input className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
                 </label>
               )}
 
@@ -230,18 +230,18 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                 <>
                   <label className="space-y-1 text-sm text-neutral-600">
                     <span className="font-medium text-neutral-800">Desde</span>
-                    <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+                    <input className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
                   </label>
                   <label className="space-y-1 text-sm text-neutral-600">
                     <span className="font-medium text-neutral-800">Hasta</span>
-                    <input className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+                    <input className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
                   </label>
                 </>
               )}
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Empresa</span>
-                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={company} onChange={(event) => setCompany(event.target.value)}>
+                <select className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" value={company} onChange={(event) => setCompany(event.target.value)}>
                   {companiesList.map((item) => (
                     <option key={item} value={item}>{item === "all" ? "Todas las empresas" : item}</option>
                   ))}
@@ -250,7 +250,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Tipo</span>
-                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={tipo} onChange={(event) => setTipo(event.target.value as ReportExportRequest["tipo"])}>
+                <select className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" value={tipo} onChange={(event) => setTipo(event.target.value as ReportExportRequest["tipo"])}>
                   <option value="all">Todos</option>
                   <option value="ingreso">Ingresos</option>
                   <option value="egreso">Gastos</option>
@@ -259,7 +259,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
 
               <label className="space-y-1 text-sm text-neutral-600">
                 <span className="font-medium text-neutral-800">Moneda</span>
-                <select className="w-full rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-neutral-100 px-3 py-2" value={moneda} onChange={(event) => setMoneda(event.target.value as ReportExportRequest["moneda"])}>
+                <select className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-3 py-2" value={moneda} onChange={(event) => setMoneda(event.target.value as ReportExportRequest["moneda"])}>
                   <option value="all">Todas</option>
                   <option value="ARS">ARS</option>
                   <option value="USD">USD</option>
@@ -267,7 +267,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
               </label>
             </div>
 
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Vista rápida</div>
@@ -278,7 +278,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                     Sobre los movimientos visibles en el dashboard. La exportación final sale del backend y queda trazada.
                   </p>
                 </div>
-                <div className="rounded-xl bg-white px-4 py-3 text-right shadow-sm">
+                <div className="rounded-xl bg-[var(--app-surface-1)] px-4 py-3 text-right shadow-sm">
                   <div className="text-xs uppercase tracking-widest text-neutral-500">Movimientos visibles</div>
                   <div className="text-2xl font-semibold text-neutral-900">{previewMovements.length}</div>
                 </div>
@@ -286,7 +286,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => void exportReport("csv", "local")}
                   disabled={!canWriteData || !previewRange || isBusy}
                 >
@@ -294,7 +294,7 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                   Exportar CSV
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-400"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => void exportReport("pdf", "local")}
                   disabled={!canWriteData || !previewRange || isBusy}
                 >
@@ -322,8 +322,8 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
             </div>
           </div>
 
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="mb-3 inline-flex rounded-xl bg-white p-2 text-neutral-700 shadow-sm">
+          <div className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] p-5">
+            <div className="mb-3 inline-flex rounded-xl bg-[var(--app-surface-1)] p-2 text-[var(--app-text-2)] shadow-sm">
               <FolderOpen className="h-5 w-5" />
             </div>
             <div className="text-lg font-semibold text-neutral-900">Historial de exportaciones</div>
@@ -338,10 +338,13 @@ export default function InformesTab({ history, companiesList, canWriteData, canU
                   Cargando historial…
                 </div>
               ) : exportsHistory.length === 0 ? (
-                <p className="text-sm text-neutral-500">Todavía no hay exportaciones registradas.</p>
+                <div className="flex flex-col items-center gap-2 py-4 text-neutral-400">
+                  <FileX className="w-8 h-8" strokeWidth={1.5} />
+                  <p className="text-sm text-neutral-500">Todavía no hay exportaciones registradas.</p>
+                </div>
               ) : (
                 exportsHistory.slice(0, 8).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div key={item.id} className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] p-3">
                     <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
                       <div className="font-medium text-neutral-900 truncate min-w-0 flex-1">{item.file_name}</div>
                       <div className="flex items-center gap-1">

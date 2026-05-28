@@ -65,8 +65,8 @@ export default function MovimientosTab({
                     key={company}
                     className={`inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap transition duration-150 border ${
                       isSelected
-                        ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'bg-white border-neutral-200 text-neutral-500 hover:border-[var(--app-text-2)]'
+                        ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]'
+                        : 'bg-[var(--app-surface-1)] border-[var(--app-border)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
                     }`}
                   >
                     <button
@@ -112,8 +112,8 @@ export default function MovimientosTab({
                   onClick={() => setMovementType(filter.id as 'all' | 'ingreso' | 'egreso')}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
                     movementType === filter.id
-                      ? 'bg-neutral-900 text-white'
-                      : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
+                      ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+                      : 'border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
                   }`}
                 >
                   {filter.label}
@@ -132,8 +132,8 @@ export default function MovimientosTab({
                   onClick={() => setMovementCurrency(filter.id as 'all' | 'ARS' | 'USD')}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
                     movementCurrency === filter.id
-                      ? 'bg-neutral-900 text-white'
-                      : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
+                      ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+                      : 'border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
                   }`}
                 >
                   {filter.label}

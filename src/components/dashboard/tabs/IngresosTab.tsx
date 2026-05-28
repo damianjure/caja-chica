@@ -1,3 +1,4 @@
+import { TrendingUp } from 'lucide-react';
 import { EmptyState, MetricCard, PlaceholderPanel, SectionCard } from '../primitives';
 import { HorizontalBarList } from '../Charts';
 
@@ -46,7 +47,7 @@ export default function IngresosTab({
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {incomeTags.map((tag) => (
-              <div key={tag.label} className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+              <div key={tag.label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-neutral-900">{tag.label}</div>
                   <div className="text-sm font-semibold text-green-600 tabular-nums" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
@@ -64,6 +65,7 @@ export default function IngresosTab({
             title="Sin ingresos cargados todavía."
             hint='Probá escribiendo algo como "cobré 50000 de Acme" en el campo de arriba.'
             cta="Cargá un ingreso desde el composer."
+            icon={<TrendingUp className="w-8 h-8" strokeWidth={1.5} />}
           />
         ) : (
           <div className="space-y-3">

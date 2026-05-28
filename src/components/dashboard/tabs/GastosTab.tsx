@@ -1,3 +1,4 @@
+import { TrendingDown } from 'lucide-react';
 import { HorizontalBarList, TrendBars } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 
@@ -52,8 +53,8 @@ export default function GastosTab({
               onClick={() => setSelectedExpenseCompany(company)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedExpenseCompany === company
-                  ? 'bg-neutral-900 text-white'
-                  : 'border border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400'
+                  ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+                  : 'border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
               }`}
             >
               {company === 'all' ? 'Todas las empresas' : company}
@@ -100,6 +101,7 @@ export default function GastosTab({
             hint='Probá con "pagué 4500 de luz" en el campo de arriba — el bot lo entiende.'
             canWrite={canWriteData}
             cta="Cargá un gasto desde el composer."
+            icon={<TrendingDown className="w-8 h-8" strokeWidth={1.5} />}
           />
         ) : (
           <div className="space-y-3">

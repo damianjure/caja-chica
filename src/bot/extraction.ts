@@ -23,10 +23,11 @@ const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: stri
 
 async function showEmpresaSelector(supabase: BotDeps["supabase"], ctx: Context, linked: any, data: PendingExtractionData, processingMsgId: number) {
   try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
-  const empresas = await getTopEmpresasForDashboard(supabase, {
-    dashboardId: linked.dashboardId ?? null,
-    ownerUserId: linked.ownerUserId ?? null,
-  });
+  const scope = { dashboardId: linked.dashboardId ?? null, ownerUserId: linked.ownerUserId ?? null };
+  const [empresas, categorias] = await Promise.all([
+    getTopEmpresasForDashboard(supabase, scope),
+    getTopCategoriasForDashboard(supabase, scope),
+  ]);
   const entry = createPendingExtraction({
     chatId: ctx.chat.id,
     dashboardId: linked.dashboardId ?? null,
@@ -36,6 +37,7 @@ async function showEmpresaSelector(supabase: BotDeps["supabase"], ctx: Context, 
     messageId: 0,
     awaitingCompany: true,
     empresaOptions: empresas,
+    categoriaOptions: categorias.length > 0 ? categorias : null,
   });
   if (empresas.length === 0) {
     updatePendingExtraction(entry.id, { editingField: "empresa" });
@@ -89,10 +91,11 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
             } else {
               const results = await extractFromMultiplePhotos({ genAI, botToken, files });
               try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
-              const topEmpresas = await getTopEmpresasForDashboard(supabase, {
-                dashboardId: linked2.dashboardId ?? null,
-                ownerUserId: linked2.ownerUserId ?? null,
-              });
+              const multiScope = { dashboardId: linked2.dashboardId ?? null, ownerUserId: linked2.ownerUserId ?? null };
+              const [topEmpresas, topCategorias] = await Promise.all([
+                getTopEmpresasForDashboard(supabase, multiScope),
+                getTopCategoriasForDashboard(supabase, multiScope),
+              ]);
               for (const result of results) {
                 const data: PendingExtractionData = { ...result, sourceType: "multi" };
                 const eEntry = createPendingExtraction({
@@ -104,6 +107,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                   messageId: 0,
                   awaitingCompany: true,
                   empresaOptions: topEmpresas,
+                  categoriaOptions: topCategorias.length > 0 ? topCategorias : null,
                 });
                 if (topEmpresas.length === 0) {
                   updatePendingExtraction(eEntry.id, { editingField: "empresa" });

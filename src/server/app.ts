@@ -38,7 +38,6 @@ export type {
 import type {
   AppSession,
   DataAccessScope,
-  DashboardMemberSummary,
   SupabaseLike,
   GenAILike,
 } from "./contracts.ts";
@@ -60,14 +59,11 @@ import {
   listDashboardMembers as listDashboardMembersFn,
 } from "./invitations.ts";
 import {
-  insertAuditLog as insertAuditLogFn,
   logEntityMutation as logEntityMutationFn,
   createEmpresaDeleteBackup as createEmpresaDeleteBackupFn,
   insertReportExport as insertReportExportFn,
 } from "./audit.ts";
 import {
-  isOwnerLike,
-  scopePerm,
   canConnectDrive,
   canExportDrive,
   canExportLocal,
@@ -77,8 +73,8 @@ import {
   canEditOthers,
   resolveDriveOwnerUserId as resolveDriveOwnerUserIdFn,
 } from "./scopePermissions.ts";
-import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
-import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
+import { computeNextRun, relativeRunLabel } from "./recurrentes.ts";
+import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus } from "./maintenance.ts";
 import { notifyMaintenance } from "./maintenanceNotify.ts";
 import { createMaintenanceRouter } from "./routes/maintenance.ts";
 import { createMeRouter } from "./routes/me.ts";
@@ -218,9 +214,6 @@ export function createApp({
   const resolveDataAccessScope = (session: AppSession) =>
     resolveDataAccessScopeFn(supabase, session);
 
-  const insertAuditLog = (payload: Record<string, unknown>) =>
-    insertAuditLogFn(supabase, payload);
-
   const getScopeEntityById = (table: string, session: AppSession, scope: DataAccessScope, id: string) =>
     getScopeEntityByIdFn(supabase, table, session, scope, id);
 
@@ -230,24 +223,11 @@ export function createApp({
   const insertReportExport = (payload: Record<string, unknown>) =>
     insertReportExportFn(supabase, payload);
 
-  const logEntityMutation = (args: {
-    session: AppSession;
-    scope: DataAccessScope;
-    source: "web" | "telegram" | "system";
-    action: "create" | "update" | "delete" | "restore_backup";
-    entityType: "movimiento" | "empresa" | "movimientos_bulk";
-    entityId: string;
-    beforeData?: unknown;
-    afterData?: unknown;
-  }) => logEntityMutationFn(supabase, args);
+  const logEntityMutation = (args: Parameters<typeof logEntityMutationFn>[1]) =>
+    logEntityMutationFn(supabase, args);
 
-  const createEmpresaDeleteBackup = (args: {
-    session: AppSession;
-    scope: DataAccessScope;
-    empresa: Record<string, unknown>;
-    movimientosSnapshot: unknown[];
-    source: "web" | "telegram";
-  }) => createEmpresaDeleteBackupFn(supabase, args);
+  const createEmpresaDeleteBackup = (args: Parameters<typeof createEmpresaDeleteBackupFn>[1]) =>
+    createEmpresaDeleteBackupFn(supabase, args);
 
   const getBotConnectionRecord = (session: AppSession, scope: DataAccessScope) =>
     getBotConnectionRecordFn(supabase, session, scope);
@@ -374,94 +354,6 @@ export function createApp({
 
   const resolveDriveOwnerUserId = (session: AppSession, scope: DataAccessScope) =>
     resolveDriveOwnerUserIdFn(supabase, session, scope);
-
-  const routeContext = {
-    supabase,
-    genAI,
-    genAI2,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
-    requireSession,
-    requireAdmin,
-    requireSuperadmin,
-    getSession,
-    resolveDataAccessScope,
-    canWriteToScope,
-    canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  };
 
   app.use(createMaintenanceRouter({
     supabase,

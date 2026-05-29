@@ -59,6 +59,12 @@ import {
   syncPendingDashboardInvitations as syncPendingDashboardInvitationsFn,
   listDashboardMembers as listDashboardMembersFn,
 } from "./invitations.ts";
+import {
+  insertAuditLog as insertAuditLogFn,
+  logEntityMutation as logEntityMutationFn,
+  createEmpresaDeleteBackup as createEmpresaDeleteBackupFn,
+  insertReportExport as insertReportExportFn,
+} from "./audit.ts";
 import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
 import { notifyMaintenance } from "./maintenanceNotify.ts";
@@ -200,13 +206,8 @@ export function createApp({
   const resolveDataAccessScope = (session: AppSession) =>
     resolveDataAccessScopeFn(supabase, session);
 
-  const insertAuditLog = async (payload: Record<string, unknown>) => {
-    try {
-      await supabase.from("audit_logs").insert([payload]).select();
-    } catch (error) {
-      if (!isMissingSchemaArtifactError(error)) throw error;
-    }
-  };
+  const insertAuditLog = (payload: Record<string, unknown>) =>
+    insertAuditLogFn(supabase, payload);
 
   const getScopeEntityById = (table: string, session: AppSession, scope: DataAccessScope, id: string) =>
     getScopeEntityByIdFn(supabase, table, session, scope, id);
@@ -214,21 +215,10 @@ export function createApp({
   const fetchScopedMovimientos = (session: AppSession, scope: DataAccessScope) =>
     fetchScopedMovimientosFn(supabase, session, scope);
 
-  const insertReportExport = async (payload: Record<string, unknown>) => {
-    try {
-      const { data, error } = await supabase
-        .from("report_exports")
-        .insert([payload])
-        .select();
-      if (error) throw error;
-      return data?.[0] ?? null;
-    } catch (error) {
-      if (isMissingSchemaArtifactError(error)) return null;
-      throw error;
-    }
-  };
+  const insertReportExport = (payload: Record<string, unknown>) =>
+    insertReportExportFn(supabase, payload);
 
-  const logEntityMutation = async (args: {
+  const logEntityMutation = (args: {
     session: AppSession;
     scope: DataAccessScope;
     source: "web" | "telegram" | "system";
@@ -237,46 +227,15 @@ export function createApp({
     entityId: string;
     beforeData?: unknown;
     afterData?: unknown;
-  }) => {
-    await insertAuditLog({
-      dashboard_id: args.scope.dashboardId,
-      actor_user_id: args.session.userId,
-      source: args.source,
-      action: args.action,
-      entity_type: args.entityType,
-      entity_id: args.entityId,
-      before_data: args.beforeData ?? null,
-      after_data: args.afterData ?? null,
-      created_at: new Date().toISOString(),
-    });
-  };
+  }) => logEntityMutationFn(supabase, args);
 
-  const createEmpresaDeleteBackup = async (args: {
+  const createEmpresaDeleteBackup = (args: {
     session: AppSession;
     scope: DataAccessScope;
     empresa: Record<string, unknown>;
     movimientosSnapshot: unknown[];
     source: "web" | "telegram";
-  }) => {
-    try {
-      await supabase
-        .from("empresa_delete_backups")
-        .insert([
-          {
-            dashboard_id: args.scope.dashboardId,
-            empresa_id: args.empresa.id,
-            empresa_data: args.empresa,
-            related_movimientos_snapshot: args.movimientosSnapshot,
-            deleted_by_user_id: args.session.userId,
-            source: args.source,
-            created_at: new Date().toISOString(),
-          },
-        ])
-        .select();
-    } catch (error) {
-      if (!isMissingSchemaArtifactError(error)) throw error;
-    }
-  };
+  }) => createEmpresaDeleteBackupFn(supabase, args);
 
   const getBotConnectionRecord = (session: AppSession, scope: DataAccessScope) =>
     getBotConnectionRecordFn(supabase, session, scope);

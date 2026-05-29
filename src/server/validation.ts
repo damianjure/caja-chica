@@ -355,6 +355,51 @@ export function parseUpdateEmpresaRequest(value: unknown): UpdateEmpresaRequest 
 }
 
 // ---------------------------------------------------------------------------
+// Email management parsers (REQ-S1.5, REQ-S3.2)
+// ---------------------------------------------------------------------------
+
+export interface EmailSettingsRequest {
+  from_email: string;
+  from_name: string;
+}
+
+export interface TestSendRequest {
+  to: string;
+}
+
+function isEmailShape(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  // Simple structural check: must contain @ and have non-empty local + domain parts.
+  const atIdx = trimmed.indexOf("@");
+  if (atIdx < 1) return false;
+  const domain = trimmed.slice(atIdx + 1);
+  return domain.includes(".") && domain.length > 2;
+}
+
+export function parseEmailSettingsRequest(value: unknown): EmailSettingsRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+
+  if (!isEmailShape(payload.from_email)) return null;
+  if (typeof payload.from_name !== "string" || payload.from_name.trim().length === 0) return null;
+
+  return {
+    from_email: (payload.from_email as string).trim(),
+    from_name: payload.from_name.trim(),
+  };
+}
+
+export function parseTestSendRequest(value: unknown): TestSendRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+
+  if (!isEmailShape(payload.to)) return null;
+
+  return { to: (payload.to as string).trim() };
+}
+
+// ---------------------------------------------------------------------------
 // Recurrentes
 // ---------------------------------------------------------------------------
 

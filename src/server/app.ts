@@ -573,7 +573,26 @@ export function createApp({
     buildWriteOwnership,
     parseBudgetRequest,
   }));
-  app.use(createDriveRouter(routeContext));
+  app.use(createDriveRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canConnectDrive,
+    canExportDrive,
+    resolveDriveOwnerUserId,
+    pendingDriveOAuthStates,
+    driveEnabled,
+    randomBytes,
+    publicAppUrl,
+    googleDriveClientId,
+    googleDriveClientSecret,
+    googleDriveRedirectUri,
+    tokenEncryptionKey,
+    getDriveAuthUrl,
+    exchangeCodeForTokens,
+    encryptToken,
+  }));
   app.use(createInformesRouter(routeContext));
   app.use(createDashboardRouter(routeContext));
   app.use(createCronsRouter({

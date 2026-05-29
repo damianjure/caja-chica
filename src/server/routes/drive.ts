@@ -1,97 +1,49 @@
-import express from "express";
+import express, { type Request, type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+export interface DriveDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canConnectDrive: (scope: DataAccessScope) => boolean;
+  canExportDrive: (scope: DataAccessScope) => boolean;
+  resolveDriveOwnerUserId: (session: AppSession, scope: DataAccessScope) => Promise<string | null>;
+  pendingDriveOAuthStates: Map<string, { userId: string; expiresAt: number }>;
+  driveEnabled: boolean;
+  randomBytes: (size: number) => Buffer;
+  publicAppUrl?: string;
+  googleDriveClientId?: string;
+  googleDriveClientSecret?: string;
+  googleDriveRedirectUri?: string;
+  tokenEncryptionKey?: string;
+  getDriveAuthUrl: (clientId: string, clientSecret: string, redirectUri: string, state: string) => string;
+  exchangeCodeForTokens: (clientId: string, clientSecret: string, redirectUri: string, code: string) => Promise<{ refreshToken: string }>;
+  encryptToken: (token: string, key: string) => string;
+}
 
-export function createDriveRouter(ctx: any) {
+export function createDriveRouter(deps: DriveDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canConnectDrive,
+    canExportDrive,
+    resolveDriveOwnerUserId,
+    pendingDriveOAuthStates,
+    driveEnabled,
+    randomBytes,
     publicAppUrl,
-    telegramBotUsername,
     googleDriveClientId,
     googleDriveClientSecret,
     googleDriveRedirectUri,
     tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
-    requireSession,
-    requireAdmin,
-    requireSuperadmin,
-    getSession,
-    resolveDataAccessScope,
-    canWriteToScope,
-    canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
     getDriveAuthUrl,
     exchangeCodeForTokens,
-    uploadFileToDrive,
     encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
   router.get("/api/drive/status", requireSession, async (req, res) => {
     if (!driveEnabled) return res.json({ connected: false, enabled: false });

@@ -14,6 +14,10 @@ export interface PendingExtraction {
   pendingNewCompanyName: string | null;
   pendingSuggestNombre: string | null;
   empresaOptions: Array<{ id: string; nombre: string }> | null;
+  categoriaOptions: Array<{ id: string; nombre: string }> | null;
+  awaitingCategoria: boolean;
+  pendingNewCategoriaName: string | null;
+  pendingSuggestCategoria: string | null;
   /** When set, confirming the review updates this existing movement instead of inserting a new one. */
   editMovementId: string | null;
 }
@@ -57,6 +61,10 @@ export function createPendingExtraction(args: {
   pendingNewCompanyName?: string | null;
   pendingSuggestNombre?: string | null;
   empresaOptions?: Array<{ id: string; nombre: string }> | null;
+  categoriaOptions?: Array<{ id: string; nombre: string }> | null;
+  awaitingCategoria?: boolean;
+  pendingNewCategoriaName?: string | null;
+  pendingSuggestCategoria?: string | null;
   editMovementId?: string | null;
 }): PendingExtraction {
   const id = `${args.chatId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -74,6 +82,10 @@ export function createPendingExtraction(args: {
     pendingNewCompanyName: args.pendingNewCompanyName ?? null,
     pendingSuggestNombre: args.pendingSuggestNombre ?? null,
     empresaOptions: args.empresaOptions ?? null,
+    categoriaOptions: args.categoriaOptions ?? null,
+    awaitingCategoria: args.awaitingCategoria ?? false,
+    pendingNewCategoriaName: args.pendingNewCategoriaName ?? null,
+    pendingSuggestCategoria: args.pendingSuggestCategoria ?? null,
     editMovementId: args.editMovementId ?? null,
   };
   pendingExtractions.set(id, entry);
@@ -99,7 +111,7 @@ export function getPendingExtractionByChat(chatId: number): PendingExtraction | 
   return null;
 }
 
-export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField" | "awaitingCompany" | "pendingNewCompanyName" | "pendingSuggestNombre" | "empresaOptions">>): PendingExtraction | null {
+export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingExtraction, "data" | "editingField" | "awaitingCompany" | "pendingNewCompanyName" | "pendingSuggestNombre" | "empresaOptions" | "categoriaOptions" | "awaitingCategoria" | "pendingNewCategoriaName" | "pendingSuggestCategoria">>): PendingExtraction | null {
   const entry = getPendingExtraction(id);
   if (!entry) return null;
   if (patch.data !== undefined) entry.data = { ...entry.data, ...patch.data };
@@ -108,6 +120,10 @@ export function updatePendingExtraction(id: string, patch: Partial<Pick<PendingE
   if (patch.pendingNewCompanyName !== undefined) entry.pendingNewCompanyName = patch.pendingNewCompanyName;
   if (patch.pendingSuggestNombre !== undefined) entry.pendingSuggestNombre = patch.pendingSuggestNombre;
   if (patch.empresaOptions !== undefined) entry.empresaOptions = patch.empresaOptions;
+  if (patch.categoriaOptions !== undefined) entry.categoriaOptions = patch.categoriaOptions;
+  if (patch.awaitingCategoria !== undefined) entry.awaitingCategoria = patch.awaitingCategoria;
+  if (patch.pendingNewCategoriaName !== undefined) entry.pendingNewCategoriaName = patch.pendingNewCategoriaName;
+  if (patch.pendingSuggestCategoria !== undefined) entry.pendingSuggestCategoria = patch.pendingSuggestCategoria;
   return entry;
 }
 
@@ -139,9 +155,22 @@ export function buildReviewCardText(data: PendingExtractionData): string {
   );
 }
 
-export function buildReviewKeyboard(extractionId: string): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
+export function buildReviewKeyboard(
+  extractionId: string,
+  categoriaOptions?: Array<{ id: string; nombre: string }> | null,
+): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
+  const quickPickRows: Array<Array<{ text: string; callback_data: string }>> = [];
+  if (categoriaOptions && categoriaOptions.length > 0) {
+    const opts = categoriaOptions.slice(0, 6);
+    const row = opts.map((opt, i) => ({
+      text: opt.nombre,
+      callback_data: `er:ca:${extractionId}:${i}`,
+    }));
+    quickPickRows.push(row);
+  }
   return {
     inline_keyboard: [
+      ...quickPickRows,
       [
         { text: "✏️ Monto", callback_data: `er:edit:${extractionId}:monto` },
         { text: "🏢 Empresa", callback_data: `er:edit:${extractionId}:empresa` },

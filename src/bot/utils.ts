@@ -7,6 +7,11 @@ import {
 } from "../server/telegramAccess.ts";
 import { can, type TelegramAction } from "../server/permissions.ts";
 
+/** Fire-and-forget typing indicator. Errors are swallowed — never delays the main op. */
+export function sendTyping(ctx: Context): void {
+  ctx.replyWithChatAction("typing").catch(() => {});
+}
+
 /**
  * Escape Telegram legacy Markdown special chars in user-provided strings.
  * Without this, a value containing `_`, `*`, `` ` `` or `[` breaks `parse_mode: "Markdown"`.

@@ -564,7 +564,16 @@ export function createApp({
     canManageCategoriasOp,
     applyDataScope,
   }));
-  app.use(createPresupuestosRouter(routeContext));
+  app.use(createPresupuestosRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    applyDataScope,
+    buildWriteOwnership,
+    parseBudgetRequest,
+  }));
   app.use(createDriveRouter(routeContext));
   app.use(createInformesRouter(routeContext));
   app.use(createDashboardRouter(routeContext));

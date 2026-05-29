@@ -1,97 +1,32 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import type { BudgetRequest } from "../validation.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
 
-export function createPresupuestosRouter(ctx: any) {
+export interface PresupuestosDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: express.Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canWriteToScope: (scope: DataAccessScope) => boolean;
+  applyDataScope: (query: any, session: AppSession, scope: DataAccessScope) => any;
+  buildWriteOwnership: (session: AppSession, scope: DataAccessScope) => Record<string, unknown>;
+  parseBudgetRequest: (body: unknown) => BudgetRequest | null;
+}
+
+export function createPresupuestosRouter(deps: PresupuestosDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
-    requireAdmin,
-    requireSuperadmin,
     getSession,
     resolveDataAccessScope,
     canWriteToScope,
-    canManageDashboardMembers,
     applyDataScope,
     buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
     parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
 
   router.post("/api/presupuestos", requireSession, async (req, res) => {
@@ -128,42 +63,6 @@ export function createPresupuestosRouter(ctx: any) {
     } catch (err) {
       console.error("Budget error:", err);
       res.status(500).json({ error: "failed_to_save" });
-    }
-  });
-
-  router.get("/api/movimientos", requireSession, async (req, res) => {
-    try {
-      const session = getSession(req);
-      const scope = await resolveDataAccessScope(session);
-      const { limit, before } = parsePaginationQuery(req.query);
-      let query = applyDataScope(
-        supabase
-          .from("movimientos")
-          .select("*")
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false }),
-        session,
-        scope,
-      );
-
-      if (before) {
-        query = query.lt("created_at", before);
-      }
-
-      const { data, error } = (await query.limit(limit)) as Awaited<
-        QueryBuilderResult<any[]>
-      >;
-      if (error) throw error;
-
-      const items = data ?? [];
-      const nextCursor =
-        items.length === limit && items.at(-1)?.created_at
-          ? items.at(-1)?.created_at
-          : null;
-
-      res.json({ items, nextCursor });
-    } catch (_err) {
-      res.status(500).json({ error: "failed_to_fetch" });
     }
   });
 

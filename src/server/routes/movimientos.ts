@@ -105,7 +105,7 @@ export function createMovimientosRouter(ctx: any) {
         payload.categories.map((category) => category.nombre).join(", ") || "Otros";
 
       const result = await geminiGenerateText(genAI, genAI2, {
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-lite",
         contents: payload.text,
         config: {
           systemInstruction: `${SYSTEM_PROMPT}\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,

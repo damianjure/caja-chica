@@ -316,7 +316,7 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
 
     const prompt = `Extraé los datos de este mensaje: "${args.text}"`;
     const result = await geminiGenerateText(genAI, genAI2, {
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_PROMPT + `\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,

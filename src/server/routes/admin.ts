@@ -144,7 +144,7 @@ export function createAdminRouter(deps: AdminDeps) {
     try {
       const { data, error } = await supabase
         .from("user_invitations")
-        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at")
+        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;

@@ -179,6 +179,7 @@ export interface AppInvitation {
   expires_at: string | null;
   created_at: string;
   accepted_at: string | null;
+  last_reminder_at?: string | null;
 }
 
 export type OnboardingState = 'pending' | 'seeded' | 'completed' | 'cleaned';

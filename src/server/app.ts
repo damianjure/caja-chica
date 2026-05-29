@@ -555,7 +555,15 @@ export function createApp({
     parseEmpresaRequest,
     parseUpdateEmpresaRequest,
   }));
-  app.use(createCategoriasRouter(routeContext));
+  app.use(createCategoriasRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    canManageCategoriasOp,
+    applyDataScope,
+  }));
   app.use(createPresupuestosRouter(routeContext));
   app.use(createDriveRouter(routeContext));
   app.use(createInformesRouter(routeContext));

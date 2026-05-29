@@ -188,6 +188,10 @@ const viewerSession: AppSession = {
 const now = "2026-05-21T10:00:00.000Z";
 const threeDaysAgo = "2026-05-18T10:00:00.000Z";
 const oneDayAgo = "2026-05-20T10:00:00.000Z";
+// Computed relative to the real clock so "valid" invites never expire mid-suite.
+// (Hardcoding a future date here is a time-bomb: derivePersonaStatus compares
+// expires_at against new Date().toISOString().)
+const futureExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
 const pendingAppInvite = {
   id: "ui-1",
@@ -195,7 +199,7 @@ const pendingAppInvite = {
   role: "member",
   status: "pending",
   invite_token: "token-ui-1",
-  expires_at: "2026-05-28T10:00:00.000Z",
+  expires_at: futureExpiry,
   created_at: threeDaysAgo,
   accepted_at: null,
   last_reminder_at: null,
@@ -207,7 +211,7 @@ const acceptedAppInvite = {
   role: "admin",
   status: "pending", // raw status is still pending in DB; accepted_at IS set
   invite_token: "token-ui-2",
-  expires_at: "2026-05-28T10:00:00.000Z",
+  expires_at: futureExpiry,
   created_at: threeDaysAgo,
   accepted_at: oneDayAgo,
   last_reminder_at: null,
@@ -231,7 +235,7 @@ const revokedAppInvite = {
   role: "member",
   status: "revoked",
   invite_token: "token-ui-4",
-  expires_at: "2026-05-28T10:00:00.000Z",
+  expires_at: futureExpiry,
   created_at: threeDaysAgo,
   accepted_at: null,
   last_reminder_at: null,
@@ -244,7 +248,7 @@ const pendingDashboardInvite = {
   role: "editor",
   status: "pending",
   invite_token: "token-di-1",
-  expires_at: "2026-05-28T10:00:00.000Z",
+  expires_at: futureExpiry,
   created_at: oneDayAgo,
   accepted_at: null,
   last_reminder_at: null,

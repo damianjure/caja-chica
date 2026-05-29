@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Fuente de verdad única — 2026-05-26 (post crons-to-cloud-scheduler — Cloud Run min=0)
+## Fuente de verdad única — 2026-05-27 (post modal-portal unification)
 
 Este es el **único archivo de contexto operativo** del proyecto.
 
@@ -521,6 +521,36 @@ SDD planning + 4 slices apply + verify + archive. Archive: `openspec/changes/arc
 - MovimientosTab: `aria-pressed` en filter chips tipo/moneda, `role="group"` wrappers
 - GastosTab: `aria-pressed` en filter chips empresa, `role="group"` wrapper
 - DashboardApp: `role="status"` en banner `missing_url`, `role="alert"` en `load_error` + composer error
+
+### Cambios 2026-05-27 (modal portal unification + DESIGN.md como fuente de verdad UI)
+
+#### Portal rule (commit pendiente)
+- `ConfirmModal.tsx` + `ConfirmDestructive.tsx`: agregado `createPortal(document.body)` para que el backdrop `fixed inset-0` no quede atrapado en ancestros con `transform` (tab panels con `anim-fade-in`).
+- `ConfirmDestructive`: z-index unificado de `z-50` → `z-[200]` para alinear con `ModalShell` y `ConfirmModal`.
+- **Regla establecida**: todo modal con backdrop `position: fixed` DEBE usar `createPortal(document.body)`. Documentado en `DESIGN.md § Modals`.
+
+#### DESIGN.md como fuente de verdad para UI/UX
+- `DESIGN.md` cargado y validado. Correcciones aplicadas:
+  - Botones de acción: `rounded-xl` → `rounded-md` (DESIGN.md: buttons = 0.5rem)
+  - Inputs/selects de formulario: `rounded-xl` → `rounded-md`
+  - Archivos corregidos: `DashboardModals.tsx`, `InformesTab.tsx`, `MovementCards.tsx`, `RecurrentesTab.tsx`, `ModalShell.tsx` (botón X)
+- **Regla**: antes de cualquier cambio de UI, leer `DESIGN.md`. Es la fuente de verdad de tokens, radios, colores y reglas de componentes.
+
+### Cambios 2026-05-28 (Gemini fallback key + graceful degradation)
+
+Telegram caído en prod: primary `GEMINI_API_KEY` con `429 RESOURCE_EXHAUSTED` ("prepayment credits depleted"). No era bug de código — cuota agotada. Fix: segunda key + degradación elegante.
+
+**Arquitectura** (commit `76da710`, rev `caja-chica-00046-rp8` + env var rev `caja-chica-00047-bqv`):
+- `src/server/geminiWithFallback.ts` (nuevo):
+  - `GeminiUnavailableError` — error tipado cuando todas las keys agotan cuota
+  - `isQuotaError(err)` — detecta `status === 429` o `message` con `RESOURCE_EXHAUSTED`
+  - `geminiGenerateText(primary, fallback, args)` — intenta primary, en quota error reintenta con fallback; si fallback también agota o no existe → `GeminiUnavailableError`
+- **Texto** (`/api/extract`, bot `processTelegramFinancialText`): soporta retry con segunda key vía `geminiGenerateText`
+- **Media** (fotos/audio/PDF): NO reintenta con segunda key — los archivos subidos vía Files API quedan scopeados a la primary key. Solo degradan con mensaje elegante (`telegramMedia.ts`, `telegramAudio.ts`, `extraction.ts` convierten quota → `GeminiUnavailableError`)
+- **HTTP**: `/api/extract` retorna `503 { error: "ai_unavailable" }` (distinto de 500 genérico). Frontend `useComposer.ts` muestra "La IA no está disponible ahora mismo" en 503 vía `ApiError.status`
+- **Bot**: replies MarkdownV2 elegantes ("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)…")
+- `genAI2: GoogleGenAI | null` cableado por `BotDeps` + `AppDeps`; `server.ts` instancia `genAI2` solo si `GEMINI_API_KEY_2` presente
+- Groq descartado como fallback: sin soporte vision (fotos requieren Gemini)
 
 ### Pendiente
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
@@ -1173,6 +1203,7 @@ Service account: `cron-invoker@caja-chica-bot.iam.gserviceaccount.com` (`roles/r
 
 ### IA
 - `GEMINI_API_KEY`
+- `GEMINI_API_KEY_2` ← opcional. Segunda key de fallback. Si presente, las llamadas de texto reintentan con esta key cuando la primary agota cuota (429). Si ausente, `genAI2 = null` y solo hay degradación elegante. Configurada en Cloud Run rev `caja-chica-00047-bqv` (2026-05-28)
 
 ### Google Drive ← configuradas en Cloud Run 2026-05-07
 - `GOOGLE_DRIVE_CLIENT_ID`

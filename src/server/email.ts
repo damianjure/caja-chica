@@ -3,14 +3,40 @@
 // Auth: header `api-key`
 // Docs: https://developers.brevo.com/reference/sendtransacemail
 
+import type { SupabaseLike } from "./app.ts";
+import { getActiveSender } from "./emailSettings.ts";
+
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
+// Module-level env constants (kept for back-compat and as fallback baseline).
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "hola@damianjure.com";
 const FROM_NAME = process.env.FROM_NAME ?? "Caja Chica";
 
 function getApiKey(): string | null {
   return process.env.BREVO_API_KEY ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// configureEmail — one-time injector called at startup in server.ts.
+// Injects the supabase client so sendViaBrevo can resolve the active sender
+// and write email_log without threading supabase through every call site.
+// ---------------------------------------------------------------------------
+
+export type EmailType = "app_invite" | "dashboard_invite" | "test" | "reminder";
+
+interface EmailDeps {
+  supabase: SupabaseLike;
+}
+
+let _injectedDeps: EmailDeps | null = null;
+
+export function configureEmail(deps: EmailDeps): void {
+  _injectedDeps = deps;
+}
+
+// ---------------------------------------------------------------------------
+// HTML helpers
+// ---------------------------------------------------------------------------
 
 function escapeHtml(str: string): string {
   return str
@@ -386,15 +412,51 @@ function sanitizeHeader(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
 }
 
-async function sendViaBrevo(to: string, subject: string, htmlContent: string): Promise<void> {
+// ---------------------------------------------------------------------------
+// sendViaBrevo — the single Brevo transport seam.
+// Returns { ok, messageId? } so test-send can echo messageId.
+// Existing callers (sendAppInvitationEmail, sendDashboardInvitationEmail) ignore the return value.
+// ---------------------------------------------------------------------------
+
+export interface SendResult {
+  ok: boolean;
+  messageId?: string;
+}
+
+export interface SendViaBrevoOpts {
+  fromEmail?: string;
+  fromName?: string;
+  emailType?: EmailType;
+  invitationId?: string | null;
+}
+
+export async function sendViaBrevo(
+  to: string,
+  subject: string,
+  htmlContent: string,
+  opts?: SendViaBrevoOpts,
+): Promise<SendResult> {
   const apiKey = getApiKey();
   if (!apiKey) {
     console.warn("[email] BREVO_API_KEY not set — skipping email to", to);
-    return;
+    return { ok: false };
+  }
+
+  // Resolve sender: opts override → active sender from DB → env constants.
+  let senderEmail = FROM_EMAIL;
+  let senderName = FROM_NAME;
+
+  if (opts?.fromEmail && opts?.fromName) {
+    senderEmail = opts.fromEmail;
+    senderName = opts.fromName;
+  } else if (_injectedDeps) {
+    const active = await getActiveSender(_injectedDeps.supabase);
+    senderEmail = active.fromEmail;
+    senderName = active.fromName;
   }
 
   const payload = {
-    sender: { name: sanitizeHeader(FROM_NAME), email: sanitizeHeader(FROM_EMAIL) },
+    sender: { name: sanitizeHeader(senderName), email: sanitizeHeader(senderEmail) },
     to: [{ email: sanitizeHeader(to) }],
     subject: sanitizeHeader(subject),
     htmlContent,
@@ -402,6 +464,8 @@ async function sendViaBrevo(to: string, subject: string, htmlContent: string): P
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  let result: SendResult = { ok: false };
 
   try {
     const res = await fetch(BREVO_ENDPOINT, {
@@ -418,19 +482,80 @@ async function sendViaBrevo(to: string, subject: string, htmlContent: string): P
     if (!res.ok) {
       const errorBody = await res.text().catch(() => "<no body>");
       console.error("[email] Brevo send failed", { to, status: res.status, body: errorBody });
-      return;
+      result = { ok: false };
+
+      // Fire-and-forget log: failure (INVARIANT #2 — must not throw)
+      if (_injectedDeps) {
+        const { writeEmailLog } = await import("./emailLog.ts");
+        void writeEmailLog({
+          supabase: _injectedDeps.supabase,
+          toEmail: to,
+          subject,
+          emailType: opts?.emailType ?? "app_invite",
+          ok: false,
+          errorBody,
+          invitationId: opts?.invitationId ?? null,
+        });
+      }
+
+      return result;
     }
 
+    const resBody = await res.json().catch(() => ({})) as Record<string, unknown>;
+    const messageId = typeof resBody.messageId === "string" ? resBody.messageId : undefined;
     console.log("[email] Sent to", to, "subject:", subject);
+    result = { ok: true, messageId };
+
+    // Fire-and-forget log: success (INVARIANT #2 — must not throw)
+    if (_injectedDeps) {
+      const { writeEmailLog } = await import("./emailLog.ts");
+      void writeEmailLog({
+        supabase: _injectedDeps.supabase,
+        toEmail: to,
+        subject,
+        emailType: opts?.emailType ?? "app_invite",
+        ok: true,
+        messageId,
+        invitationId: opts?.invitationId ?? null,
+      });
+    }
+
+    return result;
   } catch (err) {
     console.error("[email] Brevo request error", { to, err });
+    result = { ok: false };
+
+    if (_injectedDeps) {
+      const { writeEmailLog } = await import("./emailLog.ts");
+      void writeEmailLog({
+        supabase: _injectedDeps.supabase,
+        toEmail: to,
+        subject,
+        emailType: opts?.emailType ?? "app_invite",
+        ok: false,
+        errorBody: err instanceof Error ? err.message : String(err),
+        invitationId: opts?.invitationId ?? null,
+      });
+    }
+
+    return result;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-export async function sendAppInvitationEmail(to: string, inviteUrl: string): Promise<void> {
-  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl));
+// ---------------------------------------------------------------------------
+// Public senders — stable signatures (back-compat with existing callers).
+// ---------------------------------------------------------------------------
+
+export async function sendAppInvitationEmail(
+  to: string,
+  inviteUrl: string,
+  emailType?: EmailType,
+): Promise<void> {
+  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl), {
+    emailType: emailType ?? "app_invite",
+  });
 }
 
 export async function sendDashboardInvitationEmail(
@@ -439,10 +564,12 @@ export async function sendDashboardInvitationEmail(
   role: string,
   inviterEmail: string,
   telegramDeepLink?: string,
+  emailType?: EmailType,
 ): Promise<void> {
   await sendViaBrevo(
     to,
     `${inviterEmail} te invitó a su dashboard en Caja Chica`,
     dashboardInvitationHtml(inviteUrl, role, inviterEmail, telegramDeepLink),
+    { emailType: emailType ?? "dashboard_invite" },
   );
 }

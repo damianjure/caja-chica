@@ -534,7 +534,16 @@ export function createApp({
     tierResend,
   };
 
-  app.use(createMaintenanceRouter(routeContext));
+  app.use(createMaintenanceRouter({
+    supabase,
+    requireSession,
+    requireSuperadmin,
+    getSession,
+    getMaintenanceState,
+    setMaintenanceStatus,
+    notifyMaintenance,
+    bot: bot ?? null,
+  }));
   app.use(createMeRouter(routeContext));
   app.use(createTelegramRouter(routeContext));
   app.use(createAdminRouter(routeContext));

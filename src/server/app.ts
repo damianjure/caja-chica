@@ -10,7 +10,6 @@ import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "./gemini.ts";
 import { isMissingSchemaArtifactError } from "./errors.ts";
 import { ensurePersonalDashboard, seedDemoData, purgeDemoData } from "./demoSeed.ts";
 import {
-  AppRole,
   parseBudgetRequest,
   parseDashboardInvitationRequest,
   parseEmpresaRequest,
@@ -24,6 +23,25 @@ import {
   parseUpdateEmpresaRequest,
   parseUpdateMovimientoRequest,
 } from "./validation.ts";
+
+// Re-export shared domain types from contracts.ts for backward-compatibility
+// (tests and callers that import them from app.ts keep working unchanged).
+export type {
+  AppUserStatus,
+  AppSession,
+  DashboardMemberRole,
+  DataAccessScope,
+  DashboardMemberSummary,
+  SupabaseLike,
+  GenAILike,
+} from "./contracts.ts";
+import type {
+  AppSession,
+  DataAccessScope,
+  DashboardMemberSummary,
+  SupabaseLike,
+  GenAILike,
+} from "./contracts.ts";
 import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
 import { notifyMaintenance } from "./maintenanceNotify.ts";
@@ -52,29 +70,6 @@ function unrefInterval(timer: ReturnType<typeof setInterval>) {
   if (typeof maybeUnref === "function") maybeUnref.call(timer);
 }
 
-export interface SupabaseLike {
-  from(table: string): any;
-  rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: any; error: any }>;
-  auth: {
-    admin: {
-      deleteUser(userId: string): Promise<{ error: any }>;
-    };
-  };
-}
-
-export interface GenAILike {
-  models: {
-    generateContent(input: {
-      model: string;
-      contents: string;
-      config: { systemInstruction: string };
-    }): Promise<{
-      text?: string;
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    }>;
-  };
-}
-
 export interface AppDeps {
   supabase: SupabaseLike;
   genAI: GenAILike;
@@ -97,33 +92,6 @@ export interface AppDeps {
   cronSecret?: string;
 }
 
-export type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
-
-export interface AppSession {
-  userId: string;
-  email: string;
-  role: AppRole;
-  status: AppUserStatus;
-  sessionId?: string; // JWT session_id claim — present on real Supabase tokens
-}
-
-type DashboardMemberRole = "owner" | "editor" | "viewer";
-
-interface DataAccessScope {
-  dashboardId: string | null;
-  membershipRole: DashboardMemberRole | null;
-  memberPermissions: Record<string, boolean>;
-}
-
-interface DashboardMemberSummary {
-  id: string;
-  user_id: string;
-  email: string | null;
-  role: DashboardMemberRole;
-  status: string;
-  created_at: string;
-  permissions: Record<string, boolean>;
-}
 
 function withCors(allowedOrigins: string[]): RequestHandler {
   return (req, res, next) => {

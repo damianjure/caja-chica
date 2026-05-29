@@ -1,4 +1,4 @@
-import { TrendingDown } from 'lucide-react';
+import { TrendingDown, Tag } from 'lucide-react';
 import { HorizontalBarList, TrendBars } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 
@@ -39,9 +39,9 @@ export default function GastosTab({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard label="Gasto total ARS" value={arsEgreso} tone="danger" />
-        <MetricCard label="Gasto total USD" value={usdEgreso} tone="danger" />
-        <MetricCard label="Categorías activas" value={String(categoryCount)} />
+        <MetricCard label="Gasto total ARS" value={arsEgreso} tone="danger" icon={TrendingDown} />
+        <MetricCard label="Gasto total USD" value={usdEgreso} tone="danger" icon={TrendingDown} />
+        <MetricCard label="Categorías activas" value={String(categoryCount)} icon={Tag} />
       </div>
 
       <SectionCard title="Categorías de gasto" description="Top de categorías reales sobre los movimientos cargados.">

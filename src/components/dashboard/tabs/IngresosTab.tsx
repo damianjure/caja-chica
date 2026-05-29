@@ -1,4 +1,4 @@
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Tag } from 'lucide-react';
 import { EmptyState, MetricCard, PlaceholderPanel, SectionCard } from '../primitives';
 import { HorizontalBarList } from '../Charts';
 
@@ -22,9 +22,9 @@ export default function IngresosTab({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard label="Ingresos ARS" value={arsIngreso} tone="success" />
-        <MetricCard label="Ingresos USD" value={usdIngreso} tone="success" />
-        <MetricCard label="Fuentes detectadas" value={String(sourceCount)} />
+        <MetricCard label="Ingresos ARS" value={arsIngreso} tone="success" icon={TrendingUp} />
+        <MetricCard label="Ingresos USD" value={usdIngreso} tone="success" icon={TrendingUp} />
+        <MetricCard label="Fuentes detectadas" value={String(sourceCount)} icon={Tag} />
       </div>
 
       <SectionCard title="Ingresos por empresa / origen" description="Acá ves de dónde viene la plata: empresa, frente comercial o descripción visible del cobro.">

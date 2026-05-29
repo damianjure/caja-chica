@@ -1,5 +1,5 @@
 
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2 } from 'lucide-react';
 import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
 import { EmptyState, MetricCard } from '../primitives';
 
@@ -23,11 +23,11 @@ export default function ResumenTab(props: ResumenTabProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        <MetricCard label="Ingresos ARS" value={props.arsIngreso} tone="success" />
-        <MetricCard label="Gastos ARS" value={props.arsEgreso} tone="danger" />
-        <MetricCard label="Utilidad ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} />
-        <MetricCard label="Caja USD" value={props.usdNeto} tone="neutral" />
-        <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" />
+        <MetricCard label="Ingresos ARS" value={props.arsIngreso} tone="success" icon={TrendingUp} />
+        <MetricCard label="Gastos ARS" value={props.arsEgreso} tone="danger" icon={TrendingDown} />
+        <MetricCard label="Utilidad ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} icon={Wallet} />
+        <MetricCard label="Caja USD" value={props.usdNeto} tone="neutral" icon={Wallet} />
+        <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]">

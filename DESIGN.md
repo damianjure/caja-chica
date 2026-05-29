@@ -297,6 +297,42 @@ A11y es parte del sistema, no un parche. Auditado en 3 rondas (2026-05).
 ### Named Rules
 **La Regla del Contraste Mínimo.** Texto significativo nunca baja de `text-3`. `text-4` es solo decoración/separadores, jamás contenido legible.
 
+## 11. Iconografía
+
+**Regla central: "Icono = reconocimiento, no decoración."** Espejo de la Regla del Color Semántico. Un ícono existe para que el usuario identifique el contexto sin leer la etiqueta. Si la sola presencia del ícono no acelera el reconocimiento, no va.
+
+### Familia y tamaño
+- Familia exclusiva: `lucide-react` (ya presente en el proyecto). Sin mezcla de sets.
+- Iconos monocromos: heredan el color del texto contenedor (`text-3` o el color del elemento padre). Nunca color decorativo propio.
+- Tamaño estándar: 14–16px (`w-4 h-4`). En `EmptyState` se permite 32px (`w-8 h-8` con `strokeWidth={1.5}`) como anchor visual único en el estado vacío.
+
+### Color en un ícono
+Color SOLO cuando el ícono ES la señal semántica:
+- Flecha de ingreso: verde (`text-green-600`) en el chip de tipo.
+- Flecha de egreso: rojo (`text-red-600`) en el chip de tipo.
+Nunca color decorativo en un ícono. La Regla del Color Semántico se aplica igual que en texto.
+
+### Dónde van (aportan reconocimiento)
+- **Tab nav:** ya implementado — ícono + label.
+- **`MetricCard` label:** ícono opcional a la izquierda del label, monocromo `text-3`.
+- **`SectionCard` header:** un único ícono opcional junto al título, monocromo `text-2`.
+- **Chip de tipo en fila de movimiento (`MovementCards`):** `TrendingUp` (ingreso, verde) / `TrendingDown` (egreso, rojo) — ya implementado en el pill coloreado.
+- **`EmptyState`:** ícono de contexto centrado, 32px, `text-neutral-400` — prop `icon?` ya existe.
+- **Botón enviar del composer:** `Send` — ya implementado.
+- **Pills de acción (editar/borrar/exportar):** `Pencil`, `Trash2`, `Copy` — ya implementados.
+
+### Anti-patrones (NO)
+- Un ícono por cada label o sección sin que aporte reconocimiento real.
+- Iconos de color decorativos (rojo/verde que no diferencian tipo financiero).
+- Iconos en texto corrido o párrafos de body.
+- Affordances que no hacen nada: no agregar iconos de features inexistentes (ej. cámara/micrófono si la carga web de imágenes no existe aún).
+- Doble indicador en la misma fila: si el chip de tipo ya tiene ícono semántico, no agregar además flecha en el monto.
+
+### Named Rules
+**La Regla del Ícono Único.** Por fila de movimiento, exactamente un indicador de tipo (el chip con TrendingUp/TrendingDown). El monto ya tiene color semántico y arrow text en otras vistas; no duplicar.
+
+**La Regla del Ícono Silencioso.** El ícono apoya al texto; nunca reemplaza la etiqueta para el 100% de los casos. Todo ícono interactivo tiene `aria-label` en el botón padre. Todo ícono decorativo tiene `aria-hidden="true"`.
+
 ## 10. Do's and Don'ts
 
 ### Do:

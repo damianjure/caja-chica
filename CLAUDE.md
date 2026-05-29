@@ -557,7 +557,7 @@ Telegram caído en prod: primary `GEMINI_API_KEY` con `429 RESOURCE_EXHAUSTED` (
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
 3. Refactor `createApp` (complexity 309 según trailmark) — deuda estructural, no vuln activa. Candidato para `/codex:rescue --background --effort high "split createApp into Express routers"`
 4. Spacing rhythm tokens (`--space-tight/snug/comfort/relaxed/section/hero` + `.stack-*` utilities) listos en `index.css` pero no aplicados aún a ConfiguracionTab / InformesTab
-5. Brevo API key visible en historial chat de sesión 2026-05-25 (`xkeysib-...`) — usuario decidió no revocar por ahora
+5. **Rotar keys pegadas en chat**: Brevo (`xkeysib-...`, sesión 2026-05-25) + `GEMINI_API_KEY_2` (sesión 2026-05-28). Ambas quedaron en claro en el historial. Rotación = generar nueva en consola del proveedor (Brevo: SMTP & API → API Keys; Gemini: aistudio.google.com → API keys), borrar la vieja, y `gcloud run services update caja-chica --update-env-vars <VAR>=<nueva> --region us-west2`.
 6. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
 
 ---
@@ -1141,7 +1141,8 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 - imagen: `gcr.io/caja-chica-bot/caja-chica`
 - servicio Cloud Run: `caja-chica` región `us-west2`
 - **`min-instances=0` desde 2026-05-26** (rev `caja-chica-00045-dpj`) — instancia se apaga cuando no hay tráfico
-- `max-instances=20`, `concurrency=80`, `CPU=1`, `memory=512Mi`
+- **`max-instances=1` desde 2026-05-28** (rev `caja-chica-00048-fz7`) — antes `=20`. Bajado para respetar el single-instance invariant (decisión #18): los flujos multi-step del bot y el OAuth de Drive guardan estado en Maps en memoria; con webhook + N instancias los updates del mismo chat podían rutear a instancias distintas y romper la sesión. `concurrency=80` sobra para el volumen actual.
+- `concurrency=80`, `CPU=1`, `memory=512Mi`
 - cold start estimado: 2-5s en primera request post-idle (bot Telegram tolera; Cloud Scheduler timeout 30s)
 
 ### Cloud Scheduler (us-west2)
@@ -1274,10 +1275,11 @@ Service account: `cron-invoker@caja-chica-bot.iam.gserviceaccount.com` (`roles/r
 15. INSERT Telegram invite sin upsert — partial index de PostgREST es unreliable para onConflict
 16. foto → dos prompts en cascada: RECEIPT primero, HANDWRITTEN si confidence < 0.5 — no se pide al usuario que reenvíe
 17. álbumes Telegram: debounce 1500ms porque cada foto llega en update separado; un solo call a Gemini para el batch
-18. `pending_extractions` tabla borrada — sesiones foto/ticket viven en Map en memoria. **Single-instance invariant**: Cloud Run max=1. Si autoscale > 1, migrar Map → tabla Supabase.
+18. `pending_extractions` tabla borrada — sesiones foto/ticket viven en Map en memoria. **Single-instance invariant**: Cloud Run `max-instances=1` (enforced 2026-05-28, rev `caja-chica-00048-fz7`). Prod usa webhook (no polling), así que con max>1 los updates del mismo chat rutearían a instancias distintas y romperían las Maps (`pendingExtractionByChat`, `pendingReportSessions`, `pendingRecurrenceSessions`, `pendingDriveOAuthStates`). Si alguna vez se necesita escalar, migrar Map → tabla Supabase ANTES de subir max.
 19. Tests corren con `node --import tsx --test` — Node.js runner nativo, sin Jest/Vitest
 20. **Crons externos via Cloud Scheduler** (2026-05-26) — los 4 jobs corren como HTTP triggers desde Cloud Scheduler, no in-process. Habilita `min-instances=0` (ahorro ~$58/mes). Trade-off: cold start 2-5s en primera request. Auth: `X-Cron-Secret` header con `crypto.timingSafeEqual` y fail-closed.
 21. **Idempotencia obligatoria en cron endpoints** — Cloud Scheduler reintenta en 5xx. `runRecurrentes` ya idempotente via `last_processed`; `processInviteReminders` via `last_reminder_at`; `reconcileTransitions` ya idempotente por diseño (transiciones de estado); `runDailyReminders` peor caso = doble mensaje al usuario (aceptable).
+22. **Modelo por tarea** (2026-05-28, rev `caja-chica-00049-2p8`) — extracción de **texto** usa `gemini-2.5-flash-lite` ($0.10/$0.40 por 1M, ~3× más barato); **foto/audio** quedan en `gemini-2.5-flash` por calidad de visión/transcripción. Ojo: si la extracción de jerga (lucas/gamba/palo) baja de calidad con lite, revertir el model string en `movements.ts:319` y `routes/movimientos.ts:108` — a volumen bajo el ahorro es centavos.
 
 ---
 

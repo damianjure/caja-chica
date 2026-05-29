@@ -6,6 +6,7 @@ import { assertBotWritable } from "../maintenance-gate.ts";
 import { setInputSession } from "../sessions.ts";
 import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, getTopEmpresasForDashboard } from "../../server/telegramCompanyResolution.ts";
+import { resolveTelegramCategory, getTopCategoriasForDashboard } from "../../server/telegramCategoryResolution.ts";
 import {
   createPendingExtraction,
   getPendingExtractionByChat,
@@ -398,7 +399,51 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
           patch.empresa = val;
         }
       } else if (field === "categoria") {
-        patch.categoria = val;
+        if (editingEntry.awaitingCategoria) {
+          const scope = { dashboardId: editingEntry.dashboardId, ownerUserId: editingEntry.ownerUserId };
+          const allCategorias = await getTopCategoriasForDashboard(supabase, scope, 50);
+          const resolution = resolveTelegramCategory({ categoria: val }, allCategorias);
+          if (resolution.kind === "exact") {
+            patch.categoria = resolution.category.nombre;
+          } else if (resolution.kind === "suggest") {
+            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCategoriaName: val, pendingSuggestCategoria: resolution.category.nombre });
+            await ctx.reply(
+              `🤔 ¿Quisiste decir *${escapeMd(resolution.category.nombre)}*?`,
+              {
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: [
+                  [
+                    { text: `✅ Usar ${resolution.category.nombre}`, callback_data: `er:ca:${editingEntry.id}:confirm` },
+                    { text: "❌ Sin cambio", callback_data: `er:ca:${editingEntry.id}:none` },
+                  ],
+                  [{ text: `➕ Crear "${val}"`, callback_data: `er:ca:${editingEntry.id}:create` }],
+                ]},
+              },
+            );
+            return;
+          } else if (resolution.kind === "unresolved") {
+            updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCategoriaName: val });
+            await ctx.reply(
+              `🆕 No encontré una categoría con ese nombre\\.\n¿Qué hacemos con *${escapeMd(val)}*?`,
+              {
+                parse_mode: "MarkdownV2",
+                reply_markup: { inline_keyboard: [
+                  [
+                    { text: `➕ Crear "${val}"`, callback_data: `er:ca:${editingEntry.id}:create` },
+                    { text: "❌ Sin cambio", callback_data: `er:ca:${editingEntry.id}:none` },
+                  ],
+                ]},
+              },
+            );
+            return;
+          } else {
+            // missing — prompt again
+            await ctx.reply("❌ Escribí el nombre de la categoría:");
+            return;
+          }
+        } else {
+          patch.categoria = val;
+        }
       } else if (field === "descripcion") {
         patch.descripcion = val;
       } else if (field === "tipo") {

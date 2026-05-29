@@ -16,6 +16,7 @@ import {
 } from "../server/extractionReview.ts";
 import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
+import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
@@ -351,6 +352,85 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     await ctx.answerCallbackQuery(empresaNombre ? `✅ ${empresaNombre}` : "✅ Empresa seleccionada");
     const reviewText = buildReviewCardText(updated.data);
     await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId) });
+  });
+
+  bot.callbackQuery(/^er:ca:([^:]+):(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
+    const extractionId = ctx.match[1];
+    const action = ctx.match[2];
+    const entry = getPendingExtraction(extractionId);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta sesión ya venció.");
+      return;
+    }
+
+    if (action === "search") {
+      updatePendingExtraction(extractionId, { editingField: "categoria", awaitingCategoria: true });
+      await ctx.answerCallbackQuery();
+      await ctx.reply("🔍 Escribí el nombre de la categoría:", { parse_mode: "Markdown" });
+      return;
+    }
+
+    if (action === "none") {
+      updatePendingExtraction(extractionId, { awaitingCategoria: false, editingField: null });
+      const updated = getPendingExtraction(extractionId)!;
+      await ctx.answerCallbackQuery("Sin cambio de categoría");
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId, updated.categoriaOptions ?? undefined) });
+      return;
+    }
+
+    if (action === "create") {
+      const nameToCreate = entry.pendingNewCategoriaName;
+      if (!nameToCreate) {
+        await ctx.answerCallbackQuery("Error: nombre no disponible.");
+        return;
+      }
+      await ctx.answerCallbackQuery("➕ Creando categoría...");
+      const { createCategoriaFromBot } = await import("./commands/entities.ts");
+      const linked = {
+        dashboardId: entry.dashboardId,
+        ownerUserId: entry.ownerUserId,
+        userId: entry.userId,
+        role: null,
+        permissions: {},
+        username: null,
+        remindersEnabled: true,
+        linkTokenExpiresAt: null,
+      } as any;
+      const result = await createCategoriaFromBot(supabase, linked, nameToCreate);
+      if (!result.ok) {
+        await ctx.reply("❌ No se pudo crear la categoría. Intentá de nuevo.");
+        return;
+      }
+      updatePendingExtraction(extractionId, { awaitingCategoria: false, editingField: null, pendingNewCategoriaName: null });
+      const updated = getPendingExtraction(extractionId)!;
+      updated.data.categoria = nameToCreate;
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId, updated.categoriaOptions ?? undefined) });
+      return;
+    }
+
+    if (action === "confirm") {
+      const nombre = entry.pendingSuggestCategoria;
+      updatePendingExtraction(extractionId, { awaitingCategoria: false, editingField: null, pendingSuggestCategoria: null });
+      const updated = getPendingExtraction(extractionId)!;
+      if (nombre) updated.data.categoria = nombre;
+      await ctx.answerCallbackQuery(nombre ? `✅ ${nombre}` : "✅ Categoría seleccionada");
+      const reviewText = buildReviewCardText(updated.data);
+      await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId, updated.categoriaOptions ?? undefined) });
+      return;
+    }
+
+    // numeric index — categoría selected from categoriaOptions list
+    const idx = parseInt(action, 10);
+    const categoriaNombre = (!isNaN(idx) && entry.categoriaOptions?.[idx]?.nombre) ? entry.categoriaOptions[idx].nombre : null;
+    updatePendingExtraction(extractionId, { awaitingCategoria: false, editingField: null });
+    const updated = getPendingExtraction(extractionId)!;
+    if (categoriaNombre) updated.data.categoria = categoriaNombre;
+    await ctx.answerCallbackQuery(categoriaNombre ? `✅ ${categoriaNombre}` : "✅ Categoría seleccionada");
+    const reviewText = buildReviewCardText(updated.data);
+    await ctx.editMessageText(reviewText, { parse_mode: "Markdown", reply_markup: buildReviewKeyboard(extractionId, updated.categoriaOptions ?? undefined) });
   });
 
   bot.callbackQuery(/^er:edit:(.+):(.+)$/, async (ctx) => {

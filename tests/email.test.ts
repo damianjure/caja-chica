@@ -147,3 +147,107 @@ test("sendViaBrevo returns {ok: true, messageId} on Brevo 201", async () => {
     globalThis.fetch = origFetch;
   }
 });
+
+// -----------------------------------------------------------------------
+// P2-T6: RED tests for email_log fire-and-forget (REQ-S2.1/2/3)
+// -----------------------------------------------------------------------
+
+test("email_log: success send inserts row with ok=true + brevo_message_id + email_type", async () => {
+  const { configureEmail, sendAppInvitationEmail } = await import("../src/server/email.ts");
+  const { invalidateSenderCache } = await import("../src/server/emailSettings.ts");
+  invalidateSenderCache();
+
+  const insertedRows: unknown[] = [];
+  const supabase = {
+    from: (table: string) => ({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+      insert: (row: unknown) => {
+        if (table === "email_log") insertedRows.push(row);
+        return Promise.resolve({ error: null });
+      },
+    }),
+  };
+  configureEmail({ supabase: supabase as any });
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch(201, { messageId: "msg-ok-123" });
+
+  try {
+    await sendAppInvitationEmail("user@test.com", "https://invite/token", "app_invite");
+    // Give fire-and-forget a tick to complete
+    await new Promise((r) => setImmediate(r));
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  assert.equal(insertedRows.length, 1, "One email_log row should be inserted");
+  const row = insertedRows[0] as Record<string, unknown>;
+  assert.equal(row.ok, true);
+  assert.equal(row.brevo_message_id, "msg-ok-123");
+  assert.equal(row.email_type, "app_invite");
+  assert.equal(row.to_email, "user@test.com");
+});
+
+test("email_log: failed send inserts row with ok=false + error_body", async () => {
+  const { configureEmail, sendAppInvitationEmail } = await import("../src/server/email.ts");
+  const { invalidateSenderCache } = await import("../src/server/emailSettings.ts");
+  invalidateSenderCache();
+
+  const insertedRows: unknown[] = [];
+  const supabase = {
+    from: (table: string) => ({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+      insert: (row: unknown) => {
+        if (table === "email_log") insertedRows.push(row);
+        return Promise.resolve({ error: null });
+      },
+    }),
+  };
+  configureEmail({ supabase: supabase as any });
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch(400, "Bad Request");
+
+  try {
+    await sendAppInvitationEmail("fail@test.com", "https://invite/token");
+    await new Promise((r) => setImmediate(r));
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  assert.equal(insertedRows.length, 1, "One email_log row should be inserted on failure");
+  const row = insertedRows[0] as Record<string, unknown>;
+  assert.equal(row.ok, false);
+  assert.ok(typeof row.error_body === "string", "error_body should be a string");
+});
+
+test("email_log: throwing supabase insert does NOT reject sendAppInvitationEmail", async () => {
+  const { configureEmail, sendAppInvitationEmail } = await import("../src/server/email.ts");
+  const { invalidateSenderCache } = await import("../src/server/emailSettings.ts");
+  invalidateSenderCache();
+
+  const supabase = {
+    from: (table: string) => ({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+      insert: () => {
+        if (table === "email_log") throw new Error("Supabase insert failed badly");
+        return Promise.resolve({ error: null });
+      },
+    }),
+  };
+  configureEmail({ supabase: supabase as any });
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch(201, { messageId: "msg-ok" });
+
+  try {
+    // Must resolve, not reject — INVARIANT #2
+    await assert.doesNotReject(
+      () => sendAppInvitationEmail("safe@test.com", "https://invite"),
+      "sendAppInvitationEmail must not reject even when email_log insert throws",
+    );
+    await new Promise((r) => setImmediate(r));
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

@@ -5,6 +5,7 @@
 
 import type { SupabaseLike } from "./app.ts";
 import { getActiveSender } from "./emailSettings.ts";
+import { writeEmailLog } from "./emailLog.ts";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
@@ -486,7 +487,6 @@ export async function sendViaBrevo(
 
       // Fire-and-forget log: failure (INVARIANT #2 — must not throw)
       if (_injectedDeps) {
-        const { writeEmailLog } = await import("./emailLog.ts");
         void writeEmailLog({
           supabase: _injectedDeps.supabase,
           toEmail: to,
@@ -508,7 +508,6 @@ export async function sendViaBrevo(
 
     // Fire-and-forget log: success (INVARIANT #2 — must not throw)
     if (_injectedDeps) {
-      const { writeEmailLog } = await import("./emailLog.ts");
       void writeEmailLog({
         supabase: _injectedDeps.supabase,
         toEmail: to,
@@ -526,7 +525,6 @@ export async function sendViaBrevo(
     result = { ok: false };
 
     if (_injectedDeps) {
-      const { writeEmailLog } = await import("./emailLog.ts");
       void writeEmailLog({
         supabase: _injectedDeps.supabase,
         toEmail: to,

@@ -537,7 +537,6 @@ export function createApp({
     computeNextRun,
     relativeRunLabel,
     hasValidAdminToken,
-    isMissingSchemaArtifactError,
     tierStrict,
   }));
   app.use(createEmpresasRouter({

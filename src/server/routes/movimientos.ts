@@ -50,7 +50,6 @@ export interface MovimientosDeps {
   computeNextRun: (frecuencia: Frecuencia, lastProcessed: Date | null, dayOfMonth: number | null, now: Date) => Date | null;
   relativeRunLabel: (nextRun: Date | null, now: Date) => string;
   hasValidAdminToken: (req: express.Request, adminApiToken?: string) => boolean;
-  isMissingSchemaArtifactError: (error: unknown) => boolean;
   tierStrict: RequestHandler;
 }
 

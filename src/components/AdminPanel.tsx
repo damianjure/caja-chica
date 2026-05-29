@@ -7,6 +7,7 @@ import {
   Copy,
   Loader2,
   LogOut,
+  MailCheck,
   Pause,
   Shield,
   ShieldCheck,
@@ -69,6 +70,25 @@ const statusBadge: Record<
   },
 };
 
+function relativeTimeShort(isoDate: string | null | undefined): string | null {
+  if (!isoDate) return null;
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const days = Math.floor(ms / 86_400_000);
+  if (days === 0) return "hoy";
+  if (days === 1) return "hace 1 día";
+  if (days < 30) return `hace ${days} días`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? "hace 1 mes" : `hace ${months} meses`;
+}
+
+const INVITATION_STATUS_LABELS: Record<string, string> = {
+  all: "Todas",
+  pending: "Pendiente",
+  accepted: "Aceptada",
+  revoked: "Revocada",
+  expired: "Vencida",
+};
+
 export function AdminPanel({ viewer }: AdminPanelProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [tree, setTree] = useState<AdminDashboardsTree | null>(null);
@@ -82,6 +102,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [invitationStatusFilter, setInvitationStatusFilter] = useState<string>("all");
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const isSuperadmin = viewer.role === "superadmin";
 
@@ -156,6 +178,28 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo revocar la invitación.");
+    }
+  };
+
+  const handleResend = async (invitation: AppInvitation) => {
+    setResendingId(invitation.id);
+    try {
+      await api.resendInvitation(invitation.id);
+      const now = new Date().toISOString();
+      setInvitations((prev) =>
+        prev.map((item) =>
+          item.id === invitation.id ? { ...item, last_reminder_at: now } : item,
+        ),
+      );
+      toast.success(`Invitación reenviada a ${invitation.email}`);
+    } catch (err: any) {
+      if (err?.status === 409) {
+        toast.error("La invitación ya fue aceptada o fue revocada.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "No se pudo reenviar la invitación.");
+      }
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -387,51 +431,121 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
             <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-600">
               Invitaciones
             </h3>
+
+            {/* Status filter chips — REQ-S4.3 */}
+            <div
+              role="group"
+              aria-label="Filtrar por estado"
+              className="flex flex-wrap gap-2"
+            >
+              {(["all", "pending", "accepted", "revoked", "expired"] as const).map((status) => {
+                const isSelected = invitationStatusFilter === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setInvitationStatusFilter(status)}
+                    className={[
+                      "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                      isSelected
+                        ? "bg-neutral-900 text-white border-neutral-900"
+                        : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-500",
+                    ].join(" ")}
+                  >
+                    {INVITATION_STATUS_LABELS[status]}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="space-y-3">
-              {invitations.map((invitation) => (
-                <div
-                  key={invitation.id}
-                  className="border border-neutral-300 rounded-xl px-4 py-3 space-y-3"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-neutral-900 [overflow-wrap:anywhere]">
-                        {invitation.email}
+              {invitations
+                .filter((inv) => {
+                  if (invitationStatusFilter === "all") return true;
+                  if (invitationStatusFilter === "expired") {
+                    return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
+                  }
+                  return inv.status === invitationStatusFilter;
+                })
+                .map((invitation) => {
+                  const canResend = invitation.status !== "accepted" && invitation.status !== "revoked";
+                  const isResending = resendingId === invitation.id;
+                  const reminderText = relativeTimeShort(invitation.last_reminder_at);
+                  return (
+                    <div
+                      key={invitation.id}
+                      className="border border-neutral-300 rounded-xl px-4 py-3 space-y-3"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-neutral-900 [overflow-wrap:anywhere]">
+                            {invitation.email}
+                          </div>
+                          <div className="text-xs text-neutral-600">
+                            {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
+                          </div>
+                          {reminderText && (
+                            <div className="text-xs text-neutral-500 mt-0.5">
+                              Último recordatorio: {reminderText}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Resend button — REQ-S4.4: disabled when accepted/revoked */}
+                          <button
+                            type="button"
+                            onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
+                            disabled={!canResend || isResending}
+                            className="w-11 h-11 flex items-center justify-center rounded-md border border-neutral-300 hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label={`Reenviar invitación a ${invitation.email}`}
+                            title="Reenviar"
+                          >
+                            {isResending
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <MailCheck className="w-4 h-4" />
+                            }
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleCopy(invitation)}
+                            className="w-11 h-11 flex items-center justify-center rounded-md border border-neutral-300 hover:border-[var(--app-text-2)]"
+                            aria-label={`Copiar link de ${invitation.email}`}
+                            title="Copiar link"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          {invitation.status === "pending" && (
+                            <button
+                              type="button"
+                              onClick={() => void handleRevokeInvitation(invitation.id)}
+                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-red-600 hover:border-red-400"
+                              aria-label={`Revocar invitación de ${invitation.email}`}
+                              title="Revocar"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-neutral-600">
-                        {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
+                      <div className="text-xs text-neutral-600 [overflow-wrap:anywhere] leading-relaxed">
+                        {invitation.invite_url}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => void handleCopy(invitation)}
-                        className="p-2 rounded-xl border border-neutral-300 hover:border-[var(--app-text-2)]"
-                        aria-label={`Copiar link de ${invitation.email}`}
-                        title="Copiar link"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      {invitation.status === "pending" && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRevokeInvitation(invitation.id)}
-                          className="p-2 rounded-xl border border-red-300 text-red-600 hover:border-red-400"
-                          aria-label={`Revocar invitación de ${invitation.email}`}
-                          title="Revocar"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs text-neutral-600 [overflow-wrap:anywhere] leading-relaxed">
-                    {invitation.invite_url}
-                  </div>
-                </div>
-              ))}
-              {invitations.length === 0 && (
-                <p className="text-sm text-neutral-600">Todavía no hay invitaciones.</p>
+                  );
+                })}
+              {invitations.filter((inv) => {
+                if (invitationStatusFilter === "all") return true;
+                if (invitationStatusFilter === "expired") {
+                  return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
+                }
+                return inv.status === invitationStatusFilter;
+              }).length === 0 && (
+                <p className="text-sm text-neutral-600">
+                  {invitationStatusFilter === "all"
+                    ? "Todavía no hay invitaciones."
+                    : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
+                </p>
               )}
             </div>
           </div>

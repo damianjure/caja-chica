@@ -79,7 +79,7 @@ import { notifyMaintenance } from "./maintenanceNotify.ts";
 import { createMaintenanceRouter } from "./routes/maintenance.ts";
 import { createMeRouter } from "./routes/me.ts";
 import { createTelegramRouter } from "./routes/telegram.ts";
-import { createAdminRouter } from "./routes/admin.ts";
+import { createAdminRouter, type AdminEmailDeps } from "./routes/admin.ts";
 import { createMovimientosRouter } from "./routes/movimientos.ts";
 import { createEmpresasRouter } from "./routes/empresas.ts";
 import { createCategoriasRouter } from "./routes/categorias.ts";
@@ -121,6 +121,7 @@ export interface AppDeps {
   tokenEncryptionKey?: string;
   bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
   cronSecret?: string;
+  adminEmailDeps?: AdminEmailDeps;
 }
 
 
@@ -174,6 +175,7 @@ export function createApp({
   tokenEncryptionKey,
   bot,
   cronSecret,
+  adminEmailDeps,
 }: AppDeps) {
   const app = express();
 
@@ -399,6 +401,7 @@ export function createApp({
     botActive,
     parseInvitationRequest,
     sendAppInvitationEmail,
+    emailDeps: adminEmailDeps,
   }));
   app.use(createMovimientosRouter({
     supabase,

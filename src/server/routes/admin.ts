@@ -1,5 +1,20 @@
 import express, { type RequestHandler } from "express";
 import type { AppSession, AppUserStatus, SupabaseLike } from "../contracts.ts";
+import type { ActiveSender } from "../emailSettings.ts";
+import type { EmailLogRow, EmailLogFilters } from "../emailLog.ts";
+import type { BrevoSender } from "../brevoSenders.ts";
+
+export interface AdminEmailDeps {
+  brevoApiKey?: string;
+  getActiveSender: (supabase: SupabaseLike) => Promise<ActiveSender>;
+  setEmailSettings: (supabase: SupabaseLike, patch: { fromEmail: string; fromName: string; updatedBy?: string | null }) => Promise<ActiveSender>;
+  listVerifiedSenders: (apiKey: string) => Promise<BrevoSender[]>;
+  listEmailLog: (supabase: SupabaseLike, filters: EmailLogFilters) => Promise<EmailLogRow[]>;
+  sendTestEmail: (to: string, sender: ActiveSender) => Promise<{ ok: boolean; messageId?: string }>;
+  tierEmailTest: RequestHandler;
+  parseEmailSettingsRequest: (body: unknown) => { from_email: string; from_name: string } | null;
+  parseTestSendRequest: (body: unknown) => { to: string } | null;
+}
 
 export interface AdminDeps {
   supabase: SupabaseLike;
@@ -11,6 +26,7 @@ export interface AdminDeps {
   botActive: boolean;
   parseInvitationRequest: (body: unknown) => { email: string; role: string } | null;
   sendAppInvitationEmail: (email: string, inviteUrl: string) => Promise<void>;
+  emailDeps?: AdminEmailDeps;
 }
 
 export function createAdminRouter(deps: AdminDeps) {
@@ -25,6 +41,7 @@ export function createAdminRouter(deps: AdminDeps) {
     botActive,
     parseInvitationRequest,
     sendAppInvitationEmail,
+    emailDeps,
   } = deps;
 
 
@@ -516,6 +533,134 @@ export function createAdminRouter(deps: AdminDeps) {
     },
   );
 
+
+  // ---------------------------------------------------------------------------
+  // Email management endpoints (REQ-S1, REQ-S2, REQ-S3) — superadmin only
+  // All 5 endpoints are behind requireSuperadmin (INV-3).
+  // ---------------------------------------------------------------------------
+
+  if (emailDeps) {
+    const {
+      brevoApiKey,
+      getActiveSender,
+      setEmailSettings,
+      listVerifiedSenders,
+      listEmailLog,
+      sendTestEmail,
+      tierEmailTest,
+      parseEmailSettingsRequest,
+      parseTestSendRequest,
+    } = emailDeps;
+
+    // REQ-S1.1/S1.2 — GET /api/admin/email-settings
+    router.get(
+      "/api/admin/email-settings",
+      requireSession,
+      requireSuperadmin,
+      async (_req, res) => {
+        try {
+          const sender = await getActiveSender(supabase);
+          res.json({ from_email: sender.fromEmail, from_name: sender.fromName, updated_at: null });
+        } catch (err) {
+          console.error("[admin/email-settings] GET error:", err);
+          res.status(500).json({ error: "failed_to_fetch" });
+        }
+      },
+    );
+
+    // REQ-S1.3/S1.7 — GET /api/admin/email-settings/senders
+    router.get(
+      "/api/admin/email-settings/senders",
+      requireSession,
+      requireSuperadmin,
+      async (_req, res) => {
+        try {
+          const apiKey = brevoApiKey ?? "";
+          const senders = await listVerifiedSenders(apiKey);
+          res.json(senders);
+        } catch (err) {
+          console.error("[admin/email-settings/senders] Brevo error:", err);
+          res.status(502).json({ error: "senders_unavailable" });
+        }
+      },
+    );
+
+    // REQ-S1.4/S1.5/S1.6 — PATCH /api/admin/email-settings
+    router.patch(
+      "/api/admin/email-settings",
+      requireSession,
+      requireSuperadmin,
+      async (req, res) => {
+        try {
+          const payload = parseEmailSettingsRequest(req.body);
+          if (!payload) return res.status(400).json({ error: "invalid_request" });
+
+          // REQ-S1.5: must be verified in Brevo
+          const apiKey = brevoApiKey ?? "";
+          const senders = await listVerifiedSenders(apiKey);
+          const isVerified = senders.some((s) => s.email === payload.from_email);
+          if (!isVerified) return res.status(400).json({ error: "sender_not_verified" });
+
+          const session = getSession(req);
+          const updated = await setEmailSettings(supabase, {
+            fromEmail: payload.from_email,
+            fromName: payload.from_name,
+            updatedBy: session.userId,
+          });
+          res.json({ from_email: updated.fromEmail, from_name: updated.fromName, updated_at: new Date().toISOString() });
+        } catch (err) {
+          console.error("[admin/email-settings] PATCH error:", err);
+          res.status(500).json({ error: "failed_to_save" });
+        }
+      },
+    );
+
+    // REQ-S3.1/S3.2/S3.4 — POST /api/admin/email-settings/test-send
+    router.post(
+      "/api/admin/email-settings/test-send",
+      requireSession,
+      requireSuperadmin,
+      tierEmailTest,
+      async (req, res) => {
+        try {
+          const payload = parseTestSendRequest(req.body);
+          if (!payload) return res.status(400).json({ error: "invalid_request" });
+
+          const sender = await getActiveSender(supabase);
+          const result = await sendTestEmail(payload.to, sender);
+          res.json({ ok: result.ok, brevo_message_id: result.messageId ?? null });
+        } catch (err) {
+          console.error("[admin/email-settings/test-send] error:", err);
+          res.status(500).json({ error: "failed_to_send" });
+        }
+      },
+    );
+
+    // REQ-S2.4/S2.5 — GET /api/admin/email-log
+    router.get(
+      "/api/admin/email-log",
+      requireSession,
+      requireSuperadmin,
+      async (req, res) => {
+        try {
+          const q = req.query as Record<string, string | undefined>;
+          const filters: import("../emailLog.ts").EmailLogFilters = {};
+          if (q.type) filters.type = q.type as import("../email.ts").EmailType;
+          if (q.ok !== undefined) filters.ok = q.ok === "true";
+          if (q.from) filters.from = q.from;
+          if (q.to) filters.to = q.to;
+          if (q.before) filters.before = q.before;
+          if (q.limit) filters.limit = Number.parseInt(q.limit, 10);
+
+          const rows = await listEmailLog(supabase, filters);
+          res.json(rows);
+        } catch (err) {
+          console.error("[admin/email-log] GET error:", err);
+          res.status(500).json({ error: "failed_to_fetch" });
+        }
+      },
+    );
+  }
 
   return router;
 }

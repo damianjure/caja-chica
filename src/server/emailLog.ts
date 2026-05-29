@@ -5,6 +5,55 @@
 import type { SupabaseLike } from "./app.ts";
 import type { EmailType } from "./email.ts";
 
+// ---------------------------------------------------------------------------
+// EmailLogRow — shape returned by listEmailLog
+// ---------------------------------------------------------------------------
+
+export interface EmailLogRow {
+  id: string;
+  to_email: string;
+  subject: string;
+  email_type: EmailType;
+  ok: boolean;
+  brevo_message_id: string | null;
+  error_body: string | null;
+  sent_at: string;
+}
+
+export interface EmailLogFilters {
+  type?: EmailType;
+  ok?: boolean;
+  from?: string;
+  to?: string;
+  limit?: number;
+  before?: string;
+}
+
+export async function listEmailLog(
+  supabase: SupabaseLike,
+  filters: EmailLogFilters = {},
+): Promise<EmailLogRow[]> {
+  let query = (supabase as any)
+    .from("email_log")
+    .select("id, to_email, subject, email_type, ok, brevo_message_id, error_body, sent_at")
+    .order("sent_at", { ascending: false });
+
+  if (filters.type !== undefined) query = query.eq("email_type", filters.type);
+  if (filters.ok !== undefined) query = query.eq("ok", filters.ok);
+  if (filters.from) query = query.gte("sent_at", filters.from);
+  if (filters.to) query = query.lte("sent_at", filters.to);
+  if (filters.before) query = query.lt("sent_at", filters.before);
+
+  const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
+  const { data, error } = await query.limit(limit);
+
+  if (error) {
+    throw new Error(`[emailLog] listEmailLog failed: ${error.message ?? JSON.stringify(error)}`);
+  }
+
+  return (data ?? []) as EmailLogRow[];
+}
+
 export interface WriteEmailLogParams {
   supabase: SupabaseLike;
   toEmail: string;

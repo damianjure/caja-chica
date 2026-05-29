@@ -77,3 +77,5 @@ export const tierWrite = createRateLimiter({ windowMs: 60_000, max: 120, keyFn: 
 export const tierAuth = createRateLimiter({ windowMs: 60_000, max: 20, keyFn: ipOnly });
 export const tierStrict = createRateLimiter({ windowMs: 60_000, max: 30, keyFn: userOrIp });
 export const tierResend = createRateLimiter({ windowMs: 60_000, max: 10, keyFn: userOrIp });
+// Test-send: 3 per day per admin. Prevents abuse of the test-send endpoint.
+export const tierEmailTest = createRateLimiter({ windowMs: 24 * 60 * 60_000, max: 3, keyFn: userOrIp });

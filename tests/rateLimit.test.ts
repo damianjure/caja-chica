@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Request, Response } from "express";
-import { createRateLimiter } from "../src/server/rateLimit.ts";
+import { createRateLimiter, tierEmailTest } from "../src/server/rateLimit.ts";
 
 function fakeReq(overrides: Partial<Request> = {}): Request {
   return {
@@ -143,6 +143,28 @@ test("keyFn returning null skips rate limiting", async () => {
     const result = await callMiddleware(limiter, fakeReq(), res);
     assert.equal(result, "next", `request ${i + 1} should pass with null keyFn`);
   }
+});
+
+// -----------------------------------------------------------------------
+// P2-T12: RED test for tierEmailTest (3/day/admin) (REQ-S3.3)
+// -----------------------------------------------------------------------
+
+test("tierEmailTest allows 3 requests and blocks the 4th within 24h window", async () => {
+  // tierEmailTest is 3/day per user key.
+  // We call it 4 times with the same user key; assert the 4th is blocked with 429.
+  const req = fakeReq({ session: { userId: "admin-test-user" } } as any);
+
+  for (let i = 0; i < 3; i++) {
+    const res = fakeRes();
+    const result = await callMiddleware(tierEmailTest, req, res);
+    assert.equal(result, "next", `request ${i + 1} should pass`);
+  }
+
+  const res = fakeRes();
+  const result = await callMiddleware(tierEmailTest, req, res);
+  assert.equal(result, "blocked", "4th request should be blocked");
+  assert.equal(res.statusCode, 429);
+  assert.deepEqual(res.body, { error: "rate_limit_exceeded" });
 });
 
 test("window resets after windowMs", async (t) => {

@@ -1,97 +1,29 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+export interface MeDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: express.Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  syncPendingDashboardInvitations: (session: AppSession) => Promise<void>;
+  ensurePersonalDashboard: (supabase: SupabaseLike, session: AppSession) => Promise<string>;
+  seedDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
+  purgeDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
+}
 
-export function createMeRouter(ctx: any) {
+export function createMeRouter(deps: MeDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
-    requireAdmin,
-    requireSuperadmin,
     getSession,
     resolveDataAccessScope,
-    canWriteToScope,
-    canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
     syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
     ensurePersonalDashboard,
     seedDemoData,
     purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
 
   router.get("/api/me", requireSession, async (req, res) => {

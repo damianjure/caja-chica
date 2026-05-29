@@ -544,7 +544,16 @@ export function createApp({
     notifyMaintenance,
     bot: bot ?? null,
   }));
-  app.use(createMeRouter(routeContext));
+  app.use(createMeRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    syncPendingDashboardInvitations,
+    ensurePersonalDashboard,
+    seedDemoData,
+    purgeDemoData,
+  }));
   app.use(createTelegramRouter(routeContext));
   app.use(createAdminRouter(routeContext));
   app.use(createMovimientosRouter(routeContext));

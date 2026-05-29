@@ -42,6 +42,15 @@ import type {
   SupabaseLike,
   GenAILike,
 } from "./contracts.ts";
+import {
+  resolveDataAccessScope as resolveDataAccessScopeFn,
+  canWriteToScope,
+  canManageDashboardMembers,
+  applyDataScope,
+  buildWriteOwnership,
+  getScopeEntityById as getScopeEntityByIdFn,
+  fetchScopedMovimientos as fetchScopedMovimientosFn,
+} from "./dataScope.ts";
 import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
 import { notifyMaintenance } from "./maintenanceNotify.ts";
@@ -178,59 +187,10 @@ export function createApp({
       };
     });
 
-  const resolveDataAccessScope = async (
-    session: AppSession,
-  ): Promise<DataAccessScope> => {
-    try {
-      const { data, error } = await supabase
-        .from("dashboard_members")
-        .select("dashboard_id, role, status, permissions")
-        .eq("user_id", session.userId)
-        .eq("status", "active")
-        .limit(1);
-
-      if (error) throw error;
-      const membership = data?.[0];
-
-      if (membership?.dashboard_id) {
-        return {
-          dashboardId: membership.dashboard_id,
-          membershipRole: membership.role ?? "viewer",
-          memberPermissions: (membership.permissions as Record<string, boolean>) ?? {},
-        };
-      }
-    } catch (error) {
-      if (!isMissingSchemaArtifactError(error)) throw error;
-    }
-
-    return { dashboardId: null, membershipRole: null, memberPermissions: {} };
-  };
-
-  const canWriteToScope = (scope: DataAccessScope) => scope.membershipRole !== "viewer";
-  const canManageDashboardMembers = (session: AppSession, scope: DataAccessScope) =>
-    session.role === "admin" ||
-    session.role === "superadmin" ||
-    scope.membershipRole === "owner";
-
-  const applyDataScope = <T extends { eq: (column: string, value: string) => T }>(
-    query: T,
-    session: AppSession,
-    scope: DataAccessScope,
-  ) =>
-    scope.dashboardId
-      ? query.eq("dashboard_id", scope.dashboardId)
-      : query.eq("owner_user_id", session.userId);
-
-  const buildWriteOwnership = (session: AppSession, scope: DataAccessScope) =>
-    scope.dashboardId
-      ? {
-          owner_user_id: session.userId,
-          dashboard_id: scope.dashboardId,
-          created_by_user_id: session.userId,
-        }
-      : {
-          owner_user_id: session.userId,
-        };
+  // Bound adapters — routers call these with the same 1-arg / 2-arg signatures as before.
+  // The module-level functions in dataScope.ts take supabase as explicit first param.
+  const resolveDataAccessScope = (session: AppSession) =>
+    resolveDataAccessScopeFn(supabase, session);
 
   const insertAuditLog = async (payload: Record<string, unknown>) => {
     try {
@@ -240,37 +200,11 @@ export function createApp({
     }
   };
 
-  const getScopeEntityById = async (
-    table: string,
-    session: AppSession,
-    scope: DataAccessScope,
-    id: string,
-  ) => {
-    const primaryQuery = scope.dashboardId
-      ? supabase.from(table).select("*").eq("dashboard_id", scope.dashboardId)
-      : supabase.from(table).select("*").eq("owner_user_id", session.userId);
+  const getScopeEntityById = (table: string, session: AppSession, scope: DataAccessScope, id: string) =>
+    getScopeEntityByIdFn(supabase, table, session, scope, id);
 
-    const { data, error } = await primaryQuery.eq("id", id).limit(1);
-    if (error) throw error;
-    return data?.[0] ?? null;
-  };
-
-  const fetchScopedMovimientos = async (
-    session: AppSession,
-    scope: DataAccessScope,
-  ) => {
-    const { data, error } = await applyDataScope(
-      supabase
-        .from("movimientos")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      session,
-      scope,
-    ).limit(2000);
-    if (error) throw error;
-    return (data ?? []) as any[];
-  };
+  const fetchScopedMovimientos = (session: AppSession, scope: DataAccessScope) =>
+    fetchScopedMovimientosFn(supabase, session, scope);
 
   const insertReportExport = async (payload: Record<string, unknown>) => {
     try {

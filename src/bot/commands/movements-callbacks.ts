@@ -1,7 +1,7 @@
 import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
-import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram } from "../utils.ts";
+import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram, sendTyping } from "../utils.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { setInputSession } from "../sessions.ts";
 import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
@@ -499,6 +499,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     }
 
     if (!await assertBotWritable(ctx)) return;
+    sendTyping(ctx);
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
     try {
       await processTelegramFinancialText(supabase, genAI, genAI2, ctx, {
@@ -515,6 +516,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
+    sendTyping(ctx);
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
     try {
       const file = await ctx.getFile();
@@ -551,6 +553,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
+    sendTyping(ctx);
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
     try {
       const file = await ctx.getFile();

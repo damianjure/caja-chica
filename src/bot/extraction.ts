@@ -1,7 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
-import { requireTelegramCan } from "./utils.ts";
-import { buildEmpresaSelectorKeyboard } from "./utils.ts";
+import { requireTelegramCan, sendTyping, buildEmpresaSelectorKeyboard } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
 import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkRecord } from "../server/telegramAccess.ts";
 import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
@@ -70,6 +69,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
           const firstCtx = items[0].chatCtx;
           const linked2 = await requireTelegramCan(supabase, firstCtx, "write_movimiento");
           if (!linked2) return;
+          sendTyping(firstCtx);
           const processingMsg = await firstCtx.reply("⏳ Procesando fotos...");
           try {
             const files = items.map((item, i) => ({
@@ -130,6 +130,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
     const photo = ctx.message.photo?.[ctx.message.photo.length - 1];
     if (!photo) return;
+    sendTyping(ctx);
     const processingMsg = await ctx.reply("⏳ Procesando ticket...");
     try {
       const file = await ctx.getFile();
@@ -174,6 +175,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       return;
     }
 
+    sendTyping(ctx);
     const processingMsg = await ctx.reply("⏳ Procesando documento...");
     try {
       const file = await ctx.getFile();

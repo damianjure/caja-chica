@@ -17,6 +17,7 @@ import {
 } from "../server/extractionReview.ts";
 import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
+import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
@@ -114,9 +115,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
               }
             }
           } catch (err) {
-            console.error("Telegram photo processing error:", err);
             try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
-            await firstCtx.reply("❌ No pude procesar las fotos. Mandá una por vez o probá con mejor iluminación.");
+            if (err instanceof GeminiUnavailableError) {
+              await firstCtx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+            } else {
+              console.error("Telegram photo processing error:", err);
+              await firstCtx.reply("❌ No pude procesar las fotos. Mandá una por vez o probá con mejor iluminación.");
+            }
           }
         },
       );
@@ -140,9 +145,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       });
       await showEmpresaSelector(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
-      console.error("Telegram photo processing error:", err);
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
-      await ctx.reply("❌ No pude procesar la foto. Probá con mejor iluminación o mandá el texto directamente.");
+      if (err instanceof GeminiUnavailableError) {
+        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+      } else {
+        console.error("Telegram photo processing error:", err);
+        await ctx.reply("❌ No pude procesar la foto. Probá con mejor iluminación o mandá el texto directamente.");
+      }
     }
   });
 
@@ -181,9 +190,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       });
       await showEmpresaSelector(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
-      console.error("Telegram document processing error:", err);
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
-      await ctx.reply("❌ No pude procesar el documento.");
+      if (err instanceof GeminiUnavailableError) {
+        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+      } else {
+        console.error("Telegram document processing error:", err);
+        await ctx.reply("❌ No pude procesar el documento.");
+      }
     }
   });
 

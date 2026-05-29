@@ -21,6 +21,10 @@ if (!supabaseUrl || !supabaseServerKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServerKey);
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const genAI2 = process.env.GEMINI_API_KEY_2
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_2 })
+  : null;
+if (genAI2) console.log("🤖 Gemini fallback key configured.");
 const dashboardUrl = process.env.DASHBOARD_URL || "https://caja-chica-bot.web.app";
 
 // --- TELEGRAM BOT ---
@@ -35,6 +39,7 @@ if (bot) {
     bot,
     dashboardUrl,
     genAI,
+    genAI2,
     botToken: botToken as string,
   };
 
@@ -58,6 +63,7 @@ const webhookPath = bot ? "/webhook/telegram" : undefined;
 const app = createApp({
   supabase,
   genAI,
+  genAI2,
   allowedOrigins,
   botActive: !!bot,
   webhookPath,

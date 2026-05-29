@@ -78,6 +78,7 @@ export interface GenAILike {
 export interface AppDeps {
   supabase: SupabaseLike;
   genAI: GenAILike;
+  genAI2?: GenAILike | null;
   allowedOrigins: string[];
   botActive: boolean;
   webhookPath?: string;
@@ -157,6 +158,7 @@ unrefInterval(pendingDriveOAuthStatesSweep);
 export function createApp({
   supabase,
   genAI,
+  genAI2 = null,
   allowedOrigins,
   botActive,
   webhookPath,
@@ -669,6 +671,7 @@ export function createApp({
   const routeContext = {
     supabase,
     genAI,
+    genAI2,
     botActive,
     webhookPath,
     webhookHandler,

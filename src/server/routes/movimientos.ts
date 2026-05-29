@@ -1,4 +1,5 @@
 import express from "express";
+import { geminiGenerateText, GeminiUnavailableError } from "../geminiWithFallback.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 type Frecuencia = any;
@@ -9,6 +10,7 @@ export function createMovimientosRouter(ctx: any) {
   const {
     supabase,
     genAI,
+    genAI2 = null,
     botActive,
     webhookPath,
     webhookHandler,
@@ -102,7 +104,7 @@ export function createMovimientosRouter(ctx: any) {
       const catList =
         payload.categories.map((category) => category.nombre).join(", ") || "Otros";
 
-      const result = await genAI.models.generateContent({
+      const result = await geminiGenerateText(genAI, genAI2, {
         model: "gemini-2.5-flash",
         contents: payload.text,
         config: {
@@ -118,6 +120,9 @@ export function createMovimientosRouter(ctx: any) {
       }
       res.json(extracted);
     } catch (err) {
+      if (err instanceof GeminiUnavailableError) {
+        return res.status(503).json({ error: "ai_unavailable" });
+      }
       console.error("Extract error:", err);
       res.status(500).json({ error: "failed_to_process" });
     }

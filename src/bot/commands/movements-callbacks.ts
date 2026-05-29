@@ -15,6 +15,7 @@ import {
 } from "../../server/extractionReview.ts";
 import type { PendingExtractionData } from "../../server/validation.ts";
 import { transcribeTelegramAudioWithGemini } from "../../server/telegramAudio.ts";
+import { GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { getRecurrenceSession, pendingRecurrenceSessions } from "../sessions.ts";
 import {
   type PendingMovementPayload,
@@ -29,7 +30,7 @@ import {
 } from "./movements.ts";
 
 export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
-  const { supabase, genAI, botToken } = deps;
+  const { supabase, genAI, genAI2 = null, botToken } = deps;
 
   bot.callbackQuery("del_last", async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -500,7 +501,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!await assertBotWritable(ctx)) return;
     const processingMsg = await ctx.reply("⏳ Procesando transacción...");
     try {
-      await processTelegramFinancialText(supabase, genAI, ctx, {
+      await processTelegramFinancialText(supabase, genAI, genAI2, ctx, {
         text,
         originalText: text,
       });
@@ -530,13 +531,17 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         mimeType: audioMessage?.mime_type ?? null,
         kind: "voice",
       });
-      await processTelegramFinancialText(supabase, genAI, ctx, {
+      await processTelegramFinancialText(supabase, genAI, genAI2, ctx, {
         text: transcript,
         originalText: `[audio] ${transcript}`,
       });
     } catch (error) {
-      console.error("Telegram audio processing error:", error);
-      await ctx.reply("❌ No pude procesar ese audio. Probá con un audio más corto o mandamelo como texto.");
+      if (error instanceof GeminiUnavailableError) {
+        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+      } else {
+        console.error("Telegram audio processing error:", error);
+        await ctx.reply("❌ No pude procesar ese audio. Probá con un audio más corto o mandamelo como texto.");
+      }
     } finally {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
     }
@@ -562,13 +567,17 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         mimeType: audioMessage?.mime_type ?? null,
         kind: "audio",
       });
-      await processTelegramFinancialText(supabase, genAI, ctx, {
+      await processTelegramFinancialText(supabase, genAI, genAI2, ctx, {
         text: transcript,
         originalText: `[audio] ${transcript}`,
       });
     } catch (error) {
-      console.error("Telegram audio processing error:", error);
-      await ctx.reply("❌ No pude procesar ese audio. Probá con un audio más corto o mandamelo como texto.");
+      if (error instanceof GeminiUnavailableError) {
+        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+      } else {
+        console.error("Telegram audio processing error:", error);
+        await ctx.reply("❌ No pude procesar ese audio. Probá con un audio más corto o mandamelo como texto.");
+      }
     } finally {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
     }

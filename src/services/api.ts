@@ -369,7 +369,7 @@ export type RecurrenteRequest = {
   day_of_month?: number | null;
 };
 
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
 
   constructor(message: string, status: number) {

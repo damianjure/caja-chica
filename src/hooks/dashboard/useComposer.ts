@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
-import { api, type ExtractedItem, type Movimiento, type Empresa, type Categoria } from '../../services/api';
+import { api, ApiError, type ExtractedItem, type Movimiento, type Empresa, type Categoria } from '../../services/api';
 import { getPendingCompanyAssignment } from '../../dashboard/companyAssignment';
 
 export type ComposerCommitEvent =
@@ -82,7 +82,11 @@ export function useComposer(opts: ComposerOpts): ComposerResult {
         setInputText('');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al procesar.');
+      if (err instanceof ApiError && err.status === 503) {
+        setError('La IA no está disponible ahora mismo. Intentá en unos minutos.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al procesar.');
+      }
     } finally {
       setIsProcessing(false);
     }

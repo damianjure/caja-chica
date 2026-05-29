@@ -7,5 +7,6 @@ export interface BotDeps {
   bot: Bot;
   dashboardUrl: string;
   genAI: GoogleGenAI;
+  genAI2: GoogleGenAI | null;
   botToken: string;
 }

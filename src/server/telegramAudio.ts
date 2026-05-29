@@ -1,4 +1,5 @@
 import { createPartFromUri, createUserContent } from '@google/genai';
+import { GeminiUnavailableError, isQuotaError } from './geminiWithFallback.ts';
 
 export type TelegramAudioKind = 'voice' | 'audio';
 
@@ -97,13 +98,19 @@ export async function transcribeTelegramAudioWithGemini({
       throw new Error('gemini_audio_upload_missing_uri');
     }
 
-    const result = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: createUserContent([
-        createPartFromUri(uri, uploadedMimeType),
-        'Transcribí literalmente este audio en texto plano. Respondé SOLO con la transcripción, sin resumen, sin comentarios y sin JSON.',
-      ]),
-    });
+    let result;
+    try {
+      result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: createUserContent([
+          createPartFromUri(uri, uploadedMimeType),
+          'Transcribí literalmente este audio en texto plano. Respondé SOLO con la transcripción, sin resumen, sin comentarios y sin JSON.',
+        ]),
+      });
+    } catch (err) {
+      if (isQuotaError(err)) throw new GeminiUnavailableError();
+      throw err;
+    }
 
     const transcript = (result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
     if (!transcript) {

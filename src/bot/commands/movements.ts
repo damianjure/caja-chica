@@ -5,6 +5,7 @@ import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSumma
 import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
+import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 
@@ -299,7 +300,7 @@ export async function runMovementSearch(supabase: BotDeps["supabase"], ctx: Cont
   return ctx.reply(text, opts);
 }
 
-export async function processTelegramFinancialText(supabase: BotDeps["supabase"], genAI: BotDeps["genAI"], ctx: Context, args: {
+export async function processTelegramFinancialText(supabase: BotDeps["supabase"], genAI: BotDeps["genAI"], genAI2: BotDeps["genAI2"], ctx: Context, args: {
   text: string;
   originalText: string;
 }) {
@@ -314,7 +315,7 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
     const catList = currentCats?.map(c => c.nombre).join(", ") || "Otros";
 
     const prompt = `Extraé los datos de este mensaje: "${args.text}"`;
-    const result = await genAI.models.generateContent({
+    const result = await geminiGenerateText(genAI, genAI2, {
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -388,13 +389,20 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
       await ctx.reply("⚠️ No pude entender bien ese movimiento. ¿Podrás ser más específico?");
     }
   } catch (err) {
+    if (err instanceof GeminiUnavailableError) {
+      await ctx.reply(
+        "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá de nuevo en unos minutos o cargá el movimiento desde el dashboard web\\.",
+        { parse_mode: "MarkdownV2" },
+      );
+      return;
+    }
     console.error(err);
     await ctx.reply("❌ Hubo un error procesando tu mensaje.");
   }
 }
 
 export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
-  const { supabase, genAI } = deps;
+  const { supabase, genAI, genAI2 } = deps;
 
   bot.command("borrar", async (ctx) => {
     ctx.reply("Usá `/borrar_ultimo_ingreso` o `/borrar_ultimo_egreso`.", { parse_mode: "Markdown" });

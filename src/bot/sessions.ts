@@ -1,6 +1,6 @@
 import type { TelegramLinkRecord } from "../server/telegramAccess.ts";
 import type { CompanyChoice } from "../server/reportBotHelpers.ts";
-import { startExtractionSweep } from "../server/extractionReview.ts";
+import { startExtractionSweep, clearPendingExtractionsByChat } from "../server/extractionReview.ts";
 
 function unrefInterval(timer: ReturnType<typeof setInterval>) {
   const maybeUnref = (timer as { unref?: () => void }).unref;
@@ -94,6 +94,20 @@ export function getInputSession(chatId: number): InputSession | null {
   if (!s) return null;
   if (Date.now() > s.expiresAt) { pendingInputSessions.delete(chatId); return null; }
   return s;
+}
+
+// --- CROSS-SESSION CLEAR ---
+
+export function clearRecurrenceSession(chatId: number): void {
+  pendingRecurrenceSessions.delete(chatId);
+}
+
+/** Atomically clears all four guided-flow session stores for the given chatId. */
+export function clearChatSessions(chatId: number): void {
+  pendingInputSessions.delete(chatId);
+  clearReportSession(chatId);
+  clearRecurrenceSession(chatId);
+  clearPendingExtractionsByChat(chatId);
 }
 
 // --- EXTRACTION SWEEP ---

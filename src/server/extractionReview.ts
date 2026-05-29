@@ -115,6 +115,12 @@ export function deletePendingExtraction(id: string): void {
   pendingExtractions.delete(id);
 }
 
+export function clearPendingExtractionsByChat(chatId: number): void {
+  for (const [id, entry] of pendingExtractions) {
+    if (entry.chatId === chatId) pendingExtractions.delete(id);
+  }
+}
+
 export function buildReviewCardText(data: PendingExtractionData): string {
   const montoStr = data.monto !== null ? `$${data.monto.toLocaleString("es-AR")} ${data.moneda}` : "❓ Sin monto";
   const empresaStr = data.empresa ?? "Sin empresa";

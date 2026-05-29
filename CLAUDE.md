@@ -552,6 +552,34 @@ Telegram caído en prod: primary `GEMINI_API_KEY` con `429 RESOURCE_EXHAUSTED` (
 - `genAI2: GoogleGenAI | null` cableado por `BotDeps` + `AppDeps`; `server.ts` instancia `genAI2` solo si `GEMINI_API_KEY_2` presente
 - Groq descartado como fallback: sin soporte vision (fotos requieren Gemini)
 
+### Cambios 2026-05-29 (sesión extendida: createApp refactor + 3 tracks UX/email/design + deploy)
+
+Sesión grande post-review. 2 fixes + 4 cambios SDD, todo deployado a prod. Tests 343→**408 pass / 0 fail / 2 skip** (+65). tsc clean.
+
+**Fixes previos (commits `4cead9a`, `258c6a6`):**
+- `tests/personas.test.ts`: time-bomb fixtures (expires_at hardcodeado vencido) → `futureExpiry` relativo a `Date.now()`. `derivePersonaStatus` ya estaba bien.
+- `src/server/geminiWithFallback.ts`: `isQuotaError` → `isGeminiCapacityError` — caza 429/RESOURCE_EXHAUSTED (quota) **Y** 503/UNAVAILABLE/"overloaded" (overload). Texto/foto/audio degradan parejo a 503 `ai_unavailable`. +14 tests.
+
+**SDD `createapp-decomposition`** (engram #689-698, branch `refactor/createapp-decomposition`): god-function `createApp` (trailmark complexity 309) → 6 módulos nuevos en `src/server/` (`contracts.ts`, `dataScope.ts`, `audit.ts`, `botConnection.ts`, `invitations.ts`, `scopePermissions.ts`) + typed `XxxRouterDeps` por router (ISP). **`routeContext` 56-prop ELIMINADO.** createApp body ~620→~384, app.ts 779→541. Refactor PURO, cero cambio de comportamiento. Borrado dead-route `GET /api/movimientos` duplicado en `presupuestos.ts`. `SupabaseLike.from()` sigue `any` (seam de test, defer → futura SDD `supabaselike-typing`). ⚠️ trailmark 0.3.1 NO parsea TS (`nodes:0`) — número 309→24 no reproducible por tool; win estructural probado por tests + tsc.
+
+**Track A `bot-ux-typing-and-entities`** (engram #702-707, branches `refactor/bot-ux-slice-1/2`): B1-B4 feedback — `sendTyping(ctx)` typing indicator en cold-start/Gemini (`utils.ts`), `/cancel` global (`commands/cancel.ts` + `clearChatSessions` en `sessions.ts`), cancel buttons en prompts. E1-E4 entities — `telegramCategoryResolution.ts` (fuzzy mirror de empresa, sin CUIT) + dedupe case-insensitive en `createCategoriaFromBot`/`createEmpresaFromBot` + quick-pick `categoriaOptions` en review + `er:ca:*` callbacks (disjuntos de `er:co:*`). empresa byte-idéntico.
+
+**Track C `design-md-completeness`** (branch `docs/design-md-completeness`): DESIGN.md +78 líneas — §6 Motion (tokens ease/duration + anim-* keyframes + reduced-motion), §7 States (loading/empty/error), §8 Spacing&Density (.stack-*/.row-*), §9 Accessibility, componentes faltantes (toggle/dropdown/toasts) en §5, nota drift `.stack-*` no aplicados en ConfiguracionTab/InformesTab.
+
+**Track B `superadmin-email-management`** (engram #709-718, 4 sub-PRs `feat/email-mgmt-pr1-s4`/`pr2a-i`/`pr2a-ii`/`pr2b`): gestión de email/invitaciones para superadmin. **Constraint Brevo**: solo senders VERIFICADOS (`GET /v3/senders`), NO free-form (crear sender = OTP manual en Brevo).
+- `email_settings` (single-row) + `email_log` (append-only) — `email_management_phase.sql` ✔ aplicada prod 2026-05-29 vía MCP.
+- `src/server/emailSettings.ts` (`getActiveSender` 5min cache + **env fallback**), `email.ts` refactor (`sendViaBrevo` opts + `{ok,messageId}` return + `configureEmail({supabase})` injector + emailType), `emailLog.ts` (`writeEmailLog` **fire-and-forget**), `brevoSenders.ts` (proxy verified senders 5min cache).
+- 5 endpoints superadmin en `createAdminRouter`: `GET/PATCH /api/admin/email-settings`, `GET /api/admin/email-settings/senders`, `POST /api/admin/email-settings/test-send` (rate-limit `tierEmailTest` 3/día), `GET /api/admin/email-log`.
+- AdminPanel: `EmailSection.tsx` (dropdown senders verificados + save + test-send) + `EmailLogView.tsx` (delivery log + filtros + triple-state) + S4 resend/filtros (reusa `/api/personas/:id/resend`).
+- Invariantes: **env-fallback** (sin `email_settings` → usa env, cero cambio de comportamiento), **fire-and-forget log** (fallo de log NUNCA rompe el envío), superadmin-only ×5, same `BREVO_API_KEY`.
+
+**Deploy 2026-05-29:**
+- Backend Cloud Run rev **`caja-chica-00050-z9r`** (createApp refactor + Track A + Track B endpoints). Smoke: `/api/health` 200, `/api/admin/email-settings` 401 (gated, no 404 = código nuevo vivo).
+- Frontend Firebase Hosting `caja-chica-bot.web.app` (AdminPanel con EmailSection/EmailLogView).
+- Migration `email_management_phase.sql` ✔ prod Supabase `dezgusgxotihxkfkxico`.
+
+**Pendiente post-deploy**: mergear ~8 PRs en GitHub (gh no auth local, branches en origin); rotar keys Brevo + `GEMINI_API_KEY_2`; archive formal SDD A/B (verificados inline + por tests). Nota: el branch `refactor/createapp-decomposition` tiene su propio commit de doc 2026-05-29 que solapa con esta sección — al mergear PRs, esta sección de local main es la canónica.
+
 ### Pendiente
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
@@ -1075,6 +1103,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | `user_settings_phase.sql` | ✔ prod 2026-05-12 |
 | `onboarding_demo_phase.sql` | ✔ prod 2026-05-20 |
 | `maintenance_mode_phase.sql` | ✔ prod 2026-05-26 |
+| `email_management_phase.sql` | ✔ prod 2026-05-29 |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)

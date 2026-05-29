@@ -65,6 +65,18 @@ import {
   createEmpresaDeleteBackup as createEmpresaDeleteBackupFn,
   insertReportExport as insertReportExportFn,
 } from "./audit.ts";
+import {
+  isOwnerLike,
+  scopePerm,
+  canConnectDrive,
+  canExportDrive,
+  canExportLocal,
+  canManageEmpresasOp,
+  canManageCategoriasOp,
+  canDeleteOthers,
+  canEditOthers,
+  resolveDriveOwnerUserId as resolveDriveOwnerUserIdFn,
+} from "./scopePermissions.ts";
 import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 import { isWriteBlocked, getMaintenanceState, setMaintenanceStatus, maintenanceCache } from "./maintenance.ts";
 import { notifyMaintenance } from "./maintenanceNotify.ts";
@@ -360,50 +372,8 @@ export function createApp({
     console.warn("[drive] WARNING: DASHBOARD_URL is not set. Drive OAuth callback will redirect to backend root instead of frontend.");
   }
 
-  const isOwnerLike = (scope: DataAccessScope) =>
-    scope.membershipRole === null || scope.membershipRole === "owner";
-
-  // Check a granular permission for the current editor. defaultOn = true for backwards-compatible perms.
-  const scopePerm = (scope: DataAccessScope, key: string, defaultOn: boolean): boolean => {
-    if (scope.membershipRole !== "editor") return false;
-    const val = scope.memberPermissions[key];
-    return val !== undefined ? !!val : defaultOn;
-  };
-
-  const canConnectDrive = (scope: DataAccessScope) => isOwnerLike(scope);
-
-  const canExportDrive = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "export_drive", false);
-
-  const canExportLocal = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "export_local", true);
-
-  const canManageEmpresasOp = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "manage_empresas", true);
-
-  const canManageCategoriasOp = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "manage_categorias", true);
-
-  const canDeleteOthers = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "delete_any", false);
-
-  const canEditOthers = (scope: DataAccessScope): boolean =>
-    isOwnerLike(scope) || scopePerm(scope, "edit_any", false);
-
-  const resolveDriveOwnerUserId = async (session: AppSession, scope: DataAccessScope) => {
-    if (!scope.dashboardId || scope.membershipRole === "owner" || scope.membershipRole === null) {
-      return session.userId;
-    }
-    const { data, error } = await supabase
-      .from("dashboard_members")
-      .select("user_id")
-      .eq("dashboard_id", scope.dashboardId)
-      .eq("role", "owner")
-      .eq("status", "active")
-      .limit(1);
-    if (error) throw error;
-    return data?.[0]?.user_id ?? null;
-  };
+  const resolveDriveOwnerUserId = (session: AppSession, scope: DataAccessScope) =>
+    resolveDriveOwnerUserIdFn(supabase, session, scope);
 
   const routeContext = {
     supabase,

@@ -1,7 +1,5 @@
 import express, { type RequestHandler } from "express";
-import type { AppSession, SupabaseLike } from "../contracts.ts";
-
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+import type { AppSession, AppUserStatus, SupabaseLike } from "../contracts.ts";
 
 export interface AdminDeps {
   supabase: SupabaseLike;

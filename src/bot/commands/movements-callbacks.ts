@@ -334,8 +334,8 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       } else if (inputSession.kind === "categoria") {
         if (!await assertBotWritable(ctx)) return;
         const { createCategoriaFromBot } = await import("./entities.ts");
-        const ok = await createCategoriaFromBot(supabase, inputSession.linked, value);
-        await ctx.reply(ok ? `✅ Categoría *${escapeMd(value)}* agregada.` : "❌ No se pudo agregar la categoría. Intentá de nuevo.", { parse_mode: "Markdown" });
+        const result = await createCategoriaFromBot(supabase, inputSession.linked, value);
+        await ctx.reply(result.ok ? `✅ Categoría *${escapeMd(value)}* agregada.` : "❌ No se pudo agregar la categoría. Intentá de nuevo.", { parse_mode: "Markdown" });
       } else {
         await runMovementSearch(supabase, ctx, inputSession.linked, value);
       }

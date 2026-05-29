@@ -6,10 +6,37 @@ import { assertBotWritable } from "../maintenance-gate.ts";
 import { setInputSession } from "../sessions.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
 
-export async function createEmpresaFromBot(supabase: BotDeps["supabase"], linked: TelegramLinkRecord, nombre: string): Promise<{ ok: boolean; id?: string }> {
+function normalizeName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export async function createEmpresaFromBot(supabase: BotDeps["supabase"], linked: TelegramLinkRecord, nombre: string): Promise<{ ok: boolean; id?: string; reused?: boolean }> {
+  const ownership = buildTelegramEntityOwnership(linked);
+  let existingQuery = supabase
+    .from("empresas")
+    .select("id, nombre")
+    .is("deleted_at", null);
+  if (linked.dashboardId) {
+    existingQuery = existingQuery.eq("dashboard_id", linked.dashboardId);
+  } else if (linked.ownerUserId) {
+    existingQuery = existingQuery.eq("owner_user_id", linked.ownerUserId);
+  }
+  const { data: existing } = await existingQuery;
+  const normalizedNombre = normalizeName(nombre);
+  const match = existing?.find((e: { id: string; nombre: string }) => normalizeName(e.nombre) === normalizedNombre);
+  if (match) {
+    return { ok: true, id: match.id, reused: true };
+  }
+
   const { data, error } = await supabase
     .from("empresas")
-    .insert([{ nombre, ...buildTelegramEntityOwnership(linked) }])
+    .insert([{ nombre, ...ownership }])
     .select();
   if (error) {
     console.error("createEmpresaFromBot error:", error);
@@ -26,18 +53,36 @@ export async function createEmpresaFromBot(supabase: BotDeps["supabase"], linked
       afterData: created,
     });
   }
-  return { ok: true, id: created?.id };
+  return { ok: true, id: created?.id, reused: false };
 }
 
-export async function createCategoriaFromBot(supabase: BotDeps["supabase"], linked: TelegramLinkRecord, nombre: string): Promise<boolean> {
-  const { error } = await supabase
+export async function createCategoriaFromBot(supabase: BotDeps["supabase"], linked: TelegramLinkRecord, nombre: string): Promise<{ ok: boolean; id?: string; reused?: boolean }> {
+  let existingQuery = supabase
     .from("categorias")
-    .insert([{ nombre, ...buildTelegramEntityOwnership(linked) }]);
+    .select("id, nombre");
+  if (linked.dashboardId) {
+    existingQuery = existingQuery.eq("dashboard_id", linked.dashboardId);
+  } else if (linked.ownerUserId) {
+    existingQuery = existingQuery.eq("owner_user_id", linked.ownerUserId);
+  }
+  const { data: existing } = await existingQuery;
+  const normalizedNombre = normalizeName(nombre);
+  const match = existing?.find((c: { id: string; nombre: string }) => normalizeName(c.nombre) === normalizedNombre);
+  if (match) {
+    return { ok: true, id: match.id, reused: true };
+  }
+
+  const ownership = buildTelegramEntityOwnership(linked);
+  const { data, error } = await supabase
+    .from("categorias")
+    .insert([{ nombre, ...ownership }])
+    .select();
   if (error) {
     console.error("createCategoriaFromBot error:", error);
-    return false;
+    return { ok: false };
   }
-  return true;
+  const created = data?.[0];
+  return { ok: true, id: created?.id, reused: false };
 }
 
 export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
@@ -96,8 +141,8 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
     if (!linked) return;
     const name = ctx.match;
     if (!name) return ctx.reply("Por favor indicá el nombre: `/agregarcategoria Comida`", { parse_mode: "Markdown" });
-    const ok = await createCategoriaFromBot(supabase, linked, name);
-    if (!ok) return ctx.reply("❌ No se pudo agregar la categoría. Intentá de nuevo.");
+    const result = await createCategoriaFromBot(supabase, linked, name);
+    if (!result.ok) return ctx.reply("❌ No se pudo agregar la categoría. Intentá de nuevo.");
     ctx.reply(`✅ Categoría *${escapeMd(name)}* agregada.`, { parse_mode: "Markdown" });
   });
 

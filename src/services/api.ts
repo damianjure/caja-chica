@@ -358,6 +358,41 @@ export interface MaintenanceStatus {
   message: string | null;
 }
 
+export interface EmailSender {
+  id: number;
+  name: string;
+  email: string;
+  active: boolean;
+}
+
+export interface EmailSettings {
+  from_email: string;
+  from_name: string;
+  updated_at: string | null;
+}
+
+export type EmailLogType = "app_invite" | "dashboard_invite" | "test" | "reminder";
+
+export interface EmailLogRow {
+  id: string;
+  to_email: string;
+  subject: string;
+  email_type: EmailLogType;
+  ok: boolean;
+  brevo_message_id: string | null;
+  error_body: string | null;
+  sent_at: string;
+}
+
+export interface EmailLogFilters {
+  type?: EmailLogType;
+  ok?: boolean;
+  from?: string;
+  to?: string;
+  limit?: number;
+  before?: string;
+}
+
 export type RecurrenteRequest = {
   monto: number;
   tipo: 'egreso' | 'ingreso';
@@ -766,5 +801,40 @@ export const api = {
 
   async endMaintenance(): Promise<MaintenanceStatus> {
     return fetchApi("/api/maintenance/end", { method: "POST" });
+  },
+
+  // Email management (superadmin only)
+  async getEmailSettings(): Promise<EmailSettings> {
+    return fetchApi("/api/admin/email-settings");
+  },
+
+  async getEmailSenders(): Promise<EmailSender[]> {
+    return fetchApi("/api/admin/email-settings/senders");
+  },
+
+  async updateEmailSettings(payload: { from_email: string; from_name: string }): Promise<EmailSettings> {
+    return fetchApi("/api/admin/email-settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async sendTestEmail(to: string): Promise<{ ok: boolean; brevo_message_id: string | null }> {
+    return fetchApi("/api/admin/email-settings/test-send", {
+      method: "POST",
+      body: JSON.stringify({ to }),
+    });
+  },
+
+  async getEmailLog(filters?: EmailLogFilters): Promise<EmailLogRow[]> {
+    const params = new URLSearchParams();
+    if (filters?.type) params.set("type", filters.type);
+    if (filters?.ok !== undefined) params.set("ok", String(filters.ok));
+    if (filters?.from) params.set("from", filters.from);
+    if (filters?.to) params.set("to", filters.to);
+    if (filters?.before) params.set("before", filters.before);
+    if (filters?.limit !== undefined) params.set("limit", String(filters.limit));
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi(`/api/admin/email-log${suffix}`);
   },
 };

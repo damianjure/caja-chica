@@ -1,97 +1,55 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import type { UpdateEmpresaRequest } from "../validation.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+export interface EmpresasDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: express.Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canWriteToScope: (scope: DataAccessScope) => boolean;
+  canManageEmpresasOp: (scope: DataAccessScope) => boolean;
+  applyDataScope: (query: any, session: AppSession, scope: DataAccessScope) => any;
+  buildWriteOwnership: (session: AppSession, scope: DataAccessScope) => Record<string, unknown>;
+  getScopeEntityById: (table: string, session: AppSession, scope: DataAccessScope, id: string) => Promise<unknown>;
+  logEntityMutation: (args: {
+    session: AppSession;
+    scope: DataAccessScope;
+    source: "web" | "telegram" | "system";
+    action: "create" | "update" | "delete" | "restore_backup";
+    entityType: "movimiento" | "empresa" | "movimientos_bulk";
+    entityId: string;
+    beforeData?: unknown;
+    afterData?: unknown;
+  }) => Promise<void>;
+  createEmpresaDeleteBackup: (args: {
+    session: AppSession;
+    scope: DataAccessScope;
+    empresa: Record<string, unknown>;
+    movimientosSnapshot: unknown[];
+    source: "web" | "telegram";
+  }) => Promise<void>;
+  parseEmpresaRequest: (body: unknown) => { nombre: string } | null;
+  parseUpdateEmpresaRequest: (body: unknown) => UpdateEmpresaRequest | null;
+}
 
-export function createEmpresasRouter(ctx: any) {
+export function createEmpresasRouter(deps: EmpresasDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
-    requireAdmin,
-    requireSuperadmin,
     getSession,
     resolveDataAccessScope,
     canWriteToScope,
-    canManageDashboardMembers,
+    canManageEmpresasOp,
     applyDataScope,
     buildWriteOwnership,
-    insertAuditLog,
     getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
     logEntityMutation,
     createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
     parseEmpresaRequest,
     parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
 
   router.post("/api/empresas", requireSession, async (req, res) => {
@@ -164,7 +122,7 @@ export function createEmpresasRouter(ctx: any) {
       await createEmpresaDeleteBackup({
         session,
         scope,
-        empresa: existing,
+        empresa: existing as Record<string, unknown>,
         movimientosSnapshot: relatedMovimientos ?? [],
         source: "web",
       });

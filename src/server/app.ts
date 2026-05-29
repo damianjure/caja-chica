@@ -540,7 +540,21 @@ export function createApp({
     isMissingSchemaArtifactError,
     tierStrict,
   }));
-  app.use(createEmpresasRouter(routeContext));
+  app.use(createEmpresasRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    canManageEmpresasOp,
+    applyDataScope,
+    buildWriteOwnership,
+    getScopeEntityById,
+    logEntityMutation,
+    createEmpresaDeleteBackup,
+    parseEmpresaRequest,
+    parseUpdateEmpresaRequest,
+  }));
   app.use(createCategoriasRouter(routeContext));
   app.use(createPresupuestosRouter(routeContext));
   app.use(createDriveRouter(routeContext));

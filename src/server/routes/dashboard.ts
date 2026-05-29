@@ -1,97 +1,47 @@
-import express from "express";
+import express, { type Request, type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike, DashboardMemberSummary } from "../contracts.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+export interface DashboardDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canManageDashboardMembers: (session: AppSession, scope: DataAccessScope) => boolean;
+  listDashboardMembers: (dashboardId: string) => Promise<DashboardMemberSummary[]>;
+  publicAppUrl?: string;
+  isMissingSchemaArtifactError: (error: unknown) => boolean;
+  parseDashboardInvitationRequest: (body: unknown) => any;
+  randomBytes: (size: number) => Buffer;
+  buildTelegramDeepLink: (token: string | null) => string | null;
+  sendDashboardInvitationEmail: (to: string, inviteUrl: string, role: string, inviterEmail: string, telegramDeepLink?: string) => Promise<void>;
+  sendAppInvitationEmail: (to: string, inviteUrl: string) => Promise<void>;
+  purgeDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
+  tierRead: RequestHandler;
+  tierResend: RequestHandler;
+  tierWrite: RequestHandler;
+}
 
-export function createDashboardRouter(ctx: any) {
+export function createDashboardRouter(deps: DashboardDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
-    requireAdmin,
-    requireSuperadmin,
     getSession,
     resolveDataAccessScope,
-    canWriteToScope,
     canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
     listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
+    publicAppUrl,
     isMissingSchemaArtifactError,
+    parseDashboardInvitationRequest,
+    randomBytes,
+    buildTelegramDeepLink,
+    sendDashboardInvitationEmail,
+    sendAppInvitationEmail,
+    purgeDemoData,
     tierRead,
-    tierWrite,
-    tierStrict,
     tierResend,
-  } = ctx;
+    tierWrite,
+  } = deps;
 
   router.get("/api/dashboard/members", requireSession, async (req, res) => {
     try {

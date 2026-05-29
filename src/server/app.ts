@@ -619,7 +619,25 @@ export function createApp({
     isMissingSchemaArtifactError,
     applyDataScope,
   }));
-  app.use(createDashboardRouter(routeContext));
+  app.use(createDashboardRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canManageDashboardMembers,
+    listDashboardMembers,
+    publicAppUrl,
+    isMissingSchemaArtifactError,
+    parseDashboardInvitationRequest,
+    randomBytes,
+    buildTelegramDeepLink,
+    sendDashboardInvitationEmail,
+    sendAppInvitationEmail,
+    purgeDemoData,
+    tierRead,
+    tierResend,
+    tierWrite,
+  }));
   app.use(createCronsRouter({
     supabase,
     bot: bot ?? null,

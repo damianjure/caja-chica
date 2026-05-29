@@ -508,7 +508,38 @@ export function createApp({
     parseInvitationRequest,
     sendAppInvitationEmail,
   }));
-  app.use(createMovimientosRouter(routeContext));
+  app.use(createMovimientosRouter({
+    supabase,
+    genAI,
+    genAI2,
+    adminApiToken,
+    enableDangerousRoutes,
+    requireSession,
+    requireAdmin,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    applyDataScope,
+    buildWriteOwnership,
+    getScopeEntityById,
+    logEntityMutation,
+    canManageEmpresasOp,
+    canDeleteOthers,
+    canEditOthers,
+    parseExtractRequest,
+    parseSaveMovimientosRequest,
+    parseUpdateMovimientoRequest,
+    parseReconciliationRequest,
+    parsePaginationQuery,
+    parseRecurrenteRequest,
+    SYSTEM_PROMPT,
+    parseGeminiJsonResponse,
+    computeNextRun,
+    relativeRunLabel,
+    hasValidAdminToken,
+    isMissingSchemaArtifactError,
+    tierStrict,
+  }));
   app.use(createEmpresasRouter(routeContext));
   app.use(createCategoriasRouter(routeContext));
   app.use(createPresupuestosRouter(routeContext));

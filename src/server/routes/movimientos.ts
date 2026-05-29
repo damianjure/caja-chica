@@ -1,99 +1,92 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
 import { geminiGenerateText, GeminiUnavailableError } from "../geminiWithFallback.ts";
+import type { AppSession, DataAccessScope, SupabaseLike, GenAILike } from "../contracts.ts";
+import type { Frecuencia } from "../recurrentes.ts";
+import type { GeminiExtractResponse } from "../gemini.ts";
+import type {
+  SaveMovimientosRequest,
+  PaginationQuery,
+  ReconciliationRequest,
+  UpdateMovimientoRequest,
+} from "../validation.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
 
-export function createMovimientosRouter(ctx: any) {
+export interface MovimientosDeps {
+  supabase: SupabaseLike;
+  genAI: GenAILike;
+  genAI2?: GenAILike | null;
+  adminApiToken?: string;
+  enableDangerousRoutes?: boolean;
+  requireSession: RequestHandler;
+  requireAdmin: RequestHandler;
+  getSession: (req: express.Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canWriteToScope: (scope: DataAccessScope) => boolean;
+  applyDataScope: (query: any, session: AppSession, scope: DataAccessScope) => any;
+  buildWriteOwnership: (session: AppSession, scope: DataAccessScope) => Record<string, unknown>;
+  getScopeEntityById: (table: string, session: AppSession, scope: DataAccessScope, id: string) => Promise<unknown>;
+  logEntityMutation: (args: {
+    session: AppSession;
+    scope: DataAccessScope;
+    source: "web" | "telegram" | "system";
+    action: "create" | "update" | "delete" | "restore_backup";
+    entityType: "movimiento" | "empresa" | "movimientos_bulk";
+    entityId: string;
+    beforeData?: unknown;
+    afterData?: unknown;
+  }) => Promise<void>;
+  canManageEmpresasOp: (scope: DataAccessScope) => boolean;
+  canDeleteOthers: (scope: DataAccessScope) => boolean;
+  canEditOthers: (scope: DataAccessScope) => boolean;
+  parseExtractRequest: (body: unknown) => { text: string; categories: Array<{ nombre: string }> } | null;
+  parseSaveMovimientosRequest: (body: unknown) => SaveMovimientosRequest | null;
+  parseUpdateMovimientoRequest: (body: unknown) => UpdateMovimientoRequest | null;
+  parseReconciliationRequest: (body: unknown) => ReconciliationRequest | null;
+  parsePaginationQuery: (query: unknown) => PaginationQuery;
+  parseRecurrenteRequest: (body: unknown) => { monto: number; tipo: string; moneda: string; frecuencia: string; categoria?: string; empresa_nombre?: string; descripcion?: string; day_of_month?: number } | null;
+  SYSTEM_PROMPT: string;
+  parseGeminiJsonResponse: (value: string) => GeminiExtractResponse | null;
+  computeNextRun: (frecuencia: Frecuencia, lastProcessed: Date | null, dayOfMonth: number | null, now: Date) => Date | null;
+  relativeRunLabel: (nextRun: Date | null, now: Date) => string;
+  hasValidAdminToken: (req: express.Request, adminApiToken?: string) => boolean;
+  isMissingSchemaArtifactError: (error: unknown) => boolean;
+  tierStrict: RequestHandler;
+}
+
+export function createMovimientosRouter(deps: MovimientosDeps) {
   const router = express.Router();
   const {
     supabase,
     genAI,
     genAI2 = null,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
     adminApiToken,
     enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
     requireAdmin,
-    requireSuperadmin,
     getSession,
     resolveDataAccessScope,
     canWriteToScope,
-    canManageDashboardMembers,
     applyDataScope,
     buildWriteOwnership,
-    insertAuditLog,
     getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
     logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
     canManageEmpresasOp,
-    canManageCategoriasOp,
     canDeleteOthers,
     canEditOthers,
-    resolveDriveOwnerUserId,
     parseExtractRequest,
     parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
     parseUpdateMovimientoRequest,
     parseReconciliationRequest,
-    parseBudgetRequest,
     parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
     parseRecurrenteRequest,
     SYSTEM_PROMPT,
     parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
     computeNextRun,
     relativeRunLabel,
-    randomBytes,
     hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
     tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
 
   router.post("/api/extract", requireSession, tierStrict, async (req, res) => {
@@ -583,7 +576,7 @@ export function createMovimientosRouter(ctx: any) {
         return res.status(403).json({ error: "forbidden" });
       }
 
-      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
 
@@ -611,7 +604,7 @@ export function createMovimientosRouter(ctx: any) {
         return res.status(403).json({ error: "forbidden" });
       }
 
-      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
 
@@ -691,7 +684,7 @@ export function createMovimientosRouter(ctx: any) {
         return res.status(403).json({ error: "forbidden" });
       }
 
-      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id);
+      const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
 

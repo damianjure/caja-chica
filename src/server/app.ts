@@ -554,7 +554,20 @@ export function createApp({
     seedDemoData,
     purgeDemoData,
   }));
-  app.use(createTelegramRouter(routeContext));
+  app.use(createTelegramRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    getBotConnectionRecord,
+    upsertBotConnectionRecord,
+    buildTelegramDeepLink,
+    randomBytes,
+    webhookPath,
+    webhookHandler,
+    webhookSecret,
+  }));
   app.use(createAdminRouter(routeContext));
   app.use(createMovimientosRouter(routeContext));
   app.use(createEmpresasRouter(routeContext));

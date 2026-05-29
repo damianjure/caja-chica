@@ -220,7 +220,84 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 ### Selector de hora (componente firma)
 Selector tipo alarma para la hora del recordatorio: dos steppers (hora ±1, minutos ±5) con chevrons arriba/abajo y la cifra en `font-mono` en el medio, separados por dos puntos. Compacto, integrado en la fila de configuración.
 
-## 6. Do's and Don'ts
+### Toggle / Switch
+Interruptor de permiso/preferencia. `role="switch"` + `aria-checked`, con label `sr-only`. Track `rounded-full`; off `surface-3`, on `strong-surface`. El thumb se desliza con `--duration-quick`. Usado en permisos de miembro (`MiembrosSection`) y toggles de preferencia.
+
+### Dropdown / ActionMenu
+Menú de acciones por fila (ej. `PersonasPanel`). Trigger con `aria-haspopup="menu"` + `aria-expanded`; panel `role="menu"`, items `role="menuitem"`. Teclado: flechas ↑/↓ + Escape. Es la ÚNICA excepción a la Regla del Borde en Hover: los ítems apilados usan fondo sutil `surface-2` (el borde no aplica a una lista apilada).
+
+### Toasts (sonner)
+Notificaciones efímeras vía `sonner`, ancladas `bottom-center`. Confirmaciones de acción ("Movimiento guardado", "Link copiado"). No bloquean, se apilan, autodesaparecen. Color semántico solo cuando comunica estado real (rojo error / verde éxito).
+
+## 6. Motion
+
+El movimiento es funcional, nunca decorativo (coherente con la Regla del Color Semántico: nada adorna). Transiciones cortas que confirman causa→efecto.
+
+### Tokens
+- **Easing:** `--ease-out-quart` `cubic-bezier(0.25,1,0.5,1)` (default global), `--ease-out-quint`, `--ease-out-expo`. Todas out-curves: rápido al entrar, suave al asentar.
+- **Duración:** `--duration-instant` 90ms · `--duration-quick` 180ms (default) · `--duration-base` 260ms · `--duration-slow` 420ms.
+- **Default global:** todo elemento transiciona con `ease-out-quart` + 180ms salvo override explícito.
+
+### Keyframes de entrada (`@layer utilities`)
+- `.anim-fade-in` (180ms) — contenido de tab.
+- `.anim-fade-in-down` (180ms) — entrada desde arriba.
+- `.anim-scale-in` (200ms) — escala sutil, modales/popovers.
+- `.anim-backdrop-in` (160ms) — fade del backdrop de modal.
+- `.anim-card-in` (180ms) — entrada de tarjetas.
+
+### Named Rules
+**La Regla del Movimiento Honesto.** Una animación solo existe si comunica un cambio de estado (entró algo, se confirmó algo). Sin loops, sin paralaje, sin movimiento ambiental.
+
+**La Regla del Reduced-Motion.** Todo `.anim-*` se anula bajo `@media (prefers-reduced-motion: reduce)` (`animation: none`). El movimiento es progressive enhancement, nunca requisito para entender la UI.
+
+**El feedback de click** es `active:scale-[0.97]` (§5 Buttons), no una animación de color.
+
+## 7. States (Loading / Empty / Error)
+
+Estados de primera clase, no afterthoughts. Cada vista con datos define los tres.
+
+### Loading
+Skeletons tonales (`surface-2`/`surface-3`) que respetan el layout final, no spinners genéricos centrados. Componente: `LoadingStates.tsx`. El skeleton tiene la forma del contenido que viene.
+
+### Empty
+Primitive `EmptyState` (title + hint + CTA opcional gated por `canWrite`). Nunca una vista en blanco: título corto, hint de una línea, y si el usuario puede escribir, un CTA al composer. Aplicado en Resumen mensual, Ingresos/Gastos recientes.
+
+### Error
+Texto plano y accionable (Nielsen #9): qué pasó + cómo seguir. `role="alert"` para errores de carga/acción, `role="status"` para avisos no urgentes (banner `missing_url`). Nunca el código técnico crudo. Rojo semántico solo en borde/texto del callout, sin relleno alarmante.
+
+### Named Rules
+**La Regla del Estado Triple.** Toda vista que carga datos define loading + empty + error explícitamente. "No hay datos todavía" es un diseño, no un bug.
+
+## 8. Spacing & Density
+
+Ritmo vertical por tokens, no por números mágicos (tokens en frontmatter: tight 0.5 → hero 3rem).
+
+### Stacks (`@layer utilities`)
+`.stack-tight/.stack-snug/.stack-comfort/.stack-relaxed/.stack-section/.stack-hero` — aplican `margin-top` al hermano siguiente (`> * + *`) con el espaciado del token. Reemplazan `space-y-*` ad-hoc por tokens del sistema.
+
+### Densidad de fila
+`.row-compact` (10/14px) · `.row-comfort` (14/16px) · `.row-airy` (18/20px) — padding de fila según contexto.
+
+### Named Rules
+**La Regla del Ritmo.** Aire generoso entre grupos conceptuales, filas compactas dentro de tarjetas (densidad media). Usar stacks tokenizados, no `mt-*` sueltos.
+
+> **Deuda conocida (drift doc↔código):** los `.stack-*` están definidos pero NO aplicados aún en `ConfiguracionTab` ni `InformesTab` (usan `space-y-*` ad-hoc). Pendiente de migrar.
+
+## 9. Accessibility
+
+A11y es parte del sistema, no un parche. Auditado en 3 rondas (2026-05).
+
+- **Touch targets:** mínimo 44×44px en todo control interactivo (botones icon-only, pills editar/eliminar, revoke).
+- **ARIA:** `aria-label` en inputs y botones icon-only; `aria-pressed` en filter chips; `role="tablist"/"tab"` + `aria-selected` en tab nav; `role="switch"`+`aria-checked` en toggles; `role="menu"` en dropdowns; `aria-live`/`role="status"`/`role="alert"` en regiones dinámicas.
+- **Foco:** `:focus-visible` con outline 2px tintado (`color-mix` con `--app-text-1`); nunca `outline: none` sin reemplazo.
+- **Contraste:** texto crítico ≥ WCAG AA (4.5:1).
+- **Teclado:** dropdowns navegables con flechas + Escape; modales con focus-on-mount + Escape; back button del browser nunca se rompe.
+- **Movimiento:** `prefers-reduced-motion` respetado (§6).
+
+### Named Rules
+**La Regla del Contraste Mínimo.** Texto significativo nunca baja de `text-3`. `text-4` es solo decoración/separadores, jamás contenido legible.
+
+## 10. Do's and Don'ts
 
 ### Do:
 - **Do** tintar todo neutral hacia hue 155-165. Usar tokens `var(--app-*)`, nunca `bg-neutral-*` con opacidad (`/60`, `/90`) porque no son theme-aware.

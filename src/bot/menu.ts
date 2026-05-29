@@ -6,9 +6,11 @@ import {
   resolveTelegramIdentityByToken,
 } from "../server/telegramAccess.ts";
 import { getLinkedTelegramUser } from "./utils.ts";
+import { registerCancelHandler } from "./commands/cancel.ts";
 
 const BOT_COMMANDS = [
   { command: "menu", description: "Abrir el menú principal" },
+  { command: "cancel", description: "Cancelar la operación actual" },
   { command: "informes", description: "Generar informe por período" },
   { command: "exportar", description: "Exportar informe (CSV o PDF)" },
   { command: "recurrente", description: "Configurar gasto/ingreso recurrente" },
@@ -153,6 +155,8 @@ async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Con
 export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
   const { supabase, dashboardUrl } = deps;
   const mainKeyboard = buildMainKeyboard(dashboardUrl);
+
+  registerCancelHandler(bot, deps);
 
   bot.command("start", async (ctx) => {
     const token = ctx.match?.trim();

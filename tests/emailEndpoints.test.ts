@@ -221,6 +221,16 @@ test("GET /api/admin/email-settings/senders returns 502 when Brevo throws", asyn
   });
 });
 
+test("GET /api/admin/email-settings/senders returns 403 for non-superadmin (INV-3)", async () => {
+  const emailDeps = makeEmailDeps();
+  await withServer(memberSession, { adminEmailDeps: emailDeps } as any, async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/email-settings/senders`, {
+      headers: { Authorization: "Bearer tok" },
+    });
+    assert.equal(res.status, 403);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // REQ-S1.4/S1.5/S1.6 — PATCH /api/admin/email-settings
 // ---------------------------------------------------------------------------

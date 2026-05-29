@@ -10,6 +10,13 @@ import { loadRuntimeEnv } from "./src/server/env.ts";
 import { registerBotHandlers, registerBotCommands } from "./src/bot/index.ts";
 import type { BotDeps } from "./src/bot/deps.ts";
 import { hydrateCache } from "./src/server/maintenance.ts";
+import { configureEmail, sendViaBrevo } from "./src/server/email.ts";
+import { hydrateSenderCache, getActiveSender, setEmailSettings } from "./src/server/emailSettings.ts";
+import { listVerifiedSenders } from "./src/server/brevoSenders.ts";
+import { listEmailLog } from "./src/server/emailLog.ts";
+import { parseEmailSettingsRequest, parseTestSendRequest } from "./src/server/validation.ts";
+import { tierEmailTest } from "./src/server/rateLimit.ts";
+import type { AdminEmailDeps } from "./src/server/routes/admin.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseServerKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -84,11 +91,38 @@ const app = createApp({
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
   bot: bot ?? null,
   cronSecret: process.env.CRON_SECRET,
+  adminEmailDeps: {
+    brevoApiKey: process.env.BREVO_API_KEY,
+    getActiveSender,
+    setEmailSettings,
+    listVerifiedSenders,
+    listEmailLog,
+    sendTestEmail: async (to, sender) => {
+      const testSubject = "Email de prueba — Caja Chica";
+      const testHtml = `<p>Este es un email de prueba enviado desde el panel de administración de Caja Chica.</p><p>Remitente activo: ${sender.fromEmail}</p>`;
+      return sendViaBrevo(to, testSubject, testHtml, {
+        fromEmail: sender.fromEmail,
+        fromName: sender.fromName,
+        emailType: "test",
+      });
+    },
+    tierEmailTest,
+    parseEmailSettingsRequest,
+    parseTestSendRequest,
+  } satisfies AdminEmailDeps,
 });
 
 // Hydrate maintenance cache on startup so first request reads from cache, not DB.
 hydrateCache(supabase as any).catch((err) => {
   console.warn("[maintenance] Startup hydration failed (non-fatal):", err);
+});
+
+// Configure email module with supabase (INV-1: env-fallback preserved when no DB row).
+configureEmail({ supabase: supabase as any });
+
+// Hydrate sender cache on startup (non-fatal — env-fallback covers failure).
+hydrateSenderCache(supabase as any).catch((err) => {
+  console.warn("[emailSettings] Startup hydration failed (non-fatal):", err);
 });
 
 const server = app.listen(PORT, "0.0.0.0", () => {

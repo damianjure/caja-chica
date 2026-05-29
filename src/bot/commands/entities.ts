@@ -181,7 +181,9 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     setInputSession(ctx.chat.id, "empresa", linked);
-    await ctx.reply("🏢 Escribí el nombre de la empresa:");
+    await ctx.reply("🏢 Escribí el nombre de la empresa:", {
+      reply_markup: new InlineKeyboard().text("❌ Cancelar", "input_cancel"),
+    });
   });
 
   bot.callbackQuery("add_cat", async (ctx) => {
@@ -190,7 +192,16 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     setInputSession(ctx.chat.id, "categoria", linked);
-    await ctx.reply("📁 Escribí el nombre de la categoría:");
+    await ctx.reply("📁 Escribí el nombre de la categoría:", {
+      reply_markup: new InlineKeyboard().text("❌ Cancelar", "input_cancel"),
+    });
+  });
+
+  bot.callbackQuery("input_cancel", async (ctx) => {
+    const { pendingInputSessions } = await import("../sessions.ts");
+    pendingInputSessions.delete(ctx.chat!.id);
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText("Cancelado.");
   });
 
   bot.callbackQuery("del_emp", async (ctx) => {

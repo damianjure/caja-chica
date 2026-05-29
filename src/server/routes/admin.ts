@@ -1,97 +1,33 @@
-import express from "express";
+import express, { type RequestHandler } from "express";
+import type { AppSession, SupabaseLike } from "../contracts.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
 type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
 
-export function createAdminRouter(ctx: any) {
+export interface AdminDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  requireAdmin: RequestHandler;
+  requireSuperadmin: RequestHandler;
+  getSession: (req: express.Request) => AppSession;
+  publicAppUrl?: string;
+  botActive: boolean;
+  parseInvitationRequest: (body: unknown) => { email: string; role: string } | null;
+  sendAppInvitationEmail: (email: string, inviteUrl: string) => Promise<void>;
+}
+
+export function createAdminRouter(deps: AdminDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
-    googleDriveClientId,
-    googleDriveClientSecret,
-    googleDriveRedirectUri,
-    tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
     requireSession,
     requireAdmin,
     requireSuperadmin,
     getSession,
-    resolveDataAccessScope,
-    canWriteToScope,
-    canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
+    publicAppUrl,
+    botActive,
     parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
-    decryptToken,
     sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
-    isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+  } = deps;
 
 
   router.get("/api/health", (_req, res) => {

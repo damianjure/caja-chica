@@ -568,7 +568,17 @@ export function createApp({
     webhookHandler,
     webhookSecret,
   }));
-  app.use(createAdminRouter(routeContext));
+  app.use(createAdminRouter({
+    supabase,
+    requireSession,
+    requireAdmin,
+    requireSuperadmin,
+    getSession,
+    publicAppUrl,
+    botActive,
+    parseInvitationRequest,
+    sendAppInvitationEmail,
+  }));
   app.use(createMovimientosRouter(routeContext));
   app.use(createEmpresasRouter(routeContext));
   app.use(createCategoriasRouter(routeContext));

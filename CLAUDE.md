@@ -552,13 +552,34 @@ Telegram caído en prod: primary `GEMINI_API_KEY` con `429 RESOURCE_EXHAUSTED` (
 - `genAI2: GoogleGenAI | null` cableado por `BotDeps` + `AppDeps`; `server.ts` instancia `genAI2` solo si `GEMINI_API_KEY_2` presente
 - Groq descartado como fallback: sin soporte vision (fotos requieren Gemini)
 
+### Cambios 2026-05-29 (SDD `createapp-decomposition` + 2 fixes previos)
+
+**Pre-SDD fixes (commits `4cead9a`, `258c6a6`):**
+- `tests/personas.test.ts`: time-bomb fixtures arregladas — `expires_at` hardcodeado (`2026-05-28`) vencía contra el reloj real, `?status=pending` devolvía vacío. Ahora `futureExpiry = Date.now()+7d`. `derivePersonaStatus` estaba correcto, sin cambio de prod.
+- `src/server/geminiWithFallback.ts`: `isQuotaError` → **`isGeminiCapacityError`** — ahora caza 429/`RESOURCE_EXHAUSTED` (quota) **Y** 503/`UNAVAILABLE`/"overloaded" (overload model-wide). Antes un 503 se escapaba como 500 genérico. Texto/foto/audio degradan parejo a `GeminiUnavailableError` → 503 `ai_unavailable`. +14 tests (`tests/geminiWithFallback.test.ts`).
+
+**SDD `createapp-decomposition` — refactor puro, cero cambio de comportamiento (engram #689–#698, sdd-init #424):**
+Resuelve pendiente #3 (createApp god-function). Approach B+C: typed `XxxRouterDeps` por router (ISP) + extracción de closures inline de `createApp` a módulos. 3 slices stacked-to-main, cada una verificada por revisor fresco antes de merge.
+- **6 módulos nuevos** bajo `src/server/`: `contracts.ts` (tipos compartidos — `AppSession`, `DataAccessScope`, `SupabaseLike`, `GenAILike`, `DashboardMemberSummary`; `app.ts` los re-exporta para back-compat de tests), `dataScope.ts`, `audit.ts`, `botConnection.ts`, `invitations.ts`, `scopePermissions.ts`.
+- **`routeContext` (god-object de 56 props) ELIMINADO.** Los 10 routers legacy + `crons` reciben interfaces tipadas con SOLO las props que consumen (movimientos 30, categorias 7). `crons.ts` fue el template gold.
+- `createApp` = composition root fino: body ~620→~384 LoC; `app.ts` 779→541 LoC.
+- Dead code: borrado `GET /api/movimientos` duplicado en `presupuestos.ts` (unreachable, Express first-match con movimientos montado antes).
+- **Invariantes preservados**: `pendingDriveOAuthStates` Map + sweep `unref` siguen module-level en `app.ts` (by-reference a `createDriveRouter`); orden de montaje intacto; `createApp(AppDeps)` signature frozen; `SupabaseLike.from()` sigue `any` (seam de test); cero edits de cuerpos de test.
+- **Gates**: 357 pass / 0 fail / 2 skip; `tsc --noEmit` clean; verify final 0 CRITICAL / 0 WARNING.
+- Slices: `9e406b4` (1: contracts+helpers+maintenance/me/telegram/admin) → `f421402` (2: audit+scopePermissions+movimientos/empresas/categorias/presupuestos+dead-route) → `bf15e1f` (3: drive/informes/dashboard+delete routeContext).
+- ⚠️ **trailmark 0.3.1 no parsea TypeScript** (`nodes:0`) — el número 309→24 NO es reproducible por la tool. Win estructural probado por proxy + tests + tsc.
+- Branch pusheada: `refactor/createapp-decomposition` (origin) — PR pendiente de abrir en GitHub web (gh no auth local).
+
 ### Pendiente
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
-3. Refactor `createApp` (complexity 309 según trailmark) — deuda estructural, no vuln activa. Candidato para `/codex:rescue --background --effort high "split createApp into Express routers"`
+3. ✔ **HECHO 2026-05-29** — Refactor `createApp` completado vía SDD `createapp-decomposition` (ver sección Cambios 2026-05-29). `routeContext` eliminado, 6 módulos extraídos, typed deps por router.
 4. Spacing rhythm tokens (`--space-tight/snug/comfort/relaxed/section/hero` + `.stack-*` utilities) listos en `index.css` pero no aplicados aún a ConfiguracionTab / InformesTab
 5. **Rotar keys pegadas en chat**: Brevo (`xkeysib-...`, sesión 2026-05-25) + `GEMINI_API_KEY_2` (sesión 2026-05-28). Ambas quedaron en claro en el historial. Rotación = generar nueva en consola del proveedor (Brevo: SMTP & API → API Keys; Gemini: aistudio.google.com → API keys), borrar la vieja, y `gcloud run services update caja-chica --update-env-vars <VAR>=<nueva> --region us-west2`.
 6. Smoke test full browser Personas (visual): invitar real → ver UI → click acciones
+7. SDD futura `supabaselike-typing`: typear `SupabaseLike.from():any` (~80 call sites + reescribir test stubs de 5 archivos)
+8. Cleanup `enforceUserStatus` en `app.ts` (dead code PRE-existente, regla quirúrgica lo dejó intacto durante el refactor)
+9. Reemplazar trailmark (no parsea TS, devuelve `nodes:0`) por ts-complexity/plato para gates de complejidad reales
 
 ---
 
@@ -691,13 +712,19 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts tests/teleg
 │   ├── reports/
 │   │   └── shared.ts
 │   ├── server/
-│   │   ├── app.ts                 ← createApp + monta routers (incluye crons)
+│   │   ├── app.ts                 ← createApp = composition root fino; monta routers tipados (incl. crons)
+│   │   ├── contracts.ts           ← tipos compartidos (AppSession, DataAccessScope, SupabaseLike, GenAILike, DashboardMemberSummary); re-exportados por app.ts
+│   │   ├── dataScope.ts           ← resolveDataAccessScope + helpers scope/ownership
+│   │   ├── audit.ts               ← insertAuditLog, logEntityMutation, createEmpresaDeleteBackup, insertReportExport
+│   │   ├── botConnection.ts       ← get/upsertBotConnectionRecord
+│   │   ├── invitations.ts         ← syncPendingDashboardInvitations, listDashboardMembers
+│   │   ├── scopePermissions.ts    ← isOwnerLike, can* flags, resolveDriveOwnerUserId
 │   │   ├── cronJobs/              ← lógica pura de crons (sin HTTP)
 │   │   │   ├── reminders.ts       ← runDailyReminders({supabase, bot}) → {sent}
 │   │   │   └── recurrentes.ts     ← runRecurrentes({supabase, bot}) → {processed}
 │   │   ├── routes/
 │   │   │   ├── crons.ts           ← createCronsRouter + requireCronSecret middleware
-│   │   │   └── ...                ← otros routers (admin, dashboard, drive, empresas, informes, maintenance, me, movimientos, presupuestos, telegram)
+│   │   │   └── ...                ← otros routers (admin, dashboard, drive, empresas, informes, maintenance, me, movimientos, presupuestos, telegram) — todos con typed XxxRouterDeps (post createapp-decomposition)
 │   │   ├── demoSeed.ts            ← ensurePersonalDashboard() + seedDemoData() + purgeDemoData()
 │   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
 │   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Brevo

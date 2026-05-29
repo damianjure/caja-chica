@@ -7,7 +7,7 @@ import {
   parseMultiPhotoExtractionResult,
   type PhotoExtractionResult,
 } from "./gemini.ts";
-import { GeminiUnavailableError, isQuotaError } from "./geminiWithFallback.ts";
+import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
 import type { PhotoSourceType } from "./validation.ts";
 
 export const SUPPORTED_IMAGE_MIME_TYPES = new Set([
@@ -105,7 +105,7 @@ async function generateWithCleanup(
     });
     return (result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
   } catch (err) {
-    if (isQuotaError(err)) throw new GeminiUnavailableError();
+    if (isGeminiCapacityError(err)) throw new GeminiUnavailableError();
     throw err;
   } finally {
     for (const f of uploadedFiles) {

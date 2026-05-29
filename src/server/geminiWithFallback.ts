@@ -7,13 +7,19 @@ export class GeminiUnavailableError extends Error {
   }
 }
 
-export function isQuotaError(err: unknown): boolean {
+/**
+ * True when Gemini cannot serve the request due to capacity limits:
+ *   - 429 / RESOURCE_EXHAUSTED → quota exhausted (key-specific; fallback key may help)
+ *   - 503 / UNAVAILABLE / "model is overloaded" → transient overload (model-wide)
+ * Both cases should degrade gracefully into a GeminiUnavailableError rather than
+ * bubbling up as a generic 500.
+ */
+export function isGeminiCapacityError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as { status?: number; message?: string };
-  return (
-    e.status === 429 ||
-    (typeof e.message === "string" && e.message.includes("RESOURCE_EXHAUSTED"))
-  );
+  if (e.status === 429 || e.status === 503) return true;
+  if (typeof e.message !== "string") return false;
+  return /RESOURCE_EXHAUSTED|UNAVAILABLE|overloaded/i.test(e.message);
 }
 
 /**
@@ -29,13 +35,13 @@ export async function geminiGenerateText(
   try {
     return await primary.models.generateContent(args);
   } catch (err) {
-    if (!isQuotaError(err)) throw err;
+    if (!isGeminiCapacityError(err)) throw err;
     console.warn("[gemini] Primary key quota exhausted — trying fallback key");
     if (!fallback) throw new GeminiUnavailableError();
     try {
       return await fallback.models.generateContent(args);
     } catch (err2) {
-      if (isQuotaError(err2)) throw new GeminiUnavailableError();
+      if (isGeminiCapacityError(err2)) throw new GeminiUnavailableError();
       throw err2;
     }
   }

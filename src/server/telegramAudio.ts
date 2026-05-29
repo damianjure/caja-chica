@@ -1,5 +1,5 @@
 import { createPartFromUri, createUserContent } from '@google/genai';
-import { GeminiUnavailableError, isQuotaError } from './geminiWithFallback.ts';
+import { GeminiUnavailableError, isGeminiCapacityError } from './geminiWithFallback.ts';
 
 export type TelegramAudioKind = 'voice' | 'audio';
 
@@ -108,7 +108,7 @@ export async function transcribeTelegramAudioWithGemini({
         ]),
       });
     } catch (err) {
-      if (isQuotaError(err)) throw new GeminiUnavailableError();
+      if (isGeminiCapacityError(err)) throw new GeminiUnavailableError();
       throw err;
     }
 

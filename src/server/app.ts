@@ -593,7 +593,32 @@ export function createApp({
     exchangeCodeForTokens,
     encryptToken,
   }));
-  app.use(createInformesRouter(routeContext));
+  app.use(createInformesRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    canExportDrive,
+    canExportLocal,
+    fetchScopedMovimientos,
+    filterMovementsForReport,
+    resolveReportDateRange,
+    buildReportFile,
+    insertReportExport,
+    buildWriteOwnership,
+    resolveDriveOwnerUserId,
+    driveEnabled,
+    googleDriveClientId,
+    googleDriveClientSecret,
+    googleDriveRedirectUri,
+    tokenEncryptionKey,
+    decryptToken,
+    uploadFileToDrive,
+    parseReportExportRequest,
+    isMissingSchemaArtifactError,
+    applyDataScope,
+  }));
   app.use(createDashboardRouter(routeContext));
   app.use(createCronsRouter({
     supabase,

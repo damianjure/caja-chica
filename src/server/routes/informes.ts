@@ -1,97 +1,61 @@
-import express from "express";
+import express, { type Request, type RequestHandler } from "express";
+import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 
-type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
-type Frecuencia = any;
-type AppUserStatus = "active" | "suspended" | "paused" | "blocked";
+export interface InformesDeps {
+  supabase: SupabaseLike;
+  requireSession: RequestHandler;
+  getSession: (req: Request) => AppSession;
+  resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
+  canWriteToScope: (scope: DataAccessScope) => boolean;
+  canExportDrive: (scope: DataAccessScope) => boolean;
+  canExportLocal: (scope: DataAccessScope) => boolean;
+  fetchScopedMovimientos: (session: AppSession, scope: DataAccessScope) => Promise<any[]>;
+  filterMovementsForReport: (movements: any[], payload: any, range: any) => any[];
+  resolveReportDateRange: (payload: any) => any;
+  buildReportFile: (args: { format: string; fileName: string; periodLabel: string; filters: any; movements: any[] }) => { mimeType: string; buffer: Buffer };
+  insertReportExport: (payload: Record<string, unknown>) => Promise<any>;
+  buildWriteOwnership: (session: AppSession, scope: DataAccessScope) => Record<string, string>;
+  resolveDriveOwnerUserId: (session: AppSession, scope: DataAccessScope) => Promise<string | null>;
+  driveEnabled: boolean;
+  googleDriveClientId?: string;
+  googleDriveClientSecret?: string;
+  googleDriveRedirectUri?: string;
+  tokenEncryptionKey?: string;
+  decryptToken: (encrypted: string, key: string) => string;
+  uploadFileToDrive: (args: { refreshToken: string; clientId: string; clientSecret: string; redirectUri: string; fileName: string; mimeType: string; buffer: Buffer }) => Promise<{ fileId: string; webViewLink: string }>;
+  parseReportExportRequest: (body: unknown) => any;
+  isMissingSchemaArtifactError: (error: unknown) => boolean;
+  applyDataScope: (query: any, session: AppSession, scope: DataAccessScope) => any;
+}
 
-export function createInformesRouter(ctx: any) {
+export function createInformesRouter(deps: InformesDeps) {
   const router = express.Router();
   const {
     supabase,
-    genAI,
-    botActive,
-    webhookPath,
-    webhookHandler,
-    webhookSecret,
-    adminApiToken,
-    enableDangerousRoutes,
-    publicAppUrl,
-    telegramBotUsername,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    canWriteToScope,
+    canExportDrive,
+    canExportLocal,
+    fetchScopedMovimientos,
+    filterMovementsForReport,
+    resolveReportDateRange,
+    buildReportFile,
+    insertReportExport,
+    buildWriteOwnership,
+    resolveDriveOwnerUserId,
+    driveEnabled,
     googleDriveClientId,
     googleDriveClientSecret,
     googleDriveRedirectUri,
     tokenEncryptionKey,
-    bot,
-    buildTelegramDeepLink,
-    requireSession,
-    requireAdmin,
-    requireSuperadmin,
-    getSession,
-    resolveDataAccessScope,
-    canWriteToScope,
-    canManageDashboardMembers,
-    applyDataScope,
-    buildWriteOwnership,
-    insertAuditLog,
-    getScopeEntityById,
-    fetchScopedMovimientos,
-    insertReportExport,
-    logEntityMutation,
-    createEmpresaDeleteBackup,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
-    syncPendingDashboardInvitations,
-    listDashboardMembers,
-    pendingDriveOAuthStates,
-    driveEnabled,
-    canConnectDrive,
-    canExportDrive,
-    canExportLocal,
-    canManageEmpresasOp,
-    canManageCategoriasOp,
-    canDeleteOthers,
-    canEditOthers,
-    resolveDriveOwnerUserId,
-    parseExtractRequest,
-    parseSaveMovimientosRequest,
-    parseEmpresaRequest,
-    parseUpdateEmpresaRequest,
-    parseUpdateMovimientoRequest,
-    parseReconciliationRequest,
-    parseBudgetRequest,
-    parsePaginationQuery,
-    parseReportExportRequest,
-    parseInvitationRequest,
-    parseDashboardInvitationRequest,
-    parseRecurrenteRequest,
-    SYSTEM_PROMPT,
-    parseGeminiJsonResponse,
-    filterMovementsForReport,
-    resolveReportDateRange,
-    buildReportFile,
-    getDriveAuthUrl,
-    exchangeCodeForTokens,
-    uploadFileToDrive,
-    encryptToken,
     decryptToken,
-    sendAppInvitationEmail,
-    sendDashboardInvitationEmail,
-    ensurePersonalDashboard,
-    seedDemoData,
-    purgeDemoData,
-    getMaintenanceState,
-    setMaintenanceStatus,
-    notifyMaintenance,
-    computeNextRun,
-    relativeRunLabel,
-    randomBytes,
-    hasValidAdminToken,
+    uploadFileToDrive,
+    parseReportExportRequest,
     isMissingSchemaArtifactError,
-    tierRead,
-    tierWrite,
-    tierStrict,
-    tierResend,
-  } = ctx;
+    applyDataScope,
+  } = deps;
 
 
   router.get("/api/report-exports", requireSession, async (req, res) => {

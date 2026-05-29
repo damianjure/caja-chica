@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { MaintenanceSection } from "./dashboard/tabs/configuracion/MaintenanceSection";
+import { EmailSection } from "./dashboard/tabs/configuracion/EmailSection";
+import { EmailLogView } from "./dashboard/tabs/configuracion/EmailLogView";
 import {
   Ban,
   CheckCircle2,
@@ -584,6 +586,21 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
       showNotice={(msg) => toast.success(msg)}
       setError={(msg) => { if (msg) toast.error(msg); }}
     />
+
+    {isSuperadmin && (
+      <>
+        <EmailSection />
+        <section className="bg-white border border-neutral-200 rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+          <header className="mb-6">
+            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Log de emails</h2>
+            <p className="text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-prose">
+              Registro de todos los emails transaccionales enviados por el sistema.
+            </p>
+          </header>
+          <EmailLogView />
+        </section>
+      </>
+    )}
     </div>
   );
 }

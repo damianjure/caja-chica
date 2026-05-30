@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { X, Share2 } from 'lucide-react';
 
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
@@ -97,6 +97,7 @@ export default function MovimientosTab({
   setCustomTo,
   hasActiveFilters,
   resetFilters,
+  onExport,
   historyCards,
 }: {
   incomeCount: number;
@@ -120,6 +121,7 @@ export default function MovimientosTab({
   setCustomTo: (value: string) => void;
   hasActiveFilters: boolean;
   resetFilters: () => void;
+  onExport: () => void;
   historyCards: ReactNode;
 }) {
   const dateLabel = DATE_OPTS.find((o) => o.id === datePeriod)?.label ?? 'Todo';
@@ -150,6 +152,15 @@ export default function MovimientosTab({
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={onExport}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--app-strong-text)] hover:border-[var(--app-border-strong)] active:scale-[0.97] transition duration-150"
+              title="Exportar / compartir los movimientos filtrados"
+            >
+              <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Exportar
+            </button>
           </div>
 
           {/* Rango personalizado */}

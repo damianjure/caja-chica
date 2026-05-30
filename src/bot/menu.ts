@@ -17,6 +17,7 @@ const BOT_COMMANDS = [
   { command: "informes", description: "Generar informe por período" },
   { command: "exportar", description: "Exportar informe (CSV o PDF)" },
   { command: "recurrente", description: "Configurar gasto/ingreso recurrente" },
+  { command: "recurrentes", description: "Ver y gestionar recurrentes" },
   { command: "empresas", description: "Listar empresas activas" },
   { command: "categorias", description: "Listar categorías" },
   { command: "saldos", description: "Ver saldos por empresa" },

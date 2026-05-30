@@ -1,9 +1,19 @@
 import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
-import { requireTelegramCan, replyExpiredSession } from "../utils.ts";
+import { requireTelegramCan, replyExpiredSession, sendTyping, splitForTelegram } from "../utils.ts";
 import { pendingRecurrenceSessions, getRecurrenceSession } from "../sessions.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
+import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
+import { computeNextRun, relativeRunLabel } from "../../server/recurrentes.ts";
+import type { Frecuencia } from "../../server/recurrentes.ts";
+import {
+  buildRecurrentesListText,
+  buildRecurrenteActionKeyboard,
+  canToggleRecurrente,
+  RECURRENTE_PAUSE_PREFIX,
+  RECURRENTE_ON_PREFIX,
+} from "../recurrentesMgmt.ts";
 
 export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
   const { supabase } = deps;
@@ -86,5 +96,178 @@ export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
           .text("← Atrás", "rec_back:tipo"),
       });
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // /recurrentes — list all recurrentes with pause/reactivate actions
+  // ---------------------------------------------------------------------------
+
+  async function handleListRecurrentes(ctx: Context) {
+    const linked = await requireTelegramCan(supabase, ctx, "read");
+    if (!linked) return;
+
+    sendTyping(ctx);
+
+    const query = applyTelegramDataScope(
+      supabase.from("recurrentes").select("*"),
+      linked,
+    ).is("deleted_at", null).order("created_at", { ascending: true });
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("[/recurrentes] fetch error:", error);
+      await ctx.reply("❌ No pude cargar los recurrentes. Intentá de nuevo.");
+      return;
+    }
+
+    const now = new Date();
+    const recs = (data ?? []).map((r: any) => {
+      const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
+      const dayOfMonth = typeof r.day_of_month === "number" ? r.day_of_month : null;
+      const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed, dayOfMonth, now);
+      return {
+        ...r,
+        next_run_at: nextRun ? nextRun.toISOString() : null,
+        next_run_label: relativeRunLabel(nextRun, now),
+      };
+    });
+
+    const listText = buildRecurrentesListText(recs);
+
+    // If list is empty, send single message without keyboards
+    if (recs.length === 0) {
+      await ctx.reply(listText);
+      return;
+    }
+
+    // Send list header (chunked if needed)
+    const chunks = splitForTelegram(listText);
+    for (const chunk of chunks) {
+      await ctx.reply(chunk, { parse_mode: "Markdown" });
+    }
+
+    // Send one message per recurrente with its action keyboard
+    for (const rec of recs) {
+      const kb = buildRecurrenteActionKeyboard({ id: rec.id, is_active: rec.is_active });
+      const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+      await ctx.reply(`📌 *${label.replace(/[_*`\[]/g, "\\$&")}*`, {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: kb.inline_keyboard },
+      });
+    }
+  }
+
+  bot.command("recurrentes", (ctx) => handleListRecurrentes(ctx));
+
+  // ---------------------------------------------------------------------------
+  // rec_pause:<id> — pause an active recurrente
+  // ---------------------------------------------------------------------------
+
+  bot.callbackQuery(new RegExp(`^${RECURRENTE_PAUSE_PREFIX}(.+)$`), async (ctx) => {
+    await ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
+
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+
+    const recId = ctx.match[1];
+
+    // Fetch the record first — scope-guarded on the SELECT too
+    const { data: rows, error: fetchErr } = await applyTelegramDataScope(
+      supabase.from("recurrentes").select("id, dashboard_id, owner_user_id, deleted_at, is_active, descripcion, monto, moneda").eq("id", recId),
+      linked,
+    );
+    if (fetchErr) {
+      console.error("[rec_pause] fetch error:", fetchErr);
+      await ctx.reply("❌ Error al buscar el recurrente.");
+      return;
+    }
+
+    const rec = rows?.[0];
+    if (!rec || !canToggleRecurrente(rec, linked)) {
+      await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
+      return;
+    }
+
+    if (!rec.is_active) {
+      await ctx.editMessageReplyMarkup({
+        reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: false }).inline_keyboard },
+      }).catch(() => {});
+      await ctx.reply("ℹ️ Ese recurrente ya estaba pausado.");
+      return;
+    }
+
+    // UPDATE scoped — only updates within caller's scope (defense-in-depth)
+    const { error: updateErr } = await applyTelegramDataScope(
+      supabase.from("recurrentes").update({ is_active: false }).eq("id", recId),
+      linked,
+    );
+    if (updateErr) {
+      console.error("[rec_pause] update error:", updateErr);
+      await ctx.reply("❌ No pude pausar el recurrente.");
+      return;
+    }
+
+    await ctx.editMessageReplyMarkup({
+      reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: false }).inline_keyboard },
+    }).catch(() => {});
+
+    const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+    await ctx.reply(`⏸ *${label.replace(/[_*`\[]/g, "\\$&")}* pausado.`, { parse_mode: "Markdown" });
+  });
+
+  // ---------------------------------------------------------------------------
+  // rec_on:<id> — reactivate a paused recurrente
+  // ---------------------------------------------------------------------------
+
+  bot.callbackQuery(new RegExp(`^${RECURRENTE_ON_PREFIX}(.+)$`), async (ctx) => {
+    await ctx.answerCallbackQuery();
+    if (!await assertBotWritable(ctx)) return;
+
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+
+    const recId = ctx.match[1];
+
+    const { data: rows, error: fetchErr } = await applyTelegramDataScope(
+      supabase.from("recurrentes").select("id, dashboard_id, owner_user_id, deleted_at, is_active, descripcion, monto, moneda").eq("id", recId),
+      linked,
+    );
+    if (fetchErr) {
+      console.error("[rec_on] fetch error:", fetchErr);
+      await ctx.reply("❌ Error al buscar el recurrente.");
+      return;
+    }
+
+    const rec = rows?.[0];
+    if (!rec || !canToggleRecurrente(rec, linked)) {
+      await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
+      return;
+    }
+
+    if (rec.is_active) {
+      await ctx.editMessageReplyMarkup({
+        reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: true }).inline_keyboard },
+      }).catch(() => {});
+      await ctx.reply("ℹ️ Ese recurrente ya estaba activo.");
+      return;
+    }
+
+    const { error: updateErr } = await applyTelegramDataScope(
+      supabase.from("recurrentes").update({ is_active: true }).eq("id", recId),
+      linked,
+    );
+    if (updateErr) {
+      console.error("[rec_on] update error:", updateErr);
+      await ctx.reply("❌ No pude reactivar el recurrente.");
+      return;
+    }
+
+    await ctx.editMessageReplyMarkup({
+      reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: true }).inline_keyboard },
+    }).catch(() => {});
+
+    const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+    await ctx.reply(`▶️ *${label.replace(/[_*`\[]/g, "\\$&")}* reactivado.`, { parse_mode: "Markdown" });
   });
 }

@@ -5,7 +5,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { api, type Movimiento, type Empresa, type Categoria, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
+import { api, type Movimiento, type Empresa, type Categoria, type Recurrente, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
 import { supabase } from '../../services/supabase';
 
 function normalizeMovement(item: Movimiento): Movimiento {
@@ -21,6 +21,7 @@ export interface DashboardDataResult {
   history: Movimiento[];
   customCompanies: Empresa[];
   categories: Categoria[];
+  recurrentes: Recurrente[];
   dashboardAccess: DashboardMembersResponse | null;
   isLoading: boolean;
   isLoadingCollaboration: boolean;
@@ -55,6 +56,14 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     queryKey: ['categorias'],
     queryFn: api.getCategorias,
     enabled: !apiMissing,
+  });
+
+  // --- recurrentes (for forecast in ResumenTab) ---
+  const recurrentesQuery = useQuery<Recurrente[]>({
+    queryKey: ['recurrentes'],
+    queryFn: () => api.listRecurrentes({ active: true }),
+    enabled: !apiMissing,
+    staleTime: 60_000,
   });
 
   // --- movimientos (infinite) ---
@@ -178,6 +187,7 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     history,
     customCompanies: empresasQuery.data ?? [],
     categories: categoriasQuery.data ?? [],
+    recurrentes: recurrentesQuery.data ?? [],
     dashboardAccess: collaborationQuery.data ?? null,
     isLoading,
     isLoadingCollaboration: collaborationQuery.isLoading,

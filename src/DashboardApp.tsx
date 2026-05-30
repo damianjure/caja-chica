@@ -13,6 +13,8 @@ import {
   getRecentExpenses, getRecentIncomes,
   getIncomeSummaries, getIncomeTagSummaries, getMonthlySummaries,
 } from './dashboard/summary';
+import { projectBalance } from './dashboard/forecast';
+import { generateInsights } from './dashboard/insights';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
 import { ThemeMode, ThemePreference, ThemeToggle } from './components/ThemeToggle';
 import { SectionCard } from './components/dashboard/primitives';
@@ -101,7 +103,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   };
 
   const {
-    history, customCompanies, categories,
+    history, customCompanies, categories, recurrentes,
     dashboardAccess,
     isLoading, isLoadingCollaboration, hasMore, loadingMore,
     apiStatus, apiErrorMessage, loadData, loadCollaboration,
@@ -246,6 +248,26 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const recentIncomes = getRecentIncomes(history, 5);
   const visibleIncomeCount = filteredHistory.filter((i) => i.tipo === 'ingreso').length;
   const visibleExpenseCount = filteredHistory.filter((i) => i.tipo === 'egreso').length;
+
+  const forecastResult = projectBalance(
+    { saldoArs: arsTotals.neto, saldoUsd: usdTotals.neto, recurrentes },
+    new Date(),
+  );
+  const currentPeriod = monthlySummaries[0]?.period ?? '';
+  const prevCategorySummaries = monthlySummaries.length >= 2
+    ? getCategorySummaries(
+        history.filter((m) => {
+          const period = m.created_at.slice(0, 7);
+          return period === monthlySummaries[1]!.period;
+        }),
+      )
+    : [];
+  const dashboardInsights = generateInsights({
+    monthlySummaries,
+    categorySummaries,
+    prevCategorySummaries,
+    currentPeriod,
+  });
 
   const deleteItem = (id: string) => {
     if (!canWriteData) return;
@@ -392,7 +414,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <main>
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
-                {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} topExpenseLabel={topExpenseCategories[0]?.label ?? 'Sin datos'} topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} />}
+                {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} topExpenseLabel={topExpenseCategories[0]?.label ?? 'Sin datos'} topExpenseValue={topExpenseCategories[0] ? formatCurrency(topExpenseCategories[0].value, 'ARS') : 'Todavía no hay egresos.'} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} />}
                 {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} canWriteData={canWriteData} companiesList={companiesList} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} customCompanies={customCompanies} categories={categories} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onDeleteCategory={(c) => deleteCategory(c.id, c.nombre)} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
                 {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} canWriteData={canWriteData} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
                 {activeTab === 'ingresos' && <IngresosTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')} sourceCount={incomeSummaries.length} topIncomeSources={topIncomeSources} incomeTags={topIncomeTags} recentIncomes={recentIncomes} formatCurrency={formatCurrency} />}

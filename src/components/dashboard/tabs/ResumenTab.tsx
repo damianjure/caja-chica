@@ -1,7 +1,8 @@
 
-import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2 } from 'lucide-react';
+import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } from 'lucide-react';
 import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
-import { EmptyState, MetricCard } from '../primitives';
+import { EmptyState, MetricCard, SectionCard } from '../primitives';
+import type { ForecastResult } from '../../../dashboard/forecast';
 
 interface ResumenTabProps {
   arsIngreso: string;
@@ -17,6 +18,10 @@ interface ResumenTabProps {
   topExpenseValue: string;
   netPositive: boolean;
   canWriteData: boolean;
+  forecast: ForecastResult;
+  projectedArsFormatted: string;
+  projectedUsdFormatted: string;
+  insights: string[];
 }
 
 export default function ResumenTab(props: ResumenTabProps) {
@@ -97,6 +102,82 @@ export default function ResumenTab(props: ResumenTabProps) {
           <HorizontalBarList items={props.topCompanies} emptyLabel="Todavía no hay empresas con actividad." />
         </ChartCard>
       </section>
+
+      <SectionCard
+        title="Proyección a 30 días"
+        description="Saldo estimado al procesar los recurrentes activos en los próximos 30 días. No incluye gastos imprevistos."
+        icon={LineChart}
+      >
+        {props.forecast.occurrences.length === 0 ? (
+          <EmptyState
+            title="Sin recurrentes activos para proyectar."
+            hint="Activá o creá recurrentes en la pestaña Recurrentes para ver la proyección."
+            canWrite={props.canWriteData}
+            icon={<LineChart className="w-8 h-8" strokeWidth={1.5} />}
+          />
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MetricCard
+                label="Saldo proyectado ARS"
+                value={props.projectedArsFormatted}
+                tone="neutral"
+                icon={Wallet}
+              />
+              <MetricCard
+                label="Saldo proyectado USD"
+                value={props.projectedUsdFormatted}
+                tone="neutral"
+                icon={Wallet}
+              />
+            </div>
+
+            <div>
+              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+                Próximos movimientos
+              </div>
+              <ul className="space-y-1" role="list">
+                {props.forecast.occurrences.slice(0, 8).map((occ, i) => (
+                  <li
+                    key={`${occ.date}-${i}`}
+                    role="listitem"
+                    className="flex items-center justify-between gap-3 py-1.5 border-b border-neutral-100 last:border-0"
+                  >
+                    <span className="text-xs text-neutral-500 tabular-nums w-16 shrink-0">{occ.date.slice(5)}</span>
+                    <span className="text-sm text-neutral-700 flex-1 truncate">{occ.descripcion || '—'}</span>
+                    <span
+                      className={`text-sm font-semibold tabular-nums shrink-0 ${occ.signedAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                      aria-label={`${occ.signedAmount >= 0 ? 'Ingreso' : 'Gasto'} ${Math.abs(occ.signedAmount)} ${occ.moneda}`}
+                    >
+                      {occ.signedAmount >= 0 ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Math.abs(occ.signedAmount))} {occ.moneda}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {props.forecast.occurrences.length > 8 && (
+                <p className="text-xs text-neutral-500 mt-2">
+                  y {props.forecast.occurrences.length - 8} movimiento{props.forecast.occurrences.length - 8 === 1 ? '' : 's'} más en los próximos 30 días.
+                </p>
+              )}
+            </div>
+
+            {props.insights.length > 0 && (
+              <div>
+                <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+                  Tendencias del período
+                </div>
+                <ul className="space-y-1.5" role="list">
+                  {props.insights.map((text, i) => (
+                    <li key={i} role="listitem" className="text-sm text-neutral-700 leading-relaxed">
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </SectionCard>
 
       {!props.canWriteData && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp } from 'lucide-react';
+import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus } from './services/api';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -25,6 +25,8 @@ import { useDashboardData } from './hooks/dashboard/useDashboardData';
 import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
 import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
+import { useImageExtract } from './hooks/dashboard/useImageExtract';
+import { ImageReviewModal, type ReviewFields } from './components/dashboard/ImageReviewModal';
 import { type MovementEditForm, type ConfirmationModalState } from './types/dashboard';
 
 export type { MovementEditForm, ConfirmationModalState };
@@ -171,6 +173,32 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       prev.map((c) => c.id === id ? { ...c, nombre } : c),
     );
   };
+
+  const { isExtracting, extractError, extracted, startExtract, clearExtracted } = useImageExtract();
+  const [isSavingExtracted, setIsSavingExtracted] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = useCallback((file: File) => {
+    void startExtract(file);
+  }, [startExtract]);
+
+  const handleSaveExtracted = useCallback(async (fields: ReviewFields) => {
+    setIsSavingExtracted(true);
+    try {
+      const saved = await api.saveMovimientos(
+        [{ monto: fields.monto, tipo: fields.tipo, moneda: fields.moneda, categoria: fields.categoria, empresa: fields.empresa || null, descripcion: fields.descripcion }],
+        'Ticket extraído desde imagen',
+      );
+      prependMovements(saved.map((m) => ({ ...m, conciliado: m.conciliado ?? true })));
+      toast.success('Movimiento guardado desde imagen.');
+      clearExtracted();
+    } catch {
+      toast.error('No se pudo guardar el movimiento.');
+    } finally {
+      setIsSavingExtracted(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearExtracted, queryClient]);
 
   const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
     categories, customCompanies, canWriteData,
@@ -378,12 +406,34 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         {canWriteData && activeTab === 'movimientos' && (
           <div className="space-y-4">
-            <SectionCard title="Centro de carga" description="Usá lenguaje natural para registrar movimientos, crear empresas o borrar el último movimiento.">
-              <div className="relative group">
+            <SectionCard title="Centro de carga" description="Usá lenguaje natural para registrar movimientos, o subí una foto de un ticket para extraerlo automáticamente.">
+              <div
+                className="relative group"
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files?.[0]; if (file) handleImageFile(file); }}
+              >
                 <label htmlFor="message-input" className="sr-only">Movimiento en lenguaje natural</label>
-                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[140px] p-6 pb-20 sm:pb-6 bg-[var(--app-surface-1)] text-[var(--app-text-1)] border border-[var(--app-border)] rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o 'Agregar empresa Casa'" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
+                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[140px] p-6 pb-20 sm:pb-6 bg-[var(--app-surface-1)] text-[var(--app-text-1)] border border-[var(--app-border)] rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o arrastrá una foto de ticket acá" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
                 <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:bottom-4 sm:right-4 flex items-center justify-end gap-3">
                   <span className="text-xs text-neutral-500 hidden sm:block">Ctrl + Enter</span>
+                  <button
+                    type="button"
+                    aria-label="Subir foto de ticket"
+                    title="Subir foto de ticket"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isExtracting}
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-neutral-200 text-neutral-600 hover:border-[var(--app-border-strong)] active:scale-[0.94] transition disabled:opacity-50"
+                  >
+                    {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    aria-label="Seleccionar imagen de ticket"
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageFile(file); e.target.value = ''; }}
+                  />
                   <button id="process-button" onClick={() => void handleProcess()} disabled={!inputText.trim() || isProcessing} className="flex items-center gap-2 bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-border-strong)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)] sm:w-auto w-full justify-center">
                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     {isProcessing ? 'Procesando...' : 'Enviar'}
@@ -391,6 +441,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 </div>
               </div>
               {error && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
+              {extractError && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-amber-50 text-amber-700 rounded-xl border border-amber-100 text-sm"><AlertCircle className="w-4 h-4" />{extractError}</div>}
             </SectionCard>
           </div>
         )}
@@ -425,6 +476,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               </Suspense>
             </div>
         </main>
+
+        {extracted && (
+          <ImageReviewModal
+            extracted={extracted}
+            isSaving={isSavingExtracted}
+            onSave={(fields) => void handleSaveExtracted(fields)}
+            onCancel={clearExtracted}
+          />
+        )}
 
         <DashboardModals
           editingMovement={editingMovement} movementEditForm={movementEditForm} setMovementEditForm={setMovementEditForm}

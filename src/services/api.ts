@@ -405,6 +405,21 @@ export type RecurrenteRequest = {
   day_of_month?: number | null;
 };
 
+export type PhotoSourceType = "photo" | "handwritten" | "pdf" | "multi";
+
+export interface ImageExtractionResult {
+  monto: number | null;
+  moneda: "ARS" | "USD";
+  tipo: "ingreso" | "egreso";
+  empresa: string | null;
+  cuit: string | null;
+  categoria: string;
+  descripcion: string;
+  fecha: string | null;
+  confidence: number;
+  sourceType: PhotoSourceType;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -455,6 +470,13 @@ export const api = {
     return fetchApi("/api/extract", {
       method: "POST",
       body: JSON.stringify({ text, categories }),
+    });
+  },
+
+  async extractImage(imageBase64: string, mimeType: string): Promise<ImageExtractionResult> {
+    return fetchApi("/api/extract-image", {
+      method: "POST",
+      body: JSON.stringify({ image: imageBase64, mimeType }),
     });
   },
 

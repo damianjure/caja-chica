@@ -88,6 +88,7 @@ import { createDriveRouter } from "./routes/drive.ts";
 import { createInformesRouter } from "./routes/informes.ts";
 import { createDashboardRouter } from "./routes/dashboard.ts";
 import { createCronsRouter } from "./routes/crons.ts";
+import { createImageExtractRouter } from "./routes/imageExtract.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
@@ -248,7 +249,15 @@ export function createApp({
     listDashboardMembersFn(supabase, dashboardId);
 
   app.use(withCors(allowedOrigins));
-  app.use(express.json());
+  // The /api/extract-image body is parsed inside its own router, AFTER auth +
+  // strict rate-limit (see routes/imageExtract.ts). Skip the global JSON parser for
+  // that path so an unauthenticated request can never make the server buffer a large
+  // upload before the 401 (pre-auth memory-DoS guard).
+  const globalJson = express.json();
+  app.use((req, res, next) => {
+    if (req.path === "/api/extract-image") return next();
+    return globalJson(req, res, next);
+  });
 
   // Global rate limiting by HTTP method tier
   app.get("/api/*", tierRead);
@@ -538,6 +547,11 @@ export function createApp({
     bot: bot ?? null,
     dashboardUrl: publicAppUrl ?? "",
     cronSecret,
+  }));
+  app.use(createImageExtractRouter({
+    genAI,
+    requireSession,
+    tierStrict,
   }));
 
   return app;

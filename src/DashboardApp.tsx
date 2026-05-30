@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { Send, AlertCircle, Loader2, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera, Search } from 'lucide-react';
+import { Send, AlertCircle, Loader2, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Camera, Search } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
@@ -50,12 +50,10 @@ export interface DashboardAppProps {
   onSetThemePreference: (p: ThemePreference) => void;
 }
 
-export type DashboardTab = 'resumen' | 'movimientos' | 'gastos' | 'ingresos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
+export type DashboardTab = 'resumen' | 'movimientos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
 
 const ResumenTab = lazy(() => import('./components/dashboard/tabs/ResumenTab'));
 const EmpresasTab = lazy(() => import('./components/dashboard/tabs/EmpresasTab'));
-const GastosTab = lazy(() => import('./components/dashboard/tabs/GastosTab'));
-const IngresosTab = lazy(() => import('./components/dashboard/tabs/IngresosTab'));
 const MovimientosTab = lazy(() => import('./components/dashboard/tabs/MovimientosTab'));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then((m) => ({ default: m.AdminPanel })));
 const BotConnectionPanel = lazy(() => import('./components/BotConnectionPanel').then((m) => ({ default: m.BotConnectionPanel })));
@@ -64,9 +62,7 @@ const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/Recurrente
 
 const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
   { id: 'resumen', label: 'Resumen', description: 'Un vistazo de empresas, ingresos y gastos del período', icon: LayoutGrid },
-  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo de todos tus movimientos', icon: ArrowUpDown },
-  { id: 'gastos', label: 'Gastos', description: 'Categorías, etiquetas y gastos por empresa', icon: TrendingDown },
-  { id: 'ingresos', label: 'Ingresos', description: 'Categorías, etiquetas e ingresos por empresa', icon: TrendingUp },
+  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo, filtros y exportación', icon: ArrowUpDown },
   { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
   { id: 'empresas', label: 'Empresas', description: 'Saldos, informes y backups de datos', icon: Building2 },
   { id: 'configuracion', label: 'Configuración', description: 'Cuenta, equipo, permisos y Drive', icon: Settings },
@@ -74,7 +70,7 @@ const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: str
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
 const VALID_TABS: ReadonlyArray<DashboardTab> = [
-  'resumen', 'movimientos', 'gastos', 'ingresos', 'recurrentes', 'empresas', 'superadmin', 'configuracion',
+  'resumen', 'movimientos', 'recurrentes', 'empresas', 'superadmin', 'configuracion',
 ];
 
 function readPersistedTab(): DashboardTab {
@@ -538,8 +534,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} />}
                 {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} onExport={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
-                {activeTab === 'gastos' && <GastosTab arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} usdEgreso={formatCurrency(usdTotals.egreso, 'USD')} categoryCount={filteredExpenseCategorySummaries.length} canWriteData={canWriteData} categorySummaries={filteredExpenseCategorySummaries} monthlyChartData={expenseMonthlyChartData} expenseCompanyOptions={companiesList} selectedExpenseCompany={selectedExpenseCompany} setSelectedExpenseCompany={setSelectedExpenseCompany} expenseCompanies={expenseCompanies} recentExpenses={recentExpenses} formatCurrency={formatCurrency} />}
-                {activeTab === 'ingresos' && <IngresosTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} usdIngreso={formatCurrency(usdTotals.ingreso, 'USD')} sourceCount={incomeSummaries.length} topIncomeSources={topIncomeSources} incomeTags={topIncomeTags} recentIncomes={recentIncomes} formatCurrency={formatCurrency} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} onDrilldown={(company, category) => { setSelectedCompany(company); setSelectedCategory(category); setMovementType('all'); setMovementCurrency('all'); setDatePeriod('all'); setActiveTab('movimientos'); }} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><div className="space-y-6"><BotConnectionPanel /><AdminPanel viewer={viewer} /></div></Suspense>}

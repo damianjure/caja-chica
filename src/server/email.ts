@@ -187,6 +187,38 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       line-height: 1.55;
       color: oklch(32% 0.04 80);
     }
+    .caps {
+      margin: 18px 0 22px;
+      border: 1px solid oklch(92% 0.005 95);
+      border-radius: 12px;
+      padding: 16px 18px;
+      background: oklch(98.5% 0.003 95);
+    }
+    .caps h3 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: oklch(45% 0.01 95);
+    }
+    .caps ul { list-style: none; margin: 0; padding: 0; }
+    .caps li {
+      position: relative;
+      padding: 0 0 9px 26px;
+      font-size: 14px;
+      line-height: 1.45;
+      color: oklch(30% 0.01 95);
+    }
+    .caps li:last-child { padding-bottom: 0; }
+    .caps li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: oklch(55% 0.12 148);
+      font-weight: 800;
+    }
     .section { margin: 32px 0 8px; }
     .section h3 {
       margin: 0 0 14px;
@@ -312,6 +344,9 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       .section h3 { color: oklch(65% 0.01 95); }
       ol.steps li { color: oklch(82% 0.005 95); }
       ol.steps li::before { background: oklch(26% 0.008 95); color: oklch(82% 0.005 95); }
+      .caps { background: oklch(24% 0.008 95); border-color: oklch(30% 0.008 95); }
+      .caps h3 { color: oklch(65% 0.01 95); }
+      .caps li { color: oklch(82% 0.005 95); }
       .rule { border-top-color: oklch(28% 0.008 95); }
       .footer p { color: oklch(58% 0.01 95); }
       .badge { background: oklch(30% 0.06 148); color: oklch(88% 0.08 148); }
@@ -344,14 +379,46 @@ function baseTemplate(title: string, preheader: string, body: string): string {
 </html>`;
 }
 
-export function appInvitationHtml(inviteUrl: string): string {
+// Checklist block (design B) — capabilities rendered as a ✓ list.
+function capsBlock(title: string, items: string[]): string {
+  const lis = items.map((i) => `<li>${escapeHtml(i)}</li>`).join("");
+  return `<div class="caps"><h3>${escapeHtml(title)}</h3><ul>${lis}</ul></div>`;
+}
+
+// Brand signoff (decision 2026-05: personal body voice + brand closing).
+const BRAND_SIGNOFF = `
+    <p class="signoff">Cualquier duda, respondé este email.</p>
+    <p class="signoff"><strong>El equipo de Caja Chica</strong></p>`;
+
+export function appInvitationHtml(inviteUrl: string, inviterName?: string): string {
   const safeUrl = escapeHtml(inviteUrl);
-  // Single-CTA welcome email (research-driven, 2026-05-21 redesign).
-  // No feature dump, no nested step boxes — one activation action only.
+  const safeName = inviterName?.trim() ? escapeHtml(inviterName.trim()) : null;
+  // Owner flavor: this invite gives the person their own dashboard (they become owner).
+  // Body voice is personal (dynamic inviter — no hardcoded name); signoff is brand voice.
+  const fromLine = safeName
+    ? `<p class="from"><strong>${safeName}</strong> · Caja Chica</p>`
+    : `<p class="from"><strong>Caja Chica</strong></p>`;
+  const title = safeName
+    ? `${safeName} te dio tu propio dashboard.`
+    : `Tu dashboard en Caja Chica está listo.`;
+
+  const caps = capsBlock("Como dueño vas a poder", [
+    "Cargar, editar y borrar movimientos",
+    "Crear empresas y categorías",
+    "Generar y exportar informes",
+    "Invitar gente: editores y lectores",
+  ]);
+
+  const team = `<div class="note"><strong>Cuando sumes gente, elegís el acceso:</strong><br>` +
+    `• <strong>Puede editar</strong>: ve y carga movimientos en tiempo real, crea empresas y categorías. No invita.<br>` +
+    `• <strong>Puede ver</strong>: solo lectura — ve movimientos, saldos e informes. No carga ni edita.</div>`;
+
   const body = `
-    <p class="from"><strong>Damián</strong> · Caja Chica</p>
-    <h1 class="title">Te invité a Caja Chica.</h1>
-    <p class="lede">Es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
+    ${fromLine}
+    <h1 class="title">${title}</h1>
+    <p class="lede">Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
+
+    ${caps}
 
     <div class="cta">
       <a href="${safeUrl}">Entrar con Google</a>
@@ -359,11 +426,11 @@ export function appInvitationHtml(inviteUrl: string): string {
 
     <p class="fine">Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.</p>
 
-    <p class="signoff">Cualquier cosa, respondé este mail. Lo leo yo.</p>
-    <p class="signoff"><strong>Damián</strong></p>
+    ${team}
+    ${BRAND_SIGNOFF}
   `;
   return baseTemplate(
-    "Te invité a Caja Chica",
+    "Te invitaron a Caja Chica",
     "Entrá con Google y empezá a registrar movimientos escribiendo como hablás.",
     body,
   );
@@ -376,16 +443,27 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
   const safeInviterName = escapeHtml(inviterName);
   const isEditor = role === "editor";
   const roleBadge = isEditor ? "Puede editar" : "Puede ver";
-  const rolePerk = isEditor
-    ? "podés ver y cargar movimientos en tiempo real."
-    : "podés ver todos los movimientos del dashboard.";
 
-  // Single-CTA dashboard invite (research-driven, 2026-05-21 redesign).
-  // Telegram, if pre-authorized, becomes a small secondary line — not a full section.
+  // Design B: capabilities as a ✓ checklist, tailored to the role.
+  const caps = isEditor
+    ? capsBlock("Con tu acceso (Puede editar) vas a poder", [
+        "Ver todos los movimientos en tiempo real",
+        "Cargar movimientos (texto, foto o voz)",
+        "Crear empresas y categorías",
+      ])
+    : capsBlock("Con tu acceso (Puede ver) vas a poder", [
+        "Ver todos los movimientos del dashboard",
+        "Consultar saldos por empresa",
+        "Ver y descargar informes",
+      ]);
+
+  // Body voice personal (dynamic inviter from email); signoff brand voice.
   const body = `
     <p class="from"><strong>${safeInviterName}</strong> · vía Caja Chica</p>
     <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
-    <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span> así ${rolePerk}</p>
+    <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span>.</p>
+
+    ${caps}
 
     <div class="cta">
       <a href="${safeUrl}">Entrar con Google</a>
@@ -396,9 +474,7 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
     ${telegramDeepLink ? `
     <p class="aside">¿Preferís cargar gastos por Telegram? <a class="link" href="${escapeHtml(telegramDeepLink)}">Sumarlo después del primer login →</a></p>
     ` : ``}
-
-    <p class="signoff">Cualquier cosa, respondé este mail.</p>
-    <p class="signoff"><strong>${safeInviterName}</strong></p>
+    ${BRAND_SIGNOFF}
     <p class="from-footer">Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.</p>
   `;
   return baseTemplate(
@@ -550,8 +626,9 @@ export async function sendAppInvitationEmail(
   to: string,
   inviteUrl: string,
   emailType?: EmailType,
+  inviterName?: string,
 ): Promise<void> {
-  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl), {
+  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl, inviterName), {
     emailType: emailType ?? "app_invite",
   });
 }

@@ -221,6 +221,69 @@ test("email_log: failed send inserts row with ok=false + error_body", async () =
   assert.ok(typeof row.error_body === "string", "error_body should be a string");
 });
 
+// -----------------------------------------------------------------------
+// SDD dashboard-redesign · S1 EMAIL — role-aware checklist (design B),
+// personal body voice (dynamic inviter, de-hardcode), brand signoff.
+// -----------------------------------------------------------------------
+
+const BRAND_SIGNOFF = "El equipo de Caja Chica";
+
+test("appInvitationHtml: owner flavor lists owner capabilities incl. inviting", async () => {
+  const { appInvitationHtml } = await import("../src/server/email.ts");
+  const html = appInvitationHtml("https://x/invite", "Lucía");
+  // owner caps
+  assert.match(html, /editar/i);
+  assert.match(html, /[Ii]nvitar/);
+  // checklist markup (design B uses <li> items)
+  assert.match(html, /<li/);
+  // explains the two roles the owner can invite
+  assert.match(html, /[Pp]uede editar/);
+  assert.match(html, /[Pp]uede ver/);
+});
+
+test("appInvitationHtml: body uses the dynamic inviter name (no hardcoded 'Damián')", async () => {
+  const { appInvitationHtml } = await import("../src/server/email.ts");
+  const html = appInvitationHtml("https://x/invite", "Lucía");
+  assert.match(html, /Lucía/);
+  assert.doesNotMatch(html, /Damián/, "inviter name must be dynamic, not hardcoded");
+});
+
+test("appInvitationHtml: signoff is brand voice, not first-person 'Lo leo yo'", async () => {
+  const { appInvitationHtml } = await import("../src/server/email.ts");
+  const html = appInvitationHtml("https://x/invite", "Lucía");
+  assert.match(html, new RegExp(BRAND_SIGNOFF));
+  assert.doesNotMatch(html, /Lo leo yo/, "old personal signoff must be gone");
+});
+
+test("appInvitationHtml: without inviter name still renders + brand signoff", async () => {
+  const { appInvitationHtml } = await import("../src/server/email.ts");
+  const html = appInvitationHtml("https://x/invite");
+  assert.match(html, /Caja Chica/);
+  assert.match(html, new RegExp(BRAND_SIGNOFF));
+  assert.doesNotMatch(html, /Damián/);
+});
+
+test("dashboardInvitationHtml: editor flavor = checklist of edit+view caps, brand signoff", async () => {
+  const { dashboardInvitationHtml } = await import("../src/server/email.ts");
+  const html = dashboardInvitationHtml("https://x/join", "editor", "ana@empresa.com");
+  assert.match(html, /Puede editar/);
+  assert.match(html, /<li/);
+  assert.match(html, /[Cc]argar/);
+  assert.match(html, new RegExp(BRAND_SIGNOFF));
+  // dynamic inviter derived from email
+  assert.match(html, /ana/);
+  assert.doesNotMatch(html, /Damián/);
+});
+
+test("dashboardInvitationHtml: viewer flavor = read-only caps", async () => {
+  const { dashboardInvitationHtml } = await import("../src/server/email.ts");
+  const html = dashboardInvitationHtml("https://x/join", "viewer", "ana@empresa.com");
+  assert.match(html, /Puede ver/);
+  assert.match(html, /<li/);
+  assert.match(html, /[Ss]aldos|[Ii]nformes|[Vv]er/);
+  assert.match(html, new RegExp(BRAND_SIGNOFF));
+});
+
 test("email_log: throwing supabase insert does NOT reject sendAppInvitationEmail", async () => {
   const { configureEmail, sendAppInvitationEmail } = await import("../src/server/email.ts");
   const { invalidateSenderCache } = await import("../src/server/emailSettings.ts");

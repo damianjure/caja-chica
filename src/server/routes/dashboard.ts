@@ -14,7 +14,7 @@ export interface DashboardDeps {
   randomBytes: (size: number) => Buffer;
   buildTelegramDeepLink: (token: string | null) => string | null;
   sendDashboardInvitationEmail: (to: string, inviteUrl: string, role: string, inviterEmail: string, telegramDeepLink?: string) => Promise<void>;
-  sendAppInvitationEmail: (to: string, inviteUrl: string) => Promise<void>;
+  sendAppInvitationEmail: (to: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<void>;
   purgeDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
   tierRead: RequestHandler;
   tierResend: RequestHandler;
@@ -617,7 +617,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
       // Dispatch email based on table type
       if (table === "user_invitations") {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
-        void sendAppInvitationEmail(row.email, inviteUrl);
+        void sendAppInvitationEmail(row.email, inviteUrl, undefined, session.email.split("@")[0]);
       } else {
         const inviteUrl = `${publicAppUrl || ""}/join?token=${currentToken}`;
         void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email);

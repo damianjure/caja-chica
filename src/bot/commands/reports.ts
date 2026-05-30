@@ -10,14 +10,13 @@ import {
 import { requireLinkedAccount, replyExpiredSession } from "../utils.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
 import { buildReportFile, buildSaldosReport } from "../../server/reportExports.ts";
-import { filterMovementsForReport, resolveReportDateRange, type ReportExportRequest } from "../../reports/shared.ts";
+import { filterMovementsForReport, resolveReportDateRange, buildReportSummaryText, type ReportExportRequest } from "../../reports/shared.ts";
 import { buildToggleCallbackData, resolveSelectedCompanies, buildAlcanceKeyboard } from "../../server/reportBotHelpers.ts";
 import { uploadFileToDrive, decryptToken } from "../../server/drive.ts";
 import { can } from "../../server/permissions.ts";
 import {
   buildTemporalidadKeyboard,
-  buildFormatKeyboard,
-  buildDestinationKeyboard,
+  buildDownloadKeyboard,
   buildTipoKeyboard,
 } from "../keyboards.ts";
 
@@ -51,6 +50,41 @@ async function canUseDriveViaTelegram(supabase: BotDeps["supabase"], linked: Tel
   return (data?.length ?? 0) > 0;
 }
 
+// Fetch + filter the movements for the session's period/scope/tipo. Shared by
+// the chat summary (showReportSummary) and the file generation (generateAndSendReport).
+async function loadReportData(supabase: BotDeps["supabase"], session: ReportSession) {
+  const periodRequest: Pick<ReportExportRequest, "period" | "anchorDate" | "month" | "from" | "to"> = {
+    period: session.period,
+    anchorDate: session.anchorDate,
+    month: session.month,
+    from: session.from,
+    to: session.to,
+  };
+  const range = resolveReportDateRange(periodRequest);
+  if (!range) return null;
+
+  const { data: movs } = await applyTelegramDataScope(
+    supabase.from("movimientos").select("*").is("deleted_at", null),
+    session.linked,
+  );
+  const companies = resolveSelectedCompanies(session.selectedCompanyIdx, session.companyChoices ?? []);
+  const tipoFilter = (session.tipo && session.tipo !== "saldos") ? session.tipo : "all";
+  const filters = { companies, tipo: tipoFilter as "all" | "ingreso" | "egreso", moneda: "all" as const };
+  const filtered = filterMovementsForReport(movs ?? [], filters, range);
+  return { range, filtered, filters };
+}
+
+// Show the report numbers in chat, then offer download (export-after-report flow).
+async function showReportSummary(supabase: BotDeps["supabase"], ctx: Context, session: ReportSession) {
+  const loaded = await loadReportData(supabase, session);
+  if (!loaded) return ctx.reply("❌ Período inválido. Intentá de nuevo con /informes.");
+  const driveAvailable = await canUseDriveViaTelegram(supabase, session.linked);
+  await ctx.reply(buildReportSummaryText(loaded.filtered as any[], loaded.range.label), {
+    parse_mode: "Markdown",
+    reply_markup: buildDownloadKeyboard(driveAvailable),
+  });
+}
+
 async function generateAndSendReport(
   supabase: BotDeps["supabase"],
   ctx: Context,
@@ -61,27 +95,9 @@ async function generateAndSendReport(
   const linked = session.linked;
   const today = new Date().toISOString().slice(0, 10);
 
-  const periodRequest: Pick<ReportExportRequest, "period" | "anchorDate" | "month" | "from" | "to"> = {
-    period: session.period,
-    anchorDate: session.anchorDate,
-    month: session.month,
-    from: session.from,
-    to: session.to,
-  };
-
-  const range = resolveReportDateRange(periodRequest);
-  if (!range) return ctx.reply("❌ Período inválido. Intentá de nuevo con /informes.");
-
-  const { data: movs } = await applyTelegramDataScope(
-    supabase.from("movimientos").select("*").is("deleted_at", null),
-    linked,
-  );
-
-  const companies = resolveSelectedCompanies(session.selectedCompanyIdx, session.companyChoices ?? []);
-  const tipoFilter = (session.tipo && session.tipo !== "saldos") ? session.tipo : "all";
-  const filters = { companies, tipo: tipoFilter as "all" | "ingreso" | "egreso", moneda: "all" as const };
-
-  const filtered = filterMovementsForReport(movs ?? [], filters, range);
+  const loaded = await loadReportData(supabase, session);
+  if (!loaded) return ctx.reply("❌ Período inválido. Intentá de nuevo con /informes.");
+  const { range, filtered, filters } = loaded;
   const dateSlug = session.from ? `${session.from}_${session.to}` : (session.month ?? session.anchorDate ?? today);
   const tipoSlug = session.tipo ?? "todos";
   const fileName = `informe_${tipoSlug}_${session.period}_${dateSlug}.${format}`;
@@ -307,34 +323,27 @@ export function registerReportHandlers(bot: Bot, deps: BotDeps) {
     else if (key === "egr") session.tipo = "egreso";
     else if (key === "sal") session.tipo = "saldos";
     else return ctx.reply("Tipo inválido.");
-    session.step = "format";
+    session.step = "download";
     pendingReportSessions.set(ctx.chat.id, session);
-    await ctx.reply("📄 Elegí el formato:", { reply_markup: buildFormatKeyboard() });
+    await showReportSummary(supabase, ctx, session);
   });
 
-  // Step 4: format
-  bot.callbackQuery(/^rf:(.+)$/, async (ctx) => {
+  // Step 4: download (export-after-report) — el usuario ya vio el resumen en el chat
+  // y elige cómo bajarlo. rg:<dest>:<format>
+  bot.callbackQuery(/^rg:(local|drive):(csv|pdf)$/, async (ctx) => {
     ctx.answerCallbackQuery();
     const session = getReportSession(ctx.chat.id);
-    if (!session || session.step !== "format") {
+    if (!session || session.step !== "download") {
       return replyExpiredSession(ctx, "rp_start", "🔄 Empezar de nuevo");
     }
-    const format = ctx.match[1] as "csv" | "pdf";
-    session.format = format;
-    session.step = "destino";
-    pendingReportSessions.set(ctx.chat.id, session);
-
-    const driveAvailable = await canUseDriveViaTelegram(supabase, session.linked);
-    if (driveAvailable) {
-      await ctx.reply("☁️ ¿Dónde querés guardar el informe?", { reply_markup: buildDestinationKeyboard() });
-    } else {
-      clearReportSession(ctx.chat.id);
-      const processingMsg = await ctx.reply("⏳ Generando informe...");
-      try {
-        await generateAndSendReport(supabase, ctx, session, format, "local");
-      } finally {
-        ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id).catch(() => {});
-      }
+    const destination = ctx.match[1] as "local" | "drive";
+    const format = ctx.match[2] as "csv" | "pdf";
+    clearReportSession(ctx.chat.id);
+    const processingMsg = await ctx.reply("⏳ Generando informe...");
+    try {
+      await generateAndSendReport(supabase, ctx, session, format, destination);
+    } finally {
+      ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id).catch(() => {});
     }
   });
 
@@ -354,27 +363,6 @@ export function registerReportHandlers(bot: Bot, deps: BotDeps) {
       session.step = "tipo";
       pendingReportSessions.set(ctx.chat.id, session);
       await ctx.reply("💼 Elegí tipo de informe:", { reply_markup: buildTipoKeyboard() });
-    } else if (target === "format") {
-      session.step = "format";
-      pendingReportSessions.set(ctx.chat.id, session);
-      await ctx.reply("📄 Elegí el formato:", { reply_markup: buildFormatKeyboard() });
-    }
-  });
-
-  // Step 5: destination
-  bot.callbackQuery(/^rd:(.+)$/, async (ctx) => {
-    ctx.answerCallbackQuery();
-    const session = getReportSession(ctx.chat.id);
-    if (!session || !session.format) {
-      return replyExpiredSession(ctx, "rp_start", "🔄 Empezar de nuevo");
-    }
-    const destination = ctx.match[1] as "local" | "drive";
-    clearReportSession(ctx.chat.id);
-    const processingMsg = await ctx.reply("⏳ Generando informe...");
-    try {
-      await generateAndSendReport(supabase, ctx, session, session.format, destination);
-    } finally {
-      ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id).catch(() => {});
     }
   });
 }

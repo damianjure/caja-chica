@@ -7,18 +7,6 @@ export function buildTemporalidadKeyboard() {
     .text("📅 Último año", "rt:anio").text("📅 Rango", "rt:rango");
 }
 
-export function buildFormatKeyboard() {
-  return new InlineKeyboard()
-    .text("📊 CSV", "rf:csv").text("📄 PDF", "rf:pdf").row()
-    .text("← Atrás", "rb:tipo");
-}
-
-export function buildDestinationKeyboard() {
-  return new InlineKeyboard()
-    .text("⬇️ Descargar acá", "rd:local").text("☁️ Guardar en Drive", "rd:drive").row()
-    .text("← Atrás", "rb:format");
-}
-
 export function buildTipoKeyboard() {
   return new InlineKeyboard()
     .text("📈 Ingresos", "rk:ing").text("📉 Gastos", "rk:egr").text("⚖️ Saldos", "rk:sal").row()
@@ -33,6 +21,19 @@ export function buildMainKeyboard(dashboardUrl: string) {
     .text("💰 Hoy", "qs:hoy").text("📅 Semana", "qs:sem").row()
     .text("✏️ Gestionar", "mng:open").row()
     .url("🌐 Abrir Dashboard", dashboardUrl);
+}
+
+// Descarga del informe DESPUÉS de mostrarlo en el chat. callback rg:<dest>:<format>.
+// Compartir no va acá: el bot no puede abrir el sheet del OS — el usuario comparte
+// el documento desde la propia UI de Telegram al tocarlo.
+export function buildDownloadKeyboard(driveAvailable: boolean) {
+  const kb = new InlineKeyboard()
+    .text("⬇️ CSV", "rg:local:csv").text("⬇️ PDF", "rg:local:pdf").row();
+  if (driveAvailable) {
+    kb.text("☁️ Drive CSV", "rg:drive:csv").text("☁️ Drive PDF", "rg:drive:pdf").row();
+  }
+  kb.text("← Atrás", "rb:tipo");
+  return kb;
 }
 
 // Submenú de acciones destructivas/edición — sale del teclado principal para

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildMainKeyboard, buildGestionarKeyboard } from "../src/bot/keyboards.ts";
+import { buildMainKeyboard, buildGestionarKeyboard, buildDownloadKeyboard } from "../src/bot/keyboards.ts";
 
 function buttons(kb: any) {
   return (kb.inline_keyboard as any[]).flat();
@@ -40,4 +40,20 @@ test("buildGestionarKeyboard: agrupa las destructivas + volver", () => {
   assert.ok(cbs.includes("del_last"), "borrar último");
   assert.ok(cbs.includes("del_emp"), "borrar empresa");
   assert.ok(cbs.includes("menu"), "volver al menú");
+});
+
+test("buildDownloadKeyboard(false): descarga local CSV/PDF + back, sin Drive", () => {
+  const kb = buildDownloadKeyboard(false);
+  const cbs = buttons(kb).map((b) => b.callback_data).filter(Boolean) as string[];
+  assert.ok(cbs.includes("rg:local:csv"));
+  assert.ok(cbs.includes("rg:local:pdf"));
+  assert.ok(!cbs.includes("rg:drive:csv"), "sin Drive cuando no está disponible");
+  assert.ok(cbs.includes("rb:tipo"), "back a tipo");
+});
+
+test("buildDownloadKeyboard(true): suma Drive CSV/PDF", () => {
+  const kb = buildDownloadKeyboard(true);
+  const cbs = buttons(kb).map((b) => b.callback_data).filter(Boolean) as string[];
+  assert.ok(cbs.includes("rg:drive:csv"));
+  assert.ok(cbs.includes("rg:drive:pdf"));
 });

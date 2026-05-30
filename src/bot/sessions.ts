@@ -10,7 +10,7 @@ function unrefInterval(timer: ReturnType<typeof setInterval>) {
 // --- REPORT SESSION ---
 
 export interface ReportSession {
-  step: "temporalidad" | "date_pick" | "date_from" | "date_to" | "alcance" | "alcance_pick" | "tipo" | "format" | "destino";
+  step: "temporalidad" | "date_pick" | "date_from" | "date_to" | "alcance" | "alcance_pick" | "tipo" | "download";
   temporalidad?: "por_dia" | "ultimo_dia" | "ultima_semana" | "ultimo_mes" | "ultimo_anio" | "rango";
   period: "day" | "week" | "month" | "range";
   anchorDate?: string;

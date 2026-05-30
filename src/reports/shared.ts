@@ -91,6 +91,34 @@ export function resolveReportDateRange(
   return null;
 }
 
+/**
+ * Short markdown summary for the chat (export-after-report flow).
+ * Counts + ingresos/gastos/neto per currency. Pure.
+ */
+export function buildReportSummaryText(
+  movements: Array<{ tipo: string; moneda: string; monto: number | string }>,
+  rangeLabel: string,
+): string {
+  let ingArs = 0, egrArs = 0, ingUsd = 0, egrUsd = 0;
+  for (const m of movements) {
+    const amt = typeof m.monto === "number" ? m.monto : parseFloat(String(m.monto)) || 0;
+    if (m.moneda === "USD") {
+      if (m.tipo === "ingreso") ingUsd += amt; else egrUsd += amt;
+    } else {
+      if (m.tipo === "ingreso") ingArs += amt; else egrArs += amt;
+    }
+  }
+  const n = movements.length;
+  const fmt = (x: number) => x.toLocaleString("es-AR");
+  const usd = (ars: string, u: number) => (u ? `${ars} · u$s${fmt(u)}` : ars);
+  return [
+    `📊 *${rangeLabel}* — ${n} movimiento${n === 1 ? "" : "s"}`,
+    `💚 Ingresos: ${usd(`$${fmt(ingArs)}`, ingUsd)}`,
+    `🔴 Gastos: ${usd(`$${fmt(egrArs)}`, egrUsd)}`,
+    `⚖️ Neto: ${usd(`$${fmt(ingArs - egrArs)}`, ingUsd - egrUsd)}`,
+  ].join("\n");
+}
+
 export function filterMovementsForReport(
   history: ReportMovimientoLike[],
   filters: ReportFilters,

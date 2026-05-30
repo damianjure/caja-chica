@@ -14,8 +14,7 @@ interface ResumenTabProps {
   monthlyChartDataUsd: Array<{ label: string; income: number; expense: number; net: number }>;
   topExpenseCategories: Array<{ label: string; value: number; secondary?: string }>;
   topCompanies: Array<{ label: string; value: number; valueLabel?: string; secondary?: string; supportingValue?: string; segments?: Array<{ value: number; colorClass: string; label: string; currency?: 'ARS' | 'USD' }> }>;
-  topExpenseLabel: string;
-  topExpenseValue: string;
+  incomeTags: Array<{ label: string; value: string; secondary?: string }>;
   netPositive: boolean;
   canWriteData: boolean;
   forecast: ForecastResult;
@@ -35,62 +34,40 @@ export default function ResumenTab(props: ResumenTabProps) {
         <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="space-y-6">
-          <ChartCard
-            title="Pulso mensual ARS"
-            description="La evolución compara mes contra mes cuánto entró, cuánto salió y qué saldo te quedó en pesos."
-            footer={
-              <div className="flex flex-wrap gap-3 text-xs text-neutral-500">
-                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-income)' }} />Ingresos</span>
-                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-expense)' }} />Gastos</span>
-                <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-net)' }} />Saldo</span>
-              </div>
-            }
-          >
-            {props.monthlyChartDataArs.length === 0 ? (
-              <EmptyState
-                title="Aún no hay historia en pesos."
-                hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
-                canWrite={props.canWriteData}
-                cta="Cargá tu primer movimiento desde el campo de arriba."
-                icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
-              />
-            ) : (
-              <TrendBars data={props.monthlyChartDataArs} currency="ARS" />
-            )}
-          </ChartCard>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <ChartCard
+          title="Pulso mensual ARS"
+          description="La evolución compara mes contra mes cuánto entró, cuánto salió y qué saldo te quedó en pesos."
+          footer={
+            <div className="flex flex-wrap gap-3 text-xs text-[var(--app-text-3)]">
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-income)' }} />Ingresos</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-expense)' }} />Gastos</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-net)' }} />Saldo</span>
+            </div>
+          }
+        >
+          {props.monthlyChartDataArs.length === 0 ? (
+            <EmptyState
+              title="Aún no hay historia en pesos."
+              hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
+              canWrite={props.canWriteData}
+              cta="Cargá tu primer movimiento desde el campo de arriba."
+              icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
+            />
+          ) : (
+            <TrendBars data={props.monthlyChartDataArs} currency="ARS" />
+          )}
+        </ChartCard>
 
-          <ChartCard
-            title="Pulso mensual USD"
-            description="La misma lectura, pero separada en dólares para no mezclar monedas ni distorsionar la tendencia."
-          >
-            {props.monthlyChartDataUsd.length === 0 ? (
-              <p className="text-sm text-neutral-500">Todavía no hay historia suficiente para ver evolución en dólares.</p>
-            ) : (
-              <TrendBars data={props.monthlyChartDataUsd} currency="USD" />
-            )}
-          </ChartCard>
-        </div>
-
-        <ChartCard title="Lo que necesita atención" description="Una lectura rápida para que entiendas dónde actuar sin escanear todo el dashboard.">
-          <div className="space-y-3">
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Resultado del período</div>
-              <div className={`mt-2 text-2xl font-bold ${props.netPositive ? 'text-green-600' : 'text-red-600'}`}>{props.arsNeto}</div>
-              <p className="mt-1 text-sm text-neutral-500">{props.netPositive ? 'El período viene sano en ARS.' : 'Los gastos están superando a los ingresos en ARS.'}</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Cobertura operativa</div>
-              <div className="mt-2 text-2xl font-bold text-neutral-900">{props.companyCount}</div>
-              <p className="mt-1 text-sm text-neutral-500">empresas o frentes con actividad visible en el dashboard.</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">Top gasto</div>
-              <div className="mt-2 text-lg font-semibold text-neutral-900">{props.topExpenseLabel}</div>
-              <p className="mt-1 text-sm text-neutral-500">{props.topExpenseValue}</p>
-            </div>
-          </div>
+        <ChartCard
+          title="Pulso mensual USD"
+          description="La misma lectura, pero separada en dólares para no mezclar monedas ni distorsionar la tendencia."
+        >
+          {props.monthlyChartDataUsd.length === 0 ? (
+            <p className="text-sm text-[var(--app-text-3)]">Todavía no hay historia suficiente para ver evolución en dólares.</p>
+          ) : (
+            <TrendBars data={props.monthlyChartDataUsd} currency="USD" />
+          )}
         </ChartCard>
       </section>
 
@@ -102,6 +79,22 @@ export default function ResumenTab(props: ResumenTabProps) {
           <HorizontalBarList items={props.topCompanies} emptyLabel="Todavía no hay empresas con actividad." />
         </ChartCard>
       </section>
+
+      {props.incomeTags.length > 0 && (
+        <ChartCard title="Etiquetas de ingreso" description="Qué tipo de ingreso entra más seguido, sin leer uno por uno.">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {props.incomeTags.map((tag) => (
+              <div key={tag.label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-[var(--app-text-1)]">{tag.label}</div>
+                  <div className="text-sm font-semibold text-green-600 tabular-nums" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
+                </div>
+                {tag.secondary ? <div className="mt-1 text-xs text-[var(--app-text-3)]">{tag.secondary}</div> : null}
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      )}
 
       <SectionCard
         title="Proyección a 30 días"
@@ -133,7 +126,7 @@ export default function ResumenTab(props: ResumenTabProps) {
             </div>
 
             <div>
-              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+              <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)] mb-2">
                 Próximos movimientos
               </div>
               <ul className="space-y-1" role="list">
@@ -141,10 +134,10 @@ export default function ResumenTab(props: ResumenTabProps) {
                   <li
                     key={`${occ.date}-${i}`}
                     role="listitem"
-                    className="flex items-center justify-between gap-3 py-1.5 border-b border-neutral-100 last:border-0"
+                    className="flex items-center justify-between gap-3 py-1.5 border-b border-[var(--app-border)] last:border-0"
                   >
-                    <span className="text-xs text-neutral-500 tabular-nums w-16 shrink-0">{occ.date.slice(5)}</span>
-                    <span className="text-sm text-neutral-700 flex-1 truncate">{occ.descripcion || '—'}</span>
+                    <span className="text-xs text-[var(--app-text-3)] tabular-nums w-16 shrink-0">{occ.date.slice(5)}</span>
+                    <span className="text-sm text-[var(--app-text-2)] flex-1 truncate">{occ.descripcion || '—'}</span>
                     <span
                       className={`text-sm font-semibold tabular-nums shrink-0 ${occ.signedAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}
                       aria-label={`${occ.signedAmount >= 0 ? 'Ingreso' : 'Gasto'} ${Math.abs(occ.signedAmount)} ${occ.moneda}`}
@@ -155,7 +148,7 @@ export default function ResumenTab(props: ResumenTabProps) {
                 ))}
               </ul>
               {props.forecast.occurrences.length > 8 && (
-                <p className="text-xs text-neutral-500 mt-2">
+                <p className="text-xs text-[var(--app-text-3)] mt-2">
                   y {props.forecast.occurrences.length - 8} movimiento{props.forecast.occurrences.length - 8 === 1 ? '' : 's'} más en los próximos 30 días.
                 </p>
               )}
@@ -163,12 +156,12 @@ export default function ResumenTab(props: ResumenTabProps) {
 
             {props.insights.length > 0 && (
               <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+                <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)] mb-2">
                   Tendencias del período
                 </div>
                 <ul className="space-y-1.5" role="list">
                   {props.insights.map((text, i) => (
-                    <li key={i} role="listitem" className="text-sm text-neutral-700 leading-relaxed">
+                    <li key={i} role="listitem" className="text-sm text-[var(--app-text-2)] leading-relaxed">
                       {text}
                     </li>
                   ))}

@@ -1,8 +1,10 @@
-import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera } from 'lucide-react';
+import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera, Search } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus } from './services/api';
+import { CommandPalette } from './components/CommandPalette';
+import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
 import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
@@ -236,6 +238,24 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [confirmationInput, setConfirmationInput] = useState('');
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
+  // ── Command palette state + keyboard trigger ────────────────────────────────
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      const trigger = isMac ? e.metaKey && e.key === 'k' : e.ctrlKey && e.key === 'k';
+      if (!trigger) return;
+      // Do not fire inside the composer textarea
+      if ((e.target as HTMLElement)?.id === 'message-input') return;
+      e.preventDefault();
+      setIsPaletteOpen((prev) => !prev);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+  // ───────────────────────────────────────────────────────────────────────────
+
   const tabs = viewer.role === 'superadmin'
     ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: 'Cuentas, dashboards, invitaciones', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
@@ -244,6 +264,46 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     const allowedIds = tabs.map((t) => t.id);
     if (!allowedIds.includes(activeTab)) setActiveTab(tabs[0].id);
   }, [viewer.id, viewer.role, activeTab, tabs]);
+
+  // ── Command palette actions + handler (depend on tabs/canWriteData) ──────────
+  const paletteQuickActions = useMemo((): QuickAction[] => {
+    const actions: QuickAction[] = tabs
+      .filter((t) => t.id !== activeTab)
+      .map((t) => ({
+        id: `goto-${t.id}`,
+        label: `Ir a ${t.label}`,
+        description: t.description,
+        group: 'Acciones',
+      }));
+    if (canWriteData) {
+      actions.push({
+        id: 'open-composer',
+        label: 'Registrar movimiento',
+        description: 'Ir al compositor de movimientos en lenguaje natural',
+        group: 'Acciones',
+      });
+    }
+    return actions;
+  }, [tabs, activeTab, canWriteData]);
+
+  const handlePaletteSelect = useCallback((item: CommandResult) => {
+    if (item.type === 'action') {
+      if (item.id.startsWith('goto-')) {
+        const tabId = item.id.slice('goto-'.length) as DashboardTab;
+        setActiveTab(tabId);
+      } else if (item.id === 'open-composer') {
+        setActiveTab('movimientos');
+        requestAnimationFrame(() => {
+          document.getElementById('message-input')?.focus();
+        });
+      }
+      return;
+    }
+    if (item.type === 'movimiento') { setActiveTab('movimientos'); return; }
+    if (item.type === 'empresa') { setActiveTab('empresas'); return; }
+    if (item.type === 'categoria') { setActiveTab('movimientos'); return; }
+  }, []);
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     resetFilters(); setSelectedExpenseCompany('all');
@@ -391,6 +451,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <p className="text-neutral-500">Un vistazo claro para saber si hay problemas financieros o económicos.</p>
               </div>
               <div className="flex flex-wrap items-center gap-3 self-start w-full lg:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsPaletteOpen(true)}
+                  aria-label="Búsqueda global (⌘K)"
+                  title="Búsqueda global"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-3)] hover:border-[var(--app-border-strong)] transition-colors duration-150"
+                >
+                  <Search className="w-3 h-3" aria-hidden="true" />
+                  <span>Buscar</span>
+                  <kbd className="font-mono">⌘K</kbd>
+                </button>
                 <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
                 <div className="flex min-w-0 flex-1 lg:flex-none items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5">
                   <div className="flex flex-col min-w-0 flex-1">
@@ -485,6 +556,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             onCancel={clearExtracted}
           />
         )}
+
+        <CommandPalette
+          open={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+          searchInput={{ movimientos: history, empresas: customCompanies, categorias: categories, quickActions: paletteQuickActions }}
+          onSelect={handlePaletteSelect}
+        />
 
         <DashboardModals
           editingMovement={editingMovement} movementEditForm={movementEditForm} setMovementEditForm={setMovementEditForm}

@@ -12,8 +12,7 @@ import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
 import {
   formatCurrency, getCategorySummaries, getCompanySummaries, getCurrencyTotals,
-  getRecentExpenses, getRecentIncomes,
-  getIncomeSummaries, getIncomeTagSummaries, getMonthlySummaries,
+  getIncomeTagSummaries, getMonthlySummaries,
 } from './dashboard/summary';
 import { projectBalance } from './dashboard/forecast';
 import { generateInsights } from './dashboard/insights';
@@ -228,7 +227,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   });
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [selectedExpenseCompany, setSelectedExpenseCompany] = useState<string>('all');
   const [editingMovement, setEditingMovement] = useState<Movimiento | null>(null);
   const [movementEditForm, setMovementEditForm] = useState<MovementEditForm | null>(null);
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
@@ -305,34 +303,25 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    resetFilters(); setSelectedExpenseCompany('all');
+    resetFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer.id]);
 
   const companiesList = ['all', ...Array.from(new Set([...customCompanies.map((c) => c.nombre), ...history.map((i) => i.empresa_nombre).filter(Boolean)])) as string[]];
-  const expenseHistory = selectedExpenseCompany === 'all' ? history : history.filter((i) => i.empresa_nombre === selectedExpenseCompany);
 
   const arsTotals = getCurrencyTotals(history, 'ARS');
   const usdTotals = getCurrencyTotals(history, 'USD');
   const companySummaries = getCompanySummaries(history);
   const categorySummaries = getCategorySummaries(history);
-  const filteredExpenseCategorySummaries = getCategorySummaries(history, selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany);
-  const incomeSummaries = getIncomeSummaries(history);
   const incomeTagSummaries = getIncomeTagSummaries(history);
   const monthlySummaries = getMonthlySummaries(history);
-  const expenseMonthlySummaries = getMonthlySummaries(expenseHistory);
   const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0];
 
   const monthlyChartDataArs = [...monthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosArs, expense: i.gastosArs, net: i.netoArs })).filter((i) => i.income > 0 || i.expense > 0);
   const monthlyChartDataUsd = [...monthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosUsd, expense: i.gastosUsd, net: i.netoUsd })).filter((i) => i.income > 0 || i.expense > 0);
-  const expenseMonthlyChartData = [...expenseMonthlySummaries].reverse().map((i) => ({ label: i.period.slice(5), income: i.ingresosArs, expense: i.gastosArs, net: i.netoArs }));
   const topExpenseCategories = categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` }));
-  const topIncomeSources = incomeSummaries.slice(0, 5).map((inc) => ({ label: inc.name, value: inc.ars + inc.usd, valueLabel: `${formatCurrency(inc.ars, 'ARS')} · ${formatCurrency(inc.usd, 'USD')}`, secondary: `${inc.movimientos} movimientos`, segments: [{ value: inc.ars, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: inc.usd, colorClass: 'bg-emerald-300', label: 'Ingresos USD', currency: 'USD' as const }] }));
   const topIncomeTags = incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` }));
   const topCompanies = companySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.ingresosArs + c.gastosArs, valueLabel: formatCurrency(c.ingresosArs, 'ARS'), secondary: `${c.movimientos} movimientos`, supportingValue: `Saldo ${formatCurrency(c.saldoArs, 'ARS')}`, segments: [{ value: c.ingresosArs, colorClass: 'bg-green-500', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: c.gastosArs, colorClass: 'bg-red-500', label: 'Gastos ARS', currency: 'ARS' as const }] }));
-  const expenseCompanies = getCompanySummaries(history).filter((c) => c.gastosArs > 0).slice(0, 8).map((c) => ({ label: c.name, value: c.gastosArs, secondary: `${c.movimientos} movimientos · saldo ${formatCurrency(c.saldoArs, 'ARS')}` }));
-  const recentExpenses = getRecentExpenses(history, selectedExpenseCompany === 'all' ? undefined : selectedExpenseCompany, 5);
-  const recentIncomes = getRecentIncomes(history, 5);
   const visibleIncomeCount = filteredHistory.filter((i) => i.tipo === 'ingreso').length;
   const visibleExpenseCount = filteredHistory.filter((i) => i.tipo === 'egreso').length;
 
@@ -376,7 +365,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       ? `Tiene ${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}. Los movimientos quedan en el historial; la empresa se desactiva con soft delete + backup + log.`
       : 'Sin movimientos asociados. Soft delete + log de auditoría.';
     const preview = { title: name, meta: `${movCount} movimiento${movCount === 1 ? '' : 's'} asociado${movCount === 1 ? '' : 's'}` };
-    setConfirmationModal({ title: 'Desactivar empresa', description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar', tone: 'danger', requireText: 'ELIMINAR', preview, onConfirm: async () => { await api.deleteEmpresa(id); removeEmpresa(id); if (selectedCompany === name) setSelectedCompany('all'); if (selectedExpenseCompany === name) setSelectedExpenseCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
+    setConfirmationModal({ title: 'Desactivar empresa', description, details: 'Escribí ELIMINAR para confirmar.', confirmLabel: 'Desactivar', tone: 'danger', requireText: 'ELIMINAR', preview, onConfirm: async () => { await api.deleteEmpresa(id); removeEmpresa(id); if (selectedCompany === name) setSelectedCompany('all'); showToast(`Empresa "${name}" desactivada.`, 'warning'); } });
   };
   const copyJson = (item: Movimiento) => {
     const { id, original_text, created_at, ...cleanData } = item;

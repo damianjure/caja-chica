@@ -460,15 +460,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         </header>
 
         <section className="sticky top-3 z-20">
-          <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
-            <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 min-w-max">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+          <div className="bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2.5">
+            <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 overflow-x-auto md:flex-wrap">
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
-          </div>
-          <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2.5">
-            <div role="tablist" aria-label="Secciones del dashboard" className={`grid md:grid-cols-3 gap-2.5 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`rounded-lg px-3.5 py-3 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><div className="flex items-center gap-2"><Icon className="w-4 h-4 shrink-0" /><span className="font-semibold text-sm">{tab.label}</span></div>{tab.description && <p className={`mt-1 text-xs leading-snug ${isActive ? 'text-[var(--app-strong-text)]/70' : 'text-[var(--app-text-3)]'}`}>{tab.description}</p>}</button>; })}
-            </div>
+            {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}
           </div>
         </section>
 

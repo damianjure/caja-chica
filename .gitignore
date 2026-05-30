@@ -10,3 +10,8 @@ coverage/
 .firebase/
 .claire/
 .claude/worktrees/
+
+# tooling local + mockups de referencia
+.claude/
+mockups/
+design-explorations/

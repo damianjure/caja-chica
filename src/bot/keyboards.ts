@@ -27,11 +27,19 @@ export function buildTipoKeyboard() {
 
 export function buildMainKeyboard(dashboardUrl: string) {
   return new InlineKeyboard()
-    .text("📊 Informe", "rp_start").text("📤 Exportar", "rp_start").row()
+    .text("📊 Informe", "rp_start").row()
     .text("🏢 Empresas", "empresas").text("📁 Categorías", "categorias").row()
     .text("💰 Saldos", "saldos").text("🔍 Buscar", "buscar_mode").row()
     .text("💰 Hoy", "qs:hoy").text("📅 Semana", "qs:sem").row()
-    .text("🗑️ Borrar último", "del_last").text("✏️ Editar último", "edit_last").row()
-    .text("🗑️ Borrar empresa", "del_emp").row()
+    .text("✏️ Gestionar", "mng:open").row()
     .url("🌐 Abrir Dashboard", dashboardUrl);
+}
+
+// Submenú de acciones destructivas/edición — sale del teclado principal para
+// no sobrecargarlo. Reusa los callbacks existentes (edit_last/del_last/del_emp).
+export function buildGestionarKeyboard() {
+  return new InlineKeyboard()
+    .text("✏️ Editar último", "edit_last").text("🗑️ Borrar último", "del_last").row()
+    .text("🗑️ Borrar empresa", "del_emp").row()
+    .text("← Volver", "menu");
 }

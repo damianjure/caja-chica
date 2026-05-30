@@ -1,6 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
-import { buildMainKeyboard } from "./keyboards.ts";
+import { buildMainKeyboard, buildGestionarKeyboard } from "./keyboards.ts";
 import {
   hasTelegramAccess,
   resolveTelegramIdentityByToken,
@@ -252,4 +252,12 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
   });
 
   bot.callbackQuery("menu", (ctx) => ctx.editMessageText("📋 *Menú Principal*", { parse_mode: "Markdown", reply_markup: mainKeyboard }));
+
+  bot.callbackQuery("mng:open", (ctx) => {
+    ctx.answerCallbackQuery();
+    return ctx.editMessageText("✏️ *Gestionar*\n\nEditá o borrá lo último cargado, o borrá una empresa.", {
+      parse_mode: "Markdown",
+      reply_markup: buildGestionarKeyboard(),
+    });
+  });
 }

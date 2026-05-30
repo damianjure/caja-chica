@@ -240,3 +240,52 @@ test('anual: year boundary Feb 29 leap → Feb 28 non-leap', () => {
   assert.equal(occurrences.length, 1);
   assert.equal(occurrences[0]!.date, '2025-02-28');
 });
+
+// -------- next_run_at null / invalid (fresh recurrente, cron not run yet) --------
+
+test('null next_run_at: anchors at today and expands forward (fresh recurrente)', () => {
+  // A recurrente created but never processed by the cron has next_run_at: null
+  // ("se activa esta noche"). It must still project from today.
+  const r = recurrente({
+    frecuencia: 'mensual',
+    next_run_at: null as unknown as string,
+  });
+  const occurrences = expandOccurrences([r], TODAY);
+  assert.equal(occurrences.length, 1);
+  assert.equal(occurrences[0]!.date, '2026-05-30'); // today
+});
+
+test('null next_run_at diario: 31 daily occurrences from today inclusive', () => {
+  const r = recurrente({
+    frecuencia: 'diario',
+    next_run_at: null as unknown as string,
+  });
+  const occurrences = expandOccurrences([r], TODAY);
+  // today .. today+30 inclusive = 31 days
+  assert.equal(occurrences.length, 31);
+  assert.equal(occurrences[0]!.date, '2026-05-30');
+  assert.equal(occurrences[30]!.date, '2026-06-29');
+});
+
+test('invalid next_run_at string: anchors at today (no crash)', () => {
+  const r = recurrente({
+    frecuencia: 'mensual',
+    next_run_at: 'not-a-date',
+  });
+  const occurrences = expandOccurrences([r], TODAY);
+  assert.equal(occurrences.length, 1);
+  assert.equal(occurrences[0]!.date, '2026-05-30');
+});
+
+test('projectBalance with null next_run_at reflects the occurrence in the projection', () => {
+  const r = recurrente({
+    frecuencia: 'mensual',
+    tipo: 'egreso',
+    monto: 5000,
+    moneda: 'ARS',
+    next_run_at: null as unknown as string,
+  });
+  const result = projectBalance({ saldoArs: 10000, saldoUsd: 0, recurrentes: [r] }, TODAY);
+  assert.equal(result.projectedArs, 5000); // 10000 - 5000
+  assert.equal(result.occurrences.length, 1);
+});

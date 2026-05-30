@@ -17,7 +17,9 @@ export interface RecurrenteForForecast {
   descripcion?: string;
   is_active: boolean;
   deleted_at: string | null;
-  next_run_at: string;
+  // null when the nightly cron hasn't processed this recurrente yet
+  // ("se activa esta noche"). Forecast anchors such rows at today.
+  next_run_at: string | null;
 }
 
 export interface ForecastOccurrence {
@@ -102,7 +104,18 @@ export function expandOccurrences(
     const MAX_ITERATIONS = 366; // defensive cap
     let iterations = 0;
 
-    let current = new Date(r.next_run_at);
+    // A freshly created recurrente that the nightly cron has not processed yet
+    // has next_run_at === null ("se activa esta noche"). Anchor it at `today` so
+    // it still projects forward. Same fallback for any unparseable date — never
+    // start from epoch (new Date(null) === 1970), which the 366-iteration cap
+    // would never walk forward to the window, silently dropping the occurrence.
+    let current: Date;
+    if (r.next_run_at) {
+      const parsed = new Date(r.next_run_at);
+      current = Number.isNaN(parsed.getTime()) ? new Date(today) : parsed;
+    } else {
+      current = new Date(today);
+    }
 
     while (iterations < MAX_ITERATIONS) {
       iterations++;

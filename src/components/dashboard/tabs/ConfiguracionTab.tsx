@@ -5,6 +5,7 @@ import { type ThemePreference } from "../../ThemeToggle";
 import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
+import { BotConnectionPanel } from "../../BotConnectionPanel";
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -79,6 +80,7 @@ export default function ConfiguracionTab({
             showNotice={showNotice}
             setError={setError}
           />
+          <BotConnectionPanel />
         </>
       )}
 

@@ -1,0 +1,30 @@
+{
+  "displayName": "Caja Chica — memoria instancia > 70%",
+  "documentation": {
+    "content": "La instancia Cloud Run (512Mi, max-instances=1) sostiene >70% de memoria por 5 min. Es la señal temprana de OOM por over-fetch (ver SCALE.md: /saldos y reporte bot cargan todas las filas). Acción: revisar SCALE.md → atacar los over-fetch críticos.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "memory utilization > 0.7 (p99, 5m)",
+      "conditionThreshold": {
+        "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"caja-chica\" AND metric.type = \"run.googleapis.com/container/memory/utilizations\"",
+        "aggregations": [
+          {
+            "alignmentPeriod": "300s",
+            "perSeriesAligner": "ALIGN_PERCENTILE_99",
+            "crossSeriesReducer": "REDUCE_MAX"
+          }
+        ],
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0.7,
+        "duration": "300s",
+        "trigger": { "count": 1 }
+      }
+    }
+  ],
+  "notificationChannels": [
+    "projects/caja-chica-bot/notificationChannels/15484725078460400579"
+  ]
+}

@@ -36,10 +36,20 @@ function makeSupabase(opts: {
   const updatedIds: string[] = [];
   const botMessages: Array<{ chatId: number; text: string }> = [];
 
+  const recurrentesFilters: Array<[string, string, unknown]> = [];
+
   const stub = {
     from(table: string) {
       const self: any = {
         select: () => self,
+        eq(col: string, val: unknown) {
+          if (table === "recurrentes") recurrentesFilters.push(["eq", col, val]);
+          return self;
+        },
+        is(col: string, val: unknown) {
+          if (table === "recurrentes") recurrentesFilters.push(["is", col, val]);
+          return self;
+        },
         then(resolve: Function) {
           if (table === "recurrentes") {
             return Promise.resolve({ data: rows, error: null }).then(resolve as any);
@@ -65,6 +75,7 @@ function makeSupabase(opts: {
     },
     _insertedMovimientos: insertedMovimientos,
     _updatedIds: updatedIds,
+    _recurrentesFilters: recurrentesFilters,
   };
 
   return stub;
@@ -173,6 +184,8 @@ test("runRecurrentes: insertErr thrown → caught per-recurrente, loop continues
     from(table: string) {
       const self: any = {
         select: () => self,
+        eq: () => self,
+        is: () => self,
         then(resolve: Function) {
           return Promise.resolve({ data: [rec1, rec2], error: null }).then(resolve as any);
         },
@@ -196,6 +209,22 @@ test("runRecurrentes: insertErr thrown → caught per-recurrente, loop continues
   // rec-1 fails (insertErr), rec-2 succeeds
   assert.strictEqual(result.processed, 1);
   assert.strictEqual(insertCallCount, 2);
+});
+
+test("runRecurrentes: prefiltra is_active=true AND deleted_at IS NULL en DB (no full scan)", async () => {
+  const rec = { ...BASE_REC, last_processed: null };
+  const supabase = makeSupabase({ recurrentes: [rec] });
+  const bot = makeBot();
+  await runRecurrentes({ supabase: supabase as any, bot: bot as any });
+  const filters = supabase._recurrentesFilters;
+  assert.ok(
+    filters.some(([op, col, val]) => op === "eq" && col === "is_active" && val === true),
+    "debe filtrar is_active=true en la query",
+  );
+  assert.ok(
+    filters.some(([op, col, val]) => op === "is" && col === "deleted_at" && val === null),
+    "debe filtrar deleted_at IS NULL en la query",
+  );
 });
 
 test("runRecurrentes: chat_id present → bot.api.sendMessage called", async () => {

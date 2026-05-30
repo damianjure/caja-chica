@@ -20,7 +20,13 @@ export async function runRecurrentes({
   if (!bot) return { processed: 0 };
 
   const today = new Date();
-  const { data: recs } = await supabase.from("recurrentes").select("*");
+  // Pre-filter en DB: solo activos y no borrados (el loop ya los skipeaba, pero
+  // sin este WHERE escaneábamos/transferíamos toda la tabla en cada corrida).
+  const { data: recs } = await supabase
+    .from("recurrentes")
+    .select("*")
+    .eq("is_active", true)
+    .is("deleted_at", null);
 
   let processed = 0;
 

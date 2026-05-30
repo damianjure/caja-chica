@@ -3,8 +3,46 @@ import { useState } from 'react';
 
 import type { Empresa, Movimiento } from '../../../services/api';
 import { ChartCard, HorizontalBarList } from '../Charts';
-import { PlaceholderPanel, SectionCard } from '../primitives';
+import { SectionCard } from '../primitives';
+import { topCategoriesByType, type TopCategory } from '../../../dashboard/summary';
 import InformesTab from './InformesTab';
+
+function DrillPanel({
+  title, items, accent, empty, onPick, formatCurrency,
+}: {
+  title: string;
+  items: TopCategory[];
+  accent: 'danger' | 'income';
+  empty: string;
+  onPick: (category: string) => void;
+  formatCurrency: (amount: number, currency: 'ARS' | 'USD') => string;
+}) {
+  return (
+    <div>
+      <div className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">{title}</div>
+      {items.length === 0 ? (
+        <p className="text-sm text-[var(--app-text-3)]">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((c) => (
+            <button
+              key={c.category}
+              type="button"
+              onClick={() => onPick(c.category)}
+              aria-label={`Ver movimientos de ${c.category}`}
+              className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2.5 text-left transition hover:border-[var(--app-border-strong)] active:scale-[0.99]"
+            >
+              <span className="truncate text-sm font-medium text-[var(--app-text-1)]">{c.category}</span>
+              <span className={`shrink-0 text-sm font-semibold tabular-nums ${accent === 'danger' ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCurrency(c.ars, 'ARS')}{c.usd ? ` · ${formatCurrency(c.usd, 'USD')}` : ''}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CompanySummaryView {
   name: string;
@@ -28,6 +66,7 @@ export default function EmpresasTab({
   formatCurrency,
   history,
   companiesList,
+  onDrilldown,
   canUseDrive,
   canConnectDrive,
 }: {
@@ -41,11 +80,17 @@ export default function EmpresasTab({
   formatCurrency: (amount: number, currency: 'ARS' | 'USD') => string;
   history: Movimiento[];
   companiesList: string[];
+  onDrilldown: (company: string, category: string) => void;
   canUseDrive: boolean;
   canConnectDrive: boolean;
 }) {
   const [newCompany, setNewCompany] = useState('');
   const [creating, setCreating] = useState(false);
+  const [drillCompany, setDrillCompany] = useState('all');
+
+  const topGastos = topCategoriesByType(history, drillCompany, 'egreso', 3);
+  const topIngresos = topCategoriesByType(history, drillCompany, 'ingreso', 3);
+  const drillLabel = drillCompany === 'all' ? 'todas las empresas' : drillCompany;
 
   const handleCreate = async () => {
     const trimmed = newCompany.trim();
@@ -83,6 +128,28 @@ export default function EmpresasTab({
           </div>
         </SectionCard>
       )}
+
+      <SectionCard
+        title="Gastos e ingresos por categoría"
+        description={`Top 3 de ${drillLabel}. Tocá una categoría para ver esos movimientos.`}
+      >
+        <div className="mb-4">
+          <select
+            aria-label="Elegir empresa para el detalle por categoría"
+            value={drillCompany}
+            onChange={(e) => setDrillCompany(e.target.value)}
+            className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+          >
+            {companiesList.map((c) => (
+              <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <DrillPanel title="Gastos que más pesan" items={topGastos} accent="danger" empty="Sin gastos en este alcance." onPick={(cat) => onDrilldown(drillCompany, cat)} formatCurrency={formatCurrency} />
+          <DrillPanel title="Ingresos por categoría" items={topIngresos} accent="income" empty="Sin ingresos en este alcance." onPick={(cat) => onDrilldown(drillCompany, cat)} formatCurrency={formatCurrency} />
+        </div>
+      </SectionCard>
 
       <SectionCard title="Comparación por empresa" description="Mirá cada unidad con ingresos, gastos y saldo neto por moneda.">
         {companySummaries.length === 0 ? (
@@ -161,8 +228,6 @@ export default function EmpresasTab({
           </div>
         )}
       </SectionCard>
-
-      <PlaceholderPanel title="Sucursales y unidades de negocio" body="Hoy estamos usando empresa como proxy de unidad. Si querés sucursal/canal reales, hay que modelarlos explícitamente en la base y en el parser." />
 
       <div className="border-t border-neutral-200 pt-6">
         <InformesTab

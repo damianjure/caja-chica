@@ -330,6 +330,38 @@ export function getRecentIncomes(history: Movimiento[], limit = 5): RecentIncome
     }));
 }
 
+export interface TopCategory {
+  category: string;
+  ars: number;
+  usd: number;
+}
+
+/**
+ * Top N categories by summed amount for a given tipo, optionally scoped to one company.
+ * Sorted by ARS desc, then USD desc. Empty/null categoria → 'Otros'. Pure.
+ */
+export function topCategoriesByType(
+  movements: Array<{ empresa_nombre?: string | null; categoria?: string | null; tipo: string; moneda: string; monto: number | string }>,
+  company: string,
+  tipo: 'ingreso' | 'egreso',
+  limit = 3,
+): TopCategory[] {
+  const map = new Map<string, TopCategory>();
+  for (const m of movements) {
+    if (m.tipo !== tipo) continue;
+    if (company !== 'all' && m.empresa_nombre !== company) continue;
+    const cat = m.categoria && String(m.categoria).trim() ? String(m.categoria) : 'Otros';
+    const amt = typeof m.monto === 'number' ? m.monto : parseFloat(String(m.monto)) || 0;
+    const entry = map.get(cat) ?? { category: cat, ars: 0, usd: 0 };
+    if (m.moneda === 'USD') entry.usd += amt;
+    else entry.ars += amt;
+    map.set(cat, entry);
+  }
+  return [...map.values()]
+    .sort((a, b) => (b.ars - a.ars) || (b.usd - a.usd))
+    .slice(0, limit);
+}
+
 export function filterMovements(history: Movimiento[], filters: MovementFilters) {
   return history.filter((item) => {
     if (filters.company && filters.company !== 'all' && item.empresa_nombre !== filters.company) return false;

@@ -1,47 +1,129 @@
-import { Pencil, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { X } from 'lucide-react';
 
-import type { Categoria, Empresa } from '../../../services/api';
+import type { Categoria } from '../../../services/api';
+import type { DatePeriod } from '../../../dashboard/summary';
 import { MetricCard, SectionCard } from '../primitives';
+
+type Tipo = 'all' | 'ingreso' | 'egreso';
+type Moneda = 'all' | 'ARS' | 'USD';
+
+const DATE_OPTS: { id: DatePeriod; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'hoy', label: 'Hoy' },
+  { id: 'semana', label: 'Semana' },
+  { id: 'mes', label: 'Mes' },
+  { id: 'anio', label: 'Año' },
+  { id: 'rango', label: 'Rango' },
+];
+const TIPO_OPTS: { id: Tipo; label: string }[] = [
+  { id: 'all', label: 'Todos' },
+  { id: 'ingreso', label: 'Ingresos' },
+  { id: 'egreso', label: 'Gastos' },
+];
+const MONEDA_OPTS: { id: Moneda; label: string }[] = [
+  { id: 'all', label: 'Todas' },
+  { id: 'ARS', label: 'ARS' },
+  { id: 'USD', label: 'USD' },
+];
+
+function Segmented<T extends string>({
+  value, options, onChange, ariaLabel,
+}: {
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (v: T) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div role="group" aria-label={ariaLabel} className="inline-flex gap-0.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          aria-pressed={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={`rounded px-3 py-1.5 text-xs font-semibold transition duration-150 ${
+            value === o.id
+              ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+              : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const SELECT_CLASS =
+  'rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]';
+
+function Pill({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] py-1 pl-3 pr-1.5 text-xs font-medium text-[var(--app-text-2)]">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Quitar filtro ${label}`}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[var(--app-text-3)] hover:text-[var(--app-text-1)]"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
 
 export default function MovimientosTab({
   incomeCount,
   expenseCount,
   historyCount,
-  canWriteData,
   companiesList,
+  categories,
   selectedCompany,
   setSelectedCompany,
   movementType,
   setMovementType,
   movementCurrency,
   setMovementCurrency,
-  customCompanies,
-  categories,
-  onEditCompany,
-  onDeleteCompany,
-  onDeleteCategory,
+  selectedCategory,
+  setSelectedCategory,
+  datePeriod,
+  setDatePeriod,
+  customFrom,
+  setCustomFrom,
+  customTo,
+  setCustomTo,
+  hasActiveFilters,
+  resetFilters,
   historyCards,
 }: {
   incomeCount: number;
   expenseCount: number;
   historyCount: number;
-  canWriteData: boolean;
-  composer: ReactNode;
   companiesList: string[];
+  categories: Categoria[];
   selectedCompany: string;
   setSelectedCompany: (company: string) => void;
-  movementType: 'all' | 'ingreso' | 'egreso';
-  setMovementType: (value: 'all' | 'ingreso' | 'egreso') => void;
-  movementCurrency: 'all' | 'ARS' | 'USD';
-  setMovementCurrency: (value: 'all' | 'ARS' | 'USD') => void;
-  customCompanies: Empresa[];
-  categories: Categoria[];
-  onEditCompany: (company: Empresa) => void;
-  onDeleteCompany: (company: Empresa) => void;
-  onDeleteCategory: (category: Categoria) => void;
+  movementType: Tipo;
+  setMovementType: (value: Tipo) => void;
+  movementCurrency: Moneda;
+  setMovementCurrency: (value: Moneda) => void;
+  selectedCategory: string;
+  setSelectedCategory: (value: string) => void;
+  datePeriod: DatePeriod;
+  setDatePeriod: (value: DatePeriod) => void;
+  customFrom: string;
+  setCustomFrom: (value: string) => void;
+  customTo: string;
+  setCustomTo: (value: string) => void;
+  hasActiveFilters: boolean;
+  resetFilters: () => void;
   historyCards: ReactNode;
 }) {
+  const dateLabel = DATE_OPTS.find((o) => o.id === datePeriod)?.label ?? 'Todo';
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -50,115 +132,51 @@ export default function MovimientosTab({
         <MetricCard label="Total movimientos" value={String(historyCount)} />
       </div>
 
-      <SectionCard title="Transacciones filtrables" description="Filtrá por empresa y revisá el historial con trazabilidad sobre el texto original. Todo lo cargado entra como conciliado por defecto.">
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 id="history-title" className="text-xl font-semibold tracking-tight">Historial de movimientos</h2>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-              {companiesList.map((company) => {
-                const companyEntity = customCompanies.find((item) => item.nombre === company);
-                const isSelected = selectedCompany === company;
-                const showActions = Boolean(canWriteData && companyEntity && isSelected);
-                return (
-                  <div
-                    key={company}
-                    className={`inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap transition duration-150 border ${
-                      isSelected
-                        ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]'
-                        : 'bg-[var(--app-surface-1)] border-[var(--app-border)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
-                    }`}
-                  >
-                    <button
-                      onClick={() => setSelectedCompany(company)}
-                      className={`py-1.5 active:scale-[0.95] ${showActions ? 'pl-4 pr-2' : 'px-4'}`}
-                    >
-                      {company === 'all' ? 'Todas las empresas' : company}
-                    </button>
-                    {showActions && companyEntity && (
-                      <span className="flex items-center gap-0.5 pr-1.5">
-                        <button
-                          onClick={(event) => { event.stopPropagation(); onEditCompany(companyEntity); }}
-                          className="rounded-full p-1 text-white/60 hover:text-white transition-colors"
-                          aria-label={`Editar ${company}`}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(event) => { event.stopPropagation(); onDeleteCompany(companyEntity); }}
-                          className="rounded-full p-1 text-white/60 hover:text-red-300 transition-colors"
-                          aria-label={`Eliminar ${company}`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-4">
-            <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'ingreso', label: 'Ingresos' },
-                { id: 'egreso', label: 'Gastos' },
-              ].map((filter) => (
-                <button
-                  key={filter.id}
-                  aria-pressed={movementType === filter.id}
-                  onClick={() => setMovementType(filter.id as 'all' | 'ingreso' | 'egreso')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
-                    movementType === filter.id
-                      ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
-                      : 'border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
-                  }`}
-                >
-                  {filter.label}
-                </button>
+      <SectionCard title="Historial de movimientos" description="Filtrá por fecha, empresa, tipo, moneda o categoría. Todo lo cargado entra como conciliado por defecto.">
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented value={datePeriod} options={DATE_OPTS} onChange={setDatePeriod} ariaLabel="Filtrar por período" />
+            <Segmented value={movementType} options={TIPO_OPTS} onChange={setMovementType} ariaLabel="Filtrar por tipo" />
+            <Segmented value={movementCurrency} options={MONEDA_OPTS} onChange={setMovementCurrency} ariaLabel="Filtrar por moneda" />
+            <select aria-label="Filtrar por empresa" className={SELECT_CLASS} value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
+              {companiesList.map((c) => (
+                <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
               ))}
-            </div>
-            <div role="group" aria-label="Filtrar por moneda" className="flex flex-wrap gap-2">
-              {[
-                { id: 'all', label: 'Todas las monedas' },
-                { id: 'ARS', label: 'ARS' },
-                { id: 'USD', label: 'USD' },
-              ].map((filter) => (
-                <button
-                  key={filter.id}
-                  aria-pressed={movementCurrency === filter.id}
-                  onClick={() => setMovementCurrency(filter.id as 'all' | 'ARS' | 'USD')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 active:scale-[0.95] ${
-                    movementCurrency === filter.id
-                      ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
-                      : 'border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-3)] hover:border-[var(--app-border-strong)]'
-                  }`}
-                >
-                  {filter.label}
-                </button>
+            </select>
+            <select aria-label="Filtrar por categoría" className={SELECT_CLASS} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+              <option value="all">Todas las categorías</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
-            </div>
+            </select>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-t border-neutral-200 pt-4">
-            <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mr-2">Categorías:</span>
-            {categories.map((category) => (
-              <div key={category.id} className="inline-flex items-center gap-1 rounded-full bg-neutral-100 py-1 pl-3 pr-1.5">
-                <span className="text-xs font-medium text-neutral-600">{category.nombre}</span>
-                {canWriteData && (
-                  <button
-                    onClick={() => onDeleteCategory(category)}
-                    className="rounded-full p-0.5 text-neutral-400 hover:text-red-600 transition-colors"
-                    aria-label={`Eliminar categoría ${category.nombre}`}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Rango personalizado */}
+          {datePeriod === 'rango' && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--app-text-2)]">
+              <label className="flex items-center gap-1.5">Desde
+                <input type="date" className={SELECT_CLASS} value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} aria-label="Fecha desde" />
+              </label>
+              <label className="flex items-center gap-1.5">Hasta
+                <input type="date" className={SELECT_CLASS} value={customTo} onChange={(e) => setCustomTo(e.target.value)} aria-label="Fecha hasta" />
+              </label>
+            </div>
+          )}
+
+          {/* Pills de filtro activo */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--app-border)] pt-3">
+              {datePeriod !== 'all' && <Pill label={dateLabel} onClear={() => setDatePeriod('all')} />}
+              {movementType !== 'all' && <Pill label={movementType === 'ingreso' ? 'Ingresos' : 'Gastos'} onClear={() => setMovementType('all')} />}
+              {movementCurrency !== 'all' && <Pill label={movementCurrency} onClear={() => setMovementCurrency('all')} />}
+              {selectedCompany !== 'all' && <Pill label={selectedCompany} onClear={() => setSelectedCompany('all')} />}
+              {selectedCategory !== 'all' && <Pill label={selectedCategory} onClear={() => setSelectedCategory('all')} />}
+              <button type="button" onClick={resetFilters} className="text-xs text-[var(--app-text-3)] underline underline-offset-2 hover:text-[var(--app-text-1)]">
+                Limpiar todo
+              </button>
+            </div>
+          )}
 
           {historyCards}
         </div>

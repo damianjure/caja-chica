@@ -6,6 +6,7 @@ import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
+import { DriveSection } from "./configuracion/DriveSection";
 import { BotConnectionPanel } from "../../BotConnectionPanel";
 
 interface ConfiguracionTabProps {
@@ -82,6 +83,7 @@ export default function ConfiguracionTab({
             setError={setError}
           />
           <CategoriasSection />
+          {canConnectDrive && <DriveSection />}
           <BotConnectionPanel />
         </>
       )}

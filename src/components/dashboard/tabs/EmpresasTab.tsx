@@ -5,7 +5,6 @@ import type { Empresa, Movimiento } from '../../../services/api';
 import { ChartCard, HorizontalBarList } from '../Charts';
 import { SectionCard } from '../primitives';
 import { topCategoriesByType, type TopCategory } from '../../../dashboard/summary';
-import InformesTab from './InformesTab';
 
 function DrillPanel({
   title, items, accent, empty, onPick, formatCurrency,
@@ -67,8 +66,6 @@ export default function EmpresasTab({
   history,
   companiesList,
   onDrilldown,
-  canUseDrive,
-  canConnectDrive,
 }: {
   companySummaries: CompanySummaryView[];
   topCompanies: Array<{ label: string; value: number; valueLabel?: string; secondary?: string; supportingValue?: string; segments?: Array<{ value: number; colorClass: string; label: string; currency?: 'ARS' | 'USD' }> }>;
@@ -81,8 +78,6 @@ export default function EmpresasTab({
   history: Movimiento[];
   companiesList: string[];
   onDrilldown: (company: string, category: string) => void;
-  canUseDrive: boolean;
-  canConnectDrive: boolean;
 }) {
   const [newCompany, setNewCompany] = useState('');
   const [creating, setCreating] = useState(false);
@@ -228,16 +223,6 @@ export default function EmpresasTab({
           </div>
         )}
       </SectionCard>
-
-      <div className="border-t border-neutral-200 pt-6">
-        <InformesTab
-          history={history}
-          companiesList={companiesList}
-          canWriteData={canWriteData}
-          canUseDrive={canUseDrive}
-          canConnectDrive={canConnectDrive}
-        />
-      </div>
     </div>
   );
 }

@@ -72,6 +72,38 @@ export interface MovementFilters {
   company?: string;
   tipo?: 'all' | 'ingreso' | 'egreso';
   moneda?: 'all' | 'ARS' | 'USD';
+  /** Category name, or 'all'/undefined for no filter. */
+  category?: string;
+  /** Inclusive date bounds 'YYYY-MM-DD' (client-side date filter). */
+  from?: string;
+  to?: string;
+}
+
+export type DatePeriod = 'hoy' | 'semana' | 'mes' | 'anio' | 'rango' | 'all';
+
+/**
+ * Resolve a date period to inclusive {from,to} 'YYYY-MM-DD' bounds (UTC).
+ * Returns null for 'all'/'rango' (no implicit range — 'rango' is user-provided).
+ */
+export function periodToRange(period: DatePeriod, today: Date): { from: string; to: string } | null {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  if (period === 'hoy') return { from: iso(today), to: iso(today) };
+  if (period === 'semana') {
+    const start = new Date(today);
+    start.setUTCDate(start.getUTCDate() - 6);
+    return { from: iso(start), to: iso(today) };
+  }
+  if (period === 'mes') {
+    const y = today.getUTCFullYear();
+    const m = today.getUTCMonth();
+    const last = new Date(Date.UTC(y, m + 1, 0));
+    return { from: `${y}-${String(m + 1).padStart(2, '0')}-01`, to: iso(last) };
+  }
+  if (period === 'anio') {
+    const y = today.getUTCFullYear();
+    return { from: `${y}-01-01`, to: `${y}-12-31` };
+  }
+  return null;
 }
 
 export const INCOME_TAG_LIBRARY = [
@@ -303,6 +335,12 @@ export function filterMovements(history: Movimiento[], filters: MovementFilters)
     if (filters.company && filters.company !== 'all' && item.empresa_nombre !== filters.company) return false;
     if (filters.tipo && filters.tipo !== 'all' && item.tipo !== filters.tipo) return false;
     if (filters.moneda && filters.moneda !== 'all' && item.moneda !== filters.moneda) return false;
+    if (filters.category && filters.category !== 'all' && item.categoria !== filters.category) return false;
+    if (filters.from || filters.to) {
+      const day = (item.created_at ?? '').slice(0, 10);
+      if (filters.from && day < filters.from) return false;
+      if (filters.to && day > filters.to) return false;
+    }
     return true;
   });
 }

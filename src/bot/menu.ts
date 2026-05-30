@@ -10,6 +10,7 @@ import {
 import { getLinkedTelegramUser } from "./utils.ts";
 import { registerCancelHandler } from "./commands/cancel.ts";
 import { getCommandsForRole } from "./quickActions.ts";
+import { buildWelcomeMessage, fetchUserDashboards } from "./welcome.ts";
 
 const BOT_COMMANDS = [
   { command: "menu", description: "Abrir el menú principal" },
@@ -141,7 +142,8 @@ async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Con
     const invitedRole = await resolveDashboardRole(supabase, targetUserId, inviteToken.dashboard_id);
     if (ctx.chat) setScopedCommands(bot, ctx.chat.id, invitedRole).catch(() => {});
 
-    await ctx.reply("✅ Listo. Quedaste sumado al dashboard. Usá /menu para empezar.");
+    const dashboards = await fetchUserDashboards(supabase, targetUserId);
+    await ctx.reply(buildWelcomeMessage(dashboards, ctx.from?.first_name));
     return true;
   }
 

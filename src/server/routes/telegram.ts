@@ -1,5 +1,6 @@
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import { buildWelcomeMessage, fetchUserDashboards } from "../../bot/welcome.ts";
 
 export interface TelegramDeps {
   supabase: SupabaseLike;
@@ -14,6 +15,7 @@ export interface TelegramDeps {
   webhookPath?: string;
   webhookHandler?: RequestHandler;
   webhookSecret?: string;
+  bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
 }
 
 export function createTelegramRouter(deps: TelegramDeps) {
@@ -31,6 +33,7 @@ export function createTelegramRouter(deps: TelegramDeps) {
     webhookPath,
     webhookHandler,
     webhookSecret,
+    bot,
   } = deps;
 
 
@@ -181,10 +184,21 @@ export function createTelegramRouter(deps: TelegramDeps) {
         .eq("id", id)
         .eq("dashboard_id", scope.dashboardId)
         .eq("status", "pending_owner_confirm")
-        .select("id")
+        .select("id, telegram_user_id, app_user_id")
         .limit(1);
       if (error) throw error;
-      if (!data?.[0]) return res.status(404).json({ error: "link no encontrado o no pendiente" });
+      const confirmedLink = data?.[0];
+      if (!confirmedLink) return res.status(404).json({ error: "link no encontrado o no pendiente" });
+
+      // Best-effort welcome DM — must never block or fail the confirmation.
+      if (bot && confirmedLink.telegram_user_id && confirmedLink.app_user_id) {
+        try {
+          const dashboards = await fetchUserDashboards(supabase, confirmedLink.app_user_id);
+          await bot.api.sendMessage(confirmedLink.telegram_user_id, buildWelcomeMessage(dashboards));
+        } catch (notifyErr) {
+          console.error("[confirm] welcome DM failed:", notifyErr);
+        }
+      }
 
       return res.json({ confirmed: true });
     } catch (err) {

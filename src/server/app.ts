@@ -399,6 +399,7 @@ export function createApp({
     webhookPath,
     webhookHandler,
     webhookSecret,
+    bot: bot ?? null,
   }));
   app.use(createAdminRouter({
     supabase,

@@ -59,11 +59,11 @@ const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/Configur
 const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/RecurrentesTab'));
 
 const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
-  { id: 'resumen', label: 'Resumen', description: 'Un vistazo de empresas, ingresos y gastos del período', icon: LayoutGrid },
-  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo, filtros y exportación', icon: ArrowUpDown },
+  { id: 'resumen', label: 'Resumen', description: 'Un vistazo general de todo', icon: LayoutGrid },
+  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo', icon: ArrowUpDown },
   { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
-  { id: 'empresas', label: 'Empresas', description: 'Saldos, informes y backups de datos', icon: Building2 },
-  { id: 'configuracion', label: 'Configuración', description: 'Cuenta, equipo, permisos y Drive', icon: Settings },
+  { id: 'empresas', label: 'Empresas', description: 'Saldos e informes', icon: Building2 },
+  { id: 'configuracion', label: 'Configuración', description: '', icon: Settings },
 ];
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
@@ -254,7 +254,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // ───────────────────────────────────────────────────────────────────────────
 
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: 'Cuentas, dashboards, invitaciones', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: '', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   useEffect(() => {
@@ -459,6 +459,19 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </header>
 
+        <section className="sticky top-3 z-20">
+          <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
+            <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 min-w-max">
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+            </div>
+          </div>
+          <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2.5">
+            <div role="tablist" aria-label="Secciones del dashboard" className={`grid md:grid-cols-3 gap-2.5 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`rounded-lg px-3.5 py-3 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><div className="flex items-center gap-2"><Icon className="w-4 h-4 shrink-0" /><span className="font-semibold text-sm">{tab.label}</span></div>{tab.description && <p className={`mt-1 text-xs leading-snug ${isActive ? 'text-[var(--app-strong-text)]/70' : 'text-[var(--app-text-3)]'}`}>{tab.description}</p>}</button>; })}
+            </div>
+          </div>
+        </section>
+
         {canWriteData && activeTab === 'movimientos' && (
           <div className="space-y-4">
             <SectionCard title="Centro de carga" description="Usá lenguaje natural para registrar movimientos, o subí una foto de un ticket para extraerlo automáticamente.">
@@ -503,19 +516,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         {!canWriteData && activeTab === 'movimientos' && (
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
         )}
-
-        <section className="sticky top-3 z-20">
-          <div className="md:hidden bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2 overflow-x-auto">
-            <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 min-w-max">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.96] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
-            </div>
-          </div>
-          <div className="hidden md:block bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-3">
-            <div role="tablist" aria-label="Secciones del dashboard" className={`grid md:grid-cols-3 gap-3 ${tabs.length <= 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-7'}`}>
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`rounded-xl px-4 py-4 text-left transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><div className="flex items-center gap-2 mb-2"><Icon className="w-4 h-4" /><span className="font-semibold">{tab.label}</span></div><p className={`text-xs leading-relaxed ${isActive ? 'text-[var(--app-strong-text)]/70' : 'text-[var(--app-text-3)]'}`}>{tab.description}</p></button>; })}
-            </div>
-          </div>
-        </section>
 
         <main>
           <div key={activeTab} className="anim-fade-in">

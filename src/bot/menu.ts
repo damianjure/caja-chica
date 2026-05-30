@@ -23,8 +23,6 @@ const BOT_COMMANDS = [
   { command: "categorias", description: "Listar categorías" },
   { command: "saldos", description: "Ver saldos por empresa" },
   { command: "buscar", description: "Buscar movimientos" },
-  { command: "agregarempresa", description: "Crear una empresa" },
-  { command: "agregarcategoria", description: "Crear una categoría" },
   { command: "dashboard", description: "Abrir dashboard web" },
 ];
 

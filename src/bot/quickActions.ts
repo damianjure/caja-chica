@@ -101,8 +101,6 @@ export const FULL_COMMANDS: BotCommand[] = [
   { command: "buscar", description: "Buscar movimientos" },
   { command: "empresas", description: "Listar empresas activas" },
   { command: "categorias", description: "Listar categorías" },
-  { command: "agregarempresa", description: "Crear una empresa" },
-  { command: "agregarcategoria", description: "Crear una categoría" },
   { command: "dashboard", description: "Abrir dashboard web" },
 ];
 

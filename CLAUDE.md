@@ -580,7 +580,28 @@ Sesión grande post-review. 2 fixes + 4 cambios SDD, todo deployado a prod. Test
 
 **Pendiente post-deploy**: mergear ~8 PRs en GitHub (gh no auth local, branches en origin); rotar keys Brevo + `GEMINI_API_KEY_2`; archive formal SDD A/B (verificados inline + por tests). Nota: el branch `refactor/createapp-decomposition` tiene su propio commit de doc 2026-05-29 que solapa con esta sección — al mergear PRs, esta sección de local main es la canónica.
 
+### Cambios 2026-05-30 (8 features batch — SDD automático + deploy)
+
+Sesión grande: 8 cambios cohesivos en modo SDD automático (engram artifacts, commit-por-cambio a main), strict TDD, review fresca por cambio de riesgo. Tests **408 → 572 pass / 2 skip / 0 fail**. Todo deployado.
+
+**Cambios (commits en `main`):**
+1. `904a519` **design-iconography** — §11 "Iconografía" en DESIGN.md (icono = reconocimiento, no decoración; monocromo text-3, color solo en flecha ingreso/gasto) + prop `icon?` opcional en `MetricCard`/`SectionCard` + iconos en Resumen/Gastos/Ingresos.
+2. `d48aa7b` **bot-quick-actions** — (a) `↩️ Deshacer` inline tras guardar (`undo:<movId>` stateless, doble-scope + audit), (b) saldo rápido `💰 Hoy`/`📅 Semana` en mainKeyboard, (c) `setMyCommands` por rol vía `BotCommandScope` (viewer ve menos; `setScopedCommands` en owner /start + ambas ramas de `handleTelegramInviteToken`), (d) aviso de baja confianza/empresa sin resolver en la tarjeta de revisión. Nuevo `src/bot/quickActions.ts`; `buildLowConfidenceNote` canónico en `extractionReview.ts`.
+3. `51d1ef3` **app-forecast-insights** — saldo proyectado 30 días con recurrentes activos (`src/dashboard/forecast.ts`, expansión por frecuencia con clamp de mes/año) + insights sobre summaries (`insights.ts`), card nueva en ResumenTab. Lógica pura TDD.
+4. `de27a2a` **bot-recurrentes-mgmt** — comando `/recurrentes`: listar + pausar/reactivar (`rec_pause:`/`rec_on:`, doble-scope en el UPDATE, maintenance-gated, `requireTelegramCan(write_movimiento)`). Nuevo `src/bot/recurrentesMgmt.ts`.
+5. `c8b1c9a` **app-web-receipt-upload** — composer web acepta imagen (drag-drop + cámara) → `POST /api/extract-image` (base64) reusa pipeline Gemini Vision del bot (`src/server/imageExtract.ts` `extractFromBuffer`, mismo RECEIPT→HANDWRITTEN) → `ImageReviewModal` editable → guarda vía POST /api/movimientos. **Fix seguridad (review fresca, CRITICAL)**: el `express.json()` global SKIPea `/api/extract-image`; el router parsea DESPUÉS de `requireSession → tierStrict` (guard DoS pre-auth — sin auth nunca bufferea el body). Cap 7MB decoded, mime allowlist, 503 `ai_unavailable` (media NO reintenta con 2da key, Files API scopeado a primary).
+6. `dd969ff` **app-command-palette** — Cmd+K / Ctrl+K búsqueda global (movimientos/empresas/categorías) + acciones rápidas. `src/dashboard/commandSearch.ts` (ranking prefix>word>substring, accent/case-insensitive vía NFD), `src/components/CommandPalette.tsx` (portal, focus-trap, teclado, ARIA). Reusa data react-query en memoria, sin endpoint nuevo.
+7. `12d4e33` **app-pwa** — installable vía `vite-plugin-pwa` (manifest + Workbox SW, `registerType: autoUpdate`). **API NUNCA cacheada** (NetworkOnly para `/api/`, `supabase.co`, `run.app` — data financiera siempre fresca). `sw.js`/`manifest.webmanifest` con `no-cache` en firebase.json; assets hasheados `immutable`. Iconos generados con PIL (funcionales; repintar = opcional).
+8. `d9bbe87` **bot-inline-mode** — `@bot 4500 luz` desde cualquier chat (`src/bot/inlineMode.ts`). **Stateless** (cero Maps, re-resuelve identidad por `from.id` — refuerza, no rompe, invariant #18). Parser determinístico de slang rioplatense (luca/palo/gamba/k, sin Gemini). **Anti-tamper (review fresca, 2 HIGH)**: monto/moneda del query RE-parseado, `result_id` solo aporta `tipo` + cross-check (`resolveInlineSaveAmount` descarta si difieren); `escapeMd` en descripción; legacy owner (role=null + ownerUserId) → "owner"; cap `MAX_INLINE_AMOUNT`. Gates can(write)+maintenance en el SAVE.
+
+**Deploy 2026-05-30:**
+- Frontend Firebase Hosting `caja-chica-bot.web.app` (con PWA).
+- Backend Cloud Run rev **`caja-chica-00051-2x6`** (image rebuild, env vars + min/max-instances preservadas). Smoke: `/api/health` 200, `/api/maintenance/status` 200, `POST /api/extract-image` sin auth → **401** (código nuevo vivo + auth-before-parse confirmado).
+- Sin SQL nuevo. Sin env vars nuevas. Engram #722–#728. Mockups HTML en `mockups/` (iconos dashboard + flujos bot).
+- Endpoints nuevos: `POST /api/extract-image`. Comando bot nuevo: `/recurrentes`. Inline mode (requiere BotFather, ver Pendiente).
+
 ### Pendiente
+- **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)
 2. Validar onboarding wizard end-to-end con cuenta nueva real (browser-driven, requiere login Google nuevo)
 3. Refactor `createApp` (complexity 309 según trailmark) — deuda estructural, no vuln activa. Candidato para `/codex:rescue --background --effort high "split createApp into Express routers"`

@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useCallback, useEffect, useRef, useMemo } fro
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { Send, AlertCircle, Loader2, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Camera, Search } from 'lucide-react';
-import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus } from './services/api';
+import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
@@ -26,6 +26,7 @@ import { DashboardModals } from './components/dashboard/DashboardModals';
 import { useDashboardData } from './hooks/dashboard/useDashboardData';
 import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
 import { buildMovimientosCsv, shareOrDownloadCsv } from './dashboard/exportCsv';
+import { buildExportRequest } from './dashboard/reportRequest';
 import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
 import { useImageExtract } from './hooks/dashboard/useImageExtract';
@@ -47,6 +48,17 @@ export interface DashboardAppProps {
   onToggleTheme: () => void;
   themePreference: ThemePreference;
   onSetThemePreference: (p: ThemePreference) => void;
+}
+
+function triggerDownload(fileName: string, mimeType: string, contentBase64: string) {
+  const binary = atob(contentBase64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export type DashboardTab = 'resumen' | 'movimientos' | 'recurrentes' | 'empresas' | 'superadmin' | 'configuracion';
@@ -237,6 +249,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   // ── Command palette state + keyboard trigger ────────────────────────────────
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<DriveStatus>({ connected: false, enabled: false });
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (!canUseDrive) return;
+    let active = true;
+    void api.getDriveStatus().then((s) => { if (active) setDriveStatus(s); }).catch(() => {});
+    return () => { active = false; };
+  }, [canUseDrive]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -344,6 +365,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     prevCategorySummaries,
     currentPeriod,
   });
+
+  const driveConnected = canUseDrive && driveStatus.enabled && driveStatus.connected;
+  const exportFilters = { datePeriod, customFrom, customTo, selectedCompany, movementType, movementCurrency, selectedCategory };
+
+  const exportBackendReport = async (destination: 'local' | 'drive') => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await api.exportReport(buildExportRequest(exportFilters, 'pdf', destination, new Date()));
+      if (destination === 'drive') {
+        if (res.driveUrl) { showToast('Informe guardado en Drive.'); window.open(res.driveUrl, '_blank', 'noopener'); }
+        else showToast('No se pudo guardar en Drive.', 'warning');
+      } else if (res.contentBase64) {
+        triggerDownload(res.fileName, res.mimeType, res.contentBase64);
+      }
+    } catch {
+      showToast('No se pudo generar el informe.', 'warning');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const deleteItem = (id: string) => {
     if (!canWriteData) return;
@@ -517,7 +559,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} monthlyChartDataArs={monthlyChartDataArs} monthlyChartDataUsd={monthlyChartDataUsd} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} />}
-                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} onExport={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
+                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} onDrilldown={(company, category) => { setSelectedCompany(company); setSelectedCategory(category); setMovementType('all'); setMovementCurrency('all'); setDatePeriod('all'); setActiveTab('movimientos'); }} canUseDrive={canUseDrive} canConnectDrive={canConnectDrive} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><AdminPanel viewer={viewer} /></Suspense>}

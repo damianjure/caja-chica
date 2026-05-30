@@ -1,5 +1,60 @@
-import type { ReactNode } from 'react';
-import { X, Share2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload } from 'lucide-react';
+
+function ExportMenu({
+  onCsv, onPdf, onDrive, driveConnected, busy,
+}: {
+  onCsv: () => void;
+  onPdf: () => void;
+  onDrive: () => void;
+  driveConnected: boolean;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const item = (icon: ReactNode, label: string, onClick: () => void) => (
+    <button
+      role="menuitem"
+      onClick={() => { setOpen(false); onClick(); }}
+      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors"
+    >
+      {icon}{label}
+    </button>
+  );
+
+  return (
+    <div className="relative ml-auto" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={busy}
+        className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97] disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" aria-hidden="true" />}
+        Exportar
+        <ChevronDown className="h-3 w-3" aria-hidden="true" />
+      </button>
+      {open && (
+        <div role="menu" aria-label="Exportar" className="anim-fade-in-down absolute right-0 top-9 z-30 w-56 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-1.5 shadow-[var(--app-shadow-md)]">
+          {item(<FileSpreadsheet className="h-4 w-4 text-[var(--app-text-3)]" />, 'CSV (lo que ves)', onCsv)}
+          {item(<FileText className="h-4 w-4 text-[var(--app-text-3)]" />, 'PDF', onPdf)}
+          {driveConnected && item(<HardDriveUpload className="h-4 w-4 text-[var(--app-text-3)]" />, 'Guardar en Drive', onDrive)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
@@ -97,7 +152,11 @@ export default function MovimientosTab({
   setCustomTo,
   hasActiveFilters,
   resetFilters,
-  onExport,
+  onExportCsv,
+  onExportPdf,
+  onExportDrive,
+  driveConnected,
+  exporting,
   historyCards,
 }: {
   incomeCount: number;
@@ -121,7 +180,11 @@ export default function MovimientosTab({
   setCustomTo: (value: string) => void;
   hasActiveFilters: boolean;
   resetFilters: () => void;
-  onExport: () => void;
+  onExportCsv: () => void;
+  onExportPdf: () => void;
+  onExportDrive: () => void;
+  driveConnected: boolean;
+  exporting: boolean;
   historyCards: ReactNode;
 }) {
   const dateLabel = DATE_OPTS.find((o) => o.id === datePeriod)?.label ?? 'Todo';
@@ -152,15 +215,7 @@ export default function MovimientosTab({
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={onExport}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--app-strong-text)] hover:border-[var(--app-border-strong)] active:scale-[0.97] transition duration-150"
-              title="Exportar / compartir los movimientos filtrados"
-            >
-              <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Exportar
-            </button>
+            <ExportMenu onCsv={onExportCsv} onPdf={onExportPdf} onDrive={onExportDrive} driveConnected={driveConnected} busy={exporting} />
           </div>
 
           {/* Rango personalizado */}

@@ -74,6 +74,16 @@ export function formatIdentity(appRole: AppRole, dashboardRole: DashboardRole | 
 }
 
 /**
+ * Single-letter avatar initial from an email (Header C avatar).
+ * First alphanumeric char of the local part, uppercased. "?" if none.
+ */
+export function initialsFromEmail(email: string): string {
+  const local = (email.split("@")[0] ?? "").trim();
+  const first = local.match(/[a-zA-Z0-9]/)?.[0];
+  return first ? first.toUpperCase() : "?";
+}
+
+/**
  * For badge tooltips. Short, action-oriented.
  */
 export function badgeTooltip(role: AppRole | DashboardRole): string {

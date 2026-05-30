@@ -1,13 +1,13 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { Send, AlertCircle, Loader2, LogOut, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera, Search } from 'lucide-react';
+import { Send, AlertCircle, Loader2, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, TrendingDown, TrendingUp, Camera, Search } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
-import { APP_ROLE_LABELS, DASHBOARD_ROLE_LABELS, type AppRole, type DashboardRole } from './services/labels';
+import { DASHBOARD_ROLE_LABELS, formatIdentity, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
 import {
@@ -22,6 +22,7 @@ import { ThemeMode, ThemePreference, ThemeToggle } from './components/ThemeToggl
 import { SectionCard } from './components/dashboard/primitives';
 import { ModalShell } from './components/ui/ModalShell';
 import { MovementCards } from './components/dashboard/MovementCards';
+import { HeaderUserMenu } from './components/dashboard/HeaderUserMenu';
 import { DashboardModals } from './components/dashboard/DashboardModals';
 import { useDashboardData } from './hooks/dashboard/useDashboardData';
 import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
@@ -440,38 +441,40 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <MaintenanceBanner status={maintenanceStatus} />
 
         <header>
-          <div className="space-y-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 md:p-6 shadow-[var(--app-shadow-panel)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-white text-xs font-bold">CC</span>
-                  <span className="text-base font-semibold tracking-tight text-neutral-900">Caja Chica</span>
-                </div>
-                <h1 id="app-title" className="text-3xl font-bold tracking-tight text-neutral-900">Dashboard Financiero</h1>
-                <p className="text-neutral-500">Un vistazo claro para saber si hay problemas financieros o económicos.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 self-start w-full lg:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsPaletteOpen(true)}
-                  aria-label="Búsqueda global (⌘K)"
-                  title="Búsqueda global"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-3)] hover:border-[var(--app-border-strong)] transition-colors duration-150"
-                >
-                  <Search className="w-3 h-3" aria-hidden="true" />
-                  <span>Buscar</span>
-                  <kbd className="font-mono">⌘K</kbd>
-                </button>
-                <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
-                <div className="flex min-w-0 flex-1 lg:flex-none items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5">
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs text-neutral-700 truncate">{viewer.email}</span>
-                    <span className="text-xs text-neutral-500 truncate">{APP_ROLE_LABELS[viewer.role as AppRole] ?? viewer.role}{' · '}{DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}{dashboardRole === 'owner' ? ' de este dashboard' : ' este dashboard'}</span>
-                  </div>
-                  <button onClick={() => void handleSignOut()} className="inline-flex items-center justify-center h-11 w-11 shrink-0 rounded-md border border-red-200 bg-red-50 text-red-600 hover:border-red-400 active:scale-[0.94] transition" title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 shadow-[var(--app-shadow-panel)]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-xs font-bold">CC</span>
+            <span className="hidden sm:inline text-sm font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
+            <span className="hidden sm:block h-5 w-px bg-[var(--app-border)]" aria-hidden="true" />
+            <h1 id="app-title" className="min-w-0 truncate text-base font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              aria-label="Búsqueda global (⌘K)"
+              title="Búsqueda global"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-3)] hover:border-[var(--app-border-strong)] transition-colors duration-150"
+            >
+              <Search className="w-3 h-3" aria-hidden="true" />
+              <span className="hidden md:inline">Buscar</span>
+              <kbd className="font-mono">⌘K</kbd>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              aria-label="Búsqueda global"
+              className="sm:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-[var(--app-border)] text-[var(--app-text-3)]"
+            >
+              <Search className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
+            <span className="hidden md:inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-xs font-semibold text-[var(--app-text-2)]">
+              {DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}
+            </span>
+            <HeaderUserMenu
+              email={viewer.email}
+              identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
+              onSignOut={() => void handleSignOut()}
+            />
           </div>
         </header>
 

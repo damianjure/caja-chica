@@ -28,6 +28,7 @@ export interface ReportExportRequest extends ReportFilters {
   month?: string;
   from?: string;
   to?: string;
+  destination?: "local" | "drive";
 }
 
 export interface ReportDateRange {

@@ -8,6 +8,7 @@ import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
+import { buildUndoKeyboard } from "../quickActions.ts";
 
 export type PendingMovementPayload = {
   item: {
@@ -366,9 +367,17 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
           originalText: args.originalText,
         });
 
+        const movId = created?.id as string | undefined;
+        const confirmKb = movId
+          ? { inline_keyboard: [
+              [{ text: "✏️ Cambiar Categoría", callback_data: `change_cat_${movId}` }],
+              ...buildUndoKeyboard(movId).inline_keyboard,
+            ] }
+          : undefined;
+
         await ctx.reply(`${icon} *Registrado:* ${item.descripcion}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`, {
           parse_mode: "Markdown",
-          reply_markup: created?.id ? new InlineKeyboard().text("✏️ Cambiar Categoría", `change_cat_${created.id}`) : undefined,
+          reply_markup: confirmKb,
         });
       }
     } else if (extracted.intent === "GESTIONAR_EMPRESA" && extracted.action === "ADD") {

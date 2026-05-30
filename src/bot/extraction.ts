@@ -18,6 +18,7 @@ import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
 import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
+import { buildUndoKeyboard } from "./quickActions.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
@@ -253,7 +254,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       remindersEnabled: true,
       linkTokenExpiresAt: null,
     });
-    const { error } = await supabase.from("movimientos").insert([{
+    const { data: insertedRows, error } = await supabase.from("movimientos").insert([{
       ...ownership,
       monto: Math.abs(d.monto ?? 0),
       tipo: d.tipo,
@@ -264,15 +265,19 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       original_text: `[${d.sourceType}] ${d.descripcion}`,
       conciliado: true,
       conciliado_notas: null,
-    }]);
+    }]).select("id");
     deletePendingExtraction(extractionId);
     if (error) {
       console.error("extractionReview confirm insert error:", error);
       await ctx.editMessageText("❌ Error al guardar. Intentá de nuevo.", { parse_mode: "Markdown" });
       return;
     }
+    const insertedId = insertedRows?.[0]?.id as string | undefined;
     const montoStr = d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "monto desconocido";
-    await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${d.descripcion}`, { parse_mode: "Markdown" });
+    await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${d.descripcion}`, {
+      parse_mode: "Markdown",
+      reply_markup: insertedId ? buildUndoKeyboard(insertedId) : undefined,
+    });
   });
 
   bot.callbackQuery(/^er:cancel:(.+)$/, async (ctx) => {

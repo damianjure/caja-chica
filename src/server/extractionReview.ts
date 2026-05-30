@@ -137,11 +137,26 @@ export function clearPendingExtractionsByChat(chatId: number): void {
   }
 }
 
+export const LOW_CONFIDENCE_THRESHOLD = 0.6;
+
+/**
+ * Note shown when the empresa is unresolved (null) OR confidence is below threshold.
+ * Empty string = no note. Single source of truth — bot/quickActions re-exports this.
+ */
+export function buildLowConfidenceNote(args: { empresa: string | null; confidence: number }): string {
+  if (args.empresa === null) return "⚠️ No estoy seguro de la empresa — elegí abajo o editá.";
+  if (args.confidence < LOW_CONFIDENCE_THRESHOLD) return "⚠️ Confianza baja — revisá los datos antes de confirmar.";
+  return "";
+}
+
 export function buildReviewCardText(data: PendingExtractionData): string {
   const montoStr = data.monto !== null ? `$${data.monto.toLocaleString("es-AR")} ${data.moneda}` : "❓ Sin monto";
   const empresaStr = data.empresa ?? "Sin empresa";
   const tipoEmoji = data.tipo === "ingreso" ? "💚" : "🔴";
-  const confidenceWarn = data.confidence < 0.6 ? "\n⚠️ Confianza baja — revisá los datos." : "";
+
+  // Low-confidence or unresolved empresa note (canonical helper)
+  const note = buildLowConfidenceNote({ empresa: data.empresa, confidence: data.confidence });
+  const noteLines = note ? `\n${note}` : "";
 
   return (
     `🧾 *Detecté este movimiento:*\n\n` +
@@ -151,7 +166,7 @@ export function buildReviewCardText(data: PendingExtractionData): string {
     `📝 ${data.descripcion}\n` +
     `📂 ${data.categoria}` +
     (data.fecha ? `\n📅 ${data.fecha}` : "") +
-    confidenceWarn
+    noteLines
   );
 }
 

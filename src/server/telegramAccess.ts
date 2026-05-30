@@ -19,7 +19,7 @@ export interface TelegramLinkRecord {
   linkTokenExpiresAt: string | null;
 }
 
-async function resolveDashboardRole(
+export async function resolveDashboardRole(
   supabase: TelegramSupabaseLike,
   userId: string,
   dashboardId: string,

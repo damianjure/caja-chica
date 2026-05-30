@@ -30,6 +30,7 @@ export function buildMainKeyboard(dashboardUrl: string) {
     .text("📊 Informe", "rp_start").text("📤 Exportar", "rp_start").row()
     .text("🏢 Empresas", "empresas").text("📁 Categorías", "categorias").row()
     .text("💰 Saldos", "saldos").text("🔍 Buscar", "buscar_mode").row()
+    .text("💰 Hoy", "qs:hoy").text("📅 Semana", "qs:sem").row()
     .text("🗑️ Borrar último", "del_last").text("✏️ Editar último", "edit_last").row()
     .text("🗑️ Borrar empresa", "del_emp").row()
     .url("🌐 Abrir Dashboard", dashboardUrl);

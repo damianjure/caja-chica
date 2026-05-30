@@ -4,9 +4,12 @@ import { buildMainKeyboard } from "./keyboards.ts";
 import {
   hasTelegramAccess,
   resolveTelegramIdentityByToken,
+  resolveDashboardRole,
+  type TelegramDashboardRole,
 } from "../server/telegramAccess.ts";
 import { getLinkedTelegramUser } from "./utils.ts";
 import { registerCancelHandler } from "./commands/cancel.ts";
+import { getCommandsForRole } from "./quickActions.ts";
 
 const BOT_COMMANDS = [
   { command: "menu", description: "Abrir el menú principal" },
@@ -37,7 +40,20 @@ export async function registerBotCommands(bot: Bot, attempts = 3): Promise<void>
   console.error("❌ Failed to register Telegram commands after all attempts");
 }
 
-async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Context, token: string): Promise<boolean> {
+/**
+ * Set per-chat BotCommandScope tailored to the resolved role.
+ * Best-effort — failure is swallowed and never propagates to the caller.
+ */
+export async function setScopedCommands(bot: Bot, chatId: number, role: TelegramDashboardRole | null): Promise<void> {
+  try {
+    const commands = getCommandsForRole(role);
+    await bot.api.setMyCommands(commands, { scope: { type: "chat", chat_id: chatId } });
+  } catch (err) {
+    console.error(`setScopedCommands chatId=${chatId} role=${role} failed:`, err);
+  }
+}
+
+async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Context, bot: Bot, token: string): Promise<boolean> {
   const { data: tokenRows } = await supabase
     .from("telegram_invite_tokens")
     .select("id, dashboard_id, target_user_id, expires_at, status, pre_authorized")
@@ -121,6 +137,9 @@ async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Con
       .update({ status: "claimed" })
       .eq("id", inviteToken.id);
 
+    const invitedRole = await resolveDashboardRole(supabase, targetUserId, inviteToken.dashboard_id);
+    if (ctx.chat) setScopedCommands(bot, ctx.chat.id, invitedRole).catch(() => {});
+
     await ctx.reply("✅ Listo. Quedaste sumado al dashboard. Usá /menu para empezar.");
     return true;
   }
@@ -146,6 +165,11 @@ async function handleTelegramInviteToken(supabase: BotDeps["supabase"], ctx: Con
     .update({ status: "claimed" })
     .eq("id", inviteToken.id);
 
+  if (ctx.chat && inviteToken.target_user_id) {
+    const invitedRole = await resolveDashboardRole(supabase, inviteToken.target_user_id, inviteToken.dashboard_id);
+    setScopedCommands(bot, ctx.chat.id, invitedRole).catch(() => {});
+  }
+
   await ctx.reply(
     "✅ Solicitud enviada. El dueño del dashboard necesita confirmarte. Te avisamos cuando esté listo.",
   );
@@ -162,7 +186,7 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
     const token = ctx.match?.trim();
 
     if (token) {
-      const handledAsInvite = await handleTelegramInviteToken(supabase, ctx, token);
+      const handledAsInvite = await handleTelegramInviteToken(supabase, ctx, bot, token);
       if (handledAsInvite) return;
 
       let target;
@@ -195,6 +219,7 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
         })
         .eq("id", target.id as string);
 
+      setScopedCommands(bot, ctx.chat.id, "owner").catch(() => {});
       return ctx.reply(
         "✅ Chat sumado. A partir de ahora opera sobre tus datos.",
         { reply_markup: mainKeyboard },

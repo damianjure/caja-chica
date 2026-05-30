@@ -29,6 +29,7 @@ import {
   getSaldosText,
   buildPendingCompanyKeyboardLocal,
 } from "./movements.ts";
+import { canUndoMovement, computeQuickBalance } from "../quickActions.ts";
 
 export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   const { supabase, genAI, genAI2 = null, botToken } = deps;
@@ -118,6 +119,98 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     for (const chunk of splitForTelegram(text)) {
       await ctx.reply(chunk, { parse_mode: "Markdown" });
     }
+  });
+
+  // Quick balance — today
+  bot.callbackQuery("qs:hoy", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const linked = await requireLinkedAccount(supabase, ctx);
+    if (!linked) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await applyTelegramDataScope(
+      supabase.from("movimientos").select("tipo, monto, moneda, created_at, deleted_at").is("deleted_at", null),
+      linked,
+    ).gte("created_at", `${today}T00:00:00.000Z`).lte("created_at", `${today}T23:59:59.999Z`);
+    if (error) return ctx.reply("❌ No pude calcular el saldo. Intentá de nuevo.");
+    const { netARS, netUSD } = computeQuickBalance(data ?? []);
+    const sign = (n: number) => n >= 0 ? "🟢" : "🔴";
+    await ctx.reply(
+      `💰 *Saldo de hoy (${today})*\n\n${sign(netARS)} ARS: $${netARS.toLocaleString("es-AR")}\n${sign(netUSD)} USD: u$s${netUSD.toLocaleString("es-AR")}`,
+      { parse_mode: "Markdown" },
+    );
+  });
+
+  // Quick balance — last 7 days
+  bot.callbackQuery("qs:sem", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const linked = await requireLinkedAccount(supabase, ctx);
+    if (!linked) return;
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setUTCDate(now.getUTCDate() - 6);
+    const fromDate = weekAgo.toISOString().slice(0, 10);
+    const toDate = now.toISOString().slice(0, 10);
+    const { data, error } = await applyTelegramDataScope(
+      supabase.from("movimientos").select("tipo, monto, moneda, created_at, deleted_at").is("deleted_at", null),
+      linked,
+    ).gte("created_at", `${fromDate}T00:00:00.000Z`).lte("created_at", `${toDate}T23:59:59.999Z`);
+    if (error) return ctx.reply("❌ No pude calcular el saldo. Intentá de nuevo.");
+    const { netARS, netUSD } = computeQuickBalance(data ?? []);
+    const sign = (n: number) => n >= 0 ? "🟢" : "🔴";
+    await ctx.reply(
+      `📅 *Saldo últimos 7 días* (${fromDate} → ${toDate})\n\n${sign(netARS)} ARS: $${netARS.toLocaleString("es-AR")}\n${sign(netUSD)} USD: u$s${netUSD.toLocaleString("es-AR")}`,
+      { parse_mode: "Markdown" },
+    );
+  });
+
+  // Undo — soft-delete the movement whose id is encoded in callback_data
+  bot.callbackQuery(/^undo:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery("Deshaciendo...");
+    if (!await assertBotWritable(ctx)) return;
+    const linked = await requireTelegramCan(supabase, ctx, "delete_own_movimiento");
+    if (!linked) return;
+    const movId = ctx.match[1];
+
+    // Fetch to verify scope
+    const { data: rows, error: fetchErr } = await applyTelegramDataScope(
+      supabase.from("movimientos").select("id, dashboard_id, owner_user_id, deleted_at, tipo, monto, moneda, descripcion, empresa_nombre, categoria").is("deleted_at", null),
+      linked,
+    ).eq("id", movId).limit(1);
+
+    if (fetchErr || !rows?.[0]) {
+      await ctx.editMessageText("❌ El movimiento ya fue borrado o no existe.");
+      return;
+    }
+    const mov = rows[0];
+    if (!canUndoMovement(mov, linked)) {
+      await ctx.editMessageText("🚫 Sin permiso para deshacer este movimiento.");
+      return;
+    }
+
+    let delQuery = supabase.from("movimientos").update({
+      deleted_at: new Date().toISOString(),
+      deleted_by_user_id: linked.userId,
+    }).eq("id", movId);
+    if (linked.dashboardId) delQuery = delQuery.eq("dashboard_id", linked.dashboardId);
+    else delQuery = delQuery.eq("owner_user_id", linked.ownerUserId as string);
+
+    const { error: delErr } = await delQuery;
+    if (delErr) {
+      console.error("undo soft-delete error:", delErr);
+      await ctx.editMessageText("❌ No pude deshacer. Intentá de nuevo.");
+      return;
+    }
+
+    await insertBotAuditLog(supabase, {
+      linked,
+      actorUserId: linked.userId,
+      action: "delete",
+      entityType: "movimiento",
+      entityId: movId,
+      beforeData: mov,
+    });
+
+    await ctx.editMessageText(`↩️ *Deshecho:* ${escapeMd(mov.descripcion ?? "")}\n💰 ${mov.monto} ${mov.moneda}`, { parse_mode: "Markdown", reply_markup: { inline_keyboard: [] } });
   });
 
   bot.callbackQuery("buscar_mode", async (ctx) => {

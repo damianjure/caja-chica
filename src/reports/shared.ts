@@ -3,6 +3,7 @@ export interface ReportMovimientoLike {
   empresa_nombre: string;
   tipo: string;
   moneda: string;
+  categoria?: string;
 }
 
 export type ReportExportFormat = "csv" | "pdf";
@@ -16,6 +17,8 @@ export interface ReportFilters {
   companies: string[];
   tipo: ReportMovementType;
   moneda: ReportCurrency;
+  /** Category name, or undefined/'all' for no filter (C-completo). */
+  categoria?: string;
 }
 
 export interface ReportExportRequest extends ReportFilters {
@@ -134,6 +137,7 @@ export function filterMovementsForReport(
     ) return false;
     if (filters.tipo !== "all" && item.tipo !== filters.tipo) return false;
     if (filters.moneda !== "all" && item.moneda !== filters.moneda) return false;
+    if (filters.categoria && filters.categoria !== "all" && item.categoria !== filters.categoria) return false;
     return true;
   });
 }

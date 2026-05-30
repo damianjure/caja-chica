@@ -35,6 +35,32 @@ const movements = [mov("A"), mov("B"), mov("C")];
 // T9 — filterMovementsForReport array match
 // ---------------------------------------------------------------------------
 
+test("filterMovementsForReport: categoria filtra por categoría (C-completo)", () => {
+  const movs = [
+    { ...mov("A"), categoria: "Combustible" },
+    { ...mov("B"), categoria: "Servicios" },
+    { ...mov("C"), categoria: "Combustible" },
+  ];
+  const result = filterMovementsForReport(movs, { ...baseFilters, categoria: "Combustible" }, range);
+  assert.equal(result.length, 2);
+  assert.ok(result.every((m: any) => m.categoria === "Combustible"));
+});
+
+test("filterMovementsForReport: categoria 'all' o ausente no filtra", () => {
+  const movs = [{ ...mov("A"), categoria: "X" }, { ...mov("B"), categoria: "Y" }];
+  assert.equal(filterMovementsForReport(movs, { ...baseFilters, categoria: "all" }, range).length, 2);
+  assert.equal(filterMovementsForReport(movs, baseFilters, range).length, 2);
+});
+
+test("parseReportExportRequest: acepta categoria opcional", () => {
+  const r = parseReportExportRequest({ format: "csv", period: "month", tipo: "all", moneda: "all", categoria: "Combustible" });
+  assert.equal(r?.categoria, "Combustible");
+  const r2 = parseReportExportRequest({ format: "csv", period: "month", tipo: "all", moneda: "all", categoria: "all" });
+  assert.equal(r2?.categoria, undefined);
+  const r3 = parseReportExportRequest({ format: "csv", period: "month", tipo: "all", moneda: "all" });
+  assert.equal(r3?.categoria, undefined);
+});
+
 test("filterMovementsForReport: empty companies = all pass", () => {
   const result = filterMovementsForReport(movements, { ...baseFilters, companies: [] }, range);
   assert.equal(result.length, 3);

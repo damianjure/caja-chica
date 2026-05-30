@@ -66,6 +66,7 @@ export interface ReportExportRequest {
   companies: string[];
   tipo: ReportMovementType;
   moneda: ReportCurrency;
+  categoria?: string;
   destination: ReportDestination;
 }
 
@@ -527,6 +528,12 @@ export function parseReportExportRequest(value: unknown): ReportExportRequest | 
     moneda: payload.moneda,
     destination,
   };
+
+  // Optional category filter (C-completo). 'all'/empty = no filter.
+  if (typeof payload.categoria === "string") {
+    const trimmed = payload.categoria.trim();
+    if (trimmed && trimmed !== "all") request.categoria = trimmed;
+  }
 
   if (payload.anchorDate !== undefined) {
     if (typeof payload.anchorDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(payload.anchorDate)) {

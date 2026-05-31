@@ -620,6 +620,20 @@ Router de intención sobre voz Y texto libre del bot: frases habladas/escritas d
 
 **Limitaciones conocidas:** (1) `editar_ultimo` edita el ÚLTIMO movimiento de cualquier tipo; `valor_anterior` se captura/muestra pero NO se usa para desambiguar cuál editar. (2) `informe` slot-prefill sin alcance por empresa (siempre todas). (3) recurrente sin empresa ni día del mes. (4) "Editar" en la tarjeta abre el flujo desde cero (no pre-rellena). (5) exec functions sin unit test (I/O; los normalizadores puros sí, +46 tests).
 
+### Cambios 2026-05-31 (rediseño dashboard + cleanup comandos — deploy)
+
+Branch `feat/dashboard-redesign` (commit `8bb0c57`, stackeada sobre `feat/bot-voice-intents`; PR pendiente de merge). Engram #749.
+
+- **Gráfico A (Pulso mensual)**: `Charts.tsx` nuevo `AreaTrendChart` (área suave ingreso/gasto + línea de saldo fuerte, SVG puro + tokens `--chart-*`, sin dep de charts) reemplaza `TrendBars` (eliminado). `ResumenTab`: las 2 tarjetas ARS/USD → **1 tarjeta con toggle ARS/USD** + **leyenda interactiva** (chips Ingresos/Gastos/Saldo clickeables = mostrar/ocultar serie; el eje Y se reajusta a las series visibles vía prop `show: ChartSeriesVisibility`).
+- **Config**: `ConfiguracionTab` orden Equipo → **Telegram** → Categorías → Drive.
+- **Header**: `DashboardApp` app-bar con más peso (border-strong, shadow-md, +alto, monograma 36px + título 18px).
+- **Agregar categorías**: nuevo `POST /api/categorias` en `routes/categorias.ts` (requireSession + canWriteToScope + canManageCategoriasOp, dedupe case-insensitive en scope, ownership `dashboardId ? {owner_user_id,dashboard_id} : {owner_user_id}`, cap 60). `api.createCategoria`. `CategoriasSection` con form de alta. Strict TDD: 3 tests en `api.test.ts` (create, dedupe, reject vacío) RED→GREEN.
+- **Cleanup comandos bot** (opción "solo unificar"): `BOT_COMMANDS` eliminado de `menu.ts`; `FULL_COMMANDS` (quickActions.ts) es la **fuente única** (registerBotCommands lo consume; setScopedCommands sigue narrowing por rol). Mata el drift de doble lista. Handlers `agregar*`/`borrar*` intactos (decisión del dueño: no tocar).
+
+**Deploy 2026-05-31:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00058-92k`** (por `POST /api/categorias`). Smoke prod: `/api/health` 200, `POST /api/categorias` sin auth → 401. Sin SQL nuevo, sin env vars nuevas. Tests 684 pass / 2 skip / 0 fail. tsc + build limpios.
+
+**Pendiente QA visual**: gráfico A + header verificados por tsc/build + mockup (`mockups/redesign-preview.html`), no en prod con ojos.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

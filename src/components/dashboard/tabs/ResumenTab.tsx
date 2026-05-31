@@ -1,9 +1,11 @@
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } from 'lucide-react';
 import { ChartCard, HorizontalBarList, AreaTrendChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
+import { buildMonthlyChartData } from '../../../dashboard/summary';
+import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
   arsIngreso: string;
@@ -11,8 +13,8 @@ interface ResumenTabProps {
   arsNeto: string;
   usdNeto: string;
   companyCount: number;
-  monthlyChartDataArs: Array<{ label: string; income: number; expense: number; net: number }>;
-  monthlyChartDataUsd: Array<{ label: string; income: number; expense: number; net: number }>;
+  history: Movimiento[];
+  companiesList: string[];
   topExpenseCategories: Array<{ label: string; value: number; secondary?: string }>;
   topCompanies: Array<{ label: string; value: number; valueLabel?: string; secondary?: string; supportingValue?: string; segments?: Array<{ value: number; colorClass: string; label: string; currency?: 'ARS' | 'USD' }> }>;
   incomeTags: Array<{ label: string; value: string; secondary?: string }>;
@@ -27,7 +29,26 @@ interface ResumenTabProps {
 export default function ResumenTab(props: ResumenTabProps) {
   const [pulseCurrency, setPulseCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [pulseSeries, setPulseSeries] = useState({ income: true, expense: true, net: true });
-  const pulseData = pulseCurrency === 'ARS' ? props.monthlyChartDataArs : props.monthlyChartDataUsd;
+  const [hiddenCompanies, setHiddenCompanies] = useState<Set<string>>(new Set());
+
+  const companyNames = useMemo(() => props.companiesList.filter((c) => c !== 'all'), [props.companiesList]);
+  const pulseData = useMemo(() => {
+    const visible = companyNames.filter((c) => !hiddenCompanies.has(c));
+    return buildMonthlyChartData(props.history, pulseCurrency, hiddenCompanies.size ? visible : null);
+  }, [props.history, pulseCurrency, hiddenCompanies, companyNames]);
+  const richData = pulseData.length >= 4;
+
+  const toggleCompany = (name: string) =>
+    setHiddenCompanies((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        if (companyNames.filter((c) => !next.has(c)).length <= 1) return prev; // no apagar la última
+        next.add(name);
+      }
+      return next;
+    });
 
   return (
     <div className="space-y-6">
@@ -39,60 +60,94 @@ export default function ResumenTab(props: ResumenTabProps) {
         <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
 
-      <ChartCard
-        title="Pulso mensual"
-        description="Cuánto entró, cuánto salió y qué saldo quedó, mes a mes. Cambiá entre pesos y dólares sin mezclar monedas."
-        footer={
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar u ocultar series del gráfico">
-            {([
-              ['income', 'Ingresos', '--chart-income'],
-              ['expense', 'Gastos', '--chart-expense'],
-              ['net', 'Saldo', '--chart-net'],
-            ] as const).map(([key, label, color]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setPulseSeries((s) => ({ ...s, [key]: !s[key] }))}
-                aria-pressed={pulseSeries[key]}
-                aria-label={`${pulseSeries[key] ? 'Ocultar' : 'Mostrar'} ${label}`}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${pulseSeries[key] ? 'border-[var(--app-border-strong)] text-[var(--app-text-2)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] line-through opacity-50'}`}
-              >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: `var(${color})` }} />
-                {label}
-              </button>
-            ))}
-          </div>
-        }
-      >
-        <div className="mb-4 flex justify-end">
-          <div className="inline-flex rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5" role="group" aria-label="Moneda del gráfico">
-            {(['ARS', 'USD'] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setPulseCurrency(c)}
-                aria-pressed={pulseCurrency === c}
-                className={`rounded-md px-3 py-1 text-xs font-bold tabular-nums transition ${pulseCurrency === c ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+      {/* Layout adaptativo: con pocos datos el Pulso es compacto y comparte fila; al crecer (>=4 meses) ocupa toda la fila. */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={richData ? 'lg:col-span-2' : ''}>
+          <ChartCard
+            title="Pulso mensual"
+            description="Cuánto entró, cuánto salió y qué saldo quedó, mes a mes. Filtrá por empresa y cambiá entre pesos y dólares."
+            footer={
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar u ocultar series del gráfico">
+                {([
+                  ['income', 'Ingresos', '--chart-income'],
+                  ['expense', 'Gastos', '--chart-expense'],
+                  ['net', 'Saldo', '--chart-net'],
+                ] as const).map(([key, label, color]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPulseSeries((s) => {
+                      const next = { ...s, [key]: !s[key] };
+                      if (!next.income && !next.expense && !next.net) return s; // no apagar la última serie
+                      return next;
+                    })}
+                    aria-pressed={pulseSeries[key]}
+                    aria-label={`${pulseSeries[key] ? 'Ocultar' : 'Mostrar'} ${label}`}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${pulseSeries[key] ? 'border-[var(--app-border-strong)] text-[var(--app-text-2)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] line-through opacity-50'}`}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: `var(${color})` }} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {companyNames.length > 1 ? (
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por empresa">
+                  <button
+                    type="button"
+                    onClick={() => setHiddenCompanies(new Set())}
+                    aria-pressed={hiddenCompanies.size === 0}
+                    className={`rounded-full border px-3 py-1 text-xs transition ${hiddenCompanies.size === 0 ? 'border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+                  >
+                    Todas
+                  </button>
+                  {companyNames.map((name) => {
+                    const on = !hiddenCompanies.has(name);
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => toggleCompany(name)}
+                        aria-pressed={on}
+                        aria-label={`${on ? 'Ocultar' : 'Mostrar'} ${name}`}
+                        className={`rounded-full border px-3 py-1 text-xs transition ${on ? 'border-[var(--app-border-strong)] text-[var(--app-text-2)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] line-through opacity-50'}`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : <span />}
+              <div className="inline-flex shrink-0 self-end rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5 sm:self-auto" role="group" aria-label="Moneda del gráfico">
+                {(['ARS', 'USD'] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setPulseCurrency(c)}
+                    aria-pressed={pulseCurrency === c}
+                    className={`rounded-md px-3 py-1 text-xs font-bold tabular-nums transition ${pulseCurrency === c ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {pulseData.length === 0 ? (
+              <EmptyState
+                title={pulseCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'}
+                hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
+                canWrite={props.canWriteData}
+                cta={pulseCurrency === 'ARS' ? 'Cargá tu primer movimiento desde el campo de arriba.' : undefined}
+                icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
+              />
+            ) : (
+              <AreaTrendChart data={pulseData} currency={pulseCurrency} show={pulseSeries} />
+            )}
+          </ChartCard>
         </div>
-        {pulseData.length === 0 ? (
-          <EmptyState
-            title={pulseCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'}
-            hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
-            canWrite={props.canWriteData}
-            cta={pulseCurrency === 'ARS' ? 'Cargá tu primer movimiento desde el campo de arriba.' : undefined}
-            icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
-          />
-        ) : (
-          <AreaTrendChart data={pulseData} currency={pulseCurrency} show={pulseSeries} />
-        )}
-      </ChartCard>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Gastos que más pesan" description="Top categorías por gasto real. Más útil que un pie chart porque deja comparar magnitudes.">
           <HorizontalBarList items={props.topExpenseCategories.map((item) => ({ ...item, accent: 'danger' as const }))} emptyLabel="Todavía no hay gastos cargados." />
         </ChartCard>

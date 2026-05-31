@@ -297,6 +297,35 @@ export function getMonthlySummaries(history: Movimiento[]) {
   return [...map.values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
 }
 
+export interface MonthlyChartPoint {
+  label: string;
+  income: number;
+  expense: number;
+  net: number;
+}
+
+/**
+ * Monthly series for AreaTrendChart, in one currency, optionally scoped to a set of company
+ * names (`companies` null/empty = todas). Oldest→newest, descarta meses sin movimiento.
+ */
+export function buildMonthlyChartData(
+  history: Movimiento[],
+  currency: 'ARS' | 'USD',
+  companies?: string[] | null,
+): MonthlyChartPoint[] {
+  const scoped = companies && companies.length > 0
+    ? history.filter((m) => companies.includes(m.empresa_nombre || 'Personal'))
+    : history;
+  return [...getMonthlySummaries(scoped)]
+    .reverse()
+    .map((i) =>
+      currency === 'ARS'
+        ? { label: i.period.slice(5), income: i.ingresosArs, expense: i.gastosArs, net: i.netoArs }
+        : { label: i.period.slice(5), income: i.ingresosUsd, expense: i.gastosUsd, net: i.netoUsd },
+    )
+    .filter((i) => i.income > 0 || i.expense > 0);
+}
+
 export function getRecentExpenses(history: Movimiento[], companyName?: string, limit = 5): RecentExpenseItem[] {
   return history
     .filter((item) => item.tipo === 'egreso')

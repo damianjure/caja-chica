@@ -64,16 +64,21 @@ export function createCategoriasRouter(deps: CategoriasRouterDeps) {
         return res.status(403).json({ error: "forbidden" });
       }
 
-      // Dedupe case-insensitive within scope — categorías also auto-materialize from movements.
+      // Dedupe case-insensitive within scope — categorías también se materializan solas desde movimientos.
+      // select("*") para devolver la fila completa (respeta el contrato Categoria, incl. created_at).
       const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-      const { data: existing, error: fetchError } = await applyDataScope(
-        supabase.from("categorias").select("id, nombre"),
-        session,
-        scope,
-      ).limit(500);
-      if (fetchError) throw fetchError;
-      const match = (existing ?? []).find((c: { nombre: string }) => norm(c.nombre) === norm(nombre));
-      if (match) return res.json(match);
+      const findMatch = async () => {
+        const { data, error } = await applyDataScope(
+          supabase.from("categorias").select("*"),
+          session,
+          scope,
+        ).limit(500);
+        if (error) throw error;
+        return (data ?? []).find((c: { nombre: string }) => norm(c.nombre) === norm(nombre)) ?? null;
+      };
+
+      const existing = await findMatch();
+      if (existing) return res.json(existing);
 
       const ownership = scope.dashboardId
         ? { owner_user_id: session.userId, dashboard_id: scope.dashboardId }
@@ -83,7 +88,15 @@ export function createCategoriasRouter(deps: CategoriasRouterDeps) {
         .insert([{ nombre, ...ownership }])
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        // Carrera: otra request creó la misma categoría entre el check y el insert (unique violation 23505).
+        // En vez de 500, devolvemos la existente (idempotente).
+        if ((error as { code?: string }).code === "23505") {
+          const dup = await findMatch();
+          if (dup) return res.json(dup);
+        }
+        throw error;
+      }
       res.json(data);
     } catch (_err) {
       res.status(500).json({ error: "failed_to_save" });

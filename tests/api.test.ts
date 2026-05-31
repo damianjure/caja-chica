@@ -2388,8 +2388,8 @@ test("POST /api/categorias crea una categoría nueva (scoped al caller)", async 
   );
 });
 
-test("POST /api/categorias dedupe case-insensitive: devuelve la existente sin insertar", async () => {
-  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1" }] });
+test("POST /api/categorias dedupe case-insensitive: devuelve la existente COMPLETA sin insertar", async () => {
+  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1", created_at: "2026-01-01T00:00:00Z" }] });
   await withServer(
     { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
     async (baseUrl) => {
@@ -2401,6 +2401,7 @@ test("POST /api/categorias dedupe case-insensitive: devuelve la existente sin in
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.equal(body.id, "c1");
+      assert.equal(body.created_at, "2026-01-01T00:00:00Z", "debe devolver la fila completa (contrato Categoria)");
       const insertCall = supabase.callLog.find((e) => e.table === "categorias" && e.type === "insert");
       assert.equal(insertCall, undefined, "no debe insertar cuando ya existe");
     },
@@ -2417,6 +2418,70 @@ test("POST /api/categorias rechaza nombre vacío", async () => {
         body: JSON.stringify({ nombre: "   " }),
       });
       assert.equal(res.status, 400);
+    },
+  );
+});
+
+test("POST /api/categorias en dashboard compartido: ownership incluye dashboard_id", async () => {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [{ id: "dm-1", user_id: "owner-1", dashboard_id: "dashboard-1", role: "owner", status: "active", permissions: {} }],
+  });
+  await withServer(
+    {
+      resolveSession: async () => ({ ...memberSession, userId: "owner-1", email: "owner@example.com" }),
+      supabase: supabase.client as AppDeps["supabase"],
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Nueva" }),
+      });
+      assert.equal(res.status, 200);
+      const insertCall = supabase.callLog.find((e) => e.table === "categorias" && e.type === "insert");
+      const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : undefined;
+      assert.equal(payload?.dashboard_id, "dashboard-1");
+      assert.equal(payload?.owner_user_id, "owner-1");
+    },
+  );
+});
+
+test("POST /api/categorias: viewer del dashboard recibe 403", async () => {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [{ id: "dm-1", user_id: "viewer-1", dashboard_id: "dashboard-1", role: "viewer", status: "active", permissions: {} }],
+  });
+  await withServer(
+    {
+      resolveSession: async () => ({ ...memberSession, userId: "viewer-1", email: "viewer@example.com" }),
+      supabase: supabase.client as AppDeps["supabase"],
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Nueva" }),
+      });
+      assert.equal(res.status, 403);
+    },
+  );
+});
+
+test("POST /api/categorias: editor con manage_categorias:false recibe 403", async () => {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [{ id: "dm-1", user_id: "editor-1", dashboard_id: "dashboard-1", role: "editor", status: "active", permissions: { manage_categorias: false } }],
+  });
+  await withServer(
+    {
+      resolveSession: async () => ({ ...memberSession, userId: "editor-1", email: "editor@example.com" }),
+      supabase: supabase.client as AppDeps["supabase"],
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Nueva" }),
+      });
+      assert.equal(res.status, 403);
     },
   );
 });

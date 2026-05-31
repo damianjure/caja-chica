@@ -55,7 +55,9 @@ export function AreaTrendChart({
   const n = data.length;
   if (n === 0) return null;
 
-  const W = 720, H = 240, padL = 24, padR = 24, padT = 28, padB = 34;
+  // Alto dinámico: compacto con pocos datos, crece hasta 240 a medida que entran meses.
+  const W = 720, padL = 24, padR = 24, padT = 28, padB = 34;
+  const H = Math.min(240, Math.max(150, 110 + n * 22));
   const base = H - padB;
   // Y-axis scales to the visible income/expense series so toggling re-fits the chart.
   const visibleVals = [
@@ -84,9 +86,8 @@ export function AreaTrendChart({
   const netLine = smooth(nets.map((v, i) => ({ x: x(i), y: yNet(v) })));
   const closeArea = (line: string) => `${line} L ${x(n - 1)} ${base} L ${x(0)} ${base} Z`;
 
-  const summary = `Evolución mensual en ${currency}: ${data
-    .map((d) => `${d.label}: saldo ${formatCompact(d.net, currency)}`)
-    .join('; ')}.`;
+  const visibles = [show.income && 'ingresos', show.expense && 'gastos', show.net && 'saldo'].filter(Boolean).join(', ');
+  const summary = `Evolución mensual en ${currency}. Series visibles: ${visibles || 'ninguna'}.${show.net ? ` ${data.map((d) => `${d.label}: saldo ${formatCompact(d.net, currency)}`).join('; ')}.` : ''}`;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>

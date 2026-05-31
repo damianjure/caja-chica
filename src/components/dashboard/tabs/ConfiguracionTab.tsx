@@ -47,6 +47,12 @@ export default function ConfiguracionTab({
     viewer.role === "superadmin" ||
     selfMembership?.role === "owner";
 
+  // Espeja canManageCategoriasOp del backend: owner-like, o editor salvo manage_categorias:false explícito.
+  const canManageCategorias =
+    canManage ||
+    (selfMembership?.role === "editor" &&
+      (selfMembership?.permissions as { manage_categorias?: boolean } | undefined)?.manage_categorias !== false);
+
   const isNonOwnerMember = selfMembership !== null && selfMembership.role !== "owner";
 
   const showNotice = (msg: string) => {
@@ -83,10 +89,12 @@ export default function ConfiguracionTab({
             setError={setError}
           />
           <BotConnectionPanel />
-          <CategoriasSection />
-          {canConnectDrive && <DriveSection />}
         </>
       )}
+
+      {canManageCategorias && <CategoriasSection />}
+
+      {canManage && canConnectDrive && <DriveSection />}
 
       <CuentaSection
         viewer={viewer}

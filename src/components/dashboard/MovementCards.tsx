@@ -21,18 +21,18 @@ function MovementCardsImpl({
 }: MovementCardsProps) {
   if (filteredHistory.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 border border-neutral-200 rounded-xl text-neutral-400">
+      <div className="flex flex-col items-center justify-center py-16 px-4 border border-[var(--app-border)] rounded-xl text-[var(--app-text-3)]">
         <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
         {selectedCompany === 'all' ? (
           <>
-            <p className="font-medium text-neutral-500">Sin movimientos por ahora.</p>
+            <p className="font-medium text-[var(--app-text-3)]">Sin movimientos por ahora.</p>
             <p className="text-sm mt-1">
               {canWriteData ? 'Escribí un movimiento en el campo de arriba. Tipo: "pagué 4500 de luz".' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
             </p>
           </>
         ) : (
           <>
-            <p className="font-medium text-neutral-500">{`No hay datos para "${selectedCompany}"`}</p>
+            <p className="font-medium text-[var(--app-text-3)]">{`No hay datos para "${selectedCompany}"`}</p>
             <p className="text-sm mt-1">Probá con otra empresa o sacá el filtro.</p>
           </>
         )}
@@ -47,7 +47,7 @@ function MovementCardsImpl({
             <div
               key={item.id}
               style={{ animationDelay: `${Math.min(index * 40, 160)}ms` }}
-              className="anim-card-in group bg-white border border-neutral-200 hover:border-neutral-300 rounded-xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
+              className="anim-card-in group bg-white border border-[var(--app-border)] hover:border-[var(--app-border-strong)] rounded-xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
@@ -55,8 +55,8 @@ function MovementCardsImpl({
                     {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
                   <div>
-                    <span className="text-xs font-medium text-neutral-500 block leading-none mb-1">{item.categoria}</span>
-                    <span className="text-lg font-semibold text-neutral-900 tabular-nums">
+                    <span className="text-xs font-medium text-[var(--app-text-3)] block leading-none mb-1">{item.categoria}</span>
+                    <span className="text-lg font-semibold text-[var(--app-text-1)] tabular-nums">
                       {item.monto !== null
                         ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: item.moneda || 'ARS' }).format(item.monto)
                         : 'Monto no especificado'}
@@ -65,30 +65,30 @@ function MovementCardsImpl({
                 </div>
                 <div className="flex items-center gap-1">
                   {canWriteData && (
-                    <button onClick={() => onEdit(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar movimiento" aria-label="Editar movimiento">
+                    <button onClick={() => onEdit(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar movimiento" aria-label="Editar movimiento">
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => onCopy(item)} className="p-2 text-neutral-400 hover:text-neutral-900 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
+                  <button onClick={() => onCopy(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
                     {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
+                    <button onClick={() => onDelete(item.id)} className="p-2 text-[var(--app-text-3)] hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
               <div className="space-y-3">
-                <p className="text-sm text-neutral-600 italic line-clamp-2">"{item.original_text}"</p>
+                <p className="text-sm text-[var(--app-text-2)] italic line-clamp-2">"{item.original_text}"</p>
                 <div className="flex flex-wrap gap-2">
                   {item.empresa_nombre && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Building2 className="w-3 h-3" />{item.empresa_nombre}</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-[var(--app-surface-2)] text-[var(--app-text-2)] rounded-md"><Building2 className="w-3 h-3" />{item.empresa_nombre}</span>
                   )}
-                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md"><Tag className="w-3 h-3" />{item.descripcion}</span>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-[var(--app-surface-2)] text-[var(--app-text-2)] rounded-md"><Tag className="w-3 h-3" />{item.descripcion}</span>
                 </div>
-                <div className="pt-3 border-t border-neutral-200">
-                  <span className="text-xs text-neutral-500 font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
+                <div className="pt-3 border-t border-[var(--app-border)]">
+                  <span className="text-xs text-[var(--app-text-3)] font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
                 </div>
               </div>
             </div>
@@ -96,7 +96,7 @@ function MovementCardsImpl({
       </div>
       {hasMore && (
         <div className="flex justify-center pt-4">
-          <button onClick={onLoadMore} disabled={loadingMore} className="px-6 py-2 bg-white border border-neutral-200 rounded-md text-sm font-medium text-neutral-600 hover:border-neutral-400 disabled:opacity-50 transition-colors">
+          <button onClick={onLoadMore} disabled={loadingMore} className="px-6 py-2 bg-white border border-[var(--app-border)] rounded-md text-sm font-medium text-[var(--app-text-2)] hover:border-neutral-400 disabled:opacity-50 transition-colors">
             {loadingMore ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</span> : 'Cargar más'}
           </button>
         </div>

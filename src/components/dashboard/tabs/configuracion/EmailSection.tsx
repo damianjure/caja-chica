@@ -75,25 +75,25 @@ export function EmailSection() {
   const isLoading = settingsLoading || sendersLoading;
 
   return (
-    <section className="bg-white border border-neutral-200 rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
       <header className="mb-6">
-        <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Email del sistema</h2>
-        <p className="text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-prose">
+        <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Email del sistema</h2>
+        <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
           Elegí el remitente verificado en Brevo para los emails transaccionales del sistema.
         </p>
       </header>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-neutral-500 py-4">
+        <div className="flex items-center gap-2 text-sm text-[var(--app-text-3)] py-4">
           <Loader2 className="w-4 h-4 animate-spin" />
           Cargando configuración...
         </div>
       ) : (
         <div className="space-y-6">
           {/* Sender selector */}
-          <div className="rounded-xl border border-neutral-200 p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-neutral-500" />
+          <div className="rounded-xl border border-[var(--app-border)] p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--app-text-1)] flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[var(--app-text-3)]" />
               Remitente activo
             </h3>
 
@@ -101,7 +101,7 @@ export function EmailSection() {
               <div>
                 <label
                   htmlFor="email-sender-select"
-                  className="text-xs font-medium text-neutral-600 block mb-1"
+                  className="text-xs font-medium text-[var(--app-text-2)] block mb-1"
                 >
                   Remitente verificado
                 </label>
@@ -110,7 +110,7 @@ export function EmailSection() {
                     id="email-sender-select"
                     value={effectiveSelected}
                     onChange={(e) => setSelectedEmail(e.target.value)}
-                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                     disabled={saving}
                     aria-label="Seleccionar remitente verificado"
                   >
@@ -121,7 +121,7 @@ export function EmailSection() {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-sm text-neutral-500 italic">
+                  <p className="text-sm text-[var(--app-text-3)] italic">
                     No hay remitentes verificados en Brevo. Verificá uno en el panel de Brevo primero.
                   </p>
                 )}
@@ -145,9 +145,9 @@ export function EmailSection() {
           </div>
 
           {/* Test send sub-block */}
-          <div className="rounded-xl border border-neutral-200 p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-              <Send className="w-4 h-4 text-neutral-500" />
+          <div className="rounded-xl border border-[var(--app-border)] p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--app-text-1)] flex items-center gap-2">
+              <Send className="w-4 h-4 text-[var(--app-text-3)]" />
               Enviar email de prueba
             </h3>
 
@@ -155,14 +155,14 @@ export function EmailSection() {
               <div>
                 <label
                   htmlFor="email-test-to"
-                  className="text-xs font-medium text-neutral-600 block mb-1"
+                  className="text-xs font-medium text-[var(--app-text-2)] block mb-1"
                 >
                   Destinatario
                 </label>
                 <input
                   id="email-test-to"
                   type="email"
-                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                   placeholder="destinatario@ejemplo.com"
                   value={testTo}
                   onChange={(e) => {
@@ -197,13 +197,13 @@ export function EmailSection() {
               type="button"
               onClick={() => void handleTestSend()}
               disabled={sending || !testTo.trim()}
-              className="inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-[0.97]"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--app-border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-[0.97]"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Enviar prueba
             </button>
 
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-[var(--app-text-3)]">
               Límite: 3 emails de prueba por día.
             </p>
           </div>

@@ -110,7 +110,7 @@ export default function EmpresasTab({
               onChange={(event) => setNewCompany(event.target.value)}
               onKeyDown={(event) => { if (event.key === 'Enter') void handleCreate(); }}
               placeholder="Nombre de la empresa"
-              className="flex-1 rounded-xl border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+              className="flex-1 rounded-xl border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             />
             <button
               onClick={() => void handleCreate()}
@@ -148,9 +148,9 @@ export default function EmpresasTab({
 
       <SectionCard title="Comparación por empresa" description="Mirá cada unidad con ingresos, gastos y saldo neto por moneda.">
         {companySummaries.length === 0 ? (
-          <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center">
-            <p className="font-semibold text-neutral-700 mb-1">Sin empresas todavía</p>
-            <p className="text-sm text-neutral-500">Las empresas se agregan automáticamente al registrar movimientos, o podés crearlas desde aquí.</p>
+          <div className="border-2 border-dashed border-[var(--app-border)] rounded-xl p-8 text-center">
+            <p className="font-semibold text-[var(--app-text-2)] mb-1">Sin empresas todavía</p>
+            <p className="text-sm text-[var(--app-text-3)]">Las empresas se agregan automáticamente al registrar movimientos, o podés crearlas desde aquí.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -160,11 +160,11 @@ export default function EmpresasTab({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {companySummaries.map((company) => (
-                <div key={company.name} className="rounded-xl border border-neutral-200 p-5 space-y-3">
+                <div key={company.name} className="rounded-xl border border-[var(--app-border)] p-5 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-neutral-900">{company.name}</div>
-                      <div className="text-xs text-neutral-500">{company.movimientos} movimientos</div>
+                      <div className="font-semibold text-[var(--app-text-1)]">{company.name}</div>
+                      <div className="text-xs text-[var(--app-text-3)]">{company.movimientos} movimientos</div>
                     </div>
                     {canWriteData && customCompanies.find((item) => item.nombre === company.name) && company.name !== 'Personal' && (
                       <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onEditCompany(item);
                           }}
-                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-neutral-200 text-neutral-700 hover:border-[var(--app-text-2)]"
+                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                           aria-label="Editar empresa"
                         >
                           <Pencil className="w-4 h-4" />
@@ -193,27 +193,27 @@ export default function EmpresasTab({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Ingresos ARS</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Ingresos ARS</div>
                       <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosArs, 'ARS')}</div>
                     </div>
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Gastos ARS</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Gastos ARS</div>
                       <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosArs, 'ARS')}</div>
                     </div>
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Saldo ARS</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Saldo ARS</div>
                       <div className={`font-medium tabular-nums ${company.saldoArs >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoArs, 'ARS')}</div>
                     </div>
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Ingresos USD</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Ingresos USD</div>
                       <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosUsd, 'USD')}</div>
                     </div>
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Gastos USD</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Gastos USD</div>
                       <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosUsd, 'USD')}</div>
                     </div>
                     <div>
-                      <div className="text-neutral-500 uppercase tracking-widest text-xs mb-1">Saldo USD</div>
+                      <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Saldo USD</div>
                       <div className={`font-medium tabular-nums ${company.saldoUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoUsd, 'USD')}</div>
                     </div>
                   </div>

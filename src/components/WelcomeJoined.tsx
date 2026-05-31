@@ -44,7 +44,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         {/* Skip button */}
         <button
           onClick={finish}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 active:scale-[0.9] transition-transform duration-100"
+          className="absolute top-4 right-4 text-[var(--app-text-3)] hover:text-[var(--app-text-2)] active:scale-[0.9] transition-transform duration-100"
           aria-label="Cerrar bienvenida"
         >
           <X className="w-5 h-5" />
@@ -57,12 +57,12 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
               <Users className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 id="joined-title" className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h2 id="joined-title" className="text-2xl font-bold text-[var(--app-text-1)] dark:text-white mb-2">
                 Te sumaron a un dashboard compartido
               </h2>
-              <p className="text-neutral-500 text-sm leading-relaxed">
+              <p className="text-[var(--app-text-3)] text-sm leading-relaxed">
                 {viewer.email && (
-                  <>Hola <strong className="text-neutral-700 dark:text-neutral-300">{viewer.email}</strong>. </>
+                  <>Hola <strong className="text-[var(--app-text-2)] dark:text-neutral-300">{viewer.email}</strong>. </>
                 )}
                 Te sumaron al dashboard de otra persona. Compartís los mismos movimientos. Sin datos de ejemplo: vas directo a los datos reales.
               </p>
@@ -94,8 +94,8 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-neutral-900 dark:text-white">Sumar Telegram</h3>
-                <p className="text-sm text-neutral-500">
+                <h3 className="font-semibold text-[var(--app-text-1)] dark:text-white">Sumar Telegram</h3>
+                <p className="text-sm text-[var(--app-text-3)]">
                   Te sumaron también al bot. Podés activarlo ahora o más tarde.
                 </p>
               </div>

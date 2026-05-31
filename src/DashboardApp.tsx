@@ -450,10 +450,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     finally { setIsConfirmingAction(false); }
   };
 
-  if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
+  if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
 
   return (
-    <div className="min-h-screen bg-[var(--app-canvas)] text-neutral-900 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
       {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} />}
 
@@ -504,7 +504,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <section className="sticky top-3 z-20">
           <div className="bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2.5">
             <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 overflow-x-auto md:flex-wrap">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}
           </div>
@@ -519,16 +519,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files?.[0]; if (file) handleImageFile(file); }}
               >
                 <label htmlFor="message-input" className="sr-only">Movimiento en lenguaje natural</label>
-                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[140px] p-6 pb-20 sm:pb-6 bg-[var(--app-surface-1)] text-[var(--app-text-1)] border border-[var(--app-border)] rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-lg" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o arrastrá una foto de ticket acá" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
+                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[92px] p-5 pb-14 sm:pb-4 bg-[var(--app-surface-1)] text-[var(--app-text-1)] border border-[var(--app-border)] rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-base" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o arrastrá una foto de ticket acá" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
                 <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:bottom-4 sm:right-4 flex items-center justify-end gap-3">
-                  <span className="text-xs text-neutral-500 hidden sm:block">Ctrl + Enter</span>
+                  <span className="text-xs text-[var(--app-text-3)] hidden sm:block">Ctrl + Enter</span>
                   <button
                     type="button"
                     aria-label="Subir foto de ticket"
                     title="Subir foto de ticket"
                     onClick={() => imageInputRef.current?.click()}
                     disabled={isExtracting}
-                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-neutral-200 text-neutral-600 hover:border-[var(--app-border-strong)] active:scale-[0.94] transition disabled:opacity-50"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] active:scale-[0.94] transition disabled:opacity-50"
                   >
                     {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                   </button>
@@ -552,7 +552,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         )}
         {!canWriteData && activeTab === 'movimientos' && (
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
+          <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 text-sm text-[var(--app-text-3)]">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
         )}
 
         <main>
@@ -598,8 +598,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           onRunConfirmation={() => void runConfirmation()}
         />
 
-        <footer className="pt-12 pb-8 border-t border-neutral-200 text-center">
-          <p className="text-xs text-neutral-500">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>
+        <footer className="pt-12 pb-8 border-t border-[var(--app-border)] text-center">
+          <p className="text-xs text-[var(--app-text-3)]">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>
         </footer>
       </div>
     </div>

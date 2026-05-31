@@ -105,16 +105,16 @@ export function ModalShell({
         aria-modal="true"
         aria-labelledby={titleIdRef.current}
         aria-describedby={description ? descriptionIdRef.current : undefined}
-        className={`anim-scale-in w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-neutral-300 overflow-hidden flex flex-col`}
+        className={`anim-scale-in w-full ${SIZE_CLASSES[size]} max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-[var(--app-border-strong)] overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="px-6 py-4 border-b border-neutral-200 flex items-start justify-between gap-4 shrink-0">
+        <header className="px-6 py-4 border-b border-[var(--app-border)] flex items-start justify-between gap-4 shrink-0">
           <div className="min-w-0 flex-1">
-            <h2 id={titleIdRef.current} className="text-lg font-bold text-neutral-900 truncate">
+            <h2 id={titleIdRef.current} className="text-lg font-bold text-[var(--app-text-1)] truncate">
               {title}
             </h2>
             {description && (
-              <p id={descriptionIdRef.current} className="text-sm text-neutral-600 mt-1">
+              <p id={descriptionIdRef.current} className="text-sm text-[var(--app-text-2)] mt-1">
                 {description}
               </p>
             )}
@@ -123,7 +123,7 @@ export function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="inline-flex items-center justify-center h-11 w-11 rounded-md border border-neutral-300 hover:border-[var(--app-text-2)] active:scale-[0.94] transition-transform text-neutral-700 shrink-0"
+            className="inline-flex items-center justify-center h-11 w-11 rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] active:scale-[0.94] transition-transform text-[var(--app-text-2)] shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

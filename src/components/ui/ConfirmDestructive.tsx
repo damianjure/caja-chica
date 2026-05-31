@@ -102,29 +102,29 @@ export function ConfirmDestructive({
         aria-modal="true"
         aria-labelledby="confirm-destructive-title"
         aria-describedby="confirm-destructive-desc"
-        className="anim-scale-in w-full max-w-[400px] bg-white border border-neutral-200 rounded-2xl shadow-2xl p-6"
+        className="anim-scale-in w-full max-w-[400px] bg-white border border-[var(--app-border)] rounded-2xl shadow-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-3.5">
-          <AlertCircle className={`w-[18px] h-[18px] flex-shrink-0 ${isDanger ? 'text-red-600' : 'text-neutral-700'}`} />
-          <h2 id="confirm-destructive-title" className="text-base font-semibold tracking-tight text-neutral-900 m-0">
+          <AlertCircle className={`w-[18px] h-[18px] flex-shrink-0 ${isDanger ? 'text-red-600' : 'text-[var(--app-text-2)]'}`} />
+          <h2 id="confirm-destructive-title" className="text-base font-semibold tracking-tight text-[var(--app-text-1)] m-0">
             {state.title}
           </h2>
         </div>
-        <p id="confirm-destructive-desc" className="text-[14.5px] leading-relaxed text-neutral-600 mb-3.5">
+        <p id="confirm-destructive-desc" className="text-[14.5px] leading-relaxed text-[var(--app-text-2)] mb-3.5">
           {state.description}
         </p>
 
         {state.preview && (
-          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-md mb-4 tabular-nums">
+          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-md mb-4 tabular-nums">
             <div className="min-w-0 flex flex-col gap-0.5">
-              <span className="text-[13px] font-medium text-neutral-900 truncate">{state.preview.title}</span>
+              <span className="text-[13px] font-medium text-[var(--app-text-1)] truncate">{state.preview.title}</span>
               {state.preview.meta && (
-                <span className="text-[11.5px] text-neutral-500 truncate">{state.preview.meta}</span>
+                <span className="text-[11.5px] text-[var(--app-text-3)] truncate">{state.preview.meta}</span>
               )}
             </div>
             {state.preview.amount && (
-              <span className="text-sm font-semibold text-neutral-900 flex items-baseline gap-1 flex-shrink-0">
+              <span className="text-sm font-semibold text-[var(--app-text-1)] flex items-baseline gap-1 flex-shrink-0">
                 {state.preview.arrow && (
                   <span aria-hidden="true" className={`text-xs ${state.preview.arrow === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                     {state.preview.arrow === 'up' ? '↑' : '↓'}
@@ -137,12 +137,12 @@ export function ConfirmDestructive({
         )}
 
         {state.details && !state.requireText && (
-          <p className="text-[12px] text-neutral-500 leading-relaxed mb-4">{state.details}</p>
+          <p className="text-[12px] text-[var(--app-text-3)] leading-relaxed mb-4">{state.details}</p>
         )}
 
         {state.requireText && (
           <div className="mb-4">
-            <label htmlFor="confirm-require-input" className="block text-[12px] text-neutral-500 leading-relaxed mb-2">
+            <label htmlFor="confirm-require-input" className="block text-[12px] text-[var(--app-text-3)] leading-relaxed mb-2">
               {state.details ?? `Escribí ${state.requireText} para confirmar.`}
             </label>
             <input
@@ -151,7 +151,7 @@ export function ConfirmDestructive({
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={state.requireText}
               autoComplete="off"
-              className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+              className="w-full rounded-md border border-[var(--app-border-strong)] px-3.5 py-2.5 text-sm text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent"
             />
           </div>
         )}
@@ -162,7 +162,7 @@ export function ConfirmDestructive({
             type="button"
             onClick={onCancel}
             disabled={isWorking}
-            className="flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-neutral-700 bg-transparent border border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] transition disabled:opacity-50"
+            className="flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-[var(--app-text-2)] bg-transparent border border-[var(--app-border-strong)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-text-1)] active:scale-[0.97] transition disabled:opacity-50"
           >
             Cancelar
           </button>

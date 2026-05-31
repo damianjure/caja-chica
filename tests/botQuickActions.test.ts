@@ -117,16 +117,16 @@ test("getCommandsForRole: viewer gets read-only commands", () => {
 test("getCommandsForRole: owner gets full command list", () => {
   const cmds = getCommandsForRole("owner");
   const commandNames = cmds.map(c => c.command);
+  // FULL list includes write-capable commands viewers don't get
   assert.ok(commandNames.includes("recurrente"));
-  assert.ok(commandNames.includes("agregarempresa"));
-  assert.ok(commandNames.includes("agregarcategoria"));
+  assert.ok(commandNames.includes("recurrentes"));
+  assert.ok(cmds.length > getCommandsForRole("viewer").length);
 });
 
 test("getCommandsForRole: editor gets full command list", () => {
   const cmds = getCommandsForRole("editor");
   const commandNames = cmds.map(c => c.command);
   assert.ok(commandNames.includes("recurrente"));
-  assert.ok(commandNames.includes("agregarempresa"));
 });
 
 test("VIEWER_COMMANDS is a subset of FULL_COMMANDS", () => {

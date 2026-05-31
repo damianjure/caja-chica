@@ -55,7 +55,7 @@ interface PersonasPanelProps {
 const STATUS_STYLES: Record<PersonaStatus, string> = {
   pending: "bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
   active: "bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40",
-  expired: "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40",
+  expired: "bg-[var(--app-surface-2)] text-[var(--app-text-2)] ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40",
   revoked: "bg-red-100 text-red-700 ring-1 ring-red-300/60 dark:bg-red-500/15 dark:text-red-200 dark:ring-red-400/40",
 };
 
@@ -89,7 +89,7 @@ function StatusBadge({ status }: { status: PersonaStatus }) {
 const DASHBOARD_ROLE_STYLES: Record<DashboardRole, string> = {
   owner: "bg-violet-100 text-violet-800 ring-1 ring-violet-300/60 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-400/40",
   editor: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/40",
-  viewer: "bg-neutral-100 text-neutral-700 ring-1 ring-neutral-300/60 dark:bg-neutral-700/50 dark:text-neutral-200 dark:ring-neutral-500/40",
+  viewer: "bg-[var(--app-surface-2)] text-[var(--app-text-2)] ring-1 ring-neutral-300/60 dark:bg-neutral-700/50 dark:text-neutral-200 dark:ring-neutral-500/40",
 };
 
 const APP_ROLE_STYLES: Record<AppRole, string> = {
@@ -103,7 +103,7 @@ function RoleBadge({ role, scope }: { role: string; scope: PersonaScope }) {
   const isAppRole = scope === "app" && (role === "superadmin" || role === "admin" || role === "member");
 
   let label = role;
-  let className = "bg-neutral-100 text-neutral-600";
+  let className = "bg-[var(--app-surface-2)] text-[var(--app-text-2)]";
   let tip = "";
 
   if (isDashboardRole) {
@@ -203,7 +203,7 @@ function ActionMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-text-2)]"
+        className="inline-flex items-center gap-1 rounded-xl border border-[var(--app-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
       >
         Acciones
         <ChevronDown className="w-3 h-3" />
@@ -213,7 +213,7 @@ function ActionMenu({
         <div
           role="menu"
           aria-labelledby="action-trigger"
-          className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-[var(--app-border)] bg-white py-1 shadow-lg"
         >
           <button
             role="menuitem"
@@ -222,7 +222,7 @@ function ActionMenu({
               onCopyLink();
               setOpen(false);
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)]"
+            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)]"
           >
             <Link className="w-3.5 h-3.5" />
             {ACTION_LABELS.copyLink}
@@ -237,7 +237,7 @@ function ActionMenu({
                 onResend();
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)] disabled:opacity-50"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] disabled:opacity-50"
             >
               {loadingResend ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -250,7 +250,7 @@ function ActionMenu({
 
           {canChangeRole && (
             <>
-              <div className="my-1 border-t border-neutral-200" />
+              <div className="my-1 border-t border-[var(--app-border)]" />
               <button
                 role="menuitem"
                 tabIndex={-1}
@@ -258,7 +258,7 @@ function ActionMenu({
                   onChangeRole(persona.role === "editor" ? "viewer" : "editor");
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[var(--app-surface-2)]"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)]"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 {persona.role === "editor"
@@ -270,7 +270,7 @@ function ActionMenu({
 
           {canRevoke && (
             <>
-              <div className="my-1 border-t border-neutral-200" />
+              <div className="my-1 border-t border-[var(--app-border)]" />
               <button
                 role="menuitem"
                 tabIndex={-1}
@@ -420,21 +420,21 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
             placeholder="colaborador@empresa.com"
-            className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm"
+            className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] text-sm"
           />
           {scope === "dashboard" && (
             <select
               aria-label="Rol del invitado"
               value={role}
               onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-              className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white text-sm"
             >
               <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
               <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>
             </select>
           )}
           {scope === "app" && (
-            <div className="flex items-center rounded-md border border-neutral-200 px-4 py-3 text-sm text-neutral-500">
+            <div className="flex items-center rounded-md border border-[var(--app-border)] px-4 py-3 text-sm text-[var(--app-text-3)]">
               {APP_ROLE_LABELS.member}
             </div>
           )}
@@ -453,7 +453,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
         </div>
 
         {scope === "dashboard" && showTelegramToggle && (
-          <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-sm text-[var(--app-text-2)] cursor-pointer select-none">
             <input
               type="checkbox"
               checked={telegramPreauth}
@@ -468,12 +468,12 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
       {/* Persona list */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-500">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-3)]">
             {scope === "dashboard" ? "Personas" : "Invitaciones"} {pendingCount > 0 && `· ${pendingCount} invitad${pendingCount > 1 ? "as" : "a"}`}
           </h3>
           <button
             onClick={() => void load()}
-            className="p-1.5 rounded-lg border border-transparent text-neutral-400 hover:text-neutral-700 hover:border-[var(--app-text-2)]"
+            className="p-1.5 rounded-lg border border-transparent text-[var(--app-text-3)] hover:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
             title="Actualizar lista"
             aria-label="Actualizar lista"
           >
@@ -482,36 +482,36 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
         </div>
 
         {loading ? (
-          <div role="status" className="flex items-center gap-3 py-8 text-neutral-500 text-sm">
+          <div role="status" className="flex items-center gap-3 py-8 text-[var(--app-text-3)] text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
             Cargando personas...
           </div>
         ) : personas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-200 px-6 py-10 text-center">
-            <h4 className="text-sm font-semibold text-neutral-700">{ACTION_LABELS.emptyTeamTitle}</h4>
-            <p className="mt-1 text-sm text-neutral-500">{ACTION_LABELS.emptyTeamBody}</p>
+          <div className="rounded-xl border border-dashed border-[var(--app-border)] px-6 py-10 text-center">
+            <h4 className="text-sm font-semibold text-[var(--app-text-2)]">{ACTION_LABELS.emptyTeamTitle}</h4>
+            <p className="mt-1 text-sm text-[var(--app-text-3)]">{ACTION_LABELS.emptyTeamBody}</p>
           </div>
         ) : (
           <div className="space-y-2">
             {personas.map((persona) => (
               <div
                 key={persona.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3"
               >
                 {/* Avatar */}
-                <div className="shrink-0 w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600 uppercase">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-semibold text-[var(--app-text-2)] uppercase">
                   {persona.email[0]}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="font-medium text-sm text-neutral-900 [overflow-wrap:anywhere]">
+                  <div className="font-medium text-sm text-[var(--app-text-1)] [overflow-wrap:anywhere]">
                     {persona.email}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <StatusBadge status={persona.status} />
                     <RoleBadge role={persona.role} scope={scope} />
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-[var(--app-text-3)]">
                       {relativeTime(persona.last_action_at)}
                     </span>
                   </div>
@@ -520,7 +520,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 {/* Copy icon shortcut */}
                 <button
                   onClick={() => void handleCopyLink(persona)}
-                  className="shrink-0 p-1.5 rounded-lg border border-neutral-200 text-neutral-500 hover:border-[var(--app-text-2)]"
+                  className="shrink-0 p-1.5 rounded-lg border border-[var(--app-border)] text-[var(--app-text-3)] hover:border-[var(--app-text-2)]"
                   title="Copiar link de invitación"
                   aria-label="Copiar link de invitación"
                 >
@@ -538,7 +538,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 />
 
                 {(revokingId === persona.id) && (
-                  <Loader2 className="w-4 h-4 animate-spin text-neutral-400 shrink-0" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[var(--app-text-3)] shrink-0" />
                 )}
               </div>
             ))}

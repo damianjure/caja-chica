@@ -35,9 +35,9 @@ export function LoginScreen({
   blocked = false,
 }: LoginScreenProps) {
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-sm p-8 space-y-6">
+        <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-neutral-900 text-white rounded-xl">
@@ -45,7 +45,7 @@ export function LoginScreen({
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Caja Chica</h1>
-                <p className="text-xs text-neutral-500 mt-0.5">
+                <p className="text-xs text-[var(--app-text-3)] mt-0.5">
                   Solo por invitación.
                 </p>
               </div>
@@ -55,14 +55,14 @@ export function LoginScreen({
 
           {blocked ? (
             <div className="space-y-2 text-sm">
-              <p className="font-semibold text-neutral-900">Esta cuenta de Google no tiene acceso.</p>
-              <p className="text-neutral-600">
+              <p className="font-semibold text-[var(--app-text-1)]">Esta cuenta de Google no tiene acceso.</p>
+              <p className="text-[var(--app-text-2)]">
                 La invitación es para otra dirección. Salí y entrá con la cuenta exacta
                 con la que te invitaron.
               </p>
             </div>
           ) : (
-            <div className="space-y-2 text-sm text-neutral-600">
+            <div className="space-y-2 text-sm text-[var(--app-text-2)]">
               <p>
                 Entrá con la cuenta de Google que te invitaron. Otra cuenta no va a poder acceder.
               </p>
@@ -72,7 +72,7 @@ export function LoginScreen({
           <button
             onClick={() => void onLogin()}
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-neutral-300 px-5 py-3 text-neutral-900 font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-[var(--app-border-strong)] px-5 py-3 text-[var(--app-text-1)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
               <>
@@ -90,13 +90,13 @@ export function LoginScreen({
           {secondaryActionLabel && onSecondaryAction && (
             <button
               onClick={() => void onSecondaryAction()}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-neutral-200 px-5 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)] transition-colors"
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-[var(--app-border)] px-5 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)] transition-colors"
             >
               {secondaryActionLabel}
             </button>
           )}
 
-          <p className="text-xs text-neutral-500 text-center pt-2">
+          <p className="text-xs text-[var(--app-text-3)] text-center pt-2">
             Usá el mismo mail con el que te invitaron.
           </p>
         </div>

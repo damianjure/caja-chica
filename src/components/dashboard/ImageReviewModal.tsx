@@ -72,11 +72,11 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Tipo</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Tipo</label>
             <select
               value={form.tipo}
               onChange={(e) => setForm((p) => ({ ...p, tipo: e.target.value as "ingreso" | "egreso" }))}
-              className="rounded-md border border-neutral-200 px-4 py-3 bg-white"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3 bg-white"
             >
               <option value="egreso">Gasto</option>
               <option value="ingreso">Ingreso</option>
@@ -84,11 +84,11 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Moneda</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Moneda</label>
             <select
               value={form.moneda}
               onChange={(e) => setForm((p) => ({ ...p, moneda: e.target.value as "ARS" | "USD" }))}
-              className="rounded-md border border-neutral-200 px-4 py-3 bg-white"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3 bg-white"
             >
               <option value="ARS">ARS</option>
               <option value="USD">USD</option>
@@ -96,7 +96,7 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Monto</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Monto</label>
             <input
               type="number"
               min="0"
@@ -104,47 +104,47 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
               value={form.monto ?? ""}
               onChange={(e) => setForm((p) => ({ ...p, monto: e.target.value ? Number(e.target.value) : null }))}
               placeholder="0"
-              className="rounded-md border border-neutral-200 px-4 py-3"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Categoría</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Categoría</label>
             <input
               type="text"
               value={form.categoria}
               onChange={(e) => setForm((p) => ({ ...p, categoria: e.target.value }))}
               placeholder="Categoría"
-              className="rounded-md border border-neutral-200 px-4 py-3"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3"
             />
           </div>
 
           <div className="md:col-span-2 flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Empresa</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Empresa</label>
             <input
               type="text"
               value={form.empresa}
               onChange={(e) => setForm((p) => ({ ...p, empresa: e.target.value }))}
               placeholder="Empresa (o dejar vacío)"
-              className="rounded-md border border-neutral-200 px-4 py-3"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3"
             />
           </div>
 
           <div className="md:col-span-2 flex flex-col gap-1">
-            <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Descripción</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Descripción</label>
             <textarea
               value={form.descripcion}
               onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
               placeholder="Descripción"
               rows={2}
-              className="rounded-md border border-neutral-200 px-4 py-3 resize-none"
+              className="rounded-md border border-[var(--app-border)] px-4 py-3 resize-none"
             />
           </div>
         </div>
 
         {extracted.fecha && (
-          <p className="text-xs text-neutral-500">
-            Fecha del ticket: <span className="font-medium text-neutral-700">{extracted.fecha}</span>
+          <p className="text-xs text-[var(--app-text-3)]">
+            Fecha del ticket: <span className="font-medium text-[var(--app-text-2)]">{extracted.fecha}</span>
           </p>
         )}
       </div>
@@ -153,7 +153,7 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
         <button
           onClick={onCancel}
           disabled={isSaving}
-          className="rounded-md border border-neutral-200 px-4 py-3 text-neutral-700 disabled:opacity-50"
+          className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)] disabled:opacity-50"
         >
           Cancelar
         </button>

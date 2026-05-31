@@ -75,14 +75,14 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
   };
 
   return (
-    <div className="px-6 py-4 border-t border-neutral-200 space-y-3">
+    <div className="px-6 py-4 border-t border-[var(--app-border)] space-y-3">
       <div className="flex items-center gap-2">
-        <MessageCircle className="w-3.5 h-3.5 text-neutral-500" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500 flex-1">Acceso a Telegram</p>
+        <MessageCircle className="w-3.5 h-3.5 text-[var(--app-text-3)]" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] flex-1">Acceso a Telegram</p>
         <button
           onClick={loadTelegramLinks}
           disabled={loadingLinks}
-          className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1 text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-2)] disabled:opacity-50"
         >
           {loadingLinks ? <Loader2 className="w-3 h-3 animate-spin" /> : "Actualizar"}
         </button>
@@ -91,10 +91,10 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
       {(() => {
         const activeMembers = data?.members.filter((m) => m.status === "active") ?? [];
         if (activeMembers.length === 0) {
-          return <p className="text-sm text-neutral-500">No hay miembros activos para vincular.</p>;
+          return <p className="text-sm text-[var(--app-text-3)]">No hay miembros activos para vincular.</p>;
         }
         return (
-          <div className="rounded-xl border border-neutral-200 overflow-hidden">
+          <div className="rounded-xl border border-[var(--app-border)] overflow-hidden">
             {activeMembers.map((member) => {
               const memberLinks = telegramLinks.filter(
                 (l) => l.app_user_id === member.user_id && l.status !== "revoked",
@@ -113,20 +113,20 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
               } else if (freshToken) {
                 pill = <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">Invitación generada</span>;
               } else {
-                pill = <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">Sin vincular</span>;
+                pill = <span className="inline-flex items-center rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs font-medium text-[var(--app-text-3)]">Sin vincular</span>;
               }
 
               return (
-                <div key={member.id} className="border-b border-neutral-200 last:border-0">
+                <div key={member.id} className="border-b border-[var(--app-border)] last:border-0">
                   <button
                     onClick={() => setExpandedTelegramMember(isExpanded ? null : member.id)}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left"
                   >
-                    <ChevronRight className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 text-xs font-semibold shrink-0">
+                    <ChevronRight className={`w-4 h-4 text-[var(--app-text-3)] shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--app-surface-2)] text-[var(--app-text-2)] text-xs font-semibold shrink-0">
                       {(member.email ?? "?").charAt(0).toUpperCase()}
                     </div>
-                    <span className="min-w-0 flex-1 text-sm font-medium text-neutral-900 truncate">
+                    <span className="min-w-0 flex-1 text-sm font-medium text-[var(--app-text-1)] truncate">
                       {member.email ?? member.user_id}
                     </span>
                     {pill}
@@ -135,37 +135,37 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                   {isExpanded && (
                     <div className="pl-12 pr-4 pb-4 space-y-3">
                       {freshToken ? (
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--app-text-3)]">
                           Enviale este comando. Lo pega en el chat con el bot. Válido 30 minutos.
                         </p>
                       ) : activeLink ? (
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--app-text-3)]">
                           Conectado como{" "}
-                          <span className="font-medium text-neutral-700">
+                          <span className="font-medium text-[var(--app-text-2)]">
                             {activeLink.telegram_username ? `@${activeLink.telegram_username}` : `ID ${activeLink.telegram_user_id}`}
                           </span>
                           . Si cambió de número o quiere volver a entrar, regenerá el vínculo.
                         </p>
                       ) : pendingLink ? (
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--app-text-3)]">
                           {pendingLink.telegram_username ? `@${pendingLink.telegram_username}` : `ID ${pendingLink.telegram_user_id}`}
                           {" "}ya inició sesión en el bot. Confirmá el vínculo para darle acceso.
                         </p>
                       ) : (
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--app-text-3)]">
                           Generá un vínculo para que esta persona conecte su Telegram al bot.
                         </p>
                       )}
 
                       {freshToken && (
-                        <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                          <code className="flex-1 text-xs font-mono text-neutral-800 break-all">/start {freshToken.token}</code>
+                        <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2">
+                          <code className="flex-1 text-xs font-mono text-[var(--app-text-1)] break-all">/start {freshToken.token}</code>
                           <button
                             onClick={() => void handleCopyToken(freshToken.token)}
                             className="shrink-0 p-1.5 rounded-xl border border-transparent hover:border-[var(--app-text-2)]"
                             aria-label="Copiar comando"
                           >
-                            <Copy className="w-3.5 h-3.5 text-neutral-600" />
+                            <Copy className="w-3.5 h-3.5 text-[var(--app-text-2)]" />
                           </button>
                         </div>
                       )}
@@ -176,7 +176,7 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                             <button
                               disabled={isGenerating}
                               onClick={() => void handleGenerateToken(member.user_id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-[var(--app-text-2)] disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] disabled:opacity-50"
                             >
                               {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                               Regenerar vínculo

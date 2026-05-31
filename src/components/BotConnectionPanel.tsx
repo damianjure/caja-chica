@@ -50,14 +50,14 @@ export function BotConnectionPanel() {
   };
 
   return (
-    <section className="bg-white border border-neutral-200 rounded-xl p-6 md:p-8 shadow-sm space-y-5">
+    <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm space-y-5">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-neutral-900 text-white">
           <Bot className="w-4 h-4" />
         </div>
         <div>
           <h2 className="text-xl font-bold tracking-tight">Vincular bot de Telegram</h2>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-[var(--app-text-3)]">
             El bot ahora es multiusuario real: solo procesa chats vinculados a tu cuenta.
           </p>
         </div>
@@ -76,23 +76,23 @@ export function BotConnectionPanel() {
       )}
 
       {loading ? (
-        <div className="py-4 text-neutral-500 flex items-center gap-2">
+        <div className="py-4 text-[var(--app-text-3)] flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
           Cargando estado del bot...
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-neutral-200 px-4 py-4 flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-widest text-neutral-500 font-bold">
+          <div className="rounded-xl border border-[var(--app-border)] px-4 py-4 flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-widest text-[var(--app-text-3)] font-bold">
               Estado
             </span>
-            <span className="font-medium text-neutral-900">
+            <span className="font-medium text-[var(--app-text-1)]">
               {status?.connected
                 ? `Conectado como @${status.telegramUsername || "usuario"}`
                 : "Todavía no vinculaste un chat de Telegram"}
             </span>
             {status?.linkedAt && (
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-[var(--app-text-3)]">
                 Vinculado: {new Date(status.linkedAt).toLocaleString("es-AR")}
               </span>
             )}
@@ -122,7 +122,7 @@ export function BotConnectionPanel() {
                 href={status.telegramDeepLink}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 px-4 py-3 text-neutral-700 font-medium hover:border-[var(--app-text-2)]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)]"
               >
                 Abrir Telegram
               </a>
@@ -130,17 +130,17 @@ export function BotConnectionPanel() {
           </div>
 
           {status?.pendingToken && (
-            <div className="space-y-3 rounded-xl border border-neutral-200 px-4 py-4">
-              <div className="text-sm text-neutral-600">
+            <div className="space-y-3 rounded-xl border border-[var(--app-border)] px-4 py-4">
+              <div className="text-sm text-[var(--app-text-2)]">
                 Si el deep link no abre bien, copiá este comando y mandáselo al bot:
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-4 py-3">
-                <code className="text-sm text-neutral-800 break-all">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--app-surface-2)] px-4 py-3">
+                <code className="text-sm text-[var(--app-text-1)] break-all">
                   {status.manualStartCode}
                 </code>
                 <button
                   onClick={() => void copyValue(status.manualStartCode, "Comando copiado.")}
-                  className="p-2 rounded-xl border border-neutral-200 hover:border-[var(--app-text-2)]"
+                  className="p-2 rounded-xl border border-[var(--app-border)] hover:border-[var(--app-text-2)]"
                   aria-label="Copiar comando"
                   title="Copiar comando"
                 >
@@ -148,7 +148,7 @@ export function BotConnectionPanel() {
                 </button>
               </div>
               {status.pendingTokenExpiresAt && (
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-[var(--app-text-3)]">
                   Expira: {new Date(status.pendingTokenExpiresAt).toLocaleString("es-AR")}
                 </div>
               )}

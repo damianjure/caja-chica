@@ -63,7 +63,7 @@ export function EmailLogView() {
             id="email-log-type"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as EmailLogType | "all")}
-            className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+            className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             aria-label="Filtrar por tipo de email"
           >
             {TYPE_OPTIONS.map((opt) => (
@@ -77,7 +77,7 @@ export function EmailLogView() {
             id="email-log-status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "ok" | "fail")}
-            className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+            className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             aria-label="Filtrar por estado de envío"
           >
             {STATUS_OPTIONS.map((opt) => (
@@ -106,9 +106,9 @@ export function EmailLogView() {
           No se pudo cargar el log de emails. Intentá de nuevo.
         </div>
       ) : !rows || rows.length === 0 ? (
-        <div className="py-8 text-center text-sm text-neutral-500">
+        <div className="py-8 text-center text-sm text-[var(--app-text-3)]">
           <p className="font-medium">Sin registros</p>
-          <p className="mt-1 text-neutral-400">
+          <p className="mt-1 text-[var(--app-text-3)]">
             {typeFilter !== "all" || statusFilter !== "all"
               ? "No hay envíos que coincidan con el filtro."
               : "Todavía no hay envíos registrados."}
@@ -119,19 +119,19 @@ export function EmailLogView() {
           <table className="w-full text-sm border-separate border-spacing-y-1" role="table">
             <thead>
               <tr>
-                <th className="text-left text-xs font-semibold uppercase tracking-widest text-neutral-500 pb-2 pr-4">
+                <th className="text-left text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] pb-2 pr-4">
                   Destinatario
                 </th>
-                <th className="text-left text-xs font-semibold uppercase tracking-widest text-neutral-500 pb-2 pr-4">
+                <th className="text-left text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] pb-2 pr-4">
                   Tipo
                 </th>
-                <th className="text-left text-xs font-semibold uppercase tracking-widest text-neutral-500 pb-2 pr-4">
+                <th className="text-left text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] pb-2 pr-4">
                   Estado
                 </th>
-                <th className="text-left text-xs font-semibold uppercase tracking-widest text-neutral-500 pb-2 pr-4">
+                <th className="text-left text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] pb-2 pr-4">
                   Enviado
                 </th>
-                <th className="text-left text-xs font-semibold uppercase tracking-widest text-neutral-500 pb-2">
+                <th className="text-left text-xs font-semibold uppercase tracking-widest text-[var(--app-text-3)] pb-2">
                   ID Brevo
                 </th>
               </tr>
@@ -140,13 +140,13 @@ export function EmailLogView() {
               {rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border border-neutral-200 rounded-lg bg-white"
+                  className="border border-[var(--app-border)] rounded-lg bg-white"
                 >
-                  <td className="px-3 py-2.5 text-neutral-800 font-medium truncate max-w-[200px] rounded-l-lg">
+                  <td className="px-3 py-2.5 text-[var(--app-text-1)] font-medium truncate max-w-[200px] rounded-l-lg">
                     {row.to_email}
                   </td>
-                  <td className="px-3 py-2.5 text-neutral-600 whitespace-nowrap">
-                    <span className="inline-flex items-center rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] px-2.5 py-0.5 text-xs font-medium text-neutral-600">
+                  <td className="px-3 py-2.5 text-[var(--app-text-2)] whitespace-nowrap">
+                    <span className="inline-flex items-center rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] px-2.5 py-0.5 text-xs font-medium text-[var(--app-text-2)]">
                       {TYPE_LABELS[row.email_type] ?? row.email_type}
                     </span>
                   </td>
@@ -164,10 +164,10 @@ export function EmailLogView() {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-neutral-500 whitespace-nowrap text-xs">
+                  <td className="px-3 py-2.5 text-[var(--app-text-3)] whitespace-nowrap text-xs">
                     {relativeTimeShort(row.sent_at)}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-neutral-400 truncate max-w-[160px] rounded-r-lg">
+                  <td className="px-3 py-2.5 font-mono text-xs text-[var(--app-text-3)] truncate max-w-[160px] rounded-r-lg">
                     {row.brevo_message_id ?? "—"}
                   </td>
                 </tr>

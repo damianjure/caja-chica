@@ -105,7 +105,7 @@ function RoleBadge({ role }: { role: string }) {
     editor:
       "bg-emerald-100 text-emerald-800 border-emerald-200 ring-1 ring-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
     viewer:
-      "bg-neutral-100 text-neutral-700 border-neutral-200 ring-1 ring-neutral-300/50 dark:bg-neutral-700/50 dark:text-neutral-200 dark:border-neutral-600/40",
+      "bg-[var(--app-surface-2)] text-[var(--app-text-2)] border-[var(--app-border)] ring-1 ring-neutral-300/50 dark:bg-neutral-700/50 dark:text-neutral-200 dark:border-neutral-600/40",
   };
   const labels: Record<string, string> = {
     owner: DASHBOARD_ROLE_LABELS.owner,
@@ -113,7 +113,7 @@ function RoleBadge({ role }: { role: string }) {
     viewer: DASHBOARD_ROLE_LABELS.viewer,
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${styles[role] ?? "bg-neutral-100 text-neutral-500 border-neutral-200"}`}>
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${styles[role] ?? "bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]"}`}>
       {labels[role] ?? role}
     </span>
   );
@@ -151,7 +151,7 @@ function TelegramBadge({ linked }: { linked: boolean }) {
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${
         linked
           ? "border-blue-200 bg-blue-100 text-blue-700 ring-1 ring-blue-300/50 dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30"
-          : "border-neutral-200 bg-neutral-100 text-neutral-500 dark:bg-neutral-700/40 dark:text-neutral-400 dark:border-neutral-600/40"
+          : "border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)] dark:bg-neutral-700/40 dark:text-[var(--app-text-3)] dark:border-neutral-600/40"
       }`}
     >
       {linked ? "Telegram vinculado" : "Sin Telegram"}
@@ -208,13 +208,13 @@ function InviteForm({ onInvited }: InviteFormProps) {
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
           placeholder="colaborador@empresa.com"
-          className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
+          className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
         />
         <select
           aria-label="Rol del invitado"
           value={role}
           onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-          className="rounded-md border border-neutral-200 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
+          className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white text-sm dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]"
         >
           <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
           <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>
@@ -228,7 +228,7 @@ function InviteForm({ onInvited }: InviteFormProps) {
           Invitar
         </button>
       </div>
-      <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-[var(--app-text-2)] cursor-pointer select-none">
+      <label className="flex items-center gap-2 text-sm text-[var(--app-text-2)] dark:text-[var(--app-text-2)] cursor-pointer select-none">
         <input
           type="checkbox"
           checked={telegramPreauth}
@@ -306,16 +306,16 @@ function TelegramCardSection({
   };
 
   return (
-    <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-[var(--app-border)]">
-      <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Telegram</p>
+    <div className="space-y-3 pt-4 border-t border-[var(--app-border)] dark:border-[var(--app-border)]">
+      <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Telegram</p>
 
       {freshToken ? (
         <div className="space-y-2">
-          <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)]">
+          <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
             Enviá este comando. Lo pega en el chat con el bot. Válido 30 minutos.
           </p>
-          <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]">
-            <code className="flex-1 text-xs font-mono text-neutral-800 dark:text-[var(--app-text-1)] break-all">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]">
+            <code className="flex-1 text-xs font-mono text-[var(--app-text-1)] dark:text-[var(--app-text-1)] break-all">
               /start {freshToken.token}
             </code>
             <button
@@ -323,25 +323,25 @@ function TelegramCardSection({
               className="shrink-0 p-1.5 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
               aria-label="Copiar comando"
             >
-              <Copy className="w-3.5 h-3.5 text-neutral-600 dark:text-[var(--app-text-2)]" />
+              <Copy className="w-3.5 h-3.5 text-[var(--app-text-2)] dark:text-[var(--app-text-2)]" />
             </button>
           </div>
         </div>
       ) : activeLink ? (
-        <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)]">
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
           Conectado como{" "}
-          <span className="font-medium text-neutral-700 dark:text-[var(--app-text-2)]">
+          <span className="font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)]">
             {activeLink.telegram_username ? `@${activeLink.telegram_username}` : `ID ${activeLink.telegram_user_id}`}
           </span>
           .
         </p>
       ) : pendingLink ? (
-        <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)]">
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
           {pendingLink.telegram_username ? `@${pendingLink.telegram_username}` : `ID ${pendingLink.telegram_user_id}`}{" "}
           ya inició sesión en el bot. Confirmá el vínculo para darle acceso.
         </p>
       ) : (
-        <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)]">
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
           Generá un vínculo para que esta persona conecte su Telegram al bot.
         </p>
       )}
@@ -352,7 +352,7 @@ function TelegramCardSection({
             <button
               disabled={generatingToken}
               onClick={() => void handleGenerateToken()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)] px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {generatingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
               Regenerar vínculo
@@ -477,10 +477,10 @@ function PersonCard({
       className={[
         "rounded-xl border overflow-hidden transition-all",
         isOwner
-          ? "border-neutral-300 bg-[var(--app-surface-1)] dark:border-[var(--app-border-strong,_var(--app-border))]"
+          ? "border-[var(--app-border-strong)] bg-[var(--app-surface-1)] dark:border-[var(--app-border-strong,_var(--app-border))]"
           : expanded
-          ? "border-neutral-200 bg-[var(--app-surface-1)] dark:border-[var(--app-border)]"
-          : "border-neutral-200 bg-[var(--app-surface-2)] dark:border-[var(--app-border)]",
+          ? "border-[var(--app-border)] bg-[var(--app-surface-1)] dark:border-[var(--app-border)]"
+          : "border-[var(--app-border)] bg-[var(--app-surface-2)] dark:border-[var(--app-border)]",
         isRevoked ? "opacity-60" : "",
       ]
         .filter(Boolean)
@@ -493,13 +493,13 @@ function PersonCard({
         className="w-full grid grid-cols-[36px_1fr_auto] items-center gap-3 px-4 py-3.5 text-left"
       >
         {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-[var(--app-surface-3,_var(--app-surface-2))] border border-neutral-200 dark:border-[var(--app-border)] flex items-center justify-center text-sm font-semibold text-neutral-600 dark:text-[var(--app-text-2)] shrink-0">
+        <div className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-[var(--app-surface-3,_var(--app-surface-2))] border border-[var(--app-border)] dark:border-[var(--app-border)] flex items-center justify-center text-sm font-semibold text-[var(--app-text-2)] dark:text-[var(--app-text-2)] shrink-0">
           {avatarInitial(email)}
         </div>
 
         {/* Meta */}
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-neutral-900 dark:text-[var(--app-text-1)] truncate leading-snug">
+          <p className="text-sm font-semibold text-[var(--app-text-1)] dark:text-[var(--app-text-1)] truncate leading-snug">
             {email}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -516,7 +516,7 @@ function PersonCard({
 
         {/* Chevron */}
         <ChevronDown
-          className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-[var(--app-text-3)] shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -527,7 +527,7 @@ function PersonCard({
           {/* Permissions — editors only */}
           {isEditor && (
             <div className="mb-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-500 dark:text-[var(--app-text-3)] mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--app-text-3)] dark:text-[var(--app-text-3)] mb-2">
                 Permisos extra
               </p>
               <div className="space-y-0.5">
@@ -548,7 +548,7 @@ function PersonCard({
                         className={`mt-0.5 w-[18px] h-[18px] rounded-md flex items-center justify-center shrink-0 border transition-all disabled:opacity-50 ${
                           active
                             ? "bg-neutral-900 border-neutral-900 text-white dark:bg-[var(--app-text-1)] dark:border-[var(--app-text-1)]"
-                            : "border-neutral-300 dark:border-[var(--app-border)] bg-transparent"
+                            : "border-[var(--app-border-strong)] dark:border-[var(--app-border)] bg-transparent"
                         }`}
                         title={isCurrentUser ? "No podés cambiar tus propios permisos" : undefined}
                       >
@@ -557,10 +557,10 @@ function PersonCard({
                         <span className="sr-only">{active ? "Activo" : "Inactivo"}</span>
                       </button>
                       <div>
-                        <p className="text-sm font-medium text-neutral-800 dark:text-[var(--app-text-1)] leading-tight">
+                        <p className="text-sm font-medium text-[var(--app-text-1)] dark:text-[var(--app-text-1)] leading-tight">
                           {def.label}
                         </p>
-                        <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)] mt-0.5 leading-snug">
                           {def.description}
                         </p>
                       </div>
@@ -574,8 +574,8 @@ function PersonCard({
           {/* Viewers: locked permissions info */}
           {isViewer && (
             <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-[var(--app-surface-2)] mb-4">
-              <Lock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-              <p className="text-xs text-neutral-500 dark:text-[var(--app-text-3)]">
+              <Lock className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" />
+              <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
                 Este rol solo puede ver el dashboard. No tiene permisos extra configurables.
               </p>
             </div>
@@ -593,7 +593,7 @@ function PersonCard({
           )}
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200 dark:border-[var(--app-border)]">
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--app-border)] dark:border-[var(--app-border)]">
             {/* Pending / expired invitations */}
             {isInvitation && (
               <>
@@ -601,7 +601,7 @@ function PersonCard({
                   <button
                     type="button"
                     onClick={() => void handleCopyLink()}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-neutral-700 dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     Copiar link
@@ -611,7 +611,7 @@ function PersonCard({
                   <button
                     type="button"
                     onClick={onResend}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-neutral-700 dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                   >
                     <Send className="w-3.5 h-3.5" />
                     Reenviar invitación
@@ -633,7 +633,7 @@ function PersonCard({
                 <button
                   type="button"
                   onClick={() => onChangeRole(isEditor ? "viewer" : "editor")}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-neutral-700 dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                 >
                   Cambiar a "{isEditor ? DASHBOARD_ROLE_LABELS.viewer : DASHBOARD_ROLE_LABELS.editor}"
                 </button>
@@ -652,7 +652,7 @@ function PersonCard({
               <button
                 type="button"
                 onClick={onRestoreAccess}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-neutral-700 dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] dark:border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] px-3 py-2 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
               >
                 Restaurar acceso
               </button>
@@ -660,7 +660,7 @@ function PersonCard({
 
             {/* Owner self card: no actions */}
             {isOwner && isCurrentUser && (
-              <p className="text-xs text-neutral-400 dark:text-[var(--app-text-3)] py-1">
+              <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)] py-1">
                 Dueño del dashboard — vos controlás el acceso.
               </p>
             )}
@@ -827,7 +827,7 @@ export function MiembrosSection({
 
   return (
     <>
-      <section className="bg-white dark:bg-[var(--app-surface-1)] border border-neutral-200 dark:border-[var(--app-border)] rounded-xl shadow-sm overflow-hidden">
+      <section className="bg-white dark:bg-[var(--app-surface-1)] border border-[var(--app-border)] dark:border-[var(--app-border)] rounded-xl shadow-sm overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-5 space-y-5">
           <div className="flex items-center gap-3">
@@ -836,7 +836,7 @@ export function MiembrosSection({
             </div>
             <div>
               <h2 className="text-xl font-bold tracking-tight">Equipo</h2>
-              <p className="text-sm text-neutral-500 dark:text-[var(--app-text-3)]">
+              <p className="text-sm text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
                 Quién tiene acceso a este dashboard y qué puede hacer.
               </p>
             </div>
@@ -849,16 +849,16 @@ export function MiembrosSection({
         {/* Person list */}
         <div className="px-6 pb-6 space-y-2">
           {isLoading ? (
-            <div className="flex items-center justify-center py-10 text-neutral-400">
+            <div className="flex items-center justify-center py-10 text-[var(--app-text-3)]">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
           ) : personas.length === 0 && !ownerMember ? (
-            <div className="rounded-xl border border-dashed border-neutral-200 dark:border-[var(--app-border)] px-6 py-12 text-center">
+            <div className="rounded-xl border border-dashed border-[var(--app-border)] dark:border-[var(--app-border)] px-6 py-12 text-center">
               <div className="text-3xl mb-3 opacity-40">👥</div>
-              <h4 className="text-sm font-semibold text-neutral-700 dark:text-[var(--app-text-1)]">
+              <h4 className="text-sm font-semibold text-[var(--app-text-2)] dark:text-[var(--app-text-1)]">
                 Tu equipo está vacío
               </h4>
-              <p className="mt-1 text-sm text-neutral-500 dark:text-[var(--app-text-3)]">
+              <p className="mt-1 text-sm text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
                 Sumá a alguien que vea o cargue movimientos con vos.
               </p>
             </div>

@@ -131,25 +131,25 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
   };
 
   return (
-    <section className="bg-white border border-neutral-200 rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
       <header className="mb-6">
-        <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Mantenimiento del sistema</h2>
-        <p className="text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-prose">
+        <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Mantenimiento del sistema</h2>
+        <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
           Activá o programá el modo mantenimiento para pausar escrituras y notificar a los usuarios.
         </p>
       </header>
 
       {/* Current status */}
       <div className="flex items-center gap-3 mb-6">
-        <span className="text-sm font-medium text-neutral-700">Estado actual:</span>
+        <span className="text-sm font-medium text-[var(--app-text-2)]">Estado actual:</span>
         <StatusChip status={status} />
         {status === "grace" && currentStatus?.grace_ends_at && (
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-[var(--app-text-3)]">
             Activo a las {new Date(currentStatus.grace_ends_at).toLocaleString("es-AR")}
           </span>
         )}
         {status === "scheduled" && currentStatus?.scheduled_at && (
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-[var(--app-text-3)]">
             Programado para {new Date(currentStatus.scheduled_at).toLocaleString("es-AR")}
           </span>
         )}
@@ -157,9 +157,9 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
 
       <div className="space-y-6">
         {/* Immediate activation */}
-        <div className="rounded-xl border border-neutral-200 p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-            <Wrench className="w-4 h-4 text-neutral-500" />
+        <div className="rounded-xl border border-[var(--app-border)] p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[var(--app-text-1)] flex items-center gap-2">
+            <Wrench className="w-4 h-4 text-[var(--app-text-3)]" />
             Activar mantenimiento inmediato
           </h3>
           {status === "grace" && (
@@ -169,10 +169,10 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
           )}
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-neutral-600 block mb-1">Mensaje para usuarios</label>
+              <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Mensaje para usuarios</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: Actualizando la base de datos"
                 value={activateMessage}
                 onChange={(e) => setActivateMessage(e.target.value)}
@@ -180,10 +180,10 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-neutral-600 block mb-1">Duración estimada</label>
+              <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: 2 horas"
                 value={activateEstimated}
                 onChange={(e) => setActivateEstimated(e.target.value)}
@@ -213,27 +213,27 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
         </div>
 
         {/* Scheduled maintenance */}
-        <div className="rounded-xl border border-neutral-200 p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-neutral-500" />
+        <div className="rounded-xl border border-[var(--app-border)] p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[var(--app-text-1)] flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[var(--app-text-3)]" />
             Programar mantenimiento
           </h3>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-neutral-600 block mb-1">Fecha y hora de inicio</label>
+              <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Fecha y hora de inicio</label>
               <input
                 type="datetime-local"
-                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 value={scheduleAt}
                 onChange={(e) => setScheduleAt(e.target.value)}
                 disabled={isLive}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-neutral-600 block mb-1">Mensaje para usuarios</label>
+              <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Mensaje para usuarios</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: Actualizando la base de datos"
                 value={scheduleMessage}
                 onChange={(e) => setScheduleMessage(e.target.value)}
@@ -241,10 +241,10 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-neutral-600 block mb-1">Duración estimada</label>
+              <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: 2 horas"
                 value={scheduleEstimated}
                 onChange={(e) => setScheduleEstimated(e.target.value)}

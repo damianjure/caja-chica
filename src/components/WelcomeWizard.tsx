@@ -59,7 +59,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
         {/* Skip button */}
         <button
           onClick={() => finish(false)}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 active:scale-[0.9] transition-transform duration-100"
+          className="absolute top-4 right-4 text-[var(--app-text-3)] hover:text-[var(--app-text-2)] active:scale-[0.9] transition-transform duration-100"
           aria-label="Saltear bienvenida"
         >
           <X className="w-5 h-5" />
@@ -82,10 +82,10 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
               <Sparkles className="w-8 h-8 text-indigo-600" />
             </div>
             <div>
-              <h2 id="wizard-title" className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
+              <h2 id="wizard-title" className="text-2xl font-bold text-[var(--app-text-1)] dark:text-white mb-2">
                 Bienvenido a Caja Chica
               </h2>
-              <p className="text-neutral-500 text-sm leading-relaxed">
+              <p className="text-[var(--app-text-3)] text-sm leading-relaxed">
                 Tu cuenta está lista. Cargamos datos de ejemplo para que veas cómo funciona todo antes de empezar con los datos reales.
               </p>
             </div>
@@ -106,8 +106,8 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
                 <BarChart2 className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-neutral-900 dark:text-white">Datos de ejemplo cargados</h3>
-                <p className="text-sm text-neutral-500">
+                <h3 className="font-semibold text-[var(--app-text-1)] dark:text-white">Datos de ejemplo cargados</h3>
+                <p className="text-sm text-[var(--app-text-3)]">
                   Empresa Demo SA con 10 movimientos de los últimos 30 días en ARS. Explorá todas las tabs.
                 </p>
               </div>
@@ -139,15 +139,15 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
                 <MessageCircle className="w-5 h-5 text-sky-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-neutral-900 dark:text-white">Conectar Telegram</h3>
-                <p className="text-sm text-neutral-500">
+                <h3 className="font-semibold text-[var(--app-text-1)] dark:text-white">Conectar Telegram</h3>
+                <p className="text-sm text-[var(--app-text-3)]">
                   Cargá movimientos y consultá saldos desde el bot. Opcional, podés hacerlo después.
                 </p>
               </div>
             </div>
 
             {loadingLink && (
-              <p className="text-sm text-neutral-400 text-center">Generando link...</p>
+              <p className="text-sm text-[var(--app-text-3)] text-center">Generando link...</p>
             )}
 
             {deepLink && (

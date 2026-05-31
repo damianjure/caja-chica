@@ -68,7 +68,7 @@ const statusBadge: Record<
   },
   suspended: {
     label: "Suspendido (legacy)",
-    className: "bg-neutral-200 text-neutral-700 border-neutral-400",
+    className: "bg-neutral-200 text-[var(--app-text-2)] border-neutral-400",
   },
 };
 
@@ -365,14 +365,14 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
   return (
     <div className="space-y-6">
-    <section className="bg-white border border-neutral-300 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
+    <section className="bg-white border border-[var(--app-border-strong)] rounded-xl p-6 md:p-8 shadow-sm space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-neutral-900 text-white">
           <Shield className="w-4 h-4" />
         </div>
         <div>
           <h2 className="text-xl font-bold">Super Admin · Cuentas y dashboards</h2>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-[var(--app-text-2)]">
             Cada invitación crea una cuenta independiente con su propio dashboard. Solo vos ves esta tabla.
           </p>
         </div>
@@ -385,13 +385,13 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="usuario@empresa.com"
           aria-label="Email a invitar"
-          className="rounded-md border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900"
+          className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as AppRole)}
           aria-label="Rol de la invitación"
-          className="rounded-md border border-neutral-300 px-4 py-3 outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+          className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white"
         >
           <option value="member">{APP_ROLE_LABELS.member}</option>
           <option value="admin">{APP_ROLE_LABELS.admin}</option>
@@ -418,7 +418,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
       </div>
 
       {loading ? (
-        <div className="py-8 flex items-center justify-center text-neutral-500">
+        <div className="py-8 flex items-center justify-center text-[var(--app-text-3)]">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -430,7 +430,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           />
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-600">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
               Invitaciones
             </h3>
 
@@ -452,7 +452,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                       "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
                       isSelected
                         ? "bg-neutral-900 text-white border-neutral-900"
-                        : "bg-white text-neutral-700 border-neutral-300 hover:border-neutral-500",
+                        : "bg-white text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-neutral-500",
                     ].join(" ")}
                   >
                     {INVITATION_STATUS_LABELS[status]}
@@ -477,18 +477,18 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                   return (
                     <div
                       key={invitation.id}
-                      className="border border-neutral-300 rounded-xl px-4 py-3 space-y-3"
+                      className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 space-y-3"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-neutral-900 [overflow-wrap:anywhere]">
+                          <div className="font-medium text-[var(--app-text-1)] [overflow-wrap:anywhere]">
                             {invitation.email}
                           </div>
-                          <div className="text-xs text-neutral-600">
+                          <div className="text-xs text-[var(--app-text-2)]">
                             {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
                           </div>
                           {reminderText && (
-                            <div className="text-xs text-neutral-500 mt-0.5">
+                            <div className="text-xs text-[var(--app-text-3)] mt-0.5">
                               Último recordatorio: {reminderText}
                             </div>
                           )}
@@ -499,7 +499,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                             type="button"
                             onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
                             disabled={!canResend || isResending}
-                            className="w-11 h-11 flex items-center justify-center rounded-md border border-neutral-300 hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
                             aria-label={`Reenviar invitación a ${invitation.email}`}
                             title="Reenviar"
                           >
@@ -511,7 +511,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                           <button
                             type="button"
                             onClick={() => void handleCopy(invitation)}
-                            className="w-11 h-11 flex items-center justify-center rounded-md border border-neutral-300 hover:border-[var(--app-text-2)]"
+                            className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]"
                             aria-label={`Copiar link de ${invitation.email}`}
                             title="Copiar link"
                           >
@@ -530,7 +530,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                           )}
                         </div>
                       </div>
-                      <div className="text-xs text-neutral-600 [overflow-wrap:anywhere] leading-relaxed">
+                      <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
                         {invitation.invite_url}
                       </div>
                     </div>
@@ -543,7 +543,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                 }
                 return inv.status === invitationStatusFilter;
               }).length === 0 && (
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-[var(--app-text-2)]">
                   {invitationStatusFilter === "all"
                     ? "Todavía no hay invitaciones."
                     : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
@@ -590,10 +590,10 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
     {isSuperadmin && (
       <>
         <EmailSection />
-        <section className="bg-white border border-neutral-200 rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+        <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
           <header className="mb-6">
-            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Log de emails</h2>
-            <p className="text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-prose">
+            <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
+            <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
               Registro de todos los emails transaccionales enviados por el sistema.
             </p>
           </header>
@@ -614,7 +614,7 @@ interface DashboardTreeViewProps {
 function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewProps) {
   if (!tree) {
     return (
-      <div className="py-8 flex items-center justify-center text-neutral-500">
+      <div className="py-8 flex items-center justify-center text-[var(--app-text-3)]">
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
@@ -625,10 +625,10 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-600">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
           Dashboards y miembros
         </h3>
-        <span className="text-xs text-neutral-500">{dashboards.length} dashboards</span>
+        <span className="text-xs text-[var(--app-text-3)]">{dashboards.length} dashboards</span>
       </div>
 
       <ul className="space-y-3">
@@ -643,13 +643,13 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
       </ul>
 
       {orphan_users.length > 0 && (
-        <details className="border border-dashed border-neutral-300 rounded-xl px-4 py-3 bg-neutral-50">
-          <summary className="cursor-pointer text-sm font-medium text-neutral-700">
+        <details className="border border-dashed border-[var(--app-border-strong)] rounded-xl px-4 py-3 bg-[var(--app-surface-2)]">
+          <summary className="cursor-pointer text-sm font-medium text-[var(--app-text-2)]">
             Cuentas sin dashboard ({orphan_users.length})
           </summary>
           <ul className="mt-3 space-y-1.5">
             {orphan_users.map((u) => (
-              <li key={u.user_id} className="text-sm text-neutral-700 flex items-center gap-2">
+              <li key={u.user_id} className="text-sm text-[var(--app-text-2)] flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => onSelectUser(u.user_id)}
@@ -657,7 +657,7 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
                 >
                   {u.email}
                 </button>
-                <span className="text-xs text-neutral-500">{APP_ROLE_LABELS[u.role]}</span>
+                <span className="text-xs text-[var(--app-text-3)]">{APP_ROLE_LABELS[u.role]}</span>
               </li>
             ))}
           </ul>
@@ -666,14 +666,14 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
 
       {pending_app_invitations.length > 0 && (
         <details className="border border-dashed border-amber-300 rounded-xl px-4 py-3 bg-amber-50">
-          <summary className="cursor-pointer text-sm font-medium text-neutral-700">
+          <summary className="cursor-pointer text-sm font-medium text-[var(--app-text-2)]">
             Invitaciones del sistema pendientes ({pending_app_invitations.length})
           </summary>
           <ul className="mt-3 space-y-1.5">
             {pending_app_invitations.map((inv) => (
-              <li key={inv.id} className="text-sm text-neutral-700 flex items-center justify-between gap-2">
+              <li key={inv.id} className="text-sm text-[var(--app-text-2)] flex items-center justify-between gap-2">
                 <span className="truncate">{inv.email}</span>
-                <span className="text-xs text-neutral-500">{APP_ROLE_LABELS[inv.role]}</span>
+                <span className="text-xs text-[var(--app-text-3)]">{APP_ROLE_LABELS[inv.role]}</span>
               </li>
             ))}
           </ul>
@@ -695,7 +695,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
   const totalCount = node.members.length + node.pending_invitations.length;
 
   return (
-    <li className="border border-neutral-300 rounded-xl bg-white shadow-sm overflow-hidden">
+    <li className="border border-[var(--app-border-strong)] rounded-xl bg-white shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b-2 border-[var(--app-text-3)]">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {node.owner ? (
@@ -703,7 +703,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               <button
                 type="button"
                 onClick={() => onSelectUser(node.owner!.user_id)}
-                className="text-sm font-semibold text-neutral-900 truncate hover:underline"
+                className="text-sm font-semibold text-[var(--app-text-1)] truncate hover:underline"
                 title="Ver detalle"
               >
                 {node.owner.email ?? "(sin email)"}
@@ -712,7 +712,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
                 Dueño
               </span>
               {node.owner.app_role && (
-                <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-700 bg-neutral-50">
+                <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-2)] bg-[var(--app-surface-2)]">
                   {APP_ROLE_LABELS[node.owner.app_role]}
                 </span>
               )}
@@ -723,29 +723,29 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               )}
             </>
           ) : (
-            <span className="text-sm text-neutral-500 italic">Sin dueño</span>
+            <span className="text-sm text-[var(--app-text-3)] italic">Sin dueño</span>
           )}
         </div>
-        <div className="mt-1 text-xs text-neutral-600 truncate">
+        <div className="mt-1 text-xs text-[var(--app-text-2)] truncate">
           {node.dashboard_name} · {totalCount} {totalCount === 1 ? "miembro" : "miembros"}
         </div>
       </div>
 
       {totalCount === 0 ? (
-        <div className="px-4 py-3 text-xs text-neutral-500 italic">Sin miembros adicionales.</div>
+        <div className="px-4 py-3 text-xs text-[var(--app-text-3)] italic">Sin miembros adicionales.</div>
       ) : (
         <ul className="divide-y divide-neutral-100/20">
           {node.members.map((m) => (
             <li key={`m-${m.user_id}`} className="px-4 py-2 flex items-center gap-2 min-w-0">
-              <span className="text-neutral-400 text-xs">└─</span>
+              <span className="text-[var(--app-text-3)] text-xs">└─</span>
               <button
                 type="button"
                 onClick={() => onSelectUser(m.user_id)}
-                className="text-sm text-neutral-900 truncate hover:underline flex-1 text-left"
+                className="text-sm text-[var(--app-text-1)] truncate hover:underline flex-1 text-left"
               >
                 {m.email ?? "(sin email)"}
               </button>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-800 bg-neutral-50">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-1)] bg-[var(--app-surface-2)]">
                 {m.dashboard_role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
               <span
@@ -754,7 +754,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
                     ? "bg-green-100 text-green-800 border-green-300"
                     : m.membership_status === "revoked"
                       ? "bg-red-100 text-red-800 border-red-300"
-                      : "bg-neutral-200 text-neutral-700 border-neutral-400"
+                      : "bg-neutral-200 text-[var(--app-text-2)] border-neutral-400"
                 }`}
               >
                 {m.membership_status === "active"
@@ -767,9 +767,9 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
           ))}
           {node.pending_invitations.map((inv) => (
             <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0 bg-amber-50/30">
-              <span className="text-neutral-500 text-xs">└─</span>
-              <span className="text-sm text-neutral-800 truncate flex-1 italic">{inv.email}</span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-neutral-800 bg-white">
+              <span className="text-[var(--app-text-3)] text-xs">└─</span>
+              <span className="text-sm text-[var(--app-text-1)] truncate flex-1 italic">{inv.email}</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-1)] bg-white">
                 {inv.role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
@@ -795,7 +795,7 @@ interface UsersListProps {
 function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuickStatus }: UsersListProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-widest text-neutral-600">
+      <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
         Usuarios
       </h3>
       <div className="space-y-3">
@@ -806,17 +806,17 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
           return (
             <div
               key={user.user_id}
-              className="border border-neutral-300 rounded-xl px-4 py-3 min-w-0 flex flex-col gap-3"
+              className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 min-w-0 flex flex-col gap-3"
             >
               <div className="flex items-center justify-between gap-3 min-w-0">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-neutral-900 [overflow-wrap:anywhere]">
+                  <div className="font-medium text-[var(--app-text-1)] [overflow-wrap:anywhere]">
                     {user.email}
                     {isSelf && (
-                      <span className="ml-2 text-xs text-neutral-500">(vos)</span>
+                      <span className="ml-2 text-xs text-[var(--app-text-3)]">(vos)</span>
                     )}
                   </div>
-                  <div className="text-xs text-neutral-600 mt-1 flex items-center gap-2 flex-wrap">
+                  <div className="text-xs text-[var(--app-text-2)] mt-1 flex items-center gap-2 flex-wrap">
                     <span>{APP_ROLE_LABELS[user.role as AppRole] ?? user.role}</span>
                     <span
                       className={`inline-block px-2 py-0.5 rounded-full text-xs border ${badge.className}`}
@@ -830,7 +830,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                   <button
                     type="button"
                     onClick={() => onSelect(user.user_id)}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border-strong)] px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
                     aria-label={`Administrar ${user.email}`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -838,7 +838,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                   </button>
                 ) : (
                   <span
-                    className="shrink-0 text-xs text-neutral-500 italic"
+                    className="shrink-0 text-xs text-[var(--app-text-3)] italic"
                     title="No podés administrar tu propia cuenta"
                   >
                     protegido
@@ -889,7 +889,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
           );
         })}
         {users.length === 0 && (
-          <p className="text-sm text-neutral-600">Todavía no hay usuarios activos.</p>
+          <p className="text-sm text-[var(--app-text-2)]">Todavía no hay usuarios activos.</p>
         )}
       </div>
     </div>
@@ -927,17 +927,17 @@ function UserDetailModal({
     >
       {loading || !detail ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--app-text-3)]" />
         </div>
       ) : (
         <div className="space-y-6">
           {detail.user.status_reason && (
-            <p className="text-xs text-neutral-600 italic">
+            <p className="text-xs text-[var(--app-text-2)] italic">
               Motivo del último cambio: {detail.user.status_reason}
             </p>
           )}
           {detail.user.status_changed_at && (
-            <p className="text-xs text-neutral-500 -mt-4">
+            <p className="text-xs text-[var(--app-text-3)] -mt-4">
               Último cambio: {new Date(detail.user.status_changed_at).toLocaleString()}
             </p>
           )}
@@ -949,7 +949,7 @@ function UserDetailModal({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
               Estado
             </h3>
             <div className="grid grid-cols-3 gap-2">
@@ -981,14 +981,14 @@ function UserDetailModal({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
               Sesión
             </h3>
             <button
               type="button"
               onClick={onForceLogout}
               disabled={acting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--app-border-strong)] px-3 py-2.5 text-sm font-medium text-[var(--app-text-1)] hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
               Forzar logout (cerrar sesiones)
@@ -996,7 +996,7 @@ function UserDetailModal({
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
               Rol del sistema
             </h3>
             <div className="flex gap-2 flex-wrap">
@@ -1006,7 +1006,7 @@ function UserDetailModal({
                 const roleColor = {
                   member: {
                     active: "bg-neutral-800 border-neutral-800 text-white",
-                    inactive: "bg-white border-neutral-300 text-neutral-700 hover:border-neutral-500",
+                    inactive: "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-neutral-500",
                   },
                   admin: {
                     active: "bg-blue-600 border-blue-600 text-white",
@@ -1045,20 +1045,20 @@ function UserDetailModal({
 
           {detail.telegramLinks.length > 0 && (
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
                 Vínculos de Telegram
               </h3>
               <div className="space-y-2">
                 {detail.telegramLinks.map((link) => (
                   <div
                     key={link.id}
-                    className="flex items-center justify-between gap-3 border border-neutral-300 rounded-xl px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-3 border border-[var(--app-border-strong)] rounded-xl px-3 py-2 text-sm"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-mono text-xs text-neutral-800">
+                      <div className="font-mono text-xs text-[var(--app-text-1)]">
                         chat {link.chat_id ?? "—"}
                       </div>
-                      <div className="text-xs text-neutral-600">{link.status}</div>
+                      <div className="text-xs text-[var(--app-text-2)]">{link.status}</div>
                     </div>
                     {link.status === "active" && (
                       <button
@@ -1090,9 +1090,9 @@ interface StatProps {
 
 function Stat({ label, value }: StatProps) {
   return (
-    <div className="border border-neutral-300 rounded-xl py-3 px-2">
-      <div className="text-2xl font-bold text-neutral-900">{value}</div>
-      <div className="text-xs uppercase tracking-widest text-neutral-600 mt-0.5">
+    <div className="border border-[var(--app-border-strong)] rounded-xl py-3 px-2">
+      <div className="text-2xl font-bold text-[var(--app-text-1)]">{value}</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--app-text-2)] mt-0.5">
         {label}
       </div>
     </div>

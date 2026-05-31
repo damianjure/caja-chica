@@ -21,13 +21,13 @@ export function ChartCard({
   footer?: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm md:p-6">
+    <section className="rounded-xl border border-[var(--app-border)] bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5">
-        <h3 className="text-base font-semibold text-neutral-900 md:text-lg">{title}</h3>
-        {description ? <p className="mt-1 text-sm text-neutral-500">{description}</p> : null}
+        <h3 className="text-base font-semibold text-[var(--app-text-1)] md:text-lg">{title}</h3>
+        {description ? <p className="mt-1 text-sm text-[var(--app-text-3)]">{description}</p> : null}
       </div>
       {children}
-      {footer ? <div className="mt-5 border-t border-neutral-200 pt-4">{footer}</div> : null}
+      {footer ? <div className="mt-5 border-t border-[var(--app-border)] pt-4">{footer}</div> : null}
     </section>
   );
 }
@@ -53,7 +53,7 @@ export function TrendBars({
         const netOffset = item.net === 0 ? '50%' : `${Math.min(85, Math.max(22, 50 - (item.net / max) * 28))}%`;
 
         return (
-          <div key={item.label} className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <div key={item.label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] p-3">
             <div className="mb-3 flex h-40 items-end justify-center gap-3 relative">
               <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2" style={{ backgroundColor: 'var(--chart-baseline)' }} />
               <div
@@ -67,10 +67,10 @@ export function TrendBars({
               <div className="w-5 rounded-full" style={{ height: expenseHeight, backgroundColor: 'var(--chart-expense)' }} title={`Gastos ${formatCompact(item.expense, currency)}`} />
               <div className="w-5 rounded-full opacity-60" style={{ height: '50%', backgroundColor: 'var(--chart-baseline)' }} title="Línea de referencia del saldo" />
             </div>
-            <div className="text-center text-xs text-neutral-500">
+            <div className="text-center text-xs text-[var(--app-text-3)]">
               {item.net >= 0 ? 'Ingresó más de lo que salió' : 'Salió más de lo que ingresó'}
             </div>
-            <div className="text-center text-xs font-semibold text-neutral-900">{item.label}</div>
+            <div className="text-center text-xs font-semibold text-[var(--app-text-1)]">{item.label}</div>
           </div>
         );
       })}
@@ -100,7 +100,7 @@ export function HorizontalBarList({
   const max = Math.max(...items.map((item) => item.value), 1);
 
   if (items.length === 0) {
-    return <p className="text-sm text-neutral-500">{emptyLabel}</p>;
+    return <p className="text-sm text-[var(--app-text-3)]">{emptyLabel}</p>;
   }
 
   const summary = `Lista comparativa de ${items.length} ítems. ${items.slice(0, 5).map((item) => `${item.label}: ${item.valueLabel ?? formatCompact(item.value, currency)}`).join('; ')}${items.length > 5 ? `, y ${items.length - 5} más` : ''}.`;
@@ -111,19 +111,19 @@ export function HorizontalBarList({
         <div key={item.label} role="listitem" className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-neutral-900">{item.label}</div>
-              {item.secondary ? <div className="text-xs text-neutral-500">{item.secondary}</div> : null}
+              <div className="text-sm font-medium text-[var(--app-text-1)]">{item.label}</div>
+              {item.secondary ? <div className="text-xs text-[var(--app-text-3)]">{item.secondary}</div> : null}
             </div>
-            <div className="text-sm font-semibold text-neutral-900 text-right tabular-nums">{item.valueLabel ?? formatCompact(item.value, currency)}</div>
+            <div className="text-sm font-semibold text-[var(--app-text-1)] text-right tabular-nums">{item.valueLabel ?? formatCompact(item.value, currency)}</div>
           </div>
           {item.supportingValue ? (
-            <div className="flex items-center justify-between gap-3 text-xs text-neutral-500">
+            <div className="flex items-center justify-between gap-3 text-xs text-[var(--app-text-3)]">
               <span>&nbsp;</span>
               <span>{item.supportingValue}</span>
             </div>
           ) : null}
           <div className="relative">
-            <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--app-surface-2)]">
               {item.segments && item.segments.length > 0 ? (
                 <div className="flex h-full w-full overflow-hidden rounded-full">
                   {item.segments.map((segment) => (

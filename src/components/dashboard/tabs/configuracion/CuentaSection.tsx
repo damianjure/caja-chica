@@ -30,17 +30,17 @@ interface SessionRowProps {
 
 function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-neutral-50" : "border-neutral-200"}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-[var(--app-surface-2)]" : "border-[var(--app-border)]"}`}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="text-xs font-medium text-neutral-700 truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
+          <div className="text-xs font-medium text-[var(--app-text-2)] truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
           {isCurrent && (
             <span className="inline-flex items-center rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-semibold text-white shrink-0">
               Esta sesión
             </span>
           )}
         </div>
-        <div className="text-xs text-neutral-500 mt-0.5">
+        <div className="text-xs text-[var(--app-text-3)] mt-0.5">
           Iniciada {new Date(s.created_at).toLocaleString("es-AR")}
           {s.not_after && ` · Expira ${new Date(s.not_after).toLocaleString("es-AR")}`}
         </div>
@@ -68,10 +68,10 @@ function roleBadge(role: string) {
   const styles: Record<string, string> = {
     owner: "bg-neutral-900 text-white",
     editor: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200",
-    viewer: "bg-neutral-100 text-neutral-600",
+    viewer: "bg-[var(--app-surface-2)] text-[var(--app-text-2)]",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles[role] ?? "bg-neutral-100 text-neutral-500"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles[role] ?? "bg-[var(--app-surface-2)] text-[var(--app-text-3)]"}`}>
       {role}
     </span>
   );
@@ -194,26 +194,26 @@ export function CuentaSection({
 
   return (
     <>
-      <section className="bg-white border border-neutral-200 rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
+      <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-neutral-900 text-white">
             <Settings className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-xl font-bold tracking-tight">Cuenta</h2>
-            <p className="text-sm text-neutral-500">Sesión, integraciones y acceso.</p>
+            <p className="text-sm text-[var(--app-text-3)]">Sesión, integraciones y acceso.</p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 space-y-1">
-          <div className="text-sm font-medium text-neutral-900">{viewer.email}</div>
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 space-y-1">
+          <div className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-neutral-500">Rol de app:</span>
-            <span className="text-xs font-medium text-neutral-700">{viewer.role}</span>
+            <span className="text-xs text-[var(--app-text-3)]">Rol de app:</span>
+            <span className="text-xs font-medium text-[var(--app-text-2)]">{viewer.role}</span>
             {selfMembership && (
               <>
                 <span className="text-xs text-neutral-300">·</span>
-                <span className="text-xs text-neutral-500">Dashboard:</span>
+                <span className="text-xs text-[var(--app-text-3)]">Dashboard:</span>
                 {roleBadge(selfMembership.role)}
                 {statusDot(selfMembership.status)}
               </>
@@ -223,7 +223,7 @@ export function CuentaSection({
 
         {/* Display name */}
         <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Nombre visible</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Nombre visible</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
@@ -232,7 +232,7 @@ export function CuentaSection({
               placeholder={viewer.email}
               maxLength={50}
               aria-label="Nombre visible"
-              className="flex-1 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+              className="flex-1 rounded-xl border border-[var(--app-border-strong)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             />
             <button
               type="button"
@@ -244,16 +244,16 @@ export function CuentaSection({
               Guardar
             </button>
           </div>
-          <p className="text-xs text-neutral-500">Lo ven otros miembros del dashboard.</p>
+          <p className="text-xs text-[var(--app-text-3)]">Lo ven otros miembros del dashboard.</p>
         </div>
 
         <div className="space-y-3">
           {canConnectDrive && onDisconnectDrive && (
             <button
               onClick={() => void onDisconnectDrive()}
-              className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] transition-colors"
             >
-              <HardDrive className="w-4 h-4 text-neutral-500" />
+              <HardDrive className="w-4 h-4 text-[var(--app-text-3)]" />
               Desconectar Google Drive
             </button>
           )}
@@ -271,9 +271,9 @@ export function CuentaSection({
 
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] transition-colors"
           >
-            <Download className="w-4 h-4 text-neutral-500" />
+            <Download className="w-4 h-4 text-[var(--app-text-3)]" />
             Exportar mis datos (JSON)
           </button>
 
@@ -290,22 +290,22 @@ export function CuentaSection({
 
           <button
             onClick={() => void onSignOut()}
-            className="w-full flex items-center gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-sm font-medium text-neutral-700 hover:border-[var(--app-text-2)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] transition-colors"
           >
-            <LogOut className="w-4 h-4 text-neutral-500" />
+            <LogOut className="w-4 h-4 text-[var(--app-text-3)]" />
             Cerrar sesión
           </button>
         </div>
 
         {/* Active sessions */}
-        <div className="space-y-3 border-t border-neutral-200 pt-4">
+        <div className="space-y-3 border-t border-[var(--app-border)] pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">Sesiones activas</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Sesiones activas</p>
             {!sessionsLoaded && (
               <button
                 onClick={() => void loadSessions()}
                 disabled={loadingSessions}
-                className="text-xs text-neutral-500 hover:text-neutral-700 flex items-center gap-1"
+                className="text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-2)] flex items-center gap-1"
               >
                 {loadingSessions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Monitor className="w-3 h-3" />}
                 Ver sesiones
@@ -315,7 +315,7 @@ export function CuentaSection({
           {sessionsLoaded && (
             <div className="space-y-2">
               {sessions.length === 0 ? (
-                <p className="text-sm text-neutral-500">No hay sesiones activas.</p>
+                <p className="text-sm text-[var(--app-text-3)]">No hay sesiones activas.</p>
               ) : (
                 sessions.map((s) => (
                   <SessionRow
@@ -340,7 +340,7 @@ export function CuentaSection({
             <Trash2 className="w-4 h-4" />
             Borrar mi cuenta
           </button>
-          <p className="text-xs text-neutral-500 mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
+          <p className="text-xs text-[var(--app-text-3)] mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
         </div>
       </section>
 

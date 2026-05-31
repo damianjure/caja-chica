@@ -128,8 +128,13 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
     if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
-    const name = ctx.match;
-    if (!name) return ctx.reply("Por favor indicá el nombre: `/agregarempresa Mi Negocio`", { parse_mode: "Markdown" });
+    const name = ctx.match?.trim();
+    if (!name) {
+      setInputSession(ctx.chat.id, "empresa", linked);
+      return ctx.reply("🏢 Escribí el nombre de la empresa:", {
+        reply_markup: new InlineKeyboard().text("❌ Cancelar", "input_cancel"),
+      });
+    }
     const result = await createEmpresaFromBot(supabase, linked, name);
     if (!result.ok) return ctx.reply("❌ No se pudo agregar la empresa. Intentá de nuevo.");
     ctx.reply(`✅ Empresa *${escapeMd(name)}* agregada.`, { parse_mode: "Markdown" });
@@ -139,8 +144,13 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
     if (!await assertBotWritable(ctx)) return;
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
-    const name = ctx.match;
-    if (!name) return ctx.reply("Por favor indicá el nombre: `/agregarcategoria Comida`", { parse_mode: "Markdown" });
+    const name = ctx.match?.trim();
+    if (!name) {
+      setInputSession(ctx.chat.id, "categoria", linked);
+      return ctx.reply("📁 Escribí el nombre de la categoría:", {
+        reply_markup: new InlineKeyboard().text("❌ Cancelar", "input_cancel"),
+      });
+    }
     const result = await createCategoriaFromBot(supabase, linked, name);
     if (!result.ok) return ctx.reply("❌ No se pudo agregar la categoría. Intentá de nuevo.");
     ctx.reply(`✅ Categoría *${escapeMd(name)}* agregada.`, { parse_mode: "Markdown" });

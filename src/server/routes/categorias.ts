@@ -53,6 +53,44 @@ export function createCategoriasRouter(deps: CategoriasRouterDeps) {
   });
 
 
+  router.post("/api/categorias", requireSession, async (req, res) => {
+    try {
+      const nombre = typeof req.body?.nombre === "string" ? req.body.nombre.trim() : "";
+      if (!nombre || nombre.length > 60) return res.status(400).json({ error: "invalid_request" });
+
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!canWriteToScope(scope) || !canManageCategoriasOp(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      // Dedupe case-insensitive within scope — categorías also auto-materialize from movements.
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      const { data: existing, error: fetchError } = await applyDataScope(
+        supabase.from("categorias").select("id, nombre"),
+        session,
+        scope,
+      ).limit(500);
+      if (fetchError) throw fetchError;
+      const match = (existing ?? []).find((c: { nombre: string }) => norm(c.nombre) === norm(nombre));
+      if (match) return res.json(match);
+
+      const ownership = scope.dashboardId
+        ? { owner_user_id: session.userId, dashboard_id: scope.dashboardId }
+        : { owner_user_id: session.userId };
+      const { data, error } = await supabase
+        .from("categorias")
+        .insert([{ nombre, ...ownership }])
+        .select()
+        .single();
+      if (error) throw error;
+      res.json(data);
+    } catch (_err) {
+      res.status(500).json({ error: "failed_to_save" });
+    }
+  });
+
+
   router.get("/api/categorias", requireSession, async (_req, res) => {
     try {
       const session = getSession(_req);

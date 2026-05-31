@@ -10,6 +10,7 @@ function createSupabaseStub(
     | {
         movimientos?: unknown[];
         empresas?: unknown[];
+        categorias?: unknown[];
         presupuestos?: unknown[];
         dashboardMembers?: unknown[];
         usuarios?: unknown[];
@@ -62,6 +63,7 @@ function createSupabaseStub(
   const dashboardMembersRows = dataSeed.dashboardMembers ?? [];
   const dashboardInvitationsRows = dataSeed.dashboardInvitations ?? [];
   const empresasRows = dataSeed.empresas ?? [];
+  const categoriasRows = dataSeed.categorias ?? [];
   const presupuestosRows = dataSeed.presupuestos ?? [];
   const auditLogsRows = dataSeed.auditLogs ?? [];
   const empresaDeleteBackupsRows = dataSeed.empresaDeleteBackups ?? [];
@@ -77,6 +79,7 @@ function createSupabaseStub(
     if (table === "dashboard_members") rows = [...dashboardMembersRows];
     if (table === "dashboard_invitations") rows = [...dashboardInvitationsRows];
     if (table === "empresas") rows = [...empresasRows];
+    if (table === "categorias") rows = [...categoriasRows];
     if (table === "presupuestos") rows = [...presupuestosRows];
     if (table === "audit_logs") rows = [...auditLogsRows];
     if (table === "empresa_delete_backups") rows = [...empresaDeleteBackupsRows];
@@ -153,11 +156,21 @@ function createSupabaseStub(
                 },
               };
             }
+            if (table === "categorias") {
+              return {
+                single() {
+                  return Promise.resolve({ data: { id: "cat-1", ...payload }, error: null });
+                },
+              };
+            }
             return Promise.resolve({ data: rows, error: null });
           },
           single() {
             if (table === "empresas") {
               return Promise.resolve({ data: { id: "saved-1", ...payload }, error: null });
+            }
+            if (table === "categorias") {
+              return Promise.resolve({ data: { id: "cat-1", ...payload }, error: null });
             }
             return Promise.resolve({ data: rows[0], error: null });
           },
@@ -2349,6 +2362,61 @@ test("/api/admin/dashboards-tree no expone invite_token ni invite_url", async ()
       assert.equal(body.dashboards.length, 1);
       assert.equal(body.dashboards[0].pending_invitations.length, 1);
       assert.equal(body.pending_app_invitations.length, 1);
+    },
+  );
+});
+
+test("POST /api/categorias crea una categoría nueva (scoped al caller)", async () => {
+  const supabase = createSupabaseStub();
+  await withServer(
+    { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Nueva" }),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.nombre, "Nueva");
+      const insertCall = supabase.callLog.find((e) => e.table === "categorias" && e.type === "insert");
+      assert.ok(insertCall, "debe insertar en categorias");
+      const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : undefined;
+      assert.equal(payload?.nombre, "Nueva");
+      assert.equal(payload?.owner_user_id, "user-1");
+    },
+  );
+});
+
+test("POST /api/categorias dedupe case-insensitive: devuelve la existente sin insertar", async () => {
+  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1" }] });
+  await withServer(
+    { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "  comida  " }),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.id, "c1");
+      const insertCall = supabase.callLog.find((e) => e.table === "categorias" && e.type === "insert");
+      assert.equal(insertCall, undefined, "no debe insertar cuando ya existe");
+    },
+  );
+});
+
+test("POST /api/categorias rechaza nombre vacío", async () => {
+  await withServer(
+    { resolveSession: async () => memberSession },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias`, {
+        method: "POST",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "   " }),
+      });
+      assert.equal(res.status, 400);
     },
   );
 });

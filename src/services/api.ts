@@ -548,6 +548,13 @@ export const api = {
     return fetchApi(`/api/categorias/${id}`, { method: "DELETE" });
   },
 
+  async createCategoria(nombre: string): Promise<Categoria> {
+    return fetchApi("/api/categorias", {
+      method: "POST",
+      body: JSON.stringify({ nombre }),
+    });
+  },
+
   async getMovimientos(limit = 100, before?: string | null): Promise<PaginatedMovimientos> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (before) params.set("before", before);

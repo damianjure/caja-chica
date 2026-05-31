@@ -464,11 +464,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <MaintenanceBanner status={maintenanceStatus} />
 
         <header>
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 shadow-[var(--app-shadow-panel)]">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-xs font-bold">CC</span>
-            <span className="hidden sm:inline text-sm font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-sm font-bold">CC</span>
+            <span className="hidden sm:inline text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
             <span className="hidden sm:block h-5 w-px bg-[var(--app-border)]" aria-hidden="true" />
-            <h1 id="app-title" className="min-w-0 truncate text-base font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
+            <h1 id="app-title" className="min-w-0 truncate text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
             <div className="flex-1" />
             <button
               type="button"

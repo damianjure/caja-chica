@@ -82,9 +82,9 @@ export default function ConfiguracionTab({
             showNotice={showNotice}
             setError={setError}
           />
+          <BotConnectionPanel />
           <CategoriasSection />
           {canConnectDrive && <DriveSection />}
-          <BotConnectionPanel />
         </>
       )}
 

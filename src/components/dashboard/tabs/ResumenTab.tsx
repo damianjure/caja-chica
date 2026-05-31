@@ -1,6 +1,7 @@
 
+import { useState } from 'react';
 import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } from 'lucide-react';
-import { ChartCard, HorizontalBarList, TrendBars } from '../Charts';
+import { ChartCard, HorizontalBarList, AreaTrendChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
 
@@ -24,6 +25,10 @@ interface ResumenTabProps {
 }
 
 export default function ResumenTab(props: ResumenTabProps) {
+  const [pulseCurrency, setPulseCurrency] = useState<'ARS' | 'USD'>('ARS');
+  const [pulseSeries, setPulseSeries] = useState({ income: true, expense: true, net: true });
+  const pulseData = pulseCurrency === 'ARS' ? props.monthlyChartDataArs : props.monthlyChartDataUsd;
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -34,42 +39,58 @@ export default function ResumenTab(props: ResumenTabProps) {
         <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard
-          title="Pulso mensual ARS"
-          description="La evolución compara mes contra mes cuánto entró, cuánto salió y qué saldo te quedó en pesos."
-          footer={
-            <div className="flex flex-wrap gap-3 text-xs text-[var(--app-text-3)]">
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-income)' }} />Ingresos</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-expense)' }} />Gastos</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-net)' }} />Saldo</span>
-            </div>
-          }
-        >
-          {props.monthlyChartDataArs.length === 0 ? (
-            <EmptyState
-              title="Aún no hay historia en pesos."
-              hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
-              canWrite={props.canWriteData}
-              cta="Cargá tu primer movimiento desde el campo de arriba."
-              icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
-            />
-          ) : (
-            <TrendBars data={props.monthlyChartDataArs} currency="ARS" />
-          )}
-        </ChartCard>
-
-        <ChartCard
-          title="Pulso mensual USD"
-          description="La misma lectura, pero separada en dólares para no mezclar monedas ni distorsionar la tendencia."
-        >
-          {props.monthlyChartDataUsd.length === 0 ? (
-            <p className="text-sm text-[var(--app-text-3)]">Todavía no hay historia suficiente para ver evolución en dólares.</p>
-          ) : (
-            <TrendBars data={props.monthlyChartDataUsd} currency="USD" />
-          )}
-        </ChartCard>
-      </section>
+      <ChartCard
+        title="Pulso mensual"
+        description="Cuánto entró, cuánto salió y qué saldo quedó, mes a mes. Cambiá entre pesos y dólares sin mezclar monedas."
+        footer={
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar u ocultar series del gráfico">
+            {([
+              ['income', 'Ingresos', '--chart-income'],
+              ['expense', 'Gastos', '--chart-expense'],
+              ['net', 'Saldo', '--chart-net'],
+            ] as const).map(([key, label, color]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPulseSeries((s) => ({ ...s, [key]: !s[key] }))}
+                aria-pressed={pulseSeries[key]}
+                aria-label={`${pulseSeries[key] ? 'Ocultar' : 'Mostrar'} ${label}`}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${pulseSeries[key] ? 'border-[var(--app-border-strong)] text-[var(--app-text-2)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] line-through opacity-50'}`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: `var(${color})` }} />
+                {label}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <div className="mb-4 flex justify-end">
+          <div className="inline-flex rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5" role="group" aria-label="Moneda del gráfico">
+            {(['ARS', 'USD'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setPulseCurrency(c)}
+                aria-pressed={pulseCurrency === c}
+                className={`rounded-md px-3 py-1 text-xs font-bold tabular-nums transition ${pulseCurrency === c ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+        {pulseData.length === 0 ? (
+          <EmptyState
+            title={pulseCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'}
+            hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
+            canWrite={props.canWriteData}
+            cta={pulseCurrency === 'ARS' ? 'Cargá tu primer movimiento desde el campo de arriba.' : undefined}
+            icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
+          />
+        ) : (
+          <AreaTrendChart data={pulseData} currency={pulseCurrency} show={pulseSeries} />
+        )}
+      </ChartCard>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Gastos que más pesan" description="Top categorías por gasto real. Más útil que un pie chart porque deja comparar magnitudes.">

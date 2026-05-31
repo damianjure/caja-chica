@@ -634,6 +634,17 @@ Branch `feat/dashboard-redesign` (commit `8bb0c57`, stackeada sobre `feat/bot-vo
 
 **Pendiente QA visual**: gráfico A + header verificados por tsc/build + mockup (`mockups/redesign-preview.html`), no en prod con ojos.
 
+### Cambios 2026-05-31 (Pulso por empresa + tamaño dinámico + layout + fixes Codex — deploy)
+
+Branch `feat/dashboard-redesign` (commit `7f6621e`, stackeada sobre voz). Engram #749.
+
+- **Pulso por empresa**: chips multi-toggle (mismo patrón que series) filtran la serie mensual. Helper puro `buildMonthlyChartData(history, currency, companies?)` en `dashboard/summary.ts` (+6 tests). "Todas" o subconjunto, guard contra apagar la última.
+- **Tamaño dinámico**: `AreaTrendChart` alto `clamp(150, 240, 110 + n*22)` (compacto con pocos meses).
+- **Layout adaptativo**: `ResumenTab` grid `lg:grid-cols-2`; Pulso `col-span-2` (full) con ≥4 meses, si no compacto al lado de "Gastos que más pesan".
+- **Fixes Codex adversarial**: `POST /api/categorias` catch `23505` + refetch (race) + dedupe `select("*")` (contrato Categoria); no apagar última serie + aria solo visibles; editor con `manage_categorias` ve Categorías (ConfiguracionTab); +3 tests auth (dashboard insert / viewer 403 / editor sin permiso 403).
+
+**Deploy 2026-05-31:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00059-59b`**. Tests 693 pass / 2 skip / 0 fail. Sin SQL, sin env vars nuevas. PRs (voz + rediseño) pendientes de merge en GitHub.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

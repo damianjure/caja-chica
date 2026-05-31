@@ -4,9 +4,10 @@ import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, replyExpiredSession, sendTyping, splitForTelegram } from "../utils.ts";
 import { pendingRecurrenceSessions, getRecurrenceSession } from "../sessions.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
-import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
+import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
 import { computeNextRun, relativeRunLabel } from "../../server/recurrentes.ts";
 import type { Frecuencia } from "../../server/recurrentes.ts";
+import type { RecurrenteSlots } from "../intentSlots.ts";
 import {
   buildRecurrentesListText,
   buildRecurrenteActionKeyboard,
@@ -15,25 +16,115 @@ import {
   RECURRENTE_ON_PREFIX,
 } from "../recurrentesMgmt.ts";
 
+/** Start the guided "new recurrente" flow. Shared by /recurrente, the rec_start button, and the voice intent router. */
+export async function startRecurringFlow(supabase: BotDeps["supabase"], ctx: Context) {
+  if (!await assertBotWritable(ctx)) return;
+  const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+  if (!linked) return;
+  pendingRecurrenceSessions.set(ctx.chat.id, {
+    step: "monto",
+    linked,
+    expiresAt: Date.now() + 10 * 60_000,
+  });
+  await ctx.reply("🔄 *Nuevo recurrente*\n\nMandame el *monto* (ej: `1500` o `50`):", { parse_mode: "Markdown" });
+}
+
+/** List all recurrentes with pause/reactivate actions. Shared by /recurrentes and the voice intent router. */
+export async function handleListRecurrentes(supabase: BotDeps["supabase"], ctx: Context) {
+  const linked = await requireTelegramCan(supabase, ctx, "read");
+  if (!linked) return;
+
+  sendTyping(ctx);
+
+  const query = applyTelegramDataScope(
+    supabase.from("recurrentes").select("*"),
+    linked,
+  ).is("deleted_at", null).order("created_at", { ascending: true });
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[/recurrentes] fetch error:", error);
+    await ctx.reply("❌ No pude cargar los recurrentes. Intentá de nuevo.");
+    return;
+  }
+
+  const now = new Date();
+  const recs = (data ?? []).map((r: any) => {
+    const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
+    const dayOfMonth = typeof r.day_of_month === "number" ? r.day_of_month : null;
+    const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed, dayOfMonth, now);
+    return {
+      ...r,
+      next_run_at: nextRun ? nextRun.toISOString() : null,
+      next_run_label: relativeRunLabel(nextRun, now),
+    };
+  });
+
+  const listText = buildRecurrentesListText(recs);
+
+  // If list is empty, send single message without keyboards
+  if (recs.length === 0) {
+    await ctx.reply(listText);
+    return;
+  }
+
+  // Send list header (chunked if needed)
+  const chunks = splitForTelegram(listText);
+  for (const chunk of chunks) {
+    await ctx.reply(chunk, { parse_mode: "Markdown" });
+  }
+
+  // Send one message per recurrente with its action keyboard
+  for (const rec of recs) {
+    const kb = buildRecurrenteActionKeyboard({ id: rec.id, is_active: rec.is_active });
+    const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+    await ctx.reply(`📌 *${label.replace(/[_*`\[]/g, "\\$&")}*`, {
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: kb.inline_keyboard },
+    });
+  }
+}
+
+/**
+ * Insert a recurrente directly from slots understood by the voice/text intent router.
+ * Returns false if any required slot is missing or the insert fails.
+ * The caller is responsible for the write-permission + maintenance gates.
+ */
+export async function createRecurrenteFromBot(
+  supabase: BotDeps["supabase"],
+  ctx: Context,
+  linked: TelegramLinkRecord,
+  s: RecurrenteSlots,
+): Promise<boolean> {
+  if (s.monto === null || s.tipo === null || s.frecuencia === null || !s.descripcion) return false;
+  const { error } = await supabase.from("recurrentes").insert([{
+    ...(linked.dashboardId && linked.userId
+      ? { dashboard_id: linked.dashboardId, created_by_user_id: linked.userId }
+      : { owner_user_id: linked.ownerUserId }),
+    monto: s.monto,
+    tipo: s.tipo,
+    moneda: s.moneda,
+    frecuencia: s.frecuencia,
+    descripcion: s.descripcion,
+    categoria: s.tipo === "ingreso" ? "Ingresos" : "Varios",
+    empresa_nombre: null,
+    chat_id: ctx.chat?.id ?? null,
+    last_processed: null,
+  }]);
+  if (error) {
+    console.error("createRecurrenteFromBot error:", error);
+    return false;
+  }
+  return true;
+}
+
 export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
   const { supabase } = deps;
 
-  async function startRecurringFlow(ctx: Context) {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
-    if (!linked) return;
-    pendingRecurrenceSessions.set(ctx.chat.id, {
-      step: "monto",
-      linked,
-      expiresAt: Date.now() + 10 * 60_000,
-    });
-    await ctx.reply("🔄 *Nuevo recurrente*\n\nMandame el *monto* (ej: `1500` o `50`):", { parse_mode: "Markdown" });
-  }
-
-  bot.command("recurrente", (ctx) => startRecurringFlow(ctx));
+  bot.command("recurrente", (ctx) => startRecurringFlow(supabase, ctx));
   bot.callbackQuery("rec_start", async (ctx) => {
     ctx.answerCallbackQuery();
-    await startRecurringFlow(ctx);
+    await startRecurringFlow(supabase, ctx);
   });
 
   bot.callbackQuery(/^rec_tipo:(.+)$/, async (ctx) => {
@@ -98,66 +189,7 @@ export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // /recurrentes — list all recurrentes with pause/reactivate actions
-  // ---------------------------------------------------------------------------
-
-  async function handleListRecurrentes(ctx: Context) {
-    const linked = await requireTelegramCan(supabase, ctx, "read");
-    if (!linked) return;
-
-    sendTyping(ctx);
-
-    const query = applyTelegramDataScope(
-      supabase.from("recurrentes").select("*"),
-      linked,
-    ).is("deleted_at", null).order("created_at", { ascending: true });
-
-    const { data, error } = await query;
-    if (error) {
-      console.error("[/recurrentes] fetch error:", error);
-      await ctx.reply("❌ No pude cargar los recurrentes. Intentá de nuevo.");
-      return;
-    }
-
-    const now = new Date();
-    const recs = (data ?? []).map((r: any) => {
-      const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
-      const dayOfMonth = typeof r.day_of_month === "number" ? r.day_of_month : null;
-      const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed, dayOfMonth, now);
-      return {
-        ...r,
-        next_run_at: nextRun ? nextRun.toISOString() : null,
-        next_run_label: relativeRunLabel(nextRun, now),
-      };
-    });
-
-    const listText = buildRecurrentesListText(recs);
-
-    // If list is empty, send single message without keyboards
-    if (recs.length === 0) {
-      await ctx.reply(listText);
-      return;
-    }
-
-    // Send list header (chunked if needed)
-    const chunks = splitForTelegram(listText);
-    for (const chunk of chunks) {
-      await ctx.reply(chunk, { parse_mode: "Markdown" });
-    }
-
-    // Send one message per recurrente with its action keyboard
-    for (const rec of recs) {
-      const kb = buildRecurrenteActionKeyboard({ id: rec.id, is_active: rec.is_active });
-      const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
-      await ctx.reply(`📌 *${label.replace(/[_*`\[]/g, "\\$&")}*`, {
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: kb.inline_keyboard },
-      });
-    }
-  }
-
-  bot.command("recurrentes", (ctx) => handleListRecurrentes(ctx));
+  bot.command("recurrentes", (ctx) => handleListRecurrentes(supabase, ctx));
 
   // ---------------------------------------------------------------------------
   // rec_pause:<id> — pause an active recurrente

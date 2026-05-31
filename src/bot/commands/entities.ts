@@ -1,4 +1,4 @@
-import { InlineKeyboard } from "grammy";
+import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, insertBotAuditLog, buildTelegramEntityOwnership } from "../utils.ts";
@@ -85,44 +85,50 @@ export async function createCategoriaFromBot(supabase: BotDeps["supabase"], link
   return { ok: true, id: created?.id, reused: false };
 }
 
+/** List active companies in chat. Shared by /empresas, the menu callback, and the voice intent router. */
+export async function sendEmpresasList(supabase: BotDeps["supabase"], ctx: Context) {
+  const linked = await requireLinkedAccount(supabase, ctx);
+  if (!linked) return;
+  const { data: emps, error } = await applyTelegramDataScope(
+    supabase.from("empresas").select("nombre"),
+    linked,
+  ).is("deleted_at", null);
+  if (error) {
+    console.error("sendEmpresasList error:", error);
+    return ctx.reply("❌ No pude traer las empresas. Intentá de nuevo.");
+  }
+  const list = emps?.map((e: { nombre: string }) => `• ${escapeMd(e.nombre)}`).join("\n") || "Sin empresas.";
+  await ctx.reply(`🏢 *Empresas registradas:*\n\n${list}`, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("➕ Agregar empresa", "add_emp"),
+  });
+}
+
+/** List categories in chat. Shared by /categorias, the menu callback, and the voice intent router. */
+export async function sendCategoriasList(supabase: BotDeps["supabase"], ctx: Context) {
+  const linked = await requireLinkedAccount(supabase, ctx);
+  if (!linked) return;
+  const { data: cats, error } = await applyTelegramDataScope(
+    supabase.from("categorias").select("nombre"),
+    linked,
+  );
+  if (error) {
+    console.error("sendCategoriasList error:", error);
+    return ctx.reply("❌ No pude traer las categorías. Intentá de nuevo.");
+  }
+  const list = cats?.map((c: { nombre: string }) => `• ${escapeMd(c.nombre)}`).join("\n") || "Sin categorías.";
+  await ctx.reply(`📁 *Categorías registradas:*\n\n${list}`, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("➕ Agregar categoría", "add_cat"),
+  });
+}
+
 export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
   const { supabase } = deps;
 
-  bot.command("empresas", async (ctx) => {
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const { data: emps, error } = await applyTelegramDataScope(
-      supabase.from("empresas").select("nombre"),
-      linked,
-    ).is("deleted_at", null);
-    if (error) {
-      console.error("/empresas error:", error);
-      return ctx.reply("❌ No pude traer las empresas. Intentá de nuevo.");
-    }
-    const list = emps?.map(e => `• ${escapeMd(e.nombre)}`).join("\n") || "Sin empresas.";
-    ctx.reply(`🏢 *Empresas registradas:*\n\n${list}`, {
-      parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("➕ Agregar empresa", "add_emp"),
-    });
-  });
+  bot.command("empresas", (ctx) => sendEmpresasList(supabase, ctx));
 
-  bot.command("categorias", async (ctx) => {
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const { data: cats, error } = await applyTelegramDataScope(
-      supabase.from("categorias").select("nombre"),
-      linked,
-    );
-    if (error) {
-      console.error("/categorias error:", error);
-      return ctx.reply("❌ No pude traer las categorías. Intentá de nuevo.");
-    }
-    const list = cats?.map(c => `• ${escapeMd(c.nombre)}`).join("\n") || "Sin categorías.";
-    ctx.reply(`📁 *Categorías registradas:*\n\n${list}`, {
-      parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("➕ Agregar categoría", "add_cat"),
-    });
-  });
+  bot.command("categorias", (ctx) => sendCategoriasList(supabase, ctx));
 
   bot.command("agregarempresa", async (ctx) => {
     if (!await assertBotWritable(ctx)) return;
@@ -194,40 +200,12 @@ export function registerEntityHandlers(bot: Bot, deps: BotDeps) {
   // Callback: empresas list (from menu button)
   bot.callbackQuery("empresas", async (ctx) => {
     ctx.answerCallbackQuery();
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const { data: emps, error } = await applyTelegramDataScope(
-      supabase.from("empresas").select("nombre"),
-      linked,
-    ).is("deleted_at", null);
-    if (error) {
-      console.error("cb:empresas error:", error);
-      return ctx.reply("❌ No pude traer las empresas. Intentá de nuevo.");
-    }
-    const list = emps?.map(e => `• ${escapeMd(e.nombre)}`).join("\n") || "Sin empresas.";
-    ctx.reply(`🏢 *Empresas registradas:*\n\n${list}`, {
-      parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("➕ Agregar empresa", "add_emp"),
-    });
+    await sendEmpresasList(supabase, ctx);
   });
 
   bot.callbackQuery("categorias", async (ctx) => {
     ctx.answerCallbackQuery();
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const { data: cats, error } = await applyTelegramDataScope(
-      supabase.from("categorias").select("nombre"),
-      linked,
-    );
-    if (error) {
-      console.error("cb:categorias error:", error);
-      return ctx.reply("❌ No pude traer las categorías. Intentá de nuevo.");
-    }
-    const list = cats?.map(c => `• ${escapeMd(c.nombre)}`).join("\n") || "Sin categorías.";
-    ctx.reply(`📁 *Categorías registradas:*\n\n${list}`, {
-      parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("➕ Agregar categoría", "add_cat"),
-    });
+    await sendCategoriasList(supabase, ctx);
   });
 
   bot.callbackQuery("add_emp", async (ctx) => {

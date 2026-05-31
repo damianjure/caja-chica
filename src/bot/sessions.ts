@@ -96,17 +96,59 @@ export function getInputSession(chatId: number): InputSession | null {
   return s;
 }
 
+// --- INTENT CONFIRM SESSION ---
+// Holds the slots understood from a spoken/typed command (informe / recurrente_nuevo /
+// editar_ultimo) while we wait for the user to tap Confirmar or Editar.
+
+export interface IntentConfirmSession {
+  intent: "informe" | "recurrente_nuevo" | "editar_ultimo";
+  rawSlots: Record<string, unknown>;
+  linked: TelegramLinkRecord;
+  expiresAt: number;
+}
+
+export const pendingIntentConfirmSessions = new Map<number, IntentConfirmSession>();
+
+const intentConfirmSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [chatId, s] of pendingIntentConfirmSessions) {
+    if (now > s.expiresAt) pendingIntentConfirmSessions.delete(chatId);
+  }
+}, 5 * 60_000);
+unrefInterval(intentConfirmSweep);
+
+export function setIntentConfirmSession(
+  chatId: number,
+  intent: IntentConfirmSession["intent"],
+  rawSlots: Record<string, unknown>,
+  linked: TelegramLinkRecord,
+): void {
+  pendingIntentConfirmSessions.set(chatId, { intent, rawSlots, linked, expiresAt: Date.now() + 5 * 60_000 });
+}
+
+export function getIntentConfirmSession(chatId: number): IntentConfirmSession | null {
+  const s = pendingIntentConfirmSessions.get(chatId);
+  if (!s) return null;
+  if (Date.now() > s.expiresAt) { pendingIntentConfirmSessions.delete(chatId); return null; }
+  return s;
+}
+
+export function clearIntentConfirmSession(chatId: number): void {
+  pendingIntentConfirmSessions.delete(chatId);
+}
+
 // --- CROSS-SESSION CLEAR ---
 
 export function clearRecurrenceSession(chatId: number): void {
   pendingRecurrenceSessions.delete(chatId);
 }
 
-/** Atomically clears all four guided-flow session stores for the given chatId. */
+/** Atomically clears all guided-flow session stores for the given chatId. */
 export function clearChatSessions(chatId: number): void {
   pendingInputSessions.delete(chatId);
   clearReportSession(chatId);
   clearRecurrenceSession(chatId);
+  clearIntentConfirmSession(chatId);
   clearPendingExtractionsByChat(chatId);
 }
 

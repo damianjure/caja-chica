@@ -9,6 +9,16 @@ import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiW
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { buildUndoKeyboard } from "../quickActions.ts";
+import { parseIntentResult, resolveIntentAction } from "../voiceIntent.ts";
+import { buildGestionarKeyboard, buildMainKeyboard, buildIntentConfirmKeyboard } from "../keyboards.ts";
+import { startReportFlow } from "./reports.ts";
+import { startRecurringFlow, handleListRecurrentes } from "./recurring.ts";
+import { createEmpresaFromBot, createCategoriaFromBot, sendEmpresasList, sendCategoriasList } from "./entities.ts";
+import {
+  normalizeReportSlots, normalizeRecurrenteSlots, normalizeEditSlots,
+  buildReportEcho, buildRecurrenteEcho, buildEditEcho, type EditSlots,
+} from "../intentSlots.ts";
+import { setIntentConfirmSession } from "../sessions.ts";
 
 export type PendingMovementPayload = {
   item: {
@@ -36,6 +46,94 @@ export async function getLastMovementByType(
     .eq("tipo", tipo)
     .limit(1);
   return data?.[0] ?? null;
+}
+
+/**
+ * Reply with a confirm/cancel card for deleting the most recent movement (any type).
+ * Reuses the existing `confirm_delete_mov_<id>` / `cancel_delete_mov_<id>` callbacks,
+ * which perform the actual delete-permission gate. Used by the "borrar_ultimo" voice intent.
+ */
+export async function replyDeleteLastConfirm(
+  supabase: BotDeps["supabase"],
+  ctx: Context,
+  linked: TelegramLinkRecord,
+) {
+  const { data } = await applyTelegramDataScope(
+    supabase.from("movimientos").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
+    linked,
+  ).limit(1);
+  const last = data?.[0];
+  if (!last) {
+    await ctx.reply("No hay movimientos para borrar.");
+    return;
+  }
+  await ctx.reply(
+    `Vas a borrar este último movimiento:\n\n${formatMovementSummary(last)}`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard()
+        .text("✅ Confirmar", `confirm_delete_mov_${last.id}`)
+        .text("❌ Cancelar", `cancel_delete_mov_${last.id}`),
+    },
+  );
+}
+
+/**
+ * Apply a single-field edit to the most recent movement (any type), from slots
+ * understood by the voice/text intent router. Audited. Caller gates write permission.
+ */
+export async function applyEditLast(
+  supabase: BotDeps["supabase"],
+  ctx: Context,
+  linked: TelegramLinkRecord,
+  s: EditSlots,
+) {
+  if (!s.campo || s.valor === null) {
+    await ctx.reply("No entendí qué querés cambiar. Probá de nuevo.");
+    return;
+  }
+  const patch: Record<string, unknown> = {};
+  if (s.campo === "monto") {
+    const n = parseFloat(String(s.valor).replace(/\./g, "").replace(",", ".").replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(n) || n <= 0) { await ctx.reply("❌ Monto inválido."); return; }
+    patch.monto = n;
+  } else if (s.campo === "moneda") {
+    patch.moneda = s.valor === "USD" ? "USD" : "ARS";
+  } else if (s.campo === "categoria") {
+    patch.categoria = s.valor;
+  } else if (s.campo === "empresa") {
+    patch.empresa_nombre = s.valor;
+  } else if (s.campo === "descripcion") {
+    patch.descripcion = s.valor;
+  }
+
+  const { data } = await applyTelegramDataScope(
+    supabase.from("movimientos").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
+    linked,
+  ).limit(1);
+  const last = data?.[0];
+  if (!last) { await ctx.reply("No hay movimientos para editar."); return; }
+
+  let updateQuery = supabase.from("movimientos").update(patch).eq("id", last.id);
+  if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
+  else updateQuery = updateQuery.eq("owner_user_id", linked.ownerUserId as string);
+  const { error } = await updateQuery;
+  if (error) {
+    console.error("applyEditLast error:", error);
+    await ctx.reply("❌ No pude aplicar el cambio. Intentá de nuevo.");
+    return;
+  }
+
+  await insertBotAuditLog(supabase, {
+    linked,
+    actorUserId: linked.userId,
+    action: "update",
+    entityType: "movimiento",
+    entityId: last.id,
+    beforeData: last,
+    afterData: { ...last, ...patch },
+  });
+  await ctx.reply(`✅ Listo.\n\n${formatMovementSummary({ ...last, ...patch })}`, { parse_mode: "Markdown" });
 }
 
 function parseTelegramMovementEditInput(input: string | undefined) {
@@ -305,8 +403,15 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
   text: string;
   originalText: string;
 }) {
-  const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+  // Top gate is READ so viewers can use read intents (saldos/buscar/listar) by voice.
+  // Write intents re-check write permission + maintenance via ensureWritable() below.
+  const linked = await requireTelegramCan(supabase, ctx, "read");
   if (!linked) return;
+
+  const ensureWritable = async (): Promise<TelegramLinkRecord | null> => {
+    if (!(await assertBotWritable(ctx))) return null;
+    return await requireTelegramCan(supabase, ctx, "write_movimiento");
+  };
 
   try {
     const { data: currentCats } = await applyTelegramDataScope(
@@ -320,7 +425,9 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
       model: "gemini-2.5-flash-lite",
       contents: prompt,
       config: {
-        systemInstruction: SYSTEM_PROMPT + `\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,
+        systemInstruction: SYSTEM_PROMPT
+          + `\nHOY ES ${new Date().toISOString().slice(0, 10)}. Para meses o fechas relativas (ej. "mayo"), usá el año actual salvo que el usuario diga otro año. Devolvé "mes" como "YYYY-MM" con año real, nunca con placeholders.`
+          + `\nCATEGORIAS DISPONIBLES: ${catList}. Si no encaja en ninguna, inventá una coherente o usá "Otros".`,
       },
     });
     const textResponse = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -331,71 +438,192 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
       return;
     }
 
-    if (extracted.intent === "REGISTRAR" && extracted.items) {
-      const companies = await listTelegramCompanies(supabase, linked);
-      for (const rawItem of extracted.items) {
-        const item = rawItem as { monto: number; tipo: "ingreso" | "egreso"; moneda: "ARS" | "USD"; categoria: string; empresa: string | null; descripcion: string };
-        const companyResolution = resolveTelegramCompany(item, companies);
-        if (companyResolution.kind === "exact") {
-          item.empresa = companyResolution.company.nombre;
+    const intentResult = parseIntentResult(
+      { intent: extracted.intent, confidence: extracted.confidence, slots: extracted.slots },
+      args.text,
+    );
+    const decision = resolveIntentAction(intentResult);
+
+    // ASR / intent guard — noisy, mispronounced or ambiguous → echo + offer the menu options.
+    if (decision.action === "clarify") {
+      const heard = intentResult.transcript?.trim();
+      const echo = heard ? `\n\nEntendí: «${escapeMd(heard)}»` : "";
+      const url = process.env.DASHBOARD_URL || "https://caja-chica-bot.web.app";
+      await ctx.reply(
+        `🤔 No estoy seguro de haberte entendido.${echo}\n\nElegí una opción o reformulá:`,
+        { parse_mode: "Markdown", reply_markup: buildMainKeyboard(url) },
+      );
+      return;
+    }
+
+    // Destructive → confirmation card (never auto-executes).
+    if (decision.action === "confirm") {
+      const linkedW = await ensureWritable();
+      if (!linkedW) return;
+      await replyDeleteLastConfirm(supabase, ctx, linkedW);
+      return;
+    }
+
+    // decision.action === "execute"
+    switch (intentResult.intent) {
+      case "crear_empresa": {
+        const linkedW = await ensureWritable();
+        if (!linkedW) return;
+        const fromSlot = typeof intentResult.slots.nombre === "string" ? intentResult.slots.nombre.trim() : "";
+        const fromLegacy = typeof extracted.companyName === "string" ? extracted.companyName.trim() : "";
+        const nombre = fromSlot || fromLegacy;
+        if (!nombre) {
+          await ctx.reply("¿Cómo se llama la empresa que querés crear?");
+          return;
         }
-
-        const needsCompanyPrompt =
-          extracted.items.length === 1 &&
-          (companyResolution.kind === "missing" || companyResolution.kind === "suggest" || companyResolution.kind === "unresolved");
-
-        if (needsCompanyPrompt) {
-          const suggestedIndex =
-            companyResolution.kind === "suggest"
-              ? companies.findIndex((company) => company.nombre === companyResolution.company.nombre)
-              : null;
-
-          await askTelegramCompanyAssignment(supabase, {
-            ctx,
-            linked,
-            item,
-            originalText: args.originalText,
-            companies,
-            suggestedCompanyIndex: suggestedIndex,
+        const r = await createEmpresaFromBot(supabase, linkedW, nombre);
+        await ctx.reply(
+          r.ok ? `✅ Empresa *${escapeMd(nombre)}* ${r.reused ? "ya existía." : "agregada."}` : "❌ No se pudo agregar la empresa. Intentá de nuevo.",
+          { parse_mode: "Markdown" },
+        );
+        return;
+      }
+      case "crear_categoria": {
+        const linkedW = await ensureWritable();
+        if (!linkedW) return;
+        const nombre = typeof intentResult.slots.nombre === "string" ? intentResult.slots.nombre.trim() : "";
+        if (!nombre) {
+          await ctx.reply("¿Cómo se llama la categoría que querés crear?");
+          return;
+        }
+        const r = await createCategoriaFromBot(supabase, linkedW, nombre);
+        await ctx.reply(
+          r.ok ? `✅ Categoría *${escapeMd(nombre)}* ${r.reused ? "ya existía." : "agregada."}` : "❌ No se pudo agregar la categoría. Intentá de nuevo.",
+          { parse_mode: "Markdown" },
+        );
+        return;
+      }
+      case "buscar": {
+        const fromSlot = typeof intentResult.slots.query === "string" ? intentResult.slots.query.trim() : "";
+        await runMovementSearch(supabase, ctx, linked, fromSlot || args.text.trim());
+        return;
+      }
+      case "saldos": {
+        const saldosText = await getSaldosText(supabase, linked);
+        if (!saldosText) {
+          await ctx.reply("No pude calcular los saldos. Intentá de nuevo.");
+          return;
+        }
+        for (const chunk of splitForTelegram(saldosText)) {
+          await ctx.reply(chunk, { parse_mode: "Markdown" });
+        }
+        return;
+      }
+      case "listar_empresas":
+        await sendEmpresasList(supabase, ctx);
+        return;
+      case "listar_categorias":
+        await sendCategoriasList(supabase, ctx);
+        return;
+      case "informe": {
+        const norm = normalizeReportSlots(intentResult.slots);
+        if (norm.missing.length > 0) {
+          await startReportFlow(supabase, ctx);
+          return;
+        }
+        setIntentConfirmSession(ctx.chat.id, "informe", intentResult.slots, linked);
+        await ctx.reply(`${buildReportEcho(norm.value)}\n\n¿Confirmás o editás?`, {
+          reply_markup: buildIntentConfirmKeyboard(),
+        });
+        return;
+      }
+      case "recurrente_nuevo": {
+        const norm = normalizeRecurrenteSlots(intentResult.slots);
+        if (norm.missing.length > 0) {
+          await startRecurringFlow(supabase, ctx);
+          return;
+        }
+        setIntentConfirmSession(ctx.chat.id, "recurrente_nuevo", intentResult.slots, linked);
+        await ctx.reply(`${buildRecurrenteEcho(norm.value)}\n\n¿Confirmás o editás?`, {
+          reply_markup: buildIntentConfirmKeyboard(),
+        });
+        return;
+      }
+      case "listar_recurrentes":
+        await handleListRecurrentes(supabase, ctx);
+        return;
+      case "editar_ultimo": {
+        const norm = normalizeEditSlots(intentResult.slots);
+        if (!norm.valid) {
+          await ctx.reply("✏️ ¿Qué querés cambiar del último movimiento? Tocá *Editar último*:", {
+            parse_mode: "Markdown",
+            reply_markup: buildGestionarKeyboard(),
           });
           return;
         }
-
-        const { created, finalCategory, empresaNombre, icon } = await persistTelegramMovement(supabase, {
-          linked,
-          item,
-          originalText: args.originalText,
+        setIntentConfirmSession(ctx.chat.id, "editar_ultimo", intentResult.slots, linked);
+        await ctx.reply(`${buildEditEcho(norm.value)}\n\n¿Confirmás o editás?`, {
+          reply_markup: buildIntentConfirmKeyboard(),
         });
-
-        const movId = created?.id as string | undefined;
-        const confirmKb = movId
-          ? { inline_keyboard: [
-              [{ text: "✏️ Cambiar Categoría", callback_data: `change_cat_${movId}` }],
-              ...buildUndoKeyboard(movId).inline_keyboard,
-            ] }
-          : undefined;
-
-        await ctx.reply(`${icon} *Registrado:* ${item.descripcion}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`, {
-          parse_mode: "Markdown",
-          reply_markup: confirmKb,
-        });
+        return;
       }
-    } else if (extracted.intent === "GESTIONAR_EMPRESA" && extracted.action === "ADD") {
-      const { data } = await supabase.from("empresas").insert([{ nombre: extracted.companyName, ...buildTelegramWriteOwnership(linked) }]).select();
-      const created = data?.[0];
-      if (created?.id) {
-        await insertBotAuditLog(supabase, {
-          linked,
-          actorUserId: linked.userId,
-          action: "create",
-          entityType: "empresa",
-          entityId: created.id,
-          afterData: created,
-        });
+      case "abrir_dashboard": {
+        const url = process.env.DASHBOARD_URL || "https://caja-chica-bot.web.app";
+        await ctx.reply(`🔗 [Abrir Dashboard Web](${url})`, { parse_mode: "Markdown" });
+        return;
       }
-      await ctx.reply(`✅ Empresa *${escapeMd(extracted.companyName)}* agregada con éxito.`, { parse_mode: "Markdown" });
-    } else {
-      await ctx.reply("⚠️ No pude entender bien ese movimiento. ¿Podrás ser más específico?");
+      case "movimiento":
+      default: {
+        const linkedW = await ensureWritable();
+        if (!linkedW) return;
+        if (!Array.isArray(extracted.items) || extracted.items.length === 0) {
+          await ctx.reply("⚠️ No pude entender bien ese movimiento. ¿Podrás ser más específico?");
+          return;
+        }
+        const companies = await listTelegramCompanies(supabase, linkedW);
+        for (const rawItem of extracted.items) {
+          const item = rawItem as { monto: number; tipo: "ingreso" | "egreso"; moneda: "ARS" | "USD"; categoria: string; empresa: string | null; descripcion: string };
+          const companyResolution = resolveTelegramCompany(item, companies);
+          if (companyResolution.kind === "exact") {
+            item.empresa = companyResolution.company.nombre;
+          }
+
+          const needsCompanyPrompt =
+            extracted.items.length === 1 &&
+            (companyResolution.kind === "missing" || companyResolution.kind === "suggest" || companyResolution.kind === "unresolved");
+
+          if (needsCompanyPrompt) {
+            const suggestedIndex =
+              companyResolution.kind === "suggest"
+                ? companies.findIndex((company) => company.nombre === companyResolution.company.nombre)
+                : null;
+
+            await askTelegramCompanyAssignment(supabase, {
+              ctx,
+              linked: linkedW,
+              item,
+              originalText: args.originalText,
+              companies,
+              suggestedCompanyIndex: suggestedIndex,
+            });
+            return;
+          }
+
+          const { created, finalCategory, empresaNombre, icon } = await persistTelegramMovement(supabase, {
+            linked: linkedW,
+            item,
+            originalText: args.originalText,
+          });
+
+          const movId = created?.id as string | undefined;
+          const confirmKb = movId
+            ? { inline_keyboard: [
+                [{ text: "✏️ Cambiar Categoría", callback_data: `change_cat_${movId}` }],
+                ...buildUndoKeyboard(movId).inline_keyboard,
+              ] }
+            : undefined;
+
+          await ctx.reply(`${icon} *Registrado:* ${item.descripcion}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`, {
+            parse_mode: "Markdown",
+            reply_markup: confirmKb,
+          });
+        }
+      }
     }
   } catch (err) {
     if (err instanceof GeminiUnavailableError) {

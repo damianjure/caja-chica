@@ -64,13 +64,13 @@ export function BotConnectionPanel() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--chart-expense)]">
           {error}
         </div>
       )}
 
       {notice && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-[var(--chart-income)]">
           {notice}
         </div>
       )}

@@ -281,7 +281,7 @@ export function CuentaSection({
             <button
               onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingDashboard}
-              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors disabled:opacity-50"
             >
               {leavingDashboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
               Abandonar este dashboard
@@ -335,7 +335,7 @@ export function CuentaSection({
         <div className="border-t border-red-100 pt-4">
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Borrar mi cuenta

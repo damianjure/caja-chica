@@ -443,7 +443,7 @@ export default function RecurrentesTab({
                     <button
                       onClick={() => setDeleteTarget(r.id)}
                       disabled={deletingId === r.id}
-                      className="p-2 rounded-lg border border-transparent text-[var(--app-text-3)] hover:text-red-600 dark:hover:text-red-400 hover:border-red-400 transition-colors disabled:opacity-50"
+                      className="p-2 rounded-lg border border-transparent text-[var(--app-text-3)] hover:text-[var(--chart-expense)] dark:hover:text-red-400 hover:border-red-400 transition-colors disabled:opacity-50"
                       title="Eliminar"
                       aria-label="Eliminar recurrente"
                     >

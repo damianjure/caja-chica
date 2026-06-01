@@ -56,7 +56,7 @@ const STATUS_STYLES: Record<PersonaStatus, string> = {
   pending: "bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
   active: "bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40",
   expired: "bg-[var(--app-surface-2)] text-[var(--app-text-2)] ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40",
-  revoked: "bg-red-100 text-red-700 ring-1 ring-red-300/60 dark:bg-red-500/15 dark:text-red-200 dark:ring-red-400/40",
+  revoked: "bg-red-100 text-[var(--chart-expense)] ring-1 ring-red-300/60 dark:bg-red-500/15 dark:text-red-200 dark:ring-red-400/40",
 };
 
 // Map our PersonaStatus to the canonical vocab labels (revoked → "Sin acceso", etc.).
@@ -278,7 +278,7 @@ function ActionMenu({
                   onRevoke();
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-[var(--app-surface-2)]"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)]"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 {ACTION_LABELS.revoke}

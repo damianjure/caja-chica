@@ -163,7 +163,7 @@ export default function ResumenTab(props: ResumenTabProps) {
               <div key={tag.label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-medium text-[var(--app-text-1)]">{tag.label}</div>
-                  <div className="text-sm font-semibold text-green-600 tabular-nums" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
+                  <div className="text-sm font-semibold text-[var(--chart-income)] tabular-nums" aria-label={`Ingreso ${tag.value}`}><span aria-hidden="true">↑ </span>{tag.value}</div>
                 </div>
                 {tag.secondary ? <div className="mt-1 text-xs text-[var(--app-text-3)]">{tag.secondary}</div> : null}
               </div>
@@ -215,7 +215,7 @@ export default function ResumenTab(props: ResumenTabProps) {
                     <span className="text-xs text-[var(--app-text-3)] tabular-nums w-16 shrink-0">{occ.date.slice(5)}</span>
                     <span className="text-sm text-[var(--app-text-2)] flex-1 truncate">{occ.descripcion || '—'}</span>
                     <span
-                      className={`text-sm font-semibold tabular-nums shrink-0 ${occ.signedAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                      className={`text-sm font-semibold tabular-nums shrink-0 ${occ.signedAmount >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}
                       aria-label={`${occ.signedAmount >= 0 ? 'Ingreso' : 'Gasto'} ${Math.abs(occ.signedAmount)} ${occ.moneda}`}
                     >
                       {occ.signedAmount >= 0 ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Math.abs(occ.signedAmount))} {occ.moneda}

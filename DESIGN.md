@@ -107,20 +107,21 @@ components:
 
 ## 1. Overview
 
-**Creative North Star: "Bosque y Niebla"**
+**Creative North Star: "Petróleo y Terracota"** *(evolución de "Bosque y Niebla" — decisión 2026-05-31)*
 
-Caja Chica es un dashboard financiero para registrar y consultar movimientos en lenguaje natural rioplatense. El sistema visual nace de una idea simple: las finanzas personales no necesitan gritar. La paleta "Bosque & Niebla" usa neutrales sage tintados hacia un verde grisáceo apagado (hue 155-165), una niebla calma sobre la que el dato financiero se lee sin esfuerzo y sin alarma.
+Caja Chica es un dashboard financiero para registrar y consultar movimientos en lenguaje natural rioplatense. El sistema visual nace de una idea simple: las finanzas personales no necesitan gritar. La paleta evolucionó a dos modos paralelos con más identidad: **dark "Petróleo Mint"** (fondo petróleo profundo, casi negro verdoso, + acento mint brillante) y **light "Terracota cálida"** (off-white tibio tintado a terracota, nunca blanco puro que quema la vista). El dato financiero se lee sin esfuerzo y sin alarma.
 
-La densidad es media: aire generoso entre grupos conceptuales, filas compactas dentro de las tarjetas. La jerarquía se construye con escala y peso tipográfico, no con color. El color semántico (rojo, verde, ámbar, azul) está reservado exclusivamente para diferenciar tipos de movimiento y estados; nunca decora. La superficie fuerte (`strong-surface`, casi negra tintada) marca la acción primaria y la pestaña activa, y solo eso.
+La densidad es media: aire generoso entre grupos conceptuales, filas compactas dentro de las tarjetas. La jerarquía se construye con escala y peso tipográfico, no con color. El color semántico (rojo, verde, ámbar, azul) está reservado exclusivamente para diferenciar tipos de movimiento y estados; nunca decora. El acento de marca (mint) marca la acción primaria y la pestaña activa.
 
-El sistema rechaza explícitamente la estética "fintech" de manual: nada de azul marino con dorado, nada de gradientes, nada de glassmorphism, nada de la plantilla hero-métrica (número gigante, label chico, acento degradado). También rechaza la iluminación de fondo en hover: los elementos cliqueables responden resaltando su borde, no encendiéndose.
+El sistema usa **glass + gradiente con moderación** (decisión 2026-05-31): el efecto vidrio (`backdrop-blur` translúcido) va SOLO en el "chrome" (header/app-bar y barra de pestañas), donde casi no hay texto detrás; las tarjetas de datos son SÓLIDAS para no comprometer contraste ni performance. El gradiente radial sutil va SOLO en el fondo de la app, nunca por tarjeta. Sigue rechazando: glass sobre tarjetas de datos, gradientes pesados detrás de cifras, la plantilla hero-métrica, y la iluminación de fondo en hover (el feedback de hover sigue siendo el resalte de borde).
 
 **Key Characteristics:**
-- Neutrales OKLCH tintados hacia sage (hue 155-165), nunca `#000` ni `#fff`
-- Light y dark mode como sistemas paralelos completos, no una inversión
-- Jerarquía por escala y peso; color reservado para semántica
-- Hover = resalte de borde, nunca relleno de fondo
-- Tipografía única (Inter Variable, self-hosted)
+- Dos modos paralelos: dark "Petróleo Mint" y light "Terracota cálida", no una inversión
+- Acento de marca mint; color semántico (rojo/verde/ámbar/azul) reservado para significado financiero
+- Glass SOLO en chrome (header + tabs); tarjetas de datos sólidas; gradiente solo en el fondo de la app
+- Jerarquía por escala y peso; hover = resalte de borde, nunca relleno
+- Radios y formas SIN cambio respecto del sistema previo (rounded-md botones, rounded-xl tarjetas)
+- Tipografía única (Inter Variable, self-hosted); peso de pills reforzado (bold)
 
 ## 2. Colors
 
@@ -147,7 +148,26 @@ Neutrales sage perceptualmente uniformes con cuatro acentos semánticos de baja 
 
 **La Regla del Color Semántico.** Rojo, verde, ámbar y azul solo diferencian tipos de movimiento y estados. Nunca se usan como decoración ni para jerarquía visual. Si un color no comunica un significado financiero, no va.
 
-**La Regla de la Superficie Fuerte.** La tinta oscura (`strong-surface`) aparece solo en la acción primaria y la pestaña activa. Su rareza es lo que la hace legible como "lo importante".
+**La Regla de la Superficie Fuerte.** El acento de marca (mint) y/o la tinta fuerte aparecen solo en la acción primaria y la pestaña activa. Su rareza es lo que la hace legible como "lo importante".
+
+### Paleta aplicada — v2 "Petróleo / Terracota" (2026-05-31)
+
+Reemplaza los valores "Bosque y Niebla" en `index.css` (mismos nombres de token `--app-*`; Fase 1 dialará OKLCH exacto + verificará contraste AA en cifras/tablas). Origen: mockup `mockups/app-full-redesign-v2.html`. Fuente: paletas "Oscura A · Petróleo Mint" + "Clara A · Terracota cálida".
+
+**Dark · Petróleo Mint**
+- canvas `#07100D` · surface-1 `#111D18` · surface-2 `#17261F` · surface-3 `#1D3028`
+- border `#2A4036` · border-strong `#385348` · text-1 `#F3FBF6` · text-2 `#A9B9B0` · text-3 `#708179`
+- marca/ingreso (mint) `#5EE9B5` · gasto (coral) `#F47C72` · pendiente (ámbar) `#F2B84B` · info (azul) `#6DA8FF`
+
+**Light · Terracota cálida** (off-white tibio, NO blanco puro)
+- canvas `#F1E8DE` · surface-1 `#FBF6EF` · surface-2 `#EBE0D3` · surface-3 `#E0D3C3`
+- border `#D8CABB` · border-strong `#C9B9A6` · text-1 `#211B14` · text-2 `#6E6155` · text-3 `#8A7C6E`
+- marca/ingreso `#147E60` · gasto `#C9534C` · pendiente `#B5760F` · info `#2563EB` (acentos un poco más oscuros que en dark, para AA sobre crema)
+
+**Gradiente de fondo** (solo `body`): radial mint suave arriba-izquierda + radial azul tenue arriba-derecha + linear vertical del canvas. Nunca por tarjeta.
+
+### La Regla de la Superficie de Vidrio (glass)
+El `backdrop-blur` translúcido va SOLO en el chrome: **header/app-bar y barra de pestañas**. Las tarjetas de datos (`section`, `card`, tablas) son SÓLIDAS (`surface-1`, borde 1px, `shadow-sm`). Motivo: app de cifras/tablas + PWA móvil → el blur por tarjeta cuesta GPU y el panel translúcido sobre el gradiente degrada el contraste del texto. Glass = identidad; sólido = legibilidad.
 
 ## 3. Typography
 
@@ -195,6 +215,7 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **Filtro de empresa:** pill (`rounded-full`). No seleccionado: `surface-1` con borde, hover resalta el borde. Seleccionado: `strong-surface` con texto invertido. Las acciones de editar/eliminar aparecen inline dentro del pill seleccionado, nunca flotando por fuera.
 - **Categoría:** pill `surface-3` con la acción de eliminar inline (ícono chico que enrojece en hover).
 - **Badge de estado:** pill con color semántico de baja saturación, variante dark con `bg-{color}-500/15 + text-{color}-200`.
+- **Peso (v2, 2026-05-31):** los pills usan `font-weight` bold (≈700), más presencia que el body. El pill seleccionado va sólido (acento/strong); los no seleccionados, borde + texto atenuado.
 
 ### Modals
 - **Portal rule:** Todo modal o dialog que use `position: fixed` para el backdrop DEBE renderizarse con `createPortal(document.body)`. Sin portal, el `fixed` queda atrapado en ancestros con `transform` (ej. `anim-fade-in` en tab panels) y el backdrop no cubre la pantalla completa.
@@ -215,7 +236,12 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **Placeholder:** `text-3`.
 
 ### Navigation
-- **Tab nav:** contenedor plano `surface-2`. Cada pestaña es una tarjeta que levita (ver Regla de la Tarjeta que Levita). Activa: `strong-surface` + `shadow-md`. Inactiva: `surface-1` + `shadow-sm`, hover resalta el borde. Móvil: tira de scroll horizontal compacto.
+- **Tab nav:** contenedor plano `surface-2` (glass en v2, ver Regla del Vidrio). Cada pestaña es una tarjeta que levita (ver Regla de la Tarjeta que Levita). Activa: acento de marca/`strong-surface` + `shadow-md`. Inactiva: hover resalta el borde. Móvil: tira de scroll horizontal compacto.
+
+### Header / App-bar (v2, 2026-05-31)
+Glass (chrome), sticky. **Sin título de página** (redundante con la sección activa). Layout:
+- **Izquierda:** monograma + wordmark "Caja Chica" + CTA primario **Nueva operación** (acento mint, atajo a cargar movimiento).
+- **Derecha (en orden):** Buscar (⌘K) · toggle de tema (Claro/Oscuro) · badge de rol (Dueño) · avatar de usuario.
 
 ### Selector de hora (componente firma)
 Selector tipo alarma para la hora del recordatorio: dos steppers (hora ±1, minutos ±5) con chevrons arriba/abajo y la cifra en `font-mono` en el medio, separados por dos puntos. Compacto, integrado en la fila de configuración.

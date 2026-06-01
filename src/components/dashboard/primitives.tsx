@@ -4,8 +4,8 @@ import type { LucideIcon } from 'lucide-react';
 export function MetricCard({ label, value, tone = 'neutral', icon: Icon }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon }) {
   const toneClass = {
     neutral: 'text-[var(--app-text-1)]',
-    success: 'text-green-600',
-    danger: 'text-red-600',
+    success: 'text-[var(--chart-income)]',
+    danger: 'text-[var(--chart-expense)]',
     warning: 'text-amber-600',
   }[tone];
 

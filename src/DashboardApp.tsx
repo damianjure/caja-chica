@@ -457,16 +457,24 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
       <div className="max-w-7xl mx-auto space-y-8">
         {apiStatus === 'missing_url' && <div role="status" className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3 text-amber-800 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
-        {apiStatus === 'load_error' && <div role="alert" className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 text-red-700 text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
+        {apiStatus === 'load_error' && <div role="alert" className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
         <MaintenanceBanner status={maintenanceStatus} />
 
         <header>
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
+          <div className="glass-chrome flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-sm font-bold">CC</span>
-            <span className="hidden sm:inline text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
-            <span className="hidden sm:block h-5 w-px bg-[var(--app-border)]" aria-hidden="true" />
-            <h1 id="app-title" className="min-w-0 truncate text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
+            <span id="app-title" className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('movimientos')}
+                aria-label="Nueva operación"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] px-3 py-1.5 text-sm font-bold text-[var(--app-strong-text)] active:scale-[0.97]"
+              >
+                <span aria-hidden="true">＋</span><span className="hidden sm:inline">Nueva operación</span>
+              </button>
+            )}
             <div className="flex-1" />
             <button
               type="button"
@@ -500,7 +508,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         </header>
 
         <section className="sticky top-3 z-20">
-          <div className="bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded-xl p-2.5">
+          <div className="glass-chrome border border-[var(--app-border)] rounded-xl p-2.5">
             <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 overflow-x-auto md:flex-wrap">
               {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
@@ -544,7 +552,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                   </button>
                 </div>
               </div>
-              {error && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
+              {error && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-red-50 text-[var(--chart-expense)] rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
               {extractError && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-amber-50 text-amber-700 rounded-xl border border-amber-100 text-sm"><AlertCircle className="w-4 h-4" />{extractError}</div>}
             </SectionCard>
           </div>

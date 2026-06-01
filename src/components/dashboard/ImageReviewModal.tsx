@@ -35,7 +35,7 @@ function confidenceLabel(c: number): string {
 function confidenceColor(c: number): string {
   if (c >= 0.8) return "text-emerald-700 bg-emerald-50 border-emerald-200";
   if (c >= 0.5) return "text-amber-700 bg-amber-50 border-amber-200";
-  return "text-red-700 bg-red-50 border-red-200";
+  return "text-[var(--chart-expense)] bg-red-50 border-red-200";
 }
 
 export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: ImageReviewModalProps) {

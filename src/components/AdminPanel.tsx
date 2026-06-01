@@ -521,7 +521,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                             <button
                               type="button"
                               onClick={() => void handleRevokeInvitation(invitation.id)}
-                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-red-600 hover:border-red-400"
+                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
                               aria-label={`Revocar invitación de ${invitation.email}`}
                               title="Revocar"
                             >
@@ -1065,7 +1065,7 @@ function UserDetailModal({
                         type="button"
                         onClick={() => onRevokeTelegramLink(link.id, link.chat_id)}
                         disabled={acting}
-                        className="p-2 rounded-lg border border-red-300 text-red-700 hover:border-red-400 disabled:opacity-50"
+                        className="p-2 rounded-lg border border-red-300 text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-50"
                         aria-label={`Revocar vínculo de chat ${link.chat_id ?? "—"}`}
                         title="Revocar"
                       >

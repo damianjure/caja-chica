@@ -122,7 +122,7 @@ function RoleBadge({ role }: { role: string }) {
 function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string | null }) {
   if (status === "active") {
     return (
-      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-xs text-green-700 ring-1 ring-green-300/50 dark:bg-green-500/15 dark:text-green-200 dark:border-green-500/30">
+      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-xs text-[var(--chart-income)] ring-1 ring-green-300/50 dark:bg-green-500/15 dark:text-green-200 dark:border-green-500/30">
         Activo
       </span>
     );
@@ -137,7 +137,7 @@ function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string
   }
   if (status === "revoked") {
     return (
-      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-xs text-red-700 ring-1 ring-red-300/50 dark:bg-red-500/15 dark:text-red-200 dark:border-red-500/30">
+      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-xs text-[var(--chart-expense)] ring-1 ring-red-300/50 dark:bg-red-500/15 dark:text-red-200 dark:border-red-500/30">
         Sin acceso
       </span>
     );
@@ -359,7 +359,7 @@ function TelegramCardSection({
             </button>
             <button
               onClick={() => void handleRevokeLink(activeLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
             >
               <X className="w-3 h-3" /> Desvincular
             </button>
@@ -369,13 +369,13 @@ function TelegramCardSection({
           <>
             <button
               onClick={() => void handleConfirmLink(pendingLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-green-600 hover:border-green-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-income)] hover:border-green-400"
             >
               <Check className="w-3 h-3" /> Confirmar vínculo
             </button>
             <button
               onClick={() => void handleRevokeLink(pendingLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
             >
               <X className="w-3 h-3" /> Rechazar
             </button>
@@ -620,7 +620,7 @@ function PersonCard({
                 <button
                   type="button"
                   onClick={onRevoke}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 hover:border-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                 >
                   Cancelar invitación
                 </button>
@@ -640,7 +640,7 @@ function PersonCard({
                 <button
                   type="button"
                   onClick={onRevoke}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 hover:border-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                 >
                   Quitar acceso
                 </button>

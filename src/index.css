@@ -68,27 +68,25 @@
 }
 
 @layer base {
-  /* Color tokens in OKLCH (perceptually uniform).
-     Palette "Bosque & Niebla" (2026-05-21):
-       Light: desaturated sage-grey neutrals tinted hue ≈155-165.
-       Dark: cool green-grey neutrals tinted hue ≈158-165.
-       Chroma kept low near extremes per OKLCH design law.
-     Semantic pills (red/green/amber/blue below) keep their hues — they
-     differentiate movement types and must stay distinct from the neutral palette. */
+  /* Color tokens — Paleta v2 "Petróleo y Terracota" (2026-05-31, ver DESIGN.md §2).
+     Light: "Terracota cálida" — off-white tibio, nunca blanco puro.
+     Dark: "Petróleo Mint" — fondo verdoso profundo + acento mint.
+     Marca/acción primaria = mint via --app-strong-surface (theme-aware).
+     Semantic pills (red/green/amber/blue) conservan sus hues para diferenciar tipos. */
   :root {
-    --app-canvas: oklch(95.5% 0.008 155);
-    --app-surface-1: oklch(98.5% 0.005 155);
-    --app-surface-2: oklch(93.5% 0.009 155);
-    --app-surface-3: oklch(89% 0.012 155);
-    --app-surface-4: oklch(85% 0.014 155);
-    --app-border: oklch(85% 0.014 155);
-    --app-border-strong: oklch(77% 0.018 157);
-    --app-text-1: oklch(23% 0.014 165);
-    --app-text-2: oklch(39% 0.016 160);
-    --app-text-3: oklch(52% 0.016 158);
-    --app-text-4: oklch(64% 0.014 156);
-    --app-strong-surface: oklch(23% 0.014 165);
-    --app-strong-text: oklch(97% 0.006 155);
+    --app-canvas: #F1E8DE;
+    --app-surface-1: #FBF6EF;
+    --app-surface-2: #EBE0D3;
+    --app-surface-3: #E2D5C6;
+    --app-surface-4: #D8CABB;
+    --app-border: #D8CABB;
+    --app-border-strong: #C4B3A1;
+    --app-text-1: #211B14;
+    --app-text-2: #574B3E;
+    --app-text-3: #80715F;
+    --app-text-4: #9C8E7C;
+    --app-strong-surface: #147E60;
+    --app-strong-text: #FBF6EF;
     --app-red-surface: oklch(95.7% 0.018 25);
     --app-red-border: oklch(84.7% 0.052 25);
     --app-red-text: oklch(51.5% 0.150 30);
@@ -101,31 +99,31 @@
     --app-blue-surface: oklch(96.5% 0.018 250);
     --app-blue-border: oklch(86.4% 0.054 252);
     --app-blue-text: oklch(47% 0.110 258);
-    /* Elevation tokens — theme-aware. Use via shadow-[var(--app-shadow-*)]. */
-    --app-shadow-sm: 0 1px 2px rgba(40, 30, 10, 0.06);
-    --app-shadow-md: 0 4px 12px -2px rgba(40, 30, 10, 0.10), 0 1px 3px rgba(40, 30, 10, 0.06);
-    --app-shadow-panel: 0 8px 24px -6px rgba(40, 30, 10, 0.14), 0 2px 6px rgba(40, 30, 10, 0.06);
+    /* Elevation tokens — theme-aware (sombra cálida en light). */
+    --app-shadow-sm: 0 1px 2px rgba(60, 42, 24, 0.08);
+    --app-shadow-md: 0 4px 12px -2px rgba(60, 42, 24, 0.12), 0 1px 3px rgba(60, 42, 24, 0.07);
+    --app-shadow-panel: 0 8px 24px -6px rgba(60, 42, 24, 0.16), 0 2px 6px rgba(60, 42, 24, 0.08);
     /* Chart tokens — semantic, theme-aware. */
-    --chart-income: oklch(58% 0.130 150);
-    --chart-expense: oklch(56% 0.155 28);
-    --chart-net: oklch(36% 0.060 165);
-    --chart-baseline: oklch(80% 0.012 158);
+    --chart-income: #147E60;
+    --chart-expense: #C9534C;
+    --chart-net: #2563EB;
+    --chart-baseline: #D8CABB;
   }
 
   [data-theme="dark"] {
-    --app-canvas: oklch(18.5% 0.009 165);
-    --app-surface-1: oklch(22.5% 0.011 162);
-    --app-surface-2: oklch(26.5% 0.013 160);
-    --app-surface-3: oklch(32% 0.015 158);
-    --app-surface-4: oklch(38% 0.017 156);
-    --app-border: oklch(36% 0.018 160);
-    --app-border-strong: oklch(47% 0.022 158);
-    --app-text-1: oklch(96% 0.008 155);
-    --app-text-2: oklch(84% 0.012 158);
-    --app-text-3: oklch(71% 0.014 160);
-    --app-text-4: oklch(58% 0.016 160);
-    --app-strong-surface: oklch(76% 0.016 158);
-    --app-strong-text: oklch(18.5% 0.009 165);
+    --app-canvas: #07100D;
+    --app-surface-1: #111D18;
+    --app-surface-2: #17261F;
+    --app-surface-3: #1D3028;
+    --app-surface-4: #243A30;
+    --app-border: #2A4036;
+    --app-border-strong: #385348;
+    --app-text-1: #F3FBF6;
+    --app-text-2: #B9C7BE;
+    --app-text-3: #8A998F;
+    --app-text-4: #708179;
+    --app-strong-surface: #5EE9B5;
+    --app-strong-text: #04130C;
     --app-red-surface: oklch(26.2% 0.025 30);
     --app-red-border: oklch(38.5% 0.054 30);
     --app-red-text: oklch(81.5% 0.080 30);
@@ -141,10 +139,10 @@
     --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --app-shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.4);
     --app-shadow-panel: 0 10px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
-    --chart-income: oklch(72% 0.140 150);
-    --chart-expense: oklch(70% 0.150 28);
-    --chart-net: oklch(80% 0.045 165);
-    --chart-baseline: oklch(45% 0.018 158);
+    --chart-income: #5EE9B5;
+    --chart-expense: #F47C72;
+    --chart-net: #6DA8FF;
+    --chart-baseline: #2A4036;
   }
 
   @keyframes app-fade-in {
@@ -178,8 +176,19 @@
 
   body {
     min-height: 100vh;
-    background: var(--app-canvas);
+    background:
+      radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--app-strong-surface) 14%, transparent), transparent 30%),
+      radial-gradient(circle at 96% 6%, color-mix(in srgb, var(--app-blue-text) 10%, transparent), transparent 26%),
+      var(--app-canvas);
+    background-attachment: fixed;
     color: var(--app-text-1);
+  }
+
+  /* Glass SOLO en chrome (header/app-bar + barra de pestañas). Ver DESIGN.md §Regla del Vidrio. */
+  .glass-chrome {
+    background: color-mix(in srgb, var(--app-surface-1) 72%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
 
   *,
@@ -322,8 +331,8 @@
   }
 
   .text-red-500,
-  .text-red-600,
-  .text-red-700,
+  .text-[var(--chart-expense)],
+  .text-[var(--chart-expense)],
   .text-rose-500,
   .text-rose-600,
   .text-rose-700 {
@@ -339,8 +348,8 @@
   }
 
   .text-green-500,
-  .text-green-600,
-  .text-green-700 {
+  .text-[var(--chart-income)],
+  .text-[var(--chart-income)] {
     color: var(--app-green-text) !important;
   }
 

@@ -125,7 +125,7 @@ export function ConfirmModal({
         {/* Icon + title inline */}
         <div className="flex items-center gap-2.5 mb-3.5">
           <AlertCircle
-            className={`w-[18px] h-[18px] shrink-0 ${isDanger ? "text-red-600" : "text-[var(--app-text-2)]"}`}
+            className={`w-[18px] h-[18px] shrink-0 ${isDanger ? "text-[var(--chart-expense)]" : "text-[var(--app-text-2)]"}`}
           />
           <h2
             id="confirm-modal-title"
@@ -154,7 +154,7 @@ export function ConfirmModal({
                 {preview.arrow && (
                   <span
                     aria-hidden="true"
-                    className={`text-xs ${preview.arrow === "up" ? "text-green-600" : "text-red-600"}`}
+                    className={`text-xs ${preview.arrow === "up" ? "text-[var(--chart-income)]" : "text-[var(--chart-expense)]"}`}
                   >
                     {preview.arrow === "up" ? "↑" : "↓"}
                   </span>

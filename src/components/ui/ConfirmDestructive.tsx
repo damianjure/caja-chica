@@ -106,7 +106,7 @@ export function ConfirmDestructive({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-3.5">
-          <AlertCircle className={`w-[18px] h-[18px] flex-shrink-0 ${isDanger ? 'text-red-600' : 'text-[var(--app-text-2)]'}`} />
+          <AlertCircle className={`w-[18px] h-[18px] flex-shrink-0 ${isDanger ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-2)]'}`} />
           <h2 id="confirm-destructive-title" className="text-base font-semibold tracking-tight text-[var(--app-text-1)] m-0">
             {state.title}
           </h2>
@@ -126,7 +126,7 @@ export function ConfirmDestructive({
             {state.preview.amount && (
               <span className="text-sm font-semibold text-[var(--app-text-1)] flex items-baseline gap-1 flex-shrink-0">
                 {state.preview.arrow && (
-                  <span aria-hidden="true" className={`text-xs ${state.preview.arrow === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                  <span aria-hidden="true" className={`text-xs ${state.preview.arrow === 'up' ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>
                     {state.preview.arrow === 'up' ? '↑' : '↓'}
                   </span>
                 )}

@@ -32,7 +32,7 @@ function DrillPanel({
               className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2.5 text-left transition hover:border-[var(--app-border-strong)] active:scale-[0.99]"
             >
               <span className="truncate text-sm font-medium text-[var(--app-text-1)]">{c.category}</span>
-              <span className={`shrink-0 text-sm font-semibold tabular-nums ${accent === 'danger' ? 'text-red-600' : 'text-green-600'}`}>
+              <span className={`shrink-0 text-sm font-semibold tabular-nums ${accent === 'danger' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
                 {formatCurrency(c.ars, 'ARS')}{c.usd ? ` · ${formatCurrency(c.usd, 'USD')}` : ''}
               </span>
             </button>
@@ -183,7 +183,7 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onDeleteCompany(item);
                           }}
-                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-red-200 text-red-600 hover:border-red-400"
+                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-red-200 text-[var(--chart-expense)] hover:border-red-400"
                           aria-label="Borrar empresa"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -194,27 +194,27 @@ export default function EmpresasTab({
                   <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Ingresos ARS</div>
-                      <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosArs, 'ARS')}</div>
+                      <div className="font-medium text-[var(--chart-income)] tabular-nums">{formatCurrency(company.ingresosArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Gastos ARS</div>
-                      <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosArs, 'ARS')}</div>
+                      <div className="font-medium text-[var(--chart-expense)] tabular-nums">{formatCurrency(company.gastosArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Saldo ARS</div>
-                      <div className={`font-medium tabular-nums ${company.saldoArs >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoArs, 'ARS')}</div>
+                      <div className={`font-medium tabular-nums ${company.saldoArs >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(company.saldoArs, 'ARS')}</div>
                     </div>
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Ingresos USD</div>
-                      <div className="font-medium text-green-600 tabular-nums">{formatCurrency(company.ingresosUsd, 'USD')}</div>
+                      <div className="font-medium text-[var(--chart-income)] tabular-nums">{formatCurrency(company.ingresosUsd, 'USD')}</div>
                     </div>
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Gastos USD</div>
-                      <div className="font-medium text-red-600 tabular-nums">{formatCurrency(company.gastosUsd, 'USD')}</div>
+                      <div className="font-medium text-[var(--chart-expense)] tabular-nums">{formatCurrency(company.gastosUsd, 'USD')}</div>
                     </div>
                     <div>
                       <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Saldo USD</div>
-                      <div className={`font-medium tabular-nums ${company.saldoUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(company.saldoUsd, 'USD')}</div>
+                      <div className={`font-medium tabular-nums ${company.saldoUsd >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(company.saldoUsd, 'USD')}</div>
                     </div>
                   </div>
                 </div>

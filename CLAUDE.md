@@ -645,6 +645,21 @@ Branch `feat/dashboard-redesign` (commit `7f6621e`, stackeada sobre voz). Engram
 
 **Deploy 2026-05-31:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00059-59b`**. Tests 693 pass / 2 skip / 0 fail. Sin SQL, sin env vars nuevas. PRs (voz + rediseño) pendientes de merge en GitHub.
 
+### Cambios 2026-06-01 (Design System v2 "Petróleo y Terracota" + 8 features — deploy)
+
+Branch `feat/dashboard-redesign`. Engram #750. **OJO: la North Star de DESIGN.md cambió** de "Bosque y Niebla" (rechazaba glass/gradiente) a **"Petróleo y Terracota"** con glass tempered. DESIGN.md es la fuente de verdad.
+
+- **Re-skin v2** (Fase 0 DESIGN.md + Fase 1 + 1.5): tokens `--app-*` en hex — light "Terracota cálida" (off-white tibio, canvas `#F1E8DE`), dark "Petróleo Mint" (`#07100D`, acento mint `#5EE9B5`). `--app-strong-surface` = mint (marca/acción primaria/tab activo). Gradiente radial solo en `body`. `.glass-chrome` (backdrop-blur) **solo** en header + barra de tabs; tarjetas de datos sólidas. Botones primarios `bg-neutral-900`→mint; montos/banners/spinners → tokens. Radios SIN cambio.
+- **Header**: sin título de página; izq = brand + **Nueva operación** (CTA mint → Movimientos); der = Buscar · tema · rol · avatar.
+- **Resumen**: Flujo de caja (waterfall `buildCashflowBridge`, +6 tests) · callout Atención + KPI Utilidad crítico (neto<0) · Insight del período · Etiquetas destacadas. `MetricCard` +props `sub`/`critical`, fix `bg-white`.
+- **Recurrentes**: 4 KPIs + calendario heatmap (`buildRecurrentesSummary`, +6 tests, reusa `expandOccurrences`).
+- **Empresas**: 4 KPIs agregados + lista Salud por empresa.
+- **Movimientos**: filtros mes/empresa/moneda + iconos editar/copiar/eliminar (ya existían).
+- **Categorías**: `PATCH /api/categorias/:id` (rename + dedupe 409 + **cascade a `movimientos.categoria` en scope**, +3 tests) · `api.updateCategoria` · edición inline en `CategoriasSection`.
+- **Config**: Telegram (BotConnectionPanel) agrupado con Drive como "Integraciones".
+
+**Deploy 2026-06-01:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00060-sdh`** (por `PATCH /api/categorias`). Smoke: `/api/health` 200, `PATCH /api/categorias/:id` sin auth → 401. Tests 705 pass / 2 skip / 0 fail. tsc + build limpios. Sin SQL, sin env vars nuevas. **QA visual pendiente** (re-skin + features verificados por tsc/build, no en prod con ojos). Mockups: `mockups/app-full-redesign-v2.html`.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

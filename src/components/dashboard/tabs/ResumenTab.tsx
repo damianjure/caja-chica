@@ -61,10 +61,39 @@ export default function ResumenTab(props: ResumenTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         <MetricCard label="Ingresos ARS" value={props.arsIngreso} tone="success" icon={TrendingUp} />
         <MetricCard label="Gastos ARS" value={props.arsEgreso} tone="danger" icon={TrendingDown} />
-        <MetricCard label="Utilidad ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} icon={Wallet} />
+        <MetricCard label="Utilidad ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} icon={Wallet} critical={!props.netPositive} sub={props.netPositive ? undefined : 'requiere revisión'} />
         <MetricCard label="Caja USD" value={props.usdNeto} tone="neutral" icon={Wallet} />
         <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
+
+      {!props.netPositive && (
+        <div role="status" className="rounded-xl border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3 text-sm text-[var(--app-amber-text)]">
+          <strong>⚠️ Atención — utilidad negativa.</strong> Mejorá ingresos o reducí gastos para recuperar.{props.topExpenseCategories[0] ? ` "${props.topExpenseCategories[0].label}" es el gasto que más pesa.` : ''}
+        </div>
+      )}
+
+      {(props.insights.length > 0 || props.topExpenseCategories.length > 0) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {props.insights.length > 0 && (
+            <ChartCard title="Insight del período" description="Lo que cambió, en una mirada.">
+              <ul className="space-y-1.5" role="list">
+                {props.insights.map((t, i) => (
+                  <li key={i} role="listitem" className="text-sm text-[var(--app-text-2)] leading-relaxed">{t}</li>
+                ))}
+              </ul>
+            </ChartCard>
+          )}
+          {props.topExpenseCategories.length > 0 && (
+            <ChartCard title="Etiquetas destacadas" description="Las categorías que más movés en el período.">
+              <div className="flex flex-wrap gap-2">
+                {props.topExpenseCategories.slice(0, 8).map((c) => (
+                  <span key={c.label} className="rounded-full border border-[var(--app-border-strong)] px-3 py-1 text-xs font-bold text-[var(--app-text-2)]">{c.label}</span>
+                ))}
+              </div>
+            </ChartCard>
+          )}
+        </div>
+      )}
 
       {/* Layout adaptativo: con pocos datos el Pulso es compacto y comparte fila; al crecer (>=4 meses) ocupa toda la fila. */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -251,21 +280,6 @@ export default function ResumenTab(props: ResumenTabProps) {
                 </p>
               )}
             </div>
-
-            {props.insights.length > 0 && (
-              <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)] mb-2">
-                  Tendencias del período
-                </div>
-                <ul className="space-y-1.5" role="list">
-                  {props.insights.map((text, i) => (
-                    <li key={i} role="listitem" className="text-sm text-[var(--app-text-2)] leading-relaxed">
-                      {text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
       </SectionCard>

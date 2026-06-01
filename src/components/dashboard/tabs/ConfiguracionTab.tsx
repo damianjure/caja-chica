@@ -63,10 +63,10 @@ export default function ConfiguracionTab({
   return (
     <div className="stack-relaxed">
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--chart-expense)]">{error}</div>
+        <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-sm text-[var(--chart-expense)]">{error}</div>
       )}
       {notice && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
+        <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
       )}
 
       <PreferenciasSection

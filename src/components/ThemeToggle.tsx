@@ -53,7 +53,7 @@ export function ThemeSelector({
             aria-pressed={active}
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
               active
-                ? 'bg-neutral-900 border-neutral-900 text-white'
+                ? 'bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
                 : 'bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]'
             }`}
           >

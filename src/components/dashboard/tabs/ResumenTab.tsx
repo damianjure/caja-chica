@@ -249,7 +249,7 @@ export default function ResumenTab(props: ResumenTabProps) {
       </SectionCard>
 
       {!props.canWriteData && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3 text-sm text-[var(--app-amber-text)]">
           Estás en modo <strong>viewer</strong>. Podés ver todo, pero no cargar ni editar datos.
         </div>
       )}

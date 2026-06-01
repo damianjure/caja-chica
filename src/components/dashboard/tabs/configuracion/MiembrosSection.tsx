@@ -101,7 +101,7 @@ function effectivePerm(perms: MemberPermissions | undefined, key: keyof MemberPe
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
     owner:
-      "bg-neutral-900 text-white border-neutral-900 font-semibold",
+      "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] font-semibold",
     editor:
       "bg-emerald-100 text-emerald-800 border-emerald-200 ring-1 ring-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
     viewer:
@@ -122,7 +122,7 @@ function RoleBadge({ role }: { role: string }) {
 function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string | null }) {
   if (status === "active") {
     return (
-      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2 py-0.5 text-xs text-[var(--chart-income)] ring-1 ring-green-300/50 dark:bg-green-500/15 dark:text-green-200 dark:border-green-500/30">
+      <span className="inline-flex items-center rounded-full border border-[var(--app-green-border)] bg-green-100 px-2 py-0.5 text-xs text-[var(--chart-income)] ring-1 ring-green-300/50 dark:bg-[var(--app-green-surface)]0/15 dark:text-green-200 dark:border-green-500/30">
         Activo
       </span>
     );
@@ -130,14 +130,14 @@ function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string
   if (status === "pending" || status === "expired") {
     const label = status === "expired" ? "Invitación vencida" : `Invitado · ${daysUntil(expiresAt)}`;
     return (
-      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-300/50 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-500/30">
+      <span className="inline-flex items-center rounded-full border border-[var(--app-amber-border)] bg-amber-100 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-300/50 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200 dark:border-amber-500/30">
         {label}
       </span>
     );
   }
   if (status === "revoked") {
     return (
-      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-xs text-[var(--chart-expense)] ring-1 ring-red-300/50 dark:bg-red-500/15 dark:text-red-200 dark:border-red-500/30">
+      <span className="inline-flex items-center rounded-full border border-[var(--app-red-border)] bg-red-100 px-2 py-0.5 text-xs text-[var(--chart-expense)] ring-1 ring-red-300/50 dark:bg-[var(--app-red-surface)]0/15 dark:text-red-200 dark:border-red-500/30">
         Sin acceso
       </span>
     );
@@ -222,7 +222,7 @@ function InviteForm({ onInvited }: InviteFormProps) {
         <button
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
           Invitar
@@ -359,7 +359,7 @@ function TelegramCardSection({
             </button>
             <button
               onClick={() => void handleRevokeLink(activeLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
             >
               <X className="w-3 h-3" /> Desvincular
             </button>
@@ -369,13 +369,13 @@ function TelegramCardSection({
           <>
             <button
               onClick={() => void handleConfirmLink(pendingLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-income)] hover:border-green-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-green-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-income)] hover:border-green-400"
             >
               <Check className="w-3 h-3" /> Confirmar vínculo
             </button>
             <button
               onClick={() => void handleRevokeLink(pendingLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
             >
               <X className="w-3 h-3" /> Rechazar
             </button>
@@ -385,7 +385,7 @@ function TelegramCardSection({
           <button
             disabled={generatingToken}
             onClick={() => void handleGenerateToken()}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {generatingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
             {freshToken ? "Regenerar" : "Generar vínculo de Telegram"}
@@ -547,7 +547,7 @@ function PersonCard({
                         onClick={() => void onTogglePerm(def.key, active)}
                         className={`mt-0.5 w-[18px] h-[18px] rounded-md flex items-center justify-center shrink-0 border transition-all disabled:opacity-50 ${
                           active
-                            ? "bg-neutral-900 border-neutral-900 text-white dark:bg-[var(--app-text-1)] dark:border-[var(--app-text-1)]"
+                            ? "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)] dark:bg-[var(--app-text-1)] dark:border-[var(--app-text-1)]"
                             : "border-[var(--app-border-strong)] dark:border-[var(--app-border)] bg-transparent"
                         }`}
                         title={isCurrentUser ? "No podés cambiar tus propios permisos" : undefined}
@@ -620,7 +620,7 @@ function PersonCard({
                 <button
                   type="button"
                   onClick={onRevoke}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                 >
                   Cancelar invitación
                 </button>
@@ -640,7 +640,7 @@ function PersonCard({
                 <button
                   type="button"
                   onClick={onRevoke}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                 >
                   Quitar acceso
                 </button>
@@ -831,7 +831,7 @@ export function MiembrosSection({
         {/* Header */}
         <div className="px-6 pt-6 pb-5 space-y-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-neutral-900 text-white shrink-0">
+            <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] shrink-0">
               <Users className="w-4 h-4" />
             </div>
             <div>

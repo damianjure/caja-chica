@@ -53,7 +53,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
         aria-modal="true"
         aria-labelledby="wizard-title"
         tabIndex={-1}
-        className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
+        className="anim-scale-in bg-white dark:bg-[var(--app-strong-surface)] rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
       >
 
         {/* Skip button */}
@@ -70,7 +70,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
           {(['welcome', 'tour', 'telegram'] as Step[]).map((s) => (
             <span
               key={s}
-              className={`h-1.5 rounded-full transition-all ${s === step ? 'w-5 bg-neutral-900' : 'w-1.5 bg-neutral-200'}`}
+              className={`h-1.5 rounded-full transition-all ${s === step ? 'w-5 bg-[var(--app-strong-surface)]' : 'w-1.5 bg-neutral-200'}`}
             />
           ))}
         </div>
@@ -91,7 +91,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
             </div>
             <button
               onClick={() => setStep('tour')}
-              className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
+              className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-6 rounded-md transition duration-150"
             >
               Ver el tour <ChevronRight className="w-4 h-4" />
             </button>
@@ -113,7 +113,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950 rounded-xl border border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-3 p-4 bg-[var(--app-amber-surface)] dark:bg-amber-950 rounded-xl border border-[var(--app-amber-border)] dark:border-amber-800">
               <Trash2 className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-amber-700 dark:text-amber-300">
                 Cuando quieras empezar de verdad, podés borrar los datos de ejemplo con un solo botón en Configuración → Cuenta.
@@ -123,7 +123,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => { void loadTelegramLink(); setStep('telegram'); }}
-                className="flex-1 flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm"
+                className="flex-1 flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-4 rounded-md transition duration-150 text-sm"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -165,7 +165,7 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
             <button
               onClick={() => finish(false)}
               disabled={finishing}
-              className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
             >
               {finishing ? 'Cargando...' : 'Ir al dashboard'}
             </button>

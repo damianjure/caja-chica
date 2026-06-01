@@ -223,7 +223,7 @@ export function ConfirmModal({
             className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-white border active:scale-[0.97] transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
               isDanger
                 ? "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700"
-                : "bg-neutral-900 border-neutral-900 hover:bg-neutral-800"
+                : "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] hover:bg-[var(--app-strong-surface)]"
             }`}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}

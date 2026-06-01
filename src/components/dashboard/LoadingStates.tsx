@@ -50,7 +50,7 @@ export function DashboardSkeleton() {
 export function SectionLoadingState({ message = 'Cargando datos...' }: { message?: string }) {
   return (
     <div className="rounded-xl border border-[var(--app-border)] bg-white px-6 py-12 text-center shadow-sm">
-      <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[var(--app-border)] border-t-neutral-900" />
+      <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[var(--app-border)] border-t-[var(--app-strong-surface)]" />
       <p className="text-sm font-medium text-[var(--app-text-1)]">{message}</p>
       <p className="mt-1 text-sm text-[var(--app-text-3)]">Estamos armando la vista para que cargue prolija y sin saltos.</p>
     </div>

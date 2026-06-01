@@ -53,10 +53,10 @@ interface PersonasPanelProps {
 // If `dark:` doesn't take effect at runtime (no `dark` class on <html>), the data-theme
 // fallback selectors in src/index.css would catch it. Using ring for extra edge contrast.
 const STATUS_STYLES: Record<PersonaStatus, string> = {
-  pending: "bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
-  active: "bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40",
+  pending: "bg-amber-100 text-[var(--app-amber-text)] ring-1 ring-amber-300/60 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200 dark:ring-amber-400/40",
+  active: "bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-[var(--app-green-surface)]0/15 dark:text-green-200 dark:ring-green-400/40",
   expired: "bg-[var(--app-surface-2)] text-[var(--app-text-2)] ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40",
-  revoked: "bg-red-100 text-[var(--chart-expense)] ring-1 ring-red-300/60 dark:bg-red-500/15 dark:text-red-200 dark:ring-red-400/40",
+  revoked: "bg-red-100 text-[var(--chart-expense)] ring-1 ring-red-300/60 dark:bg-[var(--app-red-surface)]0/15 dark:text-red-200 dark:ring-red-400/40",
 };
 
 // Map our PersonaStatus to the canonical vocab labels (revoked → "Sin acceso", etc.).
@@ -94,7 +94,7 @@ const DASHBOARD_ROLE_STYLES: Record<DashboardRole, string> = {
 
 const APP_ROLE_STYLES: Record<AppRole, string> = {
   superadmin: "bg-rose-100 text-rose-800 ring-1 ring-rose-300/60 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/40",
-  admin: "bg-amber-100 text-amber-900 ring-1 ring-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/40",
+  admin: "bg-amber-100 text-amber-900 ring-1 ring-amber-300/60 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200 dark:ring-amber-400/40",
   member: "bg-sky-100 text-sky-800 ring-1 ring-sky-300/60 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-400/40",
 };
 
@@ -441,7 +441,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
           <button
             onClick={() => void handleInvite()}
             disabled={submitting || !email.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] text-sm font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />

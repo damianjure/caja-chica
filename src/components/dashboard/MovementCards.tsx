@@ -51,7 +51,7 @@ function MovementCardsImpl({
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-md ${item.tipo === 'ingreso' ? 'bg-green-50 text-[var(--chart-income)]' : 'bg-red-50 text-[var(--chart-expense)]'}`}>
+                  <div className={`p-2 rounded-md ${item.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)] text-[var(--chart-income)]' : 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]'}`}>
                     {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
                   <div>

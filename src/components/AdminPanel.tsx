@@ -60,7 +60,7 @@ const statusBadge: Record<
   },
   paused: {
     label: "Pausado",
-    className: "bg-amber-100 text-amber-800 border-amber-300",
+    className: "bg-amber-100 text-[var(--app-amber-text)] border-amber-300",
   },
   blocked: {
     label: "Bloqueado",
@@ -367,7 +367,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
     <div className="space-y-6">
     <section className="bg-white border border-[var(--app-border-strong)] rounded-xl p-6 md:p-8 shadow-sm space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-neutral-900 text-white">
+        <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <Shield className="w-4 h-4" />
         </div>
         <div>
@@ -401,7 +401,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           type="button"
           onClick={() => void handleInvite()}
           disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -451,7 +451,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                     className={[
                       "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
                       isSelected
-                        ? "bg-neutral-900 text-white border-neutral-900"
+                        ? "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]"
                         : "bg-white text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-neutral-500",
                     ].join(" ")}
                   >
@@ -665,7 +665,7 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
       )}
 
       {pending_app_invitations.length > 0 && (
-        <details className="border border-dashed border-amber-300 rounded-xl px-4 py-3 bg-amber-50">
+        <details className="border border-dashed border-amber-300 rounded-xl px-4 py-3 bg-[var(--app-amber-surface)]">
           <summary className="cursor-pointer text-sm font-medium text-[var(--app-text-2)]">
             Invitaciones del sistema pendientes ({pending_app_invitations.length})
           </summary>
@@ -708,7 +708,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               >
                 {node.owner.email ?? "(sin email)"}
               </button>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral-900 text-white">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
                 Dueño
               </span>
               {node.owner.app_role && (
@@ -766,13 +766,13 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
             </li>
           ))}
           {node.pending_invitations.map((inv) => (
-            <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0 bg-amber-50/30">
+            <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0 bg-[var(--app-amber-surface)]/30">
               <span className="text-[var(--app-text-3)] text-xs">└─</span>
               <span className="text-sm text-[var(--app-text-1)] truncate flex-1 italic">{inv.email}</span>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-1)] bg-white">
                 {inv.role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-[var(--app-amber-text)] border border-amber-300">
                 Invitado
               </span>
             </li>
@@ -856,12 +856,12 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                     const isActing = actingKey === "status";
                     const activeClass = {
                       green: "bg-green-600 border-green-600 text-white ring-2 ring-green-200",
-                      amber: "bg-amber-500 border-amber-500 text-white ring-2 ring-amber-200",
+                      amber: "bg-[var(--app-amber-surface)]0 border-amber-500 text-white ring-2 ring-amber-200",
                       red: "bg-red-600 border-red-600 text-white ring-2 ring-red-200",
                     }[tone];
                     const inactiveClass = {
                       green: "bg-white border-green-300 text-green-800 hover:border-green-400",
-                      amber: "bg-white border-amber-300 text-amber-800 hover:border-amber-400",
+                      amber: "bg-white border-amber-300 text-[var(--app-amber-text)] hover:border-amber-400",
                       red: "bg-white border-red-300 text-red-800 hover:border-red-400",
                     }[tone];
                     return (
@@ -1005,7 +1005,7 @@ function UserDetailModal({
                 const isRoleActing = actingKey === "role";
                 const roleColor = {
                   member: {
-                    active: "bg-neutral-800 border-neutral-800 text-white",
+                    active: "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
                     inactive: "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-neutral-500",
                   },
                   admin: {
@@ -1111,12 +1111,12 @@ interface StatusButtonProps {
 function StatusButton({ icon, label, active, onClick, disabled, tone }: StatusButtonProps) {
   const activeClass = {
     green: "bg-green-600 border-green-600 text-white shadow-md ring-2 ring-green-200",
-    amber: "bg-amber-500 border-amber-500 text-white shadow-md ring-2 ring-amber-200",
+    amber: "bg-[var(--app-amber-surface)]0 border-amber-500 text-white shadow-md ring-2 ring-amber-200",
     red: "bg-red-600 border-red-600 text-white shadow-md ring-2 ring-red-200",
   }[tone];
   const inactiveClass = {
     green: "bg-white border-green-300 text-green-800 hover:border-green-400",
-    amber: "bg-white border-amber-300 text-amber-800 hover:border-amber-400",
+    amber: "bg-white border-amber-300 text-[var(--app-amber-text)] hover:border-amber-400",
     red: "bg-white border-red-300 text-red-800 hover:border-red-400",
   }[tone];
   return (

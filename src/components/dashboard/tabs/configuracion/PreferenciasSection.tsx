@@ -60,9 +60,9 @@ export function PreferenciasSection({
   };
 
   return (
-    <section className="bg-white dark:bg-neutral-900 border border-[var(--app-border)] dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
+    <section className="bg-white dark:bg-[var(--app-strong-surface)] border border-[var(--app-border)] dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-neutral-900 text-white">
+        <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
         <div>
@@ -90,7 +90,7 @@ export function PreferenciasSection({
                 aria-pressed={defaultCurrency === c}
                 className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
                   defaultCurrency === c
-                    ? "bg-neutral-900 border-neutral-900 text-white"
+                    ? "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]"
                     : "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                 }`}
               >
@@ -108,7 +108,7 @@ export function PreferenciasSection({
             value={defaultEmpresa}
             onChange={(e) => setDefaultEmpresa(e.target.value)}
             aria-label="Empresa por defecto"
-            className="rounded-xl border border-[var(--app-border-strong)] dark:border-neutral-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white dark:bg-neutral-800 dark:text-neutral-100 w-full max-w-xs"
+            className="rounded-xl border border-[var(--app-border-strong)] dark:border-neutral-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white dark:bg-[var(--app-strong-surface)] dark:text-neutral-100 w-full max-w-xs"
           >
             <option value="">Sin empresa (Personal)</option>
             {companies.filter((c) => !c.deleted_at).map((c) => (

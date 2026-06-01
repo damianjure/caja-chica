@@ -115,7 +115,7 @@ export default function EmpresasTab({
             <button
               onClick={() => void handleCreate()}
               disabled={!newCompany.trim() || creating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-5 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
               {creating ? 'Creando...' : 'Agregar'}
@@ -183,7 +183,7 @@ export default function EmpresasTab({
                             const item = customCompanies.find((entry) => entry.nombre === company.name);
                             if (item) onDeleteCompany(item);
                           }}
-                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-red-200 text-[var(--chart-expense)] hover:border-red-400"
+                          className="inline-flex items-center justify-center h-11 w-11 rounded-xl border border-[var(--app-red-border)] text-[var(--chart-expense)] hover:border-red-400"
                           aria-label="Borrar empresa"
                         >
                           <Trash2 className="w-4 h-4" />

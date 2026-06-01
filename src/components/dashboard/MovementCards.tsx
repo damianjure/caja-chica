@@ -70,7 +70,7 @@ function MovementCardsImpl({
                     </button>
                   )}
                   <button onClick={() => onCopy(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
-                    {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    {copiedId === item.id ? <Check className="w-4 h-4 text-[var(--chart-income)]" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
                     <button onClick={() => onDelete(item.id)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--chart-expense)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">

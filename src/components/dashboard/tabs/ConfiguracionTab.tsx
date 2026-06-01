@@ -79,22 +79,25 @@ export default function ConfiguracionTab({
       />
 
       {canManage && (
-        <>
-          <MiembrosSection
-            viewer={viewer}
-            data={data}
-            loading={loading}
-            onRefresh={onRefresh}
-            showNotice={showNotice}
-            setError={setError}
-          />
-          <BotConnectionPanel />
-        </>
+        <MiembrosSection
+          viewer={viewer}
+          data={data}
+          loading={loading}
+          onRefresh={onRefresh}
+          showNotice={showNotice}
+          setError={setError}
+        />
       )}
 
       {canManageCategorias && <CategoriasSection />}
 
-      {canManage && canConnectDrive && <DriveSection />}
+      {/* Integraciones: Telegram + Drive agrupados. */}
+      {canManage && (
+        <>
+          <BotConnectionPanel />
+          {canConnectDrive && <DriveSection />}
+        </>
+      )}
 
       <CuentaSection
         viewer={viewer}

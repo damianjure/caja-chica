@@ -50,7 +50,7 @@ function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
         disabled={revoking || isCurrent}
         aria-label={isCurrent ? "No se puede cerrar la sesión activa" : "Cerrar esta sesión"}
         title={isCurrent ? "Usá Cerrar sesión para salir" : "Cerrar sesión"}
-        className="p-1.5 rounded-xl border border-[var(--app-red-border)] text-red-500 hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        className="p-1.5 rounded-xl border border-[var(--app-red-border)] text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
       >
         {revoking ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
       </button>

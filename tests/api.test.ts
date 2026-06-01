@@ -219,6 +219,11 @@ function createSupabaseStub(
           select(_cols?: string) {
             return updateBuilder;
           },
+          single() {
+            const payload = (Array.isArray(args[0]) ? (args[0] as any[])[0] : args[0]) as Record<string, unknown>;
+            const base = (filteredRows[0] ?? {}) as Record<string, unknown>;
+            return Promise.resolve({ data: { ...base, ...(payload ?? {}) }, error: null });
+          },
           limit(_n: number) {
             return Promise.resolve({ data: filteredRows, error: null });
           },
@@ -2482,6 +2487,59 @@ test("POST /api/categorias: editor con manage_categorias:false recibe 403", asyn
         body: JSON.stringify({ nombre: "Nueva" }),
       });
       assert.equal(res.status, 403);
+    },
+  );
+});
+
+test("PATCH /api/categorias/:id renombra + cascada a movimientos", async () => {
+  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1" }] });
+  await withServer(
+    { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias/c1`, {
+        method: "PATCH",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Alimentos" }),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.nombre, "Alimentos");
+      assert.ok(supabase.callLog.find((e) => e.table === "categorias" && e.type === "update"), "actualiza la categoría");
+      assert.ok(supabase.callLog.find((e) => e.table === "movimientos" && e.type === "update"), "cascada a movimientos");
+      assert.ok(
+        supabase.callLog.find((e) => e.table === "movimientos" && e.type === "eq" && (e.args as any[])[0] === "categoria" && (e.args as any[])[1] === "Comida"),
+        "cascada filtra por la categoría vieja",
+      );
+    },
+  );
+});
+
+test("PATCH /api/categorias/:id rechaza nombre duplicado (409)", async () => {
+  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1" }, { id: "c2", nombre: "Cena", owner_user_id: "user-1" }] });
+  await withServer(
+    { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias/c1`, {
+        method: "PATCH",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "cena" }),
+      });
+      assert.equal(res.status, 409);
+    },
+  );
+});
+
+test("PATCH /api/categorias/:id 404 si no existe en el scope", async () => {
+  const supabase = createSupabaseStub({ categorias: [{ id: "c1", nombre: "Comida", owner_user_id: "user-1" }] });
+  await withServer(
+    { resolveSession: async () => memberSession, supabase: supabase.client as AppDeps["supabase"] },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/categorias/cX`, {
+        method: "PATCH",
+        headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "Otra" }),
+      });
+      assert.equal(res.status, 404);
     },
   );
 });

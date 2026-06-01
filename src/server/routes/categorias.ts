@@ -24,6 +24,53 @@ export function createCategoriasRouter(deps: CategoriasRouterDeps) {
   } = deps;
 
 
+  router.patch("/api/categorias/:id", requireSession, async (req, res) => {
+    try {
+      const nombre = typeof req.body?.nombre === "string" ? req.body.nombre.trim() : "";
+      if (!nombre || nombre.length > 60) return res.status(400).json({ error: "invalid_request" });
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!canWriteToScope(scope) || !canManageCategoriasOp(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      const { data: all, error: fetchError } = await applyDataScope(
+        supabase.from("categorias").select("*"),
+        session,
+        scope,
+      ).limit(500);
+      if (fetchError) throw fetchError;
+      const target = (all ?? []).find((c: { id: string }) => c.id === req.params.id);
+      if (!target) return res.status(404).json({ error: "not_found" });
+      // Conflicto: otra categoría del scope ya tiene ese nombre.
+      const clash = (all ?? []).find((c: { id: string; nombre: string }) => c.id !== req.params.id && norm(c.nombre) === norm(nombre));
+      if (clash) return res.status(409).json({ error: "duplicate" });
+
+      const oldNombre = target.nombre as string;
+      const { data, error } = await supabase
+        .from("categorias")
+        .update({ nombre })
+        .eq("id", req.params.id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Cascade: los movimientos con la categoría vieja (en scope) pasan al nuevo nombre.
+      if (oldNombre && oldNombre !== nombre) {
+        const { error: cascadeErr } = await applyDataScope(
+          supabase.from("movimientos").update({ categoria: nombre }),
+          session,
+          scope,
+        ).eq("categoria", oldNombre);
+        if (cascadeErr) console.error("categoria rename cascade error:", cascadeErr);
+      }
+      res.json(data);
+    } catch (_err) {
+      res.status(500).json({ error: "failed_to_update" });
+    }
+  });
+
   router.delete("/api/categorias/:id", requireSession, async (req, res) => {
     try {
       const session = getSession(req);

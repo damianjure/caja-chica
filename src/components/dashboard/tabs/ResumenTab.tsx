@@ -1,10 +1,10 @@
 
 import { useMemo, useState } from 'react';
 import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } from 'lucide-react';
-import { ChartCard, HorizontalBarList, AreaTrendChart } from '../Charts';
+import { ChartCard, HorizontalBarList, AreaTrendChart, WaterfallChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
-import { buildMonthlyChartData } from '../../../dashboard/summary';
+import { buildMonthlyChartData, buildCashflowBridge } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
@@ -37,6 +37,12 @@ export default function ResumenTab(props: ResumenTabProps) {
     return buildMonthlyChartData(props.history, pulseCurrency, hiddenCompanies.size ? visible : null);
   }, [props.history, pulseCurrency, hiddenCompanies, companyNames]);
   const richData = pulseData.length >= 4;
+
+  const visibleCompanies = useMemo(() => companyNames.filter((c) => !hiddenCompanies.has(c)), [companyNames, hiddenCompanies]);
+  const bridgeData = useMemo(
+    () => buildCashflowBridge(props.history, pulseCurrency, hiddenCompanies.size ? visibleCompanies : null),
+    [props.history, pulseCurrency, hiddenCompanies, visibleCompanies],
+  );
 
   const toggleCompany = (name: string) =>
     setHiddenCompanies((prev) => {
@@ -155,6 +161,22 @@ export default function ResumenTab(props: ResumenTabProps) {
           <HorizontalBarList items={props.topCompanies} emptyLabel="Todavía no hay empresas con actividad." />
         </ChartCard>
       </section>
+
+      <ChartCard
+        title="Flujo de caja"
+        description="De los ingresos al saldo: cómo cada categoría de gasto reduce la caja. Usa el mismo filtro de empresa y moneda del Pulso."
+      >
+        {bridgeData.length === 0 ? (
+          <EmptyState
+            title="Sin datos para el puente de caja."
+            hint="Cargá ingresos y gastos para ver cómo se forma el saldo del período."
+            canWrite={props.canWriteData}
+            icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
+          />
+        ) : (
+          <WaterfallChart segments={bridgeData} currency={pulseCurrency} />
+        )}
+      </ChartCard>
 
       {props.incomeTags.length > 0 && (
         <ChartCard title="Etiquetas de ingreso" description="Qué tipo de ingreso entra más seguido, sin leer uno por uno.">

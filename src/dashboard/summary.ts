@@ -304,6 +304,58 @@ export interface MonthlyChartPoint {
   net: number;
 }
 
+export interface BridgeSegment {
+  label: string;
+  kind: 'start' | 'down' | 'end';
+  value: number;
+  from: number;
+  to: number;
+}
+
+/**
+ * Puente de caja (waterfall) en una moneda, opcionalmente por empresa:
+ * Ingresos (start) → resta cada categoría de gasto top (down) → Otros → Saldo (end).
+ * Honesto con la data: no inventa "saldo inicial"; arranca en los ingresos del período.
+ */
+export function buildCashflowBridge(
+  history: Movimiento[],
+  currency: 'ARS' | 'USD',
+  companies?: string[] | null,
+  topN = 4,
+): BridgeSegment[] {
+  const scoped = companies && companies.length > 0
+    ? history.filter((m) => companies.includes(m.empresa_nombre || 'Personal'))
+    : history;
+  const inCur = scoped.filter((m) => m.moneda === currency);
+  const ingresos = inCur.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.monto || 0), 0);
+
+  const byCat = new Map<string, number>();
+  for (const m of inCur) {
+    if (m.tipo !== 'egreso') continue;
+    const cat = m.categoria || 'Sin categoría';
+    byCat.set(cat, (byCat.get(cat) || 0) + Number(m.monto || 0));
+  }
+  const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
+  if (ingresos === 0 && cats.length === 0) return [];
+
+  const top = cats.slice(0, topN);
+  const otros = cats.slice(topN).reduce((s, [, v]) => s + v, 0);
+
+  const segs: BridgeSegment[] = [];
+  let running = ingresos;
+  segs.push({ label: 'Ingresos', kind: 'start', value: ingresos, from: 0, to: ingresos });
+  for (const [cat, v] of top) {
+    segs.push({ label: cat, kind: 'down', value: v, from: running, to: running - v });
+    running -= v;
+  }
+  if (otros > 0) {
+    segs.push({ label: 'Otros', kind: 'down', value: otros, from: running, to: running - otros });
+    running -= otros;
+  }
+  segs.push({ label: 'Saldo', kind: 'end', value: running, from: 0, to: running });
+  return segs;
+}
+
 /**
  * Monthly series for AreaTrendChart, in one currency, optionally scoped to a set of company
  * names (`companies` null/empty = todas). Oldest→newest, descarta meses sin movimiento.

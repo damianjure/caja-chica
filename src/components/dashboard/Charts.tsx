@@ -122,6 +122,59 @@ export function AreaTrendChart({
   );
 }
 
+/**
+ * Puente de caja (waterfall). Ingresos (start) → resta categorías (down) → Saldo (end).
+ * SVG puro + tokens. Segmentos de buildCashflowBridge (from/to por barra).
+ */
+export function WaterfallChart({
+  segments,
+  currency = 'ARS',
+}: {
+  segments: Array<{ label: string; kind: 'start' | 'down' | 'end'; value: number; from: number; to: number }>;
+  currency?: 'ARS' | 'USD';
+}) {
+  const n = segments.length;
+  if (n === 0) return null;
+
+  const W = 720, padL = 20, padR = 20, padT = 26, padB = 44;
+  const H = Math.min(260, Math.max(170, 120 + n * 14));
+  const vals = segments.flatMap((s) => [s.from, s.to]);
+  const maxV = Math.max(...vals, 1);
+  const minV = Math.min(...vals, 0);
+  const span = (maxV - minV) || 1;
+  const y = (v: number) => padT + (1 - (v - minV) / span) * (H - padT - padB);
+  const band = (W - padL - padR) / n;
+  const barW = Math.min(46, band * 0.62);
+  const cx = (i: number) => padL + (i + 0.5) * band;
+  const color = (s: { kind: string; to: number }) =>
+    s.kind === 'down' ? 'var(--chart-expense)' : (s.to >= 0 ? 'var(--chart-income)' : 'var(--chart-expense)');
+  const short = (l: string) => (l.length > 9 ? `${l.slice(0, 8)}…` : l);
+  const end = segments[n - 1];
+  const summary = `Puente de caja en ${currency}: de ingresos ${formatCompact(segments[0].to, currency)} a saldo ${formatCompact(end.to, currency)}.`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
+      <line x1={padL} y1={y(0)} x2={W - padR} y2={y(0)} stroke="var(--chart-baseline)" strokeWidth={1} strokeDasharray="3 4" />
+      {segments.map((s, i) => {
+        const top = y(Math.max(s.from, s.to));
+        const h = Math.max(2, Math.abs(y(s.from) - y(s.to)));
+        return (
+          <g key={`${s.label}-${i}`}>
+            <rect x={cx(i) - barW / 2} y={top} width={barW} height={h} rx={5} fill={color(s)} fillOpacity={s.kind === 'down' ? 0.9 : 1} />
+            {i < n - 1 && (
+              <line x1={cx(i) + barW / 2} y1={y(s.to)} x2={cx(i + 1) - barW / 2} y2={y(s.to)} stroke="var(--app-border-strong)" strokeWidth={1.5} strokeDasharray="2 3" />
+            )}
+            <text x={cx(i)} y={top - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--app-text-2)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {s.kind === 'down' ? '−' : ''}{formatCompact(s.kind === 'down' ? s.value : s.to, currency)}
+            </text>
+            <text x={cx(i)} y={H - 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--app-text-3)">{short(s.label)}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function HorizontalBarList({
   items,
   currency = 'ARS',

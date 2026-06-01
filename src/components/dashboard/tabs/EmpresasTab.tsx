@@ -1,9 +1,9 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Building2, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
 import type { Empresa, Movimiento } from '../../../services/api';
 import { ChartCard, HorizontalBarList } from '../Charts';
-import { SectionCard } from '../primitives';
+import { SectionCard, MetricCard } from '../primitives';
 import { topCategoriesByType, type TopCategory } from '../../../dashboard/summary';
 
 function DrillPanel({
@@ -87,6 +87,14 @@ export default function EmpresasTab({
   const topIngresos = topCategoriesByType(history, drillCompany, 'ingreso', 3);
   const drillLabel = drillCompany === 'all' ? 'todas las empresas' : drillCompany;
 
+  const totals = companySummaries.reduce(
+    (a, c) => ({ ing: a.ing + c.ingresosArs, gas: a.gas + c.gastosArs, sal: a.sal + c.saldoArs }),
+    { ing: 0, gas: 0, sal: 0 },
+  );
+  const salud = [...companySummaries].sort((a, b) => a.saldoArs - b.saldoArs);
+  const saludHint = (c: CompanySummaryView) =>
+    c.saldoArs < 0 ? 'saldo negativo' : c.saldoUsd < 0 ? 'ARS positivo · USD negativo' : 'saldo positivo';
+
   const handleCreate = async () => {
     const trimmed = newCompany.trim();
     if (!trimmed || creating) return;
@@ -101,6 +109,32 @@ export default function EmpresasTab({
 
   return (
     <div className="space-y-6">
+      {companySummaries.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard label="Empresas activas" value={String(companySummaries.length)} tone="neutral" icon={Building2} />
+            <MetricCard label="Ingresos totales" value={formatCurrency(totals.ing, 'ARS')} tone="success" icon={TrendingUp} />
+            <MetricCard label="Gastos totales" value={formatCurrency(totals.gas, 'ARS')} tone="danger" icon={TrendingDown} />
+            <MetricCard label="Utilidad total" value={formatCurrency(totals.sal, 'ARS')} tone={totals.sal >= 0 ? 'success' : 'danger'} critical={totals.sal < 0} icon={Wallet} />
+          </div>
+          <SectionCard title="Salud por empresa" description="Saldo ARS por unidad, las de mayor riesgo primero.">
+            <div className="space-y-2">
+              {salud.map((c) => (
+                <div key={c.name} className="flex items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2.5">
+                  <div>
+                    <div className="text-sm font-medium text-[var(--app-text-1)]">{c.name}</div>
+                    <div className="text-xs text-[var(--app-text-3)]">{c.movimientos} mov · {saludHint(c)}</div>
+                  </div>
+                  <div className={`shrink-0 text-sm font-semibold tabular-nums ${c.saldoArs >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>
+                    {formatCurrency(c.saldoArs, 'ARS')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </>
+      )}
+
       {canWriteData && (
         <SectionCard title="Agregar empresa" description="Registrá una empresa para poder editarla y borrarla.">
           <div className="flex flex-col gap-3 sm:flex-row">

@@ -2,7 +2,8 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
-import { SectionCard } from '../primitives';
+import { SectionCard, MetricCard } from '../primitives';
+import { buildRecurrentesSummary } from '../../../dashboard/recurrentesSummary';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 
 const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
@@ -347,8 +348,42 @@ export default function RecurrentesTab({
     }
   };
 
+  const summary = buildRecurrentesSummary(recurrentes);
+
   return (
     <div className="space-y-6">
+      {recurrentes.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard label="Recurrentes activos" value={String(summary.activos)} tone="neutral" />
+            <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
+            <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatAbsoluteDate(summary.proximaFechaIso) : '—'} tone="warning" />
+            <MetricCard label="Proyección 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} />
+          </div>
+          {summary.dias.some((d) => d.level !== 'none') && (
+            <SectionCard title="Calendario de impactos" description="Próximos 30 días — qué días vienen pesados.">
+              <div className="grid grid-cols-7 gap-1.5">
+                {summary.dias.map((d) => {
+                  const cls = d.level === 'high'
+                    ? 'bg-[color-mix(in_srgb,var(--chart-expense)_24%,var(--app-surface-2))] text-[var(--chart-expense)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))]'
+                    : d.level === 'med'
+                      ? 'bg-[color-mix(in_srgb,var(--app-amber-text)_20%,var(--app-surface-2))] text-[var(--app-amber-text)] border-[var(--app-border)]'
+                      : d.level === 'low'
+                        ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
+                        : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
+                  return (
+                    <div key={d.date} title={`${d.date}: ${formatMonto(d.total, 'ARS')}`} className={`grid aspect-square place-items-center rounded-md border text-xs ${cls}`}>
+                      {Number(d.date.slice(8, 10))}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs text-[var(--app-text-3)]">Más oscuro = más impacto ese día.</p>
+            </SectionCard>
+          )}
+        </>
+      )}
+
       <SectionCard
         title="Recurrentes"
         description="Gastos e ingresos automáticos"

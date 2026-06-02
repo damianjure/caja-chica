@@ -771,6 +771,30 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
+  async downloadBackup(): Promise<void> {
+    const session = supabase ? await supabase.auth.getSession() : null;
+    const accessToken = session?.data.session?.access_token;
+    const res = await fetch(`${API_BASE}/api/me/backup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      body: JSON.stringify({ destination: "local" }),
+    });
+    if (!res.ok) throw new ApiError(`Backup failed: ${res.status}`, res.status);
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition");
+    const name = cd?.match(/filename="(.+?)"/)?.[1] ?? "caja-chica-backup.zip";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  async backupToDrive(): Promise<{ ok: boolean; driveUrl: string }> {
+    return fetchApi("/api/me/backup", { method: "POST", body: JSON.stringify({ destination: "drive" }) });
+  },
+
   async listPersonas(filters?: PersonaFilters): Promise<PersonaRecord[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.set("status", filters.status);

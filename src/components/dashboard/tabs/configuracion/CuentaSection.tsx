@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   Download,
@@ -131,6 +132,34 @@ export function CuentaSection({
       await api.downloadMyExport();
     } catch {
       setError("No se pudo exportar los datos.");
+    }
+  };
+
+  const [showBackup, setShowBackup] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+
+  const handleBackup = () => {
+    // Sin Drive disponible → descarga directa, sin preguntar.
+    if (canConnectDrive) setShowBackup(true);
+    else void runBackup("local");
+  };
+
+  const runBackup = async (destination: "local" | "drive") => {
+    setBackingUp(true);
+    try {
+      if (destination === "drive") {
+        const { driveUrl } = await api.backupToDrive();
+        showNotice("Backup guardado en Drive.");
+        if (driveUrl) window.open(driveUrl, "_blank", "noopener");
+      } else {
+        await api.downloadBackup();
+        showNotice("Backup descargado.");
+      }
+      setShowBackup(false);
+    } catch {
+      setError("No se pudo generar el backup.");
+    } finally {
+      setBackingUp(false);
     }
   };
 
@@ -271,10 +300,19 @@ export function CuentaSection({
 
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
           >
             <Download className="w-4 h-4 text-[var(--app-text-3)]" />
             Exportar mis datos (JSON)
+          </button>
+
+          <button
+            onClick={handleBackup}
+            disabled={backingUp}
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors disabled:opacity-50"
+          >
+            {backingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-[var(--app-text-3)]" />}
+            Descargar backup (ZIP: movimientos, empresas, categorías)
           </button>
 
           {isNonOwnerMember && (
@@ -370,6 +408,51 @@ export function CuentaSection({
           }}
           onCancel={() => setShowDeleteConfirm(false)}
         />
+      )}
+
+      {showBackup && createPortal(
+        <div
+          className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
+          style={{ backgroundColor: "color-mix(in srgb, var(--app-text-1) 42%, transparent)" }}
+          onClick={() => !backingUp && setShowBackup(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="backup-modal-title"
+            className="anim-scale-in w-full max-w-[400px] rounded-2xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-md)] p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="backup-modal-title" className="text-base font-bold text-[var(--app-text-1)]">¿Dónde guardás el backup?</h2>
+            <p className="text-sm text-[var(--app-text-3)]">Un ZIP con tus movimientos, empresas y categorías.</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => void runBackup("drive")}
+                disabled={backingUp}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-bold text-[var(--app-strong-text)] active:scale-[0.97] disabled:opacity-50 transition"
+              >
+                {backingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Guardar en Drive
+              </button>
+              <button
+                onClick={() => void runBackup("local")}
+                disabled={backingUp}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-[var(--app-border-strong)] px-4 py-2.5 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-1)] disabled:opacity-50 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Descargar al dispositivo
+              </button>
+              <button
+                onClick={() => setShowBackup(false)}
+                disabled={backingUp}
+                className="text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-1)] mt-1 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </>
   );

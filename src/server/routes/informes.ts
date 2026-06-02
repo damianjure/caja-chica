@@ -1,5 +1,6 @@
 import express, { type Request, type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import { buildBackupZip, backupFileName } from "../backup.ts";
 
 export interface InformesDeps {
   supabase: SupabaseLike;
@@ -184,6 +185,70 @@ export function createInformesRouter(deps: InformesDeps) {
     } catch (err) {
       console.error("Report export error:", err);
       res.status(500).json({ error: "failed_to_save" });
+    }
+  });
+
+  // Backup manual: ZIP con 3 CSV (movimientos/empresas/categorias) del dashboard activo.
+  // destination: "local" → descarga el ZIP; "drive" → lo sube al Drive del dueño.
+  router.post("/api/me/backup", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      const destination = (req.body ?? {}).destination === "drive" ? "drive" : "local";
+
+      const scopeFilter = scope.dashboardId
+        ? { col: "dashboard_id", val: scope.dashboardId }
+        : { col: "owner_user_id", val: session.userId };
+
+      const [mov, emp, cat] = await Promise.all([
+        supabase.from("movimientos").select("*").eq(scopeFilter.col, scopeFilter.val).is("deleted_at", null),
+        supabase.from("empresas").select("*").eq(scopeFilter.col, scopeFilter.val).is("deleted_at", null),
+        supabase.from("categorias").select("*").eq(scopeFilter.col, scopeFilter.val),
+      ]);
+      if (mov.error || emp.error || cat.error) {
+        console.error("[backup] DB error:", mov.error ?? emp.error ?? cat.error);
+        return res.status(500).json({ error: "backup_failed" });
+      }
+
+      const zip = buildBackupZip({
+        movimientos: mov.data ?? [],
+        empresas: emp.data ?? [],
+        categorias: cat.data ?? [],
+      });
+      const fileName = backupFileName();
+
+      if (destination === "drive") {
+        if (!driveEnabled || !canExportDrive(scope)) {
+          return res.status(403).json({ error: "drive_forbidden" });
+        }
+        const driveOwnerUserId = await resolveDriveOwnerUserId(session, scope);
+        if (!driveOwnerUserId) return res.status(400).json({ error: "drive_not_connected" });
+        const { data: connData } = await supabase
+          .from("drive_connections")
+          .select("refresh_token_enc")
+          .eq("owner_user_id", driveOwnerUserId)
+          .limit(1);
+        const connection = connData?.[0];
+        if (!connection) return res.status(400).json({ error: "drive_not_connected" });
+        const refreshToken = decryptToken(connection.refresh_token_enc, tokenEncryptionKey!);
+        const uploaded = await uploadFileToDrive({
+          refreshToken,
+          clientId: googleDriveClientId!,
+          clientSecret: googleDriveClientSecret!,
+          redirectUri: googleDriveRedirectUri!,
+          fileName,
+          mimeType: "application/zip",
+          buffer: zip,
+        });
+        return res.json({ ok: true, destination: "drive", driveUrl: uploaded.webViewLink });
+      }
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.send(zip);
+    } catch (err) {
+      console.error("[backup] error:", err);
+      res.status(500).json({ error: "backup_failed" });
     }
   });
 

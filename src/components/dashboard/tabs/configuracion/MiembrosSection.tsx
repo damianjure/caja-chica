@@ -314,7 +314,7 @@ function TelegramCardSection({
           <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
             Enviá este comando. Lo pega en el chat con el bot. Válido 30 minutos.
           </p>
-          <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)]">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2">
             <code className="flex-1 text-xs font-mono text-[var(--app-text-1)] dark:text-[var(--app-text-1)] break-all">
               /start {freshToken.token}
             </code>
@@ -573,7 +573,7 @@ function PersonCard({
 
           {/* Viewers: locked permissions info */}
           {isViewer && (
-            <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-[var(--app-surface-2)] mb-4">
+            <div className="flex items-center gap-2 px-3 py-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] mb-4">
               <Lock className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" />
               <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
                 Este rol solo puede ver el dashboard. No tiene permisos extra configurables.

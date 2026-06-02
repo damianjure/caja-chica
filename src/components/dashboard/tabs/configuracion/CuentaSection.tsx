@@ -31,7 +31,7 @@ interface SessionRowProps {
 
 function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isCurrent ? "border-neutral-400 bg-[var(--app-surface-2)]" : "border-[var(--app-border)]"}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${isCurrent ? "border-[var(--app-border-strong)] bg-[var(--app-surface-1)]" : "border-[var(--app-border)]"}`}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-xs font-medium text-[var(--app-text-2)] truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
@@ -234,7 +234,7 @@ export function CuentaSection({
           </div>
         </div>
 
-        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 space-y-1">
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 space-y-1">
           <div className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-[var(--app-text-3)]">Rol de app:</span>

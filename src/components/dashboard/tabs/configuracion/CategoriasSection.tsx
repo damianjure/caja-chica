@@ -104,7 +104,7 @@ export function CategoriasSection() {
       ) : (
         <div className="space-y-2">
           {categorias.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2.5">
+            <div key={c.id} className="flex items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2.5">
               {editingId === c.id ? (
                 <>
                   <input

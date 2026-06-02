@@ -158,7 +158,7 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                       )}
 
                       {freshToken && (
-                        <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2">
+                        <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2">
                           <code className="flex-1 text-xs font-mono text-[var(--app-text-1)] break-all">/start {freshToken.token}</code>
                           <button
                             onClick={() => void handleCopyToken(freshToken.token)}

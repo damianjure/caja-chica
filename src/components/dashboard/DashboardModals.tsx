@@ -78,7 +78,7 @@ export function DashboardModals({
       {pendingItem && (
         <ModalShell title="Asignar empresa" onClose={() => { if (!isAssigning) onCancelPending(); }}>
           <div className="space-y-5">
-            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4">
+            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-4">
               <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Movimiento pendiente de empresa</div>
               <p className="mt-2 text-lg font-semibold text-[var(--app-text-1)]">¿A qué empresa cargamos esto?</p>
               <p className="mt-2 text-sm italic text-[var(--app-text-3)]">"{pendingItem.originalText}"</p>

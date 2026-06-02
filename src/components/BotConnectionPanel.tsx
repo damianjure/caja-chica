@@ -139,7 +139,7 @@ export function BotConnectionPanel() {
               <div className="text-sm text-[var(--app-text-2)]">
                 Si el deep link no abre bien, copiá este comando y mandáselo al bot:
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--app-surface-2)] px-4 py-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3">
                 <code className="text-sm text-[var(--app-text-1)] break-all">
                   {status.manualStartCode}
                 </code>

@@ -680,7 +680,7 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
       </ul>
 
       {orphan_users.length > 0 && (
-        <details className="border border-dashed border-[var(--app-border-strong)] rounded-xl px-4 py-3 bg-[var(--app-surface-2)]">
+        <details className="border border-dashed border-[var(--app-border-strong)] rounded-xl px-4 py-3 bg-[var(--app-surface-1)]">
           <summary className="cursor-pointer text-sm font-medium text-[var(--app-text-2)]">
             Cuentas sin dashboard ({orphan_users.length})
           </summary>

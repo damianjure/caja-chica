@@ -79,3 +79,5 @@ export const tierStrict = createRateLimiter({ windowMs: 60_000, max: 30, keyFn: 
 export const tierResend = createRateLimiter({ windowMs: 60_000, max: 10, keyFn: userOrIp });
 // Test-send: 3 per day per admin. Prevents abuse of the test-send endpoint.
 export const tierEmailTest = createRateLimiter({ windowMs: 24 * 60 * 60_000, max: 3, keyFn: userOrIp });
+// Reporte de problema: 3 por día por usuario. Evita spam al superadmin.
+export const tierSupportReport = createRateLimiter({ windowMs: 24 * 60 * 60_000, max: 3, keyFn: userOrIp });

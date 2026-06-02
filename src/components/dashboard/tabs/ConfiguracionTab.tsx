@@ -69,35 +69,38 @@ export default function ConfiguracionTab({
         <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
       )}
 
-      <PreferenciasSection
-        viewer={viewer}
-        companies={companies}
-        themePreference={themePreference}
-        onSetThemePreference={onSetThemePreference}
-        showNotice={showNotice}
-        setError={setError}
-      />
-
-      {canManage && (
-        <MiembrosSection
+      {/* Si el ancho da (xl+), las secciones se acomodan en 2 columnas compactas. */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <PreferenciasSection
           viewer={viewer}
-          data={data}
-          loading={loading}
-          onRefresh={onRefresh}
+          companies={companies}
+          themePreference={themePreference}
+          onSetThemePreference={onSetThemePreference}
           showNotice={showNotice}
           setError={setError}
         />
-      )}
 
-      {canManageCategorias && <CategoriasSection />}
+        {canManage && (
+          <MiembrosSection
+            viewer={viewer}
+            data={data}
+            loading={loading}
+            onRefresh={onRefresh}
+            showNotice={showNotice}
+            setError={setError}
+          />
+        )}
 
-      {/* Integraciones: Telegram + Drive agrupados. */}
-      {canManage && (
-        <>
-          <BotConnectionPanel />
-          {canConnectDrive && <DriveSection />}
-        </>
-      )}
+        {canManageCategorias && <CategoriasSection />}
+
+        {/* Integraciones: Telegram + Drive agrupados. */}
+        {canManage && (
+          <>
+            <BotConnectionPanel />
+            {canConnectDrive && <DriveSection />}
+          </>
+        )}
+      </div>
 
       <CuentaSection
         viewer={viewer}

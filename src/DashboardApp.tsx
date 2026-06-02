@@ -321,6 +321,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (item.type === 'empresa') { setActiveTab('empresas'); return; }
     if (item.type === 'categoria') { setActiveTab('movimientos'); return; }
   }, []);
+
+  const goToComposer = useCallback(() => {
+    setActiveTab('movimientos');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.getElementById('message-input');
+        el?.focus();
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+    });
+  }, []);
   // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -468,7 +479,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             {canWriteData && (
               <button
                 type="button"
-                onClick={() => setActiveTab('movimientos')}
+                onClick={goToComposer}
                 aria-label="Nueva operación"
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] px-3 py-1.5 text-sm font-bold text-[var(--app-strong-text)] active:scale-[0.97]"
               >
@@ -590,7 +601,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             {canWriteData && (
               <button
                 type="button"
-                onClick={() => setActiveTab('movimientos')}
+                onClick={goToComposer}
                 aria-label="Nueva operación"
                 className="inline-flex items-center gap-1.5 rounded-full bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] active:scale-[0.97]"
               >

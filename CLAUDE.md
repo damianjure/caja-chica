@@ -660,6 +660,16 @@ Branch `feat/dashboard-redesign`. Engram #750. **OJO: la North Star de DESIGN.md
 
 **Deploy 2026-06-01:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00060-sdh`** (por `PATCH /api/categorias`). Smoke: `/api/health` 200, `PATCH /api/categorias/:id` sin auth → 401. Tests 705 pass / 2 skip / 0 fail. tsc + build limpios. Sin SQL, sin env vars nuevas. **QA visual pendiente** (re-skin + features verificados por tsc/build, no en prod con ojos). Mockups: `mockups/app-full-redesign-v2.html`.
 
+### Cambios 2026-06-01 (rework Resumen v3 + píldora flotante mobile — deploy)
+
+Branch `feat/dashboard-redesign-v3` (commit `0d91c74`, PR #5). Engram #751. Mockup aprobado: `mockups/app-redesign-v3.html`. **Cambio solo frontend** (sin backend/SQL/env vars).
+
+- **Resumen**: sacadas "Etiquetas destacadas" y "Empresas / frentes más fuertes". "Insight del período" + nueva "Comparativa vs mes anterior" lado a lado (ingresos/gastos/utilidad con ▲▼ + delta %; color por semántica: ingresos/utilidad ↑=verde, gastos ↑=rojo). "Pulso mensual" ahora ancho completo (hero). "Flujo de caja" compacto en 2-col con "Gastos que más pesan" (antes full-width desbalanceado).
+- **`src/dashboard/summary.ts`**: nuevo helper puro `buildMonthlyComparison(summaries, currency)` → `{hasPrev, ingresos/gastos/utilidad:{deltaPct, current}}`. `deltaPct=null` si no hay mes previo o `prev=0`. +4 tests (`tests/monthlyComparison.test.ts`). Se eliminó `richData` (col-span) de ResumenTab.
+- **Mobile**: **píldora flotante** `fixed bottom-center` (`sm:hidden`, glass-chrome rounded-full compacta) con **Buscar** + **Nueva** (solo `canWriteData`). En mobile se ocultan el CTA "Nueva operación" y el botón de búsqueda del header (migran a la píldora). Web/desktop sin cambios.
+- **RecurrentesTab**: ya matcheaba el screenshot (4 KPIs + heatmap + lista), no se tocó.
+- **Deploy**: Frontend Firebase Hosting `caja-chica-bot.web.app`. Tests 712 pass / 2 skip / 0 fail. tsc + build limpios.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

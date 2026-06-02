@@ -57,13 +57,14 @@ export function usePwaInstall() {
       await deferred.userChoice;
       setDeferred(null);
       setShowBanner(false);
-    } else if (ios) {
+    } else {
+      // iOS o cualquier plataforma sin prompt nativo: mostrar instrucciones manuales
       setShowBanner(false);
       setShowIos(true);
     }
-  }, [deferred, ios]);
+  }, [deferred]);
 
-  return { available: !standalone && (!!deferred || ios), showBanner, dismissBanner, promptInstall, showIos, setShowIos, ios };
+  return { available: !standalone && (!!deferred || ios), standalone, showBanner, dismissBanner, promptInstall, showIos, setShowIos, ios };
 }
 
 export function PwaInstallBanner({ pwa }: { pwa: ReturnType<typeof usePwaInstall> }) {
@@ -114,11 +115,11 @@ export function PwaInstallBanner({ pwa }: { pwa: ReturnType<typeof usePwaInstall
             className="anim-scale-in w-full max-w-[400px] rounded-2xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] p-6 shadow-[var(--app-shadow-md)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-base font-bold text-[var(--app-text-1)]">Instalar en iPhone / iPad</h2>
+            <h2 className="text-base font-bold text-[var(--app-text-1)]">Instalar en el celular</h2>
             <ol className="mt-3 space-y-2 text-sm text-[var(--app-text-2)]">
-              <li className="flex items-center gap-2"><Share className="h-4 w-4 text-[var(--app-text-3)]" /> 1. Tocá el botón <strong>Compartir</strong> en Safari.</li>
-              <li>2. Elegí <strong>"Agregar a inicio"</strong>.</li>
-              <li>3. Confirmá <strong>"Agregar"</strong>. Listo.</li>
+              <li className="flex items-start gap-2"><Share className="h-4 w-4 mt-0.5 shrink-0 text-[var(--app-text-3)]" /><span><strong>iPhone/iPad:</strong> tocá <strong>Compartir</strong> en Safari, luego <strong>"Agregar a inicio"</strong>.</span></li>
+              <li>2. <strong>Android:</strong> tocá los 3 puntos del menú en Chrome, luego <strong>"Agregar a pantalla de inicio"</strong>.</li>
+              <li>3. Confirmá y listo — aparece como app en tu pantalla.</li>
             </ol>
             <button
               type="button"

@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { isBiometricSupported, isLockEnabled, enableLock, disableLock } from "../../../../lib/biometricLock";
 import {
   Check,
   Download,
+  Fingerprint,
   HardDrive,
   Loader2,
   LogOut,
@@ -101,6 +103,35 @@ export function CuentaSection({
 }: CuentaSectionProps) {
   const [displayName, setDisplayName] = useState(viewer.display_name ?? "");
   const [savingDisplayName, setSavingDisplayName] = useState(false);
+
+  const [bioSupported, setBioSupported] = useState(false);
+  const [bioEnabled, setBioEnabled] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void isBiometricSupported().then((ok) => { if (active) setBioSupported(ok); });
+    setBioEnabled(isLockEnabled(viewer.id));
+    return () => { active = false; };
+  }, [viewer.id]);
+
+  const toggleBiometric = async () => {
+    setBioBusy(true);
+    try {
+      if (bioEnabled) {
+        disableLock(viewer.id);
+        setBioEnabled(false);
+        showNotice("Bloqueo biométrico desactivado.");
+      } else {
+        const ok = await enableLock(viewer.id, viewer.email);
+        if (ok) { setBioEnabled(true); showNotice("Bloqueo biométrico activado en este dispositivo."); }
+        else setError("No se pudo activar el bloqueo biométrico.");
+      }
+    } catch {
+      setError("No se pudo activar el bloqueo biométrico.");
+    } finally {
+      setBioBusy(false);
+    }
+  };
 
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -277,6 +308,26 @@ export function CuentaSection({
         </div>
 
         <div className="space-y-3">
+          <button
+            onClick={() => bioSupported && void toggleBiometric()}
+            disabled={!bioSupported || bioBusy}
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            aria-pressed={bioEnabled}
+          >
+            {bioBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4 text-[var(--app-text-3)]" />}
+            <span className="flex-1 text-left">
+              Bloqueo biométrico
+              <span className="block text-xs text-[var(--app-text-3)]">
+                {!bioSupported ? "Tu dispositivo no lo soporta" : bioEnabled ? "Activado en este dispositivo" : "Desbloqueá la app con Face ID / huella"}
+              </span>
+            </span>
+            {bioSupported && (
+              <span className={`shrink-0 inline-flex h-5 w-9 items-center rounded-full p-0.5 transition-colors ${bioEnabled ? "bg-[var(--app-strong-surface)]" : "bg-[var(--app-surface-3)]"}`}>
+                <span className={`h-4 w-4 rounded-full bg-white transition-transform ${bioEnabled ? "translate-x-4" : ""}`} />
+              </span>
+            )}
+          </button>
+
           {canConnectDrive && onDisconnectDrive && (
             <button
               onClick={() => void onDisconnectDrive()}

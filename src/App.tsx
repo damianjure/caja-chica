@@ -7,6 +7,7 @@ import DashboardApp from "./DashboardApp";
 import { buildGoogleAuthRedirect, getInviteTokenFromUrl } from "./authRedirect";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { LoginScreen } from "./components/LoginScreen";
+import { BiometricGate } from "./components/BiometricGate";
 import type { ThemeMode, ThemePreference } from "./components/ThemeToggle";
 import { api, AppViewer } from "./services/api";
 import { supabase } from "./services/supabase";
@@ -210,14 +211,16 @@ export default function App() {
   return (
     <>
       <Toaster position="top-center" />
-      <DashboardApp
-        viewer={viewer}
-        onSignOut={handleSignOut}
-        theme={theme}
-        onToggleTheme={handleToggleTheme}
-        themePreference={themePreference}
-        onSetThemePreference={setThemePreference}
-      />
+      <BiometricGate userId={viewer.id} theme={theme} onToggleTheme={handleToggleTheme} onSignOut={() => void handleSignOut()}>
+        <DashboardApp
+          viewer={viewer}
+          onSignOut={handleSignOut}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          themePreference={themePreference}
+          onSetThemePreference={setThemePreference}
+        />
+      </BiometricGate>
     </>
   );
 }

@@ -672,6 +672,12 @@ export const api = {
     });
   },
 
+  async deleteUserAccount(userId: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/admin/users/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
   async getDashboardMembers(): Promise<DashboardMembersResponse> {
     return fetchApi("/api/dashboard/members");
   },

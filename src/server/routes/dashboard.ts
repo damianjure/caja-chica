@@ -362,6 +362,23 @@ export function createDashboardRouter(deps: DashboardDeps) {
         .eq("id", memberId)
         .eq("dashboard_id", dashboardId);
       if (error) return res.status(500).json({ error: error.message });
+
+      // Revocar también la invitación asociada para que salga de la lista de Equipo
+      // (la vista de personas se arma desde dashboard_invitations, no desde members).
+      const { data: targetUser } = await supabase
+        .from("app_users")
+        .select("email")
+        .eq("user_id", target[0].user_id)
+        .limit(1);
+      const targetEmail = targetUser?.[0]?.email;
+      if (targetEmail) {
+        await supabase
+          .from("dashboard_invitations")
+          .update({ status: "revoked" })
+          .eq("dashboard_id", dashboardId)
+          .eq("email", targetEmail);
+      }
+
       return res.json({ revoked: true });
     } catch (err) {
       console.error("POST /api/dashboard/members/:id/revoke:", err);

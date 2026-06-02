@@ -530,7 +530,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               onSignOut={() => void handleSignOut()}
               onOpenHelp={() => setIsHelpOpen(true)}
               onReplayTour={() => setIsTourOpen(true)}
-              onInstallApp={pwa.available ? () => void pwa.promptInstall() : undefined}
+              onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}
             />
           </div>
         </header>

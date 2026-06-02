@@ -426,7 +426,7 @@ export default function RecurrentesTab({
                         title={r.is_active ? 'Pausar' : 'Activar'}
                         aria-label={r.is_active ? 'Pausar recurrente' : 'Activar recurrente'}
                       >
-                        {r.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                        {r.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => setEditing(r)}
@@ -434,7 +434,7 @@ export default function RecurrentesTab({
                         title="Editar"
                         aria-label="Editar recurrente"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(r.id)}
@@ -443,7 +443,7 @@ export default function RecurrentesTab({
                         title="Eliminar"
                         aria-label="Eliminar recurrente"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   )}

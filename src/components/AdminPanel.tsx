@@ -382,6 +382,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         try {
           await api.deleteUserAccount(targetId);
           setUsers((prev) => prev.filter((u) => u.user_id !== targetId));
+          setSelectedUserId(null);
           setDetail(null);
           toast.success(`Cuenta de ${target} eliminada`);
           setPendingConfirm(null);

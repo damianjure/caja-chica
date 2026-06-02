@@ -494,7 +494,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <MaintenanceBanner status={maintenanceStatus} />
 
-        <header>
+        <header className="relative z-30">
           <div className="glass-chrome flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-sm font-bold">CC</span>
             <span id="app-title" className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>

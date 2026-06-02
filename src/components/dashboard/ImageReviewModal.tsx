@@ -34,8 +34,8 @@ function confidenceLabel(c: number): string {
 
 function confidenceColor(c: number): string {
   if (c >= 0.8) return "text-emerald-700 bg-emerald-50 border-emerald-200";
-  if (c >= 0.5) return "text-amber-700 bg-amber-50 border-amber-200";
-  return "text-red-700 bg-red-50 border-red-200";
+  if (c >= 0.5) return "text-amber-700 bg-[var(--app-amber-surface)] border-[var(--app-amber-border)]";
+  return "text-[var(--chart-expense)] bg-[var(--app-red-surface)] border-[var(--app-red-border)]";
 }
 
 export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: ImageReviewModalProps) {
@@ -160,7 +160,7 @@ export function ImageReviewModal({ extracted, isSaving, onSave, onCancel }: Imag
         <button
           onClick={handleSave}
           disabled={isSaving || !form.monto}
-          className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium disabled:opacity-50"
+          className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium disabled:opacity-50"
         >
           {isSaving ? "Guardando…" : "Guardar movimiento"}
         </button>

@@ -47,6 +47,12 @@ export default function ConfiguracionTab({
     viewer.role === "superadmin" ||
     selfMembership?.role === "owner";
 
+  // Espeja canManageCategoriasOp del backend: owner-like, o editor salvo manage_categorias:false explícito.
+  const canManageCategorias =
+    canManage ||
+    (selfMembership?.role === "editor" &&
+      (selfMembership?.permissions as { manage_categorias?: boolean } | undefined)?.manage_categorias !== false);
+
   const isNonOwnerMember = selfMembership !== null && selfMembership.role !== "owner";
 
   const showNotice = (msg: string) => {
@@ -57,10 +63,10 @@ export default function ConfiguracionTab({
   return (
     <div className="stack-relaxed">
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-sm text-[var(--chart-expense)]">{error}</div>
       )}
       {notice && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
+        <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
       )}
 
       <PreferenciasSection
@@ -73,18 +79,23 @@ export default function ConfiguracionTab({
       />
 
       {canManage && (
+        <MiembrosSection
+          viewer={viewer}
+          data={data}
+          loading={loading}
+          onRefresh={onRefresh}
+          showNotice={showNotice}
+          setError={setError}
+        />
+      )}
+
+      {canManageCategorias && <CategoriasSection />}
+
+      {/* Integraciones: Telegram + Drive agrupados. */}
+      {canManage && (
         <>
-          <MiembrosSection
-            viewer={viewer}
-            data={data}
-            loading={loading}
-            onRefresh={onRefresh}
-            showNotice={showNotice}
-            setError={setError}
-          />
-          <CategoriasSection />
-          {canConnectDrive && <DriveSection />}
           <BotConnectionPanel />
+          {canConnectDrive && <DriveSection />}
         </>
       )}
 

@@ -35,7 +35,7 @@ function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-xs font-medium text-[var(--app-text-2)] truncate">{s.user_agent ?? "Dispositivo desconocido"}</div>
           {isCurrent && (
-            <span className="inline-flex items-center rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-semibold text-white shrink-0">
+            <span className="inline-flex items-center rounded-full bg-[var(--app-strong-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--app-strong-text)] shrink-0">
               Esta sesión
             </span>
           )}
@@ -50,7 +50,7 @@ function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
         disabled={revoking || isCurrent}
         aria-label={isCurrent ? "No se puede cerrar la sesión activa" : "Cerrar esta sesión"}
         title={isCurrent ? "Usá Cerrar sesión para salir" : "Cerrar sesión"}
-        className="p-1.5 rounded-xl border border-red-200 text-red-500 hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        className="p-1.5 rounded-xl border border-[var(--app-red-border)] text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
       >
         {revoking ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
       </button>
@@ -59,14 +59,14 @@ function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
 }
 
 function statusDot(status: string) {
-  if (status === "active") return <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />;
+  if (status === "active") return <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--app-green-surface)]0" />;
   if (status === "pending") return <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />;
   return <span className="inline-block w-1.5 h-1.5 rounded-full bg-neutral-300" />;
 }
 
 function roleBadge(role: string) {
   const styles: Record<string, string> = {
-    owner: "bg-neutral-900 text-white",
+    owner: "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
     editor: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200",
     viewer: "bg-[var(--app-surface-2)] text-[var(--app-text-2)]",
   };
@@ -196,7 +196,7 @@ export function CuentaSection({
     <>
       <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-neutral-900 text-white">
+          <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
             <Settings className="w-4 h-4" />
           </div>
           <div>
@@ -238,7 +238,7 @@ export function CuentaSection({
               type="button"
               onClick={() => void handleSaveDisplayName()}
               disabled={savingDisplayName}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
             >
               {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Guardar
@@ -262,7 +262,7 @@ export function CuentaSection({
             <button
               onClick={() => void handlePurgeDemo()}
               disabled={purgingDemo}
-              className="w-full flex items-center gap-3 rounded-xl border border-amber-200 px-4 py-3 text-sm font-medium text-amber-700 hover:border-amber-400 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-amber-border)] px-4 py-3 text-sm font-medium text-amber-700 hover:border-amber-400 transition-colors disabled:opacity-50"
             >
               {purgingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Limpiar datos de ejemplo
@@ -281,7 +281,7 @@ export function CuentaSection({
             <button
               onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingDashboard}
-              className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors disabled:opacity-50"
             >
               {leavingDashboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
               Abandonar este dashboard
@@ -335,7 +335,7 @@ export function CuentaSection({
         <div className="border-t border-red-100 pt-4">
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:border-red-400 transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
             Borrar mi cuenta

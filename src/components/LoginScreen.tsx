@@ -40,7 +40,7 @@ export function LoginScreen({
         <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-neutral-900 text-white rounded-xl">
+              <div className="p-2.5 bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] rounded-xl">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>

@@ -44,3 +44,10 @@ export function buildGestionarKeyboard() {
     .text("🗑️ Borrar empresa", "del_emp").row()
     .text("← Volver", "menu");
 }
+
+// Confirm/edit card for a slot-prefilled spoken/typed command (informe / recurrente / editar).
+// Slots live in the IntentConfirm session, not in callback_data.
+export function buildIntentConfirmKeyboard() {
+  return new InlineKeyboard()
+    .text("✅ Confirmar", "ic:ok").text("✏️ Editar", "ic:edit");
+}

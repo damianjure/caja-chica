@@ -3,7 +3,11 @@ import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram, sendTyping } from "../utils.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
-import { setInputSession } from "../sessions.ts";
+import { setInputSession, getIntentConfirmSession, clearIntentConfirmSession } from "../sessions.ts";
+import { buildGestionarKeyboard } from "../keyboards.ts";
+import { normalizeReportSlots, normalizeRecurrenteSlots, normalizeEditSlots } from "../intentSlots.ts";
+import { runReportFromSlots, startReportFlow } from "./reports.ts";
+import { createRecurrenteFromBot, startRecurringFlow } from "./recurring.ts";
 import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, getTopEmpresasForDashboard } from "../../server/telegramCompanyResolution.ts";
 import { resolveTelegramCategory, getTopCategoriasForDashboard } from "../../server/telegramCategoryResolution.ts";
@@ -28,11 +32,60 @@ import {
   resolvePendingTelegramMovement,
   getSaldosText,
   buildPendingCompanyKeyboardLocal,
+  applyEditLast,
 } from "./movements.ts";
 import { canUndoMovement, computeQuickBalance } from "../quickActions.ts";
 
 export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   const { supabase, genAI, genAI2 = null, botToken } = deps;
+
+  // Confirm a slot-prefilled spoken/typed command (informe / recurrente / editar).
+  bot.callbackQuery("ic:ok", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+    const session = getIntentConfirmSession(chatId);
+    if (!session) { await ctx.reply("Esa acción venció. Pedímela de nuevo."); return; }
+    clearIntentConfirmSession(chatId);
+
+    if (session.intent === "informe") {
+      const linked = await requireTelegramCan(supabase, ctx, "read");
+      if (!linked) return;
+      await runReportFromSlots(supabase, ctx, linked, normalizeReportSlots(session.rawSlots).value);
+      return;
+    }
+
+    // recurrente_nuevo / editar_ultimo write — gate write + maintenance.
+    if (!await assertBotWritable(ctx)) return;
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+
+    if (session.intent === "recurrente_nuevo") {
+      const ok = await createRecurrenteFromBot(supabase, ctx, linked, normalizeRecurrenteSlots(session.rawSlots).value);
+      await ctx.reply(ok ? "✅ Recurrente guardado." : "❌ No pude guardar el recurrente. Intentá de nuevo.");
+      return;
+    }
+    if (session.intent === "editar_ultimo") {
+      await applyEditLast(supabase, ctx, linked, normalizeEditSlots(session.rawSlots).value);
+      return;
+    }
+  });
+
+  // Edit a slot-prefilled command → drop into the matching guided flow.
+  bot.callbackQuery("ic:edit", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+    const session = getIntentConfirmSession(chatId);
+    if (!session) { await ctx.reply("Esa acción venció. Pedímela de nuevo."); return; }
+    clearIntentConfirmSession(chatId);
+    if (session.intent === "informe") { await startReportFlow(supabase, ctx); return; }
+    if (session.intent === "recurrente_nuevo") { await startRecurringFlow(supabase, ctx); return; }
+    if (session.intent === "editar_ultimo") {
+      await ctx.reply("✏️ Editá lo último:", { reply_markup: buildGestionarKeyboard() });
+      return;
+    }
+  });
 
   bot.callbackQuery("del_last", async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -636,9 +689,10 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       }
     }
 
-    if (!await assertBotWritable(ctx)) return;
+    // No up-front maintenance gate here — read intents (saldos/buscar/listar) must work
+    // during maintenance. Write intents are gated downstream in processTelegramFinancialText.
     sendTyping(ctx);
-    const processingMsg = await ctx.reply("⏳ Procesando transacción...");
+    const processingMsg = await ctx.reply("⏳ Procesando...");
     try {
       await processTelegramFinancialText(supabase, genAI, genAI2, ctx, {
         text,
@@ -651,11 +705,12 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
 
   // Audio handlers
   bot.on("message:voice", async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    // Gate is READ: voice can carry read intents (saldos/buscar). Write intents are
+    // gated downstream in processTelegramFinancialText (ensureWritable).
+    const linked = await requireTelegramCan(supabase, ctx, "read");
     if (!linked) return;
     sendTyping(ctx);
-    const processingMsg = await ctx.reply("⏳ Procesando transacción...");
+    const processingMsg = await ctx.reply("⏳ Procesando...");
     try {
       const file = await ctx.getFile();
       if (!file?.file_path) {
@@ -688,11 +743,11 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   });
 
   bot.on("message:audio", async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    // Gate is READ — see message:voice handler. Write gating happens downstream.
+    const linked = await requireTelegramCan(supabase, ctx, "read");
     if (!linked) return;
     sendTyping(ctx);
-    const processingMsg = await ctx.reply("⏳ Procesando transacción...");
+    const processingMsg = await ctx.reply("⏳ Procesando...");
     try {
       const file = await ctx.getFile();
       if (!file?.file_path) {

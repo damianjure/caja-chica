@@ -128,7 +128,7 @@ SDD `crons-to-cloud-scheduler` archivado (engram #639–#646: explore → propos
 
 **Pendiente próximas 24h:**
 - Verificar logs Cloud Scheduler — confirmar `crons-recurrentes` corre 08:00 UTC y `crons-invite-reminders` corre 10:00 UTC sin errores
-- Crear PR desde branch `refactor/crons-to-cloud-scheduler` (gh CLI no autenticado localmente)
+- Crear PR desde branch `refactor/crons-to-cloud-scheduler`
 
 ### Cambios 2026-05-18 (onboarding por invitación + modo demo — commits `df3ad5c`, `9310cf6`, `44703ad`)
 - **`onboarding_demo_phase.sql`** — pendiente aplicar en prod:
@@ -578,7 +578,7 @@ Sesión grande post-review. 2 fixes + 4 cambios SDD, todo deployado a prod. Test
 - Frontend Firebase Hosting `caja-chica-bot.web.app` (AdminPanel con EmailSection/EmailLogView).
 - Migration `email_management_phase.sql` ✔ prod Supabase `dezgusgxotihxkfkxico`.
 
-**Pendiente post-deploy**: mergear ~8 PRs en GitHub (gh no auth local, branches en origin); rotar keys Brevo + `GEMINI_API_KEY_2`; archive formal SDD A/B (verificados inline + por tests). Nota: el branch `refactor/createapp-decomposition` tiene su propio commit de doc 2026-05-29 que solapa con esta sección — al mergear PRs, esta sección de local main es la canónica.
+**Pendiente post-deploy**: mergear ~8 PRs en GitHub (branches en origin); rotar keys Brevo + `GEMINI_API_KEY_2`; archive formal SDD A/B (verificados inline + por tests). Nota: el branch `refactor/createapp-decomposition` tiene su propio commit de doc 2026-05-29 que solapa con esta sección — al mergear PRs, esta sección de local main es la canónica.
 
 ### Cambios 2026-05-30 (8 features batch — SDD automático + deploy)
 
@@ -599,6 +599,66 @@ Sesión grande: 8 cambios cohesivos en modo SDD automático (engram artifacts, c
 - Backend Cloud Run rev **`caja-chica-00051-2x6`** (image rebuild, env vars + min/max-instances preservadas). Smoke: `/api/health` 200, `/api/maintenance/status` 200, `POST /api/extract-image` sin auth → **401** (código nuevo vivo + auth-before-parse confirmado).
 - Sin SQL nuevo. Sin env vars nuevas. Engram #722–#728. Mockups HTML en `mockups/` (iconos dashboard + flujos bot).
 - Endpoints nuevos: `POST /api/extract-image`. Comando bot nuevo: `/recurrentes`. Inline mode (requiere BotFather, ver Pendiente).
+
+### Cambios 2026-05-31 (bot voice/text intent router — deploy)
+
+Router de intención sobre voz Y texto libre del bot: frases habladas/escritas disparan acciones del menú, no solo dictado de movimiento. **1 sola llamada a Gemini** (el prompt de extracción ahora devuelve `intent` + `confidence` + `slots`; cero call extra). Branch `feat/bot-voice-intents` (commit `2b22192`, PR pendiente de merge — gh no auth local).
+
+**Arquitectura:**
+- `src/bot/voiceIntent.ts` (puro) — enum `BotIntent`, `parseIntentResult`, `resolveIntentAction` (decisión 3-vías: execute / confirm / clarify), `INTENT_CONFIRM_THRESHOLD=0.6`, `LEGACY_INTENT_MAP` (REGISTRAR→movimiento, GESTIONAR_EMPRESA→crear_empresa, ELIMINAR_MOVIMIENTO→borrar_ultimo).
+- `src/bot/intentSlots.ts` (puro) — `normalizeReportSlots`/`normalizeRecurrenteSlots`/`normalizeEditSlots` + echos. es-AR money ("10.000"→10000), gasto→egreso, dólares→USD, año→range.
+- `src/server/gemini.ts` — `SYSTEM_PROMPT` reescrito (vocabulario completo + confidence + slots por intención). `parseGeminiJsonResponse` afloja (intent ausente → REGISTRAR). Regla negativa: **borrar empresa/categoría NO soportado por voz → `desconocido`**.
+- `processTelegramFinancialText` (movements.ts) — top gate ahora `read` (viewers leen por voz); `ensureWritable()` re-chequea write+mantenimiento por-intent; switch a handlers existentes. Inyecta `HOY ES <fecha>` al prompt (resuelve "mayo" → `2026-MM`).
+- Estado entre mensajes: **`pendingIntentConfirmSessions`** Map (TTL 5min + sweep, en `clearChatSessions`). **Single-instance invariant intacto** (#18). Slots en sesión, no en callback_data.
+- Callbacks `ic:ok` / `ic:edit` (movements-callbacks.ts).
+
+**Intents cableados:** movimiento, crear_empresa, crear_categoria, saldos, buscar, listar_empresas, listar_categorias, listar_recurrentes, abrir_dashboard, borrar_ultimo (→ confirm card, antes muerto). informe + recurrente_nuevo + editar_ultimo → **tarjeta eco [Confirmar][Editar]** (Confirmar=ejecuta vía `runReportFromSlots`/`createRecurrenteFromBot`/`applyEditLast`; Editar=flujo guiado; slots incompletos → flujo). clarify → eco + teclado del menú. borrar_empresa excluido a propósito.
+
+**Smoke test Gemini en vivo (gate pre-deploy):** 21 frases. B1 movimientos todos `movimiento` conf 0.80–1.00 (sin falso clarify, jerga ok). 2 bugs cazados+fixeados en vivo: (1) `informe de mayo`→`mes:"YYYY-05"` → fix inyección de fecha; (2) `borrá la empresa Delta`→a veces `crear_empresa` → fix regla negativa (3/3 estable `desconocido`).
+
+**Deploy 2026-05-31:** Backend Cloud Run rev **`caja-chica-00057-xfp`** (image rebuild, env vars + min=0/max=1 preservadas). Smoke prod: `/api/health` 200, `/api/maintenance/status` 200. Sin SQL nuevo, sin env vars nuevas. Tests 681 pass / 2 skip / 0 fail. Engram #748.
+
+**Limitaciones conocidas:** (1) `editar_ultimo` edita el ÚLTIMO movimiento de cualquier tipo; `valor_anterior` se captura/muestra pero NO se usa para desambiguar cuál editar. (2) `informe` slot-prefill sin alcance por empresa (siempre todas). (3) recurrente sin empresa ni día del mes. (4) "Editar" en la tarjeta abre el flujo desde cero (no pre-rellena). (5) exec functions sin unit test (I/O; los normalizadores puros sí, +46 tests).
+
+### Cambios 2026-05-31 (rediseño dashboard + cleanup comandos — deploy)
+
+Branch `feat/dashboard-redesign` (commit `8bb0c57`, stackeada sobre `feat/bot-voice-intents`; PR pendiente de merge). Engram #749.
+
+- **Gráfico A (Pulso mensual)**: `Charts.tsx` nuevo `AreaTrendChart` (área suave ingreso/gasto + línea de saldo fuerte, SVG puro + tokens `--chart-*`, sin dep de charts) reemplaza `TrendBars` (eliminado). `ResumenTab`: las 2 tarjetas ARS/USD → **1 tarjeta con toggle ARS/USD** + **leyenda interactiva** (chips Ingresos/Gastos/Saldo clickeables = mostrar/ocultar serie; el eje Y se reajusta a las series visibles vía prop `show: ChartSeriesVisibility`).
+- **Config**: `ConfiguracionTab` orden Equipo → **Telegram** → Categorías → Drive.
+- **Header**: `DashboardApp` app-bar con más peso (border-strong, shadow-md, +alto, monograma 36px + título 18px).
+- **Agregar categorías**: nuevo `POST /api/categorias` en `routes/categorias.ts` (requireSession + canWriteToScope + canManageCategoriasOp, dedupe case-insensitive en scope, ownership `dashboardId ? {owner_user_id,dashboard_id} : {owner_user_id}`, cap 60). `api.createCategoria`. `CategoriasSection` con form de alta. Strict TDD: 3 tests en `api.test.ts` (create, dedupe, reject vacío) RED→GREEN.
+- **Cleanup comandos bot** (opción "solo unificar"): `BOT_COMMANDS` eliminado de `menu.ts`; `FULL_COMMANDS` (quickActions.ts) es la **fuente única** (registerBotCommands lo consume; setScopedCommands sigue narrowing por rol). Mata el drift de doble lista. Handlers `agregar*`/`borrar*` intactos (decisión del dueño: no tocar).
+
+**Deploy 2026-05-31:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00058-92k`** (por `POST /api/categorias`). Smoke prod: `/api/health` 200, `POST /api/categorias` sin auth → 401. Sin SQL nuevo, sin env vars nuevas. Tests 684 pass / 2 skip / 0 fail. tsc + build limpios.
+
+**Pendiente QA visual**: gráfico A + header verificados por tsc/build + mockup (`mockups/redesign-preview.html`), no en prod con ojos.
+
+### Cambios 2026-05-31 (Pulso por empresa + tamaño dinámico + layout + fixes Codex — deploy)
+
+Branch `feat/dashboard-redesign` (commit `7f6621e`, stackeada sobre voz). Engram #749.
+
+- **Pulso por empresa**: chips multi-toggle (mismo patrón que series) filtran la serie mensual. Helper puro `buildMonthlyChartData(history, currency, companies?)` en `dashboard/summary.ts` (+6 tests). "Todas" o subconjunto, guard contra apagar la última.
+- **Tamaño dinámico**: `AreaTrendChart` alto `clamp(150, 240, 110 + n*22)` (compacto con pocos meses).
+- **Layout adaptativo**: `ResumenTab` grid `lg:grid-cols-2`; Pulso `col-span-2` (full) con ≥4 meses, si no compacto al lado de "Gastos que más pesan".
+- **Fixes Codex adversarial**: `POST /api/categorias` catch `23505` + refetch (race) + dedupe `select("*")` (contrato Categoria); no apagar última serie + aria solo visibles; editor con `manage_categorias` ve Categorías (ConfiguracionTab); +3 tests auth (dashboard insert / viewer 403 / editor sin permiso 403).
+
+**Deploy 2026-05-31:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00059-59b`**. Tests 693 pass / 2 skip / 0 fail. Sin SQL, sin env vars nuevas. PRs (voz + rediseño) pendientes de merge en GitHub.
+
+### Cambios 2026-06-01 (Design System v2 "Petróleo y Terracota" + 8 features — deploy)
+
+Branch `feat/dashboard-redesign`. Engram #750. **OJO: la North Star de DESIGN.md cambió** de "Bosque y Niebla" (rechazaba glass/gradiente) a **"Petróleo y Terracota"** con glass tempered. DESIGN.md es la fuente de verdad.
+
+- **Re-skin v2** (Fase 0 DESIGN.md + Fase 1 + 1.5): tokens `--app-*` en hex — light "Terracota cálida" (off-white tibio, canvas `#F1E8DE`), dark "Petróleo Mint" (`#07100D`, acento mint `#5EE9B5`). `--app-strong-surface` = mint (marca/acción primaria/tab activo). Gradiente radial solo en `body`. `.glass-chrome` (backdrop-blur) **solo** en header + barra de tabs; tarjetas de datos sólidas. Botones primarios `bg-neutral-900`→mint; montos/banners/spinners → tokens. Radios SIN cambio.
+- **Header**: sin título de página; izq = brand + **Nueva operación** (CTA mint → Movimientos); der = Buscar · tema · rol · avatar.
+- **Resumen**: Flujo de caja (waterfall `buildCashflowBridge`, +6 tests) · callout Atención + KPI Utilidad crítico (neto<0) · Insight del período · Etiquetas destacadas. `MetricCard` +props `sub`/`critical`, fix `bg-white`.
+- **Recurrentes**: 4 KPIs + calendario heatmap (`buildRecurrentesSummary`, +6 tests, reusa `expandOccurrences`).
+- **Empresas**: 4 KPIs agregados + lista Salud por empresa.
+- **Movimientos**: filtros mes/empresa/moneda + iconos editar/copiar/eliminar (ya existían).
+- **Categorías**: `PATCH /api/categorias/:id` (rename + dedupe 409 + **cascade a `movimientos.categoria` en scope**, +3 tests) · `api.updateCategoria` · edición inline en `CategoriasSection`.
+- **Config**: Telegram (BotConnectionPanel) agrupado con Drive como "Integraciones".
+
+**Deploy 2026-06-01:** Frontend Firebase Hosting `caja-chica-bot.web.app`. Backend Cloud Run rev **`caja-chica-00060-sdh`** (por `PATCH /api/categorias`). Smoke: `/api/health` 200, `PATCH /api/categorias/:id` sin auth → 401. Tests 705 pass / 2 skip / 0 fail. tsc + build limpios. Sin SQL, sin env vars nuevas. **QA visual pendiente** (re-skin + features verificados por tsc/build, no en prod con ojos). Mockups: `mockups/app-full-redesign-v2.html`.
 
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
@@ -1371,4 +1431,4 @@ Service account: `cron-invoker@caja-chica-bot.iam.gserviceaccount.com` (`roles/r
 
 ## 22. Prompt correcto para retomar
 
-> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run rev `caja-chica-00045-dpj` con `min-instances=0`. Tests: 343/345 (0 fail). Commit HEAD: `cbb6db1` (branch `refactor/crons-to-cloud-scheduler`). Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último trabajo: SDD `crons-to-cloud-scheduler` — 4 crons in-process migrados a HTTP endpoints (`/api/crons/*` con `X-Cron-Secret` + `timingSafeEqual` + fail-closed) gatillados por 4 Cloud Scheduler jobs en us-west2; `node-cron` removido; `min-instances=0` deployado (ahorro ~$58/mes). Secret backup en Secret Manager `caja-chica-cron-secret v1`. Pendiente: crear PR (gh no autenticado), verificar logs Scheduler próximas 24h (08h y 10h UTC), test envío real email Brevo, validar wizard onboarding end-to-end, refactor createApp.
+> Leé `/Users/damian/Dev/Boteado/CLAUDE.md`. Frontend en `caja-chica-bot.web.app`, backend en Cloud Run rev `caja-chica-00045-dpj` con `min-instances=0`. Tests: 343/345 (0 fail). Commit HEAD: `cbb6db1` (branch `refactor/crons-to-cloud-scheduler`). Migrations prod: `onboarding_demo_phase.sql` + `maintenance_mode_phase.sql` ✔ aplicadas. Email vía Brevo (`hola@damianjure.com`). Último trabajo: SDD `crons-to-cloud-scheduler` — 4 crons in-process migrados a HTTP endpoints (`/api/crons/*` con `X-Cron-Secret` + `timingSafeEqual` + fail-closed) gatillados por 4 Cloud Scheduler jobs en us-west2; `node-cron` removido; `min-instances=0` deployado (ahorro ~$58/mes). Secret backup en Secret Manager `caja-chica-cron-secret v1`. Pendiente: crear PR, verificar logs Scheduler próximas 24h (08h y 10h UTC), test envío real email Brevo, validar wizard onboarding end-to-end, refactor createApp.

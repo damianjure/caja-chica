@@ -19,6 +19,7 @@ import {
   buildDownloadKeyboard,
   buildTipoKeyboard,
 } from "../keyboards.ts";
+import type { ReportSlots } from "../intentSlots.ts";
 
 async function resolveTelegramDriveOwnerUserId(supabase: BotDeps["supabase"], linked: TelegramLinkRecord): Promise<string | null> {
   if (!linked.dashboardId) return linked.ownerUserId ?? linked.userId;
@@ -141,6 +142,50 @@ async function generateAndSendReport(
   }
 }
 
+/**
+ * Generate + send a report directly from slots understood by the voice/text intent router.
+ * Builds a complete ReportSession (defaults: today for day/week, current month, year→range)
+ * and runs generation, skipping the guided flow. Used after the user confirms the echo card.
+ */
+export async function runReportFromSlots(
+  supabase: BotDeps["supabase"],
+  ctx: Context,
+  linked: TelegramLinkRecord,
+  s: ReportSlots,
+  today: Date = new Date(),
+) {
+  const todayIso = today.toISOString().slice(0, 10);
+  const currentMonth = todayIso.slice(0, 7);
+  const session: ReportSession = {
+    step: "download",
+    period: "month",
+    selectedCompanyIdx: new Set<number>(),
+    linked,
+    expiresAt: Date.now() + 15 * 60_000,
+  };
+  if (s.period === "day") {
+    session.period = "day";
+    session.anchorDate = s.anchorDate ?? todayIso;
+  } else if (s.period === "week") {
+    session.period = "week";
+    session.anchorDate = s.anchorDate ?? todayIso;
+  } else if (s.period === "month") {
+    session.period = "month";
+    session.month = s.month ?? currentMonth;
+  } else if (s.period === "year") {
+    const y = s.year ?? today.getFullYear();
+    session.period = "range";
+    session.from = `${y}-01-01`;
+    session.to = `${y}-12-31`;
+  } else if (s.period === "range") {
+    session.period = "range";
+    session.from = s.from ?? undefined;
+    session.to = s.to ?? undefined;
+  }
+  if (s.tipo !== "all") session.tipo = s.tipo;
+  await generateAndSendReport(supabase, ctx, session, s.format, s.destination);
+}
+
 export async function advanceToAlcance(supabase: BotDeps["supabase"], ctx: Context, session: ReportSession) {
   const linked = session.linked;
   const { data: companies } = await applyTelegramDataScope(
@@ -159,7 +204,7 @@ export async function advanceToAlcance(supabase: BotDeps["supabase"], ctx: Conte
   });
 }
 
-async function startReportFlow(supabase: BotDeps["supabase"], ctx: Context) {
+export async function startReportFlow(supabase: BotDeps["supabase"], ctx: Context) {
   const linked = await requireLinkedAccount(supabase, ctx);
   if (!linked) return;
   clearReportSession(ctx.chat.id);

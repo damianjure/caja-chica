@@ -51,7 +51,7 @@ function MovementCardsImpl({
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-md ${item.tipo === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className={`p-2 rounded-md ${item.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)] text-[var(--chart-income)]' : 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]'}`}>
                     {item.tipo === 'ingreso' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
                   <div>
@@ -70,10 +70,10 @@ function MovementCardsImpl({
                     </button>
                   )}
                   <button onClick={() => onCopy(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
-                    {copiedId === item.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    {copiedId === item.id ? <Check className="w-4 h-4 text-[var(--chart-income)]" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-[var(--app-text-3)] hover:text-red-600 active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
+                    <button onClick={() => onDelete(item.id)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--chart-expense)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}

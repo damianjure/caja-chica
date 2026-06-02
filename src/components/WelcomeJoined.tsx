@@ -39,7 +39,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         aria-modal="true"
         aria-labelledby="joined-title"
         tabIndex={-1}
-        className="anim-scale-in bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
+        className="anim-scale-in bg-white dark:bg-[var(--app-strong-surface)] rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
       >
         {/* Skip button */}
         <button
@@ -53,7 +53,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         {/* Step 1: Welcome */}
         {step === 'welcome' && (
           <div className="p-8 flex flex-col items-center text-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-neutral-900 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-[var(--app-strong-surface)] flex items-center justify-center">
               <Users className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -70,7 +70,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             {telegramDeepLink ? (
               <button
                 onClick={() => setStep('telegram')}
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150"
+                className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-6 rounded-md transition duration-150"
               >
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
@@ -78,7 +78,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
               <button
                 onClick={finish}
                 disabled={finishing}
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-6 rounded-md transition duration-150 disabled:opacity-50"
               >
                 {finishing ? 'Cargando...' : 'Ir al dashboard'}
               </button>
@@ -90,7 +90,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
         {step === 'telegram' && (
           <div className="p-8 flex flex-col gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[var(--app-strong-surface)] flex items-center justify-center flex-shrink-0">
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -116,7 +116,7 @@ export default function WelcomeJoined({ viewer, telegramDeepLink, onFinish }: We
             <button
               onClick={finish}
               disabled={finishing}
-              className="w-full flex items-center justify-center gap-2 bg-neutral-900 border border-neutral-900 hover:border-[var(--app-text-2)] active:scale-[0.97] text-white font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
             >
               {finishing ? 'Cargando...' : 'Ir al dashboard'}
             </button>

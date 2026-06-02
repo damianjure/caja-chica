@@ -1,21 +1,26 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
-export function MetricCard({ label, value, tone = 'neutral', icon: Icon }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon }) {
+export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, critical }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; sub?: string; critical?: boolean }) {
   const toneClass = {
     neutral: 'text-[var(--app-text-1)]',
-    success: 'text-green-600',
-    danger: 'text-red-600',
-    warning: 'text-amber-600',
+    success: 'text-[var(--chart-income)]',
+    danger: 'text-[var(--chart-expense)]',
+    warning: 'text-[var(--app-amber-text)]',
   }[tone];
 
+  const cardClass = critical
+    ? 'border-[color-mix(in_srgb,var(--chart-expense)_50%,var(--app-border))] bg-[color-mix(in_srgb,var(--chart-expense)_10%,var(--app-surface-1))]'
+    : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
+
   return (
-    <div className="bg-white px-5 py-4 rounded-xl border border-[var(--app-border)] shadow-[var(--app-shadow-sm)]">
+    <div className={`px-5 py-4 rounded-xl border shadow-[var(--app-shadow-sm)] ${cardClass}`}>
       <div className="flex items-center gap-1.5 mb-2">
         {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
         <span className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest">{label}</span>
       </div>
       <div className={`text-2xl font-bold tracking-tight tabular-nums ${toneClass}`}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-[var(--app-text-3)]">{sub}</div>}
     </div>
   );
 }

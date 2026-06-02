@@ -15,7 +15,7 @@ export function AppLoadingScreen({
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-[var(--app-border)] bg-white p-8 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-neutral-900 p-2.5 text-white">
+            <div className="rounded-xl bg-[var(--app-strong-surface)] p-2.5 text-[var(--app-strong-text)]">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -32,7 +32,7 @@ export function AppLoadingScreen({
           </div>
 
           <div className="mt-8 flex items-center gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--app-border-strong)] border-t-neutral-900" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--app-border-strong)] border-t-[var(--app-strong-surface)]" />
             <div>
               <div className="text-sm font-medium text-[var(--app-text-1)]">{message}</div>
               <div className="text-xs text-[var(--app-text-3)]">Preparamos tu acceso antes de mostrar datos.</div>

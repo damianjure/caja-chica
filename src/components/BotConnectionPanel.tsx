@@ -52,7 +52,7 @@ export function BotConnectionPanel() {
   return (
     <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm space-y-5">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-neutral-900 text-white">
+        <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <Bot className="w-4 h-4" />
         </div>
         <div>
@@ -64,13 +64,13 @@ export function BotConnectionPanel() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-sm text-[var(--chart-expense)]">
           {error}
         </div>
       )}
 
       {notice && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">
           {notice}
         </div>
       )}
@@ -102,7 +102,7 @@ export function BotConnectionPanel() {
             <button
               onClick={() => void handleCreateToken()}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 border border-neutral-900 px-4 py-3 text-white font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {creating ? (
                 <>

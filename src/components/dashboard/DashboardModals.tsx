@@ -57,7 +57,7 @@ export function DashboardModals({
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCloseMovementEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-            <button onClick={onSaveMovementEdit} className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium">Guardar cambios</button>
+            <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
           </div>
         </ModalShell>
       )}
@@ -70,7 +70,7 @@ export function DashboardModals({
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCloseCompanyEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-            <button onClick={onSaveCompanyEdit} className="rounded-md bg-neutral-900 px-5 py-3 text-white font-medium">Guardar cambios</button>
+            <button onClick={onSaveCompanyEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
           </div>
         </ModalShell>
       )}
@@ -88,7 +88,7 @@ export function DashboardModals({
                 const isDefault = company === readDefaultEmpresa();
                 return (
                   <button key={company} onClick={() => onAssignCompany(company)} disabled={isAssigning}
-                    className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-neutral-800 bg-neutral-900 text-white hover:border-[var(--app-text-2)]' : 'border-[var(--app-border)] bg-white text-[var(--app-text-1)] hover:border-[var(--app-text-2)]'}`}
+                    className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] hover:border-[var(--app-text-2)]' : 'border-[var(--app-border)] bg-white text-[var(--app-text-1)] hover:border-[var(--app-text-2)]'}`}
                   >
                     {company}{isDefault && <span className="ml-2 text-xs uppercase tracking-widest opacity-70">default</span>}
                   </button>

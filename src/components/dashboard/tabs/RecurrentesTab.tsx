@@ -2,7 +2,8 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
-import { SectionCard } from '../primitives';
+import { SectionCard, MetricCard } from '../primitives';
+import { buildRecurrentesSummary } from '../../../dashboard/recurrentesSummary';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 
 const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
@@ -16,7 +17,7 @@ const FRECUENCIA_LABELS: Record<Frecuencia, string> = {
 const FRECUENCIA_OPTIONS: Frecuencia[] = ['diario', 'semanal', 'quincenal', 'mensual', 'anual'];
 
 const badgeActive =
-  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-green-500/15 dark:text-green-200 dark:ring-green-400/40';
+  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 ring-1 ring-green-300/60 dark:bg-[var(--app-green-surface)]0/15 dark:text-green-200 dark:ring-green-400/40';
 
 const badgePaused =
   'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--app-surface-2)] text-[var(--app-text-2)] ring-1 ring-neutral-300/60 dark:bg-neutral-700/40 dark:text-neutral-300 dark:ring-neutral-500/40';
@@ -115,7 +116,7 @@ function RecurrenteModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="recurrente-modal-title"
-        className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md p-6 space-y-5"
+        className="bg-white dark:bg-[var(--app-strong-surface)] rounded-xl shadow-xl w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="recurrente-modal-title" className="text-base font-semibold text-[var(--app-text-1)] dark:text-neutral-100">
@@ -132,7 +133,7 @@ function RecurrenteModal({
                 step="0.01"
                 value={form.monto}
                 onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 placeholder="0.00"
                 required
               />
@@ -143,7 +144,7 @@ function RecurrenteModal({
               <select
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               >
                 <option value="egreso">Gasto</option>
                 <option value="ingreso">Ingreso</option>
@@ -155,7 +156,7 @@ function RecurrenteModal({
               <select
                 value={form.moneda}
                 onChange={(e) => setForm((f) => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               >
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
@@ -167,7 +168,7 @@ function RecurrenteModal({
               <select
                 value={form.frecuencia}
                 onChange={(e) => setForm((f) => ({ ...f, frecuencia: e.target.value as Frecuencia }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               >
                 {FRECUENCIA_OPTIONS.map((f) => (
                   <option key={f} value={f}>{FRECUENCIA_LABELS[f]}</option>
@@ -181,7 +182,7 @@ function RecurrenteModal({
                 <select
                   value={form.dayOfMonth}
                   onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
-                  className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                  className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 >
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                     <option key={d} value={String(d)}>{d}</option>
@@ -196,7 +197,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.categoria}
                 onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 placeholder="Ej: servicios"
               />
             </div>
@@ -207,7 +208,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.empresa_nombre}
                 onChange={(e) => setForm((f) => ({ ...f, empresa_nombre: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 placeholder="Personal"
               />
             </div>
@@ -218,7 +219,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.descripcion}
                 onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 placeholder="Ej: alquiler local"
               />
             </div>
@@ -235,7 +236,7 @@ function RecurrenteModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-[var(--app-surface-2)] dark:text-[var(--app-text-1)] dark:border-[var(--app-border)] hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] dark:bg-[var(--app-surface-2)] dark:text-[var(--app-text-1)] dark:border-[var(--app-border)] hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
@@ -347,8 +348,42 @@ export default function RecurrentesTab({
     }
   };
 
+  const summary = buildRecurrentesSummary(recurrentes);
+
   return (
     <div className="space-y-6">
+      {recurrentes.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard label="Recurrentes activos" value={String(summary.activos)} tone="neutral" />
+            <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
+            <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatAbsoluteDate(summary.proximaFechaIso) : '—'} tone="warning" />
+            <MetricCard label="Proyección 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} />
+          </div>
+          {summary.dias.some((d) => d.level !== 'none') && (
+            <SectionCard title="Calendario de impactos" description="Próximos 30 días — qué días vienen pesados.">
+              <div className="grid grid-cols-7 gap-1.5">
+                {summary.dias.map((d) => {
+                  const cls = d.level === 'high'
+                    ? 'bg-[color-mix(in_srgb,var(--chart-expense)_24%,var(--app-surface-2))] text-[var(--chart-expense)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))]'
+                    : d.level === 'med'
+                      ? 'bg-[color-mix(in_srgb,var(--app-amber-text)_20%,var(--app-surface-2))] text-[var(--app-amber-text)] border-[var(--app-border)]'
+                      : d.level === 'low'
+                        ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
+                        : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
+                  return (
+                    <div key={d.date} title={`${d.date}: ${formatMonto(d.total, 'ARS')}`} className={`grid aspect-square place-items-center rounded-md border text-xs ${cls}`}>
+                      {Number(d.date.slice(8, 10))}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs text-[var(--app-text-3)]">Más oscuro = más impacto ese día.</p>
+            </SectionCard>
+          )}
+        </>
+      )}
+
       <SectionCard
         title="Recurrentes"
         description="Gastos e ingresos automáticos"
@@ -357,7 +392,7 @@ export default function RecurrentesTab({
           <div className="flex justify-end mb-4">
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-neutral-900 text-white border border-neutral-900 dark:bg-[var(--app-surface-2)] dark:text-[var(--app-text-1)] dark:border-[var(--app-border)] hover:border-[var(--app-text-2)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] dark:bg-[var(--app-surface-2)] dark:text-[var(--app-text-1)] dark:border-[var(--app-border)] hover:border-[var(--app-text-2)] transition-colors"
             >
               <Plus className="w-4 h-4" />
               Nuevo recurrente
@@ -374,7 +409,7 @@ export default function RecurrentesTab({
             <p className="font-semibold text-[var(--app-text-2)] mb-1">Sin recurrentes todavía</p>
             <p className="text-sm text-[var(--app-text-3)] mb-4">Creá tu primer movimiento recurrente para automatizar registros periódicos.</p>
             {canWriteData && (
-              <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white">+ Nuevo recurrente</button>
+              <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-4 py-2 text-sm font-medium text-[var(--app-strong-text)]">+ Nuevo recurrente</button>
             )}
           </div>
         ) : (
@@ -382,7 +417,7 @@ export default function RecurrentesTab({
             {recurrentes.map((r) => (
               <div
                 key={r.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-neutral-800/60 p-4"
+                className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)]/60 p-4"
               >
                 <div className="space-y-2 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -443,7 +478,7 @@ export default function RecurrentesTab({
                     <button
                       onClick={() => setDeleteTarget(r.id)}
                       disabled={deletingId === r.id}
-                      className="p-2 rounded-lg border border-transparent text-[var(--app-text-3)] hover:text-red-600 dark:hover:text-red-400 hover:border-red-400 transition-colors disabled:opacity-50"
+                      className="p-2 rounded-lg border border-transparent text-[var(--app-text-3)] hover:text-[var(--chart-expense)] dark:hover:text-red-400 hover:border-red-400 transition-colors disabled:opacity-50"
                       title="Eliminar"
                       aria-label="Eliminar recurrente"
                     >

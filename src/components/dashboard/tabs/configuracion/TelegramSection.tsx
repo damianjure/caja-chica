@@ -107,11 +107,11 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
 
               let pill: ReactElement;
               if (activeLink) {
-                pill = <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-500/15 dark:text-green-200">Vinculado</span>;
+                pill = <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-[var(--chart-income)] dark:bg-[var(--app-green-surface)]0/15 dark:text-green-200">Vinculado</span>;
               } else if (pendingLink) {
-                pill = <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">Falta confirmar</span>;
+                pill = <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200">Falta confirmar</span>;
               } else if (freshToken) {
-                pill = <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">Invitación generada</span>;
+                pill = <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200">Invitación generada</span>;
               } else {
                 pill = <span className="inline-flex items-center rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs font-medium text-[var(--app-text-3)]">Sin vincular</span>;
               }
@@ -183,7 +183,7 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                             </button>
                             <button
                               onClick={() => void handleRevokeLink(activeLink.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                             >
                               <X className="w-3 h-3" /> Desvincular
                             </button>
@@ -193,13 +193,13 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                           <>
                             <button
                               onClick={() => void handleConfirmLink(pendingLink.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-green-200 bg-white px-3 py-1.5 text-xs font-medium text-green-600 hover:border-green-400"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-green-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-income)] hover:border-green-400"
                             >
                               <Check className="w-3 h-3" /> Confirmar vínculo
                             </button>
                             <button
                               onClick={() => void handleRevokeLink(pendingLink.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:border-red-400"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
                             >
                               <X className="w-3 h-3" /> Rechazar
                             </button>
@@ -209,7 +209,7 @@ export function TelegramSection({ data, showNotice, setError }: TelegramSectionP
                           <button
                             disabled={isGenerating}
                             onClick={() => void handleGenerateToken(member.user_id)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 border border-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:border-[var(--app-text-2)] disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50"
                           >
                             {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
                             {freshToken ? "Regenerar comando" : "Generar vínculo de Telegram"}

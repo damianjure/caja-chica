@@ -9,27 +9,15 @@ import {
 } from "../server/telegramAccess.ts";
 import { getLinkedTelegramUser } from "./utils.ts";
 import { registerCancelHandler } from "./commands/cancel.ts";
-import { getCommandsForRole } from "./quickActions.ts";
+import { getCommandsForRole, FULL_COMMANDS } from "./quickActions.ts";
 import { buildWelcomeMessage, fetchUserDashboards } from "./welcome.ts";
 
-const BOT_COMMANDS = [
-  { command: "menu", description: "Abrir el menú principal" },
-  { command: "cancel", description: "Cancelar la operación actual" },
-  { command: "informes", description: "Generar informe por período" },
-  { command: "exportar", description: "Exportar informe (CSV o PDF)" },
-  { command: "recurrente", description: "Configurar gasto/ingreso recurrente" },
-  { command: "recurrentes", description: "Ver y gestionar recurrentes" },
-  { command: "empresas", description: "Listar empresas activas" },
-  { command: "categorias", description: "Listar categorías" },
-  { command: "saldos", description: "Ver saldos por empresa" },
-  { command: "buscar", description: "Buscar movimientos" },
-  { command: "dashboard", description: "Abrir dashboard web" },
-];
-
+// Single source of truth for the command menu = FULL_COMMANDS (quickActions.ts).
+// registerBotCommands sets the global default; setScopedCommands narrows per-chat for viewers.
 export async function registerBotCommands(bot: Bot, attempts = 3): Promise<void> {
   for (let i = 0; i < attempts; i++) {
     try {
-      await bot.api.setMyCommands(BOT_COMMANDS);
+      await bot.api.setMyCommands(FULL_COMMANDS);
       console.log("✅ Telegram commands registered successfully");
       return;
     } catch (error) {

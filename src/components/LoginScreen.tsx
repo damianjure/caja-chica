@@ -66,10 +66,10 @@ export function LoginScreen({
           ) : (
             <div className="space-y-3 text-sm text-[var(--app-text-2)]">
               <p>Registrá gastos e ingresos hablando normal. <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span></p>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Send className="h-3 w-3" /> Bot de Telegram</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Mic className="h-3 w-3" /> Por voz</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Camera className="h-3 w-3" /> Foto de ticket</span>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Send className="h-3 w-3 shrink-0" /> Telegram</span>
+                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Mic className="h-3 w-3 shrink-0" /> Voz</span>
+                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Camera className="h-3 w-3 shrink-0" /> Foto</span>
               </div>
             </div>
           )}
@@ -77,7 +77,7 @@ export function LoginScreen({
           <button
             onClick={() => void onLogin()}
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-[var(--app-border-strong)] px-5 py-3 text-[var(--app-text-1)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-md bg-white border border-[var(--app-border-strong)] px-5 py-3 text-[var(--app-text-1)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
               <>
@@ -95,7 +95,7 @@ export function LoginScreen({
           {secondaryActionLabel && onSecondaryAction && (
             <button
               onClick={() => void onSecondaryAction()}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-[var(--app-border)] px-5 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)] transition-colors"
+              className="w-full inline-flex items-center justify-center gap-3 rounded-md border border-[var(--app-border)] px-5 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)] transition-colors"
             >
               {secondaryActionLabel}
             </button>

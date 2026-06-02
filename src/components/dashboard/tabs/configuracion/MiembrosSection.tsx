@@ -852,7 +852,7 @@ export function MiembrosSection({
             <div className="flex items-center justify-center py-10 text-[var(--app-text-3)]">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
-          ) : personas.length === 0 && !ownerMember ? (
+          ) : personas.filter((p) => p.status !== "revoked").length === 0 && !ownerMember ? (
             <div className="rounded-xl border border-dashed border-[var(--app-border)] dark:border-[var(--app-border)] px-6 py-12 text-center">
               <div className="text-3xl mb-3 opacity-40">👥</div>
               <h4 className="text-sm font-semibold text-[var(--app-text-2)] dark:text-[var(--app-text-1)]">
@@ -894,8 +894,8 @@ export function MiembrosSection({
                 />
               )}
 
-              {/* Everyone else */}
-              {personas.map((persona) => {
+              {/* Everyone else — los revocados (sin acceso) salen del equipo */}
+              {personas.filter((persona) => persona.status !== "revoked").map((persona) => {
                 const member = findMember(persona.email);
                 const invitation = findInvitation(persona.email);
                 const isInvitation = persona.status === "pending" || persona.status === "expired";

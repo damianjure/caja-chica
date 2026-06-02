@@ -143,7 +143,7 @@ export default function EmpresasTab({
               {salud.map((c) => {
                 const p = pick(c);
                 return (
-                  <div key={c.name} className="flex flex-col gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div key={c.name} className="flex flex-col gap-2 rounded-md border border-[var(--app-border)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="text-sm font-medium text-[var(--app-text-1)]">{c.name}</div>
                       <div className="text-xs text-[var(--app-text-3)]">{c.movimientos} mov · {saludHint(c)}</div>

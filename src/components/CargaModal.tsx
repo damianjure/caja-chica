@@ -33,14 +33,14 @@ export function CargaModal({
 
   return createPortal(
     <div
-      className="anim-backdrop-in fixed inset-0 z-[200] flex items-end justify-center bg-[color-mix(in_srgb,var(--app-text-1)_42%,transparent)] backdrop-blur-[2px] p-0 sm:items-center sm:p-4"
+      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center bg-[color-mix(in_srgb,var(--app-text-1)_42%,transparent)] backdrop-blur-[2px] p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="carga-modal-title"
-        className="anim-scale-in flex w-full max-w-lg flex-col rounded-t-2xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-md)] sm:rounded-2xl"
+        className="anim-scale-in flex w-full max-w-lg flex-col rounded-2xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-md)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">

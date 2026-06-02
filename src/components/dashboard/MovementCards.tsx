@@ -1,6 +1,9 @@
-import { memo } from 'react';
-import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag } from 'lucide-react';
+import { memo, useRef } from 'react';
+import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { type Movimiento } from '../../services/api';
+import { pageSlice, totalPages, pageList } from '../../dashboard/pagination';
+
+const PER_PAGE = 10;
 
 interface MovementCardsProps {
   filteredHistory: Movimiento[];
@@ -9,6 +12,8 @@ interface MovementCardsProps {
   hasMore: boolean;
   loadingMore: boolean;
   copiedId: string | null;
+  page: number;
+  onPageChange: (page: number) => void;
   onEdit: (item: Movimiento) => void;
   onCopy: (item: Movimiento) => void;
   onDelete: (id: string) => void;
@@ -17,8 +22,27 @@ interface MovementCardsProps {
 
 function MovementCardsImpl({
   filteredHistory, selectedCompany, canWriteData, hasMore, loadingMore,
-  copiedId, onEdit, onCopy, onDelete, onLoadMore,
+  copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore,
 }: MovementCardsProps) {
+  const topRef = useRef<HTMLDivElement>(null);
+
+  const loadedPages = totalPages(filteredHistory.length, PER_PAGE);
+  const safePage = Math.min(Math.max(1, page), loadedPages);
+  const pageItems = pageSlice(filteredHistory, safePage, PER_PAGE);
+  const tokens = pageList(safePage, loadedPages);
+
+  const goTo = (next: number) => {
+    if (next < 1) return;
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    topRef.current?.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
+    onPageChange(next);
+  };
+
+  const goNext = () => {
+    if (safePage < loadedPages) { goTo(safePage + 1); return; }
+    if (hasMore) { onLoadMore(); goTo(safePage + 1); }
+  };
+
   if (filteredHistory.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 border border-[var(--app-border)] rounded-xl text-[var(--app-text-3)]">
@@ -27,7 +51,7 @@ function MovementCardsImpl({
           <>
             <p className="font-medium text-[var(--app-text-3)]">Sin movimientos por ahora.</p>
             <p className="text-sm mt-1">
-              {canWriteData ? 'Escribí un movimiento en el campo de arriba. Tipo: "pagué 4500 de luz".' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
+              {canWriteData ? 'Tocá "Cargar" para registrar un movimiento. Tipo: "pagué 4500 de luz".' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
             </p>
           </>
         ) : (
@@ -42,8 +66,9 @@ function MovementCardsImpl({
 
   return (
     <>
+      <div ref={topRef} className="scroll-mt-24" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredHistory.map((item, index) => (
+        {pageItems.map((item, index) => (
             <div
               key={item.id}
               style={{ animationDelay: `${Math.min(index * 40, 160)}ms` }}
@@ -94,12 +119,44 @@ function MovementCardsImpl({
             </div>
           ))}
       </div>
-      {hasMore && (
-        <div className="flex justify-center pt-4">
-          <button onClick={onLoadMore} disabled={loadingMore} className="px-6 py-2 bg-white border border-[var(--app-border)] rounded-md text-sm font-medium text-[var(--app-text-2)] hover:border-neutral-400 disabled:opacity-50 transition-colors">
-            {loadingMore ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</span> : 'Cargar más'}
+      {(loadedPages > 1 || hasMore) && (
+        <nav className="flex items-center justify-center gap-1.5 pt-5" aria-label="Paginación de movimientos">
+          <button
+            onClick={() => goTo(safePage - 1)}
+            disabled={safePage === 1}
+            aria-label="Página anterior"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-[var(--app-border)] px-2 text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
           </button>
-        </div>
+          {tokens.map((t, i) =>
+            t === 'ellipsis' ? (
+              <span key={`e${i}`} className="px-1.5 text-sm text-[var(--app-text-3)]">…</span>
+            ) : (
+              <button
+                key={t}
+                onClick={() => goTo(t)}
+                aria-label={`Página ${t}`}
+                aria-current={t === safePage ? 'page' : undefined}
+                className={`inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-sm font-semibold tabular-nums transition-colors ${
+                  t === safePage
+                    ? 'border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+                    : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'
+                }`}
+              >
+                {t}
+              </button>
+            ),
+          )}
+          <button
+            onClick={goNext}
+            disabled={safePage >= loadedPages && !hasMore}
+            aria-label="Página siguiente"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-[var(--app-border)] px-2 text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </nav>
       )}
     </>
   );

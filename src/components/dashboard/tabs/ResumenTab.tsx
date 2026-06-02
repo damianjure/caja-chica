@@ -4,7 +4,7 @@ import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } fro
 import { ChartCard, HorizontalBarList, AreaTrendChart, WaterfallChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
-import { buildMonthlyChartData, buildCashflowBridge } from '../../../dashboard/summary';
+import { buildMonthlyChartData, buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
@@ -36,12 +36,14 @@ export default function ResumenTab(props: ResumenTabProps) {
     const visible = companyNames.filter((c) => !hiddenCompanies.has(c));
     return buildMonthlyChartData(props.history, pulseCurrency, hiddenCompanies.size ? visible : null);
   }, [props.history, pulseCurrency, hiddenCompanies, companyNames]);
-  const richData = pulseData.length >= 4;
-
   const visibleCompanies = useMemo(() => companyNames.filter((c) => !hiddenCompanies.has(c)), [companyNames, hiddenCompanies]);
   const bridgeData = useMemo(
     () => buildCashflowBridge(props.history, pulseCurrency, hiddenCompanies.size ? visibleCompanies : null),
     [props.history, pulseCurrency, hiddenCompanies, visibleCompanies],
+  );
+  const comparison = useMemo(
+    () => buildMonthlyComparison(getMonthlySummaries(props.history), pulseCurrency),
+    [props.history, pulseCurrency],
   );
 
   const toggleCompany = (name: string) =>
@@ -72,7 +74,7 @@ export default function ResumenTab(props: ResumenTabProps) {
         </div>
       )}
 
-      {(props.insights.length > 0 || props.topExpenseCategories.length > 0) && (
+      {(props.insights.length > 0 || comparison.hasPrev) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {props.insights.length > 0 && (
             <ChartCard title="Insight del período" description="Lo que cambió, en una mirada.">
@@ -83,22 +85,44 @@ export default function ResumenTab(props: ResumenTabProps) {
               </ul>
             </ChartCard>
           )}
-          {props.topExpenseCategories.length > 0 && (
-            <ChartCard title="Etiquetas destacadas" description="Las categorías que más movés en el período.">
-              <div className="flex flex-wrap gap-2">
-                {props.topExpenseCategories.slice(0, 8).map((c) => (
-                  <span key={c.label} className="rounded-full border border-[var(--app-border-strong)] px-3 py-1 text-xs font-bold text-[var(--app-text-2)]">{c.label}</span>
-                ))}
+          {comparison.hasPrev && (
+            <ChartCard title="Comparativa vs mes anterior" description={`Ingresos, gastos y utilidad en ${pulseCurrency} contra el mes pasado.`}>
+              <div className="space-y-2.5">
+                {([
+                  ['Ingresos', comparison.ingresos, true] as const,
+                  ['Gastos', comparison.gastos, false] as const,
+                  ['Utilidad', comparison.utilidad, true] as const,
+                ]).map(([label, row, upIsGood]) => {
+                  const formatted = `${pulseCurrency} ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(row.current)}`;
+                  const up = (row.deltaPct ?? 0) >= 0;
+                  const good = up === upIsGood;
+                  return (
+                    <div key={label} className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] pb-2 last:border-0 last:pb-0">
+                      <span className="text-sm text-[var(--app-text-2)]">{label}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold tabular-nums text-[var(--app-text-1)]">{formatted}</span>
+                        {row.deltaPct === null ? (
+                          <span className="text-xs text-[var(--app-text-3)] tabular-nums w-16 text-right">—</span>
+                        ) : (
+                          <span
+                            className={`text-xs font-bold tabular-nums w-16 text-right ${good ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}
+                            aria-label={`${up ? 'subió' : 'bajó'} ${Math.abs(row.deltaPct)} por ciento`}
+                          >
+                            <span aria-hidden="true">{up ? '▲' : '▼'} </span>{Math.abs(row.deltaPct)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </ChartCard>
           )}
         </div>
       )}
 
-      {/* Layout adaptativo: con pocos datos el Pulso es compacto y comparte fila; al crecer (>=4 meses) ocupa toda la fila. */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className={richData ? 'lg:col-span-2' : ''}>
-          <ChartCard
+      {/* Pulso: hero, ancho completo */}
+      <ChartCard
             title="Pulso mensual"
             description="Cuánto entró, cuánto salió y qué saldo quedó, mes a mes. Filtrá por empresa y cambiá entre pesos y dólares."
             footer={
@@ -180,32 +204,29 @@ export default function ResumenTab(props: ResumenTabProps) {
             ) : (
               <AreaTrendChart data={pulseData} currency={pulseCurrency} show={pulseSeries} />
             )}
-          </ChartCard>
-        </div>
+      </ChartCard>
 
-        <ChartCard title="Gastos que más pesan" description="Top categorías por gasto real. Más útil que un pie chart porque deja comparar magnitudes.">
+      {/* Flujo + Gastos: 2-col compacto y balanceado */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard
+          title="Flujo de caja"
+          description="De los ingresos al saldo: cómo cada categoría reduce la caja. Mismo filtro de empresa y moneda del Pulso."
+        >
+          {bridgeData.length === 0 ? (
+            <EmptyState
+              title="Sin datos para el puente de caja."
+              hint="Cargá ingresos y gastos para ver cómo se forma el saldo."
+              canWrite={props.canWriteData}
+              icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
+            />
+          ) : (
+            <WaterfallChart segments={bridgeData} currency={pulseCurrency} />
+          )}
+        </ChartCard>
+        <ChartCard title="Gastos que más pesan" description="Top categorías por gasto real. Deja comparar magnitudes de un vistazo.">
           <HorizontalBarList items={props.topExpenseCategories.map((item) => ({ ...item, accent: 'danger' as const }))} emptyLabel="Todavía no hay gastos cargados." />
         </ChartCard>
-        <ChartCard title="Empresas / frentes más fuertes" description="Las unidades con más tracción visible en ARS, ordenadas para priorizar rápido.">
-          <HorizontalBarList items={props.topCompanies} emptyLabel="Todavía no hay empresas con actividad." />
-        </ChartCard>
       </section>
-
-      <ChartCard
-        title="Flujo de caja"
-        description="De los ingresos al saldo: cómo cada categoría de gasto reduce la caja. Usa el mismo filtro de empresa y moneda del Pulso."
-      >
-        {bridgeData.length === 0 ? (
-          <EmptyState
-            title="Sin datos para el puente de caja."
-            hint="Cargá ingresos y gastos para ver cómo se forma el saldo del período."
-            canWrite={props.canWriteData}
-            icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
-          />
-        ) : (
-          <WaterfallChart segments={bridgeData} currency={pulseCurrency} />
-        )}
-      </ChartCard>
 
       {props.incomeTags.length > 0 && (
         <ChartCard title="Etiquetas de ingreso" description="Qué tipo de ingreso entra más seguido, sin leer uno por uno.">

@@ -304,6 +304,44 @@ export interface MonthlyChartPoint {
   net: number;
 }
 
+export interface ComparisonRow {
+  /** % de cambio vs mes anterior; null si no hay mes anterior o era 0. */
+  deltaPct: number | null;
+  current: number;
+}
+export interface MonthlyComparison {
+  hasPrev: boolean;
+  ingresos: ComparisonRow;
+  gastos: ComparisonRow;
+  utilidad: ComparisonRow;
+}
+
+/**
+ * Compara el mes actual contra el anterior (ingresos/gastos/utilidad) en una moneda.
+ * `summaries` viene newest-first (getMonthlySummaries). Sin mes previo → deltas null.
+ */
+export function buildMonthlyComparison(summaries: MonthlySummary[], currency: 'ARS' | 'USD'): MonthlyComparison {
+  const cur = summaries[0];
+  const prev = summaries[1];
+  const pick = (s: MonthlySummary | undefined, k: 'ingresos' | 'gastos' | 'neto') => {
+    if (!s) return 0;
+    const suffix = currency === 'ARS' ? 'Ars' : 'Usd';
+    return (s as unknown as Record<string, number>)[`${k}${suffix}`] ?? 0;
+  };
+  const row = (k: 'ingresos' | 'gastos' | 'neto'): ComparisonRow => {
+    const c = pick(cur, k);
+    const p = pick(prev, k);
+    const deltaPct = !prev || p === 0 ? null : Math.round(((c - p) / Math.abs(p)) * 100);
+    return { deltaPct, current: c };
+  };
+  return {
+    hasPrev: !!prev,
+    ingresos: row('ingresos'),
+    gastos: row('gastos'),
+    utilidad: row('neto'),
+  };
+}
+
 export interface BridgeSegment {
   label: string;
   kind: 'start' | 'down' | 'end';

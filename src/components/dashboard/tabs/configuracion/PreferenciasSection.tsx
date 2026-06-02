@@ -60,7 +60,7 @@ export function PreferenciasSection({
   };
 
   return (
-    <section className="bg-white dark:bg-[var(--app-strong-surface)] border border-[var(--app-border)] dark:border-neutral-700 rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
+    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] stack-relaxed">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <SlidersHorizontal className="w-4 h-4" />

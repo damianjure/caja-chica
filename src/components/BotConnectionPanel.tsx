@@ -49,16 +49,21 @@ export function BotConnectionPanel() {
     setTimeout(() => setNotice(null), 3000);
   };
 
+  const tokenExpired = status?.pendingTokenExpiresAt
+    ? new Date(status.pendingTokenExpiresAt).getTime() < Date.now()
+    : false;
+  const showDeepLink = Boolean(status?.telegramDeepLink) && !tokenExpired;
+
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+        <div className="p-2 rounded-md bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <Bot className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Vincular bot de Telegram</h2>
+          <h3 className="text-base font-bold tracking-tight text-[var(--app-text-1)]">Bot de Telegram</h3>
           <p className="text-sm text-[var(--app-text-3)]">
-            El bot ahora es multiusuario real: solo procesa chats vinculados a tu cuenta.
+            El bot solo procesa chats vinculados a tu cuenta.
           </p>
         </div>
       </div>
@@ -117,19 +122,19 @@ export function BotConnectionPanel() {
               )}
             </button>
 
-            {status?.telegramDeepLink && (
+            {showDeepLink && (
               <a
-                href={status.telegramDeepLink}
+                href={status!.telegramDeepLink!}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)]"
+                className="inline-flex items-center gap-2 rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)]"
               >
                 Abrir Telegram
               </a>
             )}
           </div>
 
-          {status?.pendingToken && (
+          {status?.pendingToken && !tokenExpired && (
             <div className="space-y-3 rounded-xl border border-[var(--app-border)] px-4 py-4">
               <div className="text-sm text-[var(--app-text-2)]">
                 Si el deep link no abre bien, copiá este comando y mandáselo al bot:
@@ -156,6 +161,6 @@ export function BotConnectionPanel() {
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }

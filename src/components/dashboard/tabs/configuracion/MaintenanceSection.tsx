@@ -155,7 +155,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Immediate activation */}
         <div className="rounded-xl border border-[var(--app-border)] p-5 space-y-4">
           <h3 className="text-sm font-semibold text-[var(--app-text-1)] flex items-center gap-2">
@@ -264,7 +264,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
 
         {/* End maintenance */}
         {isLive && (
-          <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-5 space-y-3">
+          <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-5 space-y-3 md:col-span-2">
             <h3 className="text-sm font-semibold text-[var(--app-red-text)] flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" />
               Finalizar mantenimiento

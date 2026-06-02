@@ -6,6 +6,9 @@ import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovim
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
 import { ScrollToTop } from './components/ScrollToTop';
+import { HelpModal } from './components/HelpModal';
+import { TourModal } from './components/TourModal';
+import { usePwaInstall, PwaInstallBanner } from './components/PwaInstall';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -193,6 +196,21 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const [isCargaOpen, setIsCargaOpen] = useState(false);
   const [movementsPage, setMovementsPage] = useState(1);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+  const pwa = usePwaInstall();
+
+  useEffect(() => {
+    if (!localStorage.getItem('tour_seen')) {
+      const t = setTimeout(() => setIsTourOpen(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  const closeTour = useCallback(() => {
+    localStorage.setItem('tour_seen', '1');
+    setIsTourOpen(false);
+  }, []);
 
   const handleImageFile = useCallback((file: File) => {
     setIsCargaOpen(false);
@@ -510,6 +528,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               email={viewer.email}
               identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
               onSignOut={() => void handleSignOut()}
+              onOpenHelp={() => setIsHelpOpen(true)}
+              onReplayTour={() => setIsTourOpen(true)}
+              onInstallApp={pwa.available ? () => void pwa.promptInstall() : undefined}
             />
           </div>
         </header>
@@ -578,6 +599,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         />
 
         <ScrollToTop />
+        <HelpModal open={isHelpOpen} onClose={() => setIsHelpOpen(false)} section={activeTab} />
+        <TourModal open={isTourOpen} onClose={closeTour} />
+        <PwaInstallBanner pwa={pwa} />
 
         <CargaModal
           open={isCargaOpen}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, HelpCircle, Compass, Download } from 'lucide-react';
 import { initialsFromEmail } from '../../services/labels';
 
 /**
@@ -11,10 +11,16 @@ export function HeaderUserMenu({
   email,
   identityLabel,
   onSignOut,
+  onOpenHelp,
+  onReplayTour,
+  onInstallApp,
 }: {
   email: string;
   identityLabel: string;
   onSignOut: () => void;
+  onOpenHelp?: () => void;
+  onReplayTour?: () => void;
+  onInstallApp?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -57,6 +63,37 @@ export function HeaderUserMenu({
             <div className="text-xs font-medium text-[var(--app-text-1)] truncate">{email}</div>
             <div className="text-xs text-[var(--app-text-3)] truncate">{identityLabel}</div>
           </div>
+          <div className="my-1 h-px bg-[var(--app-border)]" />
+          {onOpenHelp && (
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); onOpenHelp(); }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Ayuda y comandos
+            </button>
+          )}
+          {onReplayTour && (
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); onReplayTour(); }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+            >
+              <Compass className="h-4 w-4" />
+              Ver recorrido de nuevo
+            </button>
+          )}
+          {onInstallApp && (
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); onInstallApp(); }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Instalar app
+            </button>
+          )}
           <div className="my-1 h-px bg-[var(--app-border)]" />
           <button
             role="menuitem"

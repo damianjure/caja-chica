@@ -1,5 +1,11 @@
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import { sendViaBrevo } from "../email.ts";
+import { tierSupportReport } from "../rateLimit.ts";
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 export interface MeDeps {
   supabase: SupabaseLike;
@@ -229,6 +235,60 @@ export function createMeRouter(deps: MeDeps) {
       return;
     }
     res.json({ ok: true });
+  });
+
+  // Reporte de problema → email al superadmin (Brevo). Rate-limit 3/día por usuario.
+  router.post("/api/support/report", requireSession, tierSupportReport, async (req, res) => {
+    const session = getSession(req);
+    const body = (req.body ?? {}) as { message?: unknown; context?: Record<string, unknown> };
+    const message = String(body.message ?? "").trim();
+    if (!message) return res.status(400).json({ error: "empty" });
+    if (message.length > 4000) return res.status(400).json({ error: "too_long" });
+
+    const ctx = body.context ?? {};
+    const ctxRows = Object.entries({
+      email: session.email,
+      rol: session.role,
+      seccion: ctx.section,
+      fecha: new Date().toISOString(),
+      version: ctx.version,
+      userAgent: ctx.userAgent,
+    })
+      .filter(([, v]) => v != null && v !== "")
+      .map(([k, v]) => `<tr><td style="padding:2px 8px;color:#888">${k}</td><td style="padding:2px 8px">${escapeHtml(String(v))}</td></tr>`)
+      .join("");
+
+    const html = `<h2>Reporte de problema</h2>
+      <p style="white-space:pre-wrap;border-left:3px solid #ccc;padding-left:10px">${escapeHtml(message)}</p>
+      <table style="font:13px monospace;border-collapse:collapse">${ctxRows}</table>`;
+
+    try {
+      const { data: admins, error } = await supabase
+        .from("app_users")
+        .select("email")
+        .eq("role", "superadmin");
+      if (error) throw error;
+      const recipients = (admins ?? []).map((a: { email?: string }) => a.email).filter(Boolean) as string[];
+      if (recipients.length === 0) {
+        console.warn("[support] no superadmin recipients");
+        return res.status(500).json({ error: "no_recipient" });
+      }
+      // fire-and-forget por destinatario; un fallo no rompe el resto
+      let sent = 0;
+      for (const to of recipients) {
+        try {
+          const result = await sendViaBrevo(to, `🐞 Reporte de ${session.email}`, html);
+          if (result.ok) sent++;
+        } catch (err) {
+          console.error("[support] send error:", err);
+        }
+      }
+      if (sent === 0) return res.status(500).json({ error: "send_failed" });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[support] error:", err);
+      res.status(500).json({ error: "report_failed" });
+    }
   });
 
   return router;

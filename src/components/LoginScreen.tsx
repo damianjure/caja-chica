@@ -1,4 +1,5 @@
-import { Loader2, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { Loader2, ShieldCheck, Mic, Camera, Send } from "lucide-react";
 import { ThemeMode, ThemeToggle } from "./ThemeToggle";
 
 function GoogleIcon() {
@@ -34,6 +35,7 @@ export function LoginScreen({
   onLogin,
   blocked = false,
 }: LoginScreenProps) {
+  const [showHelp, setShowHelp] = useState(false);
   return (
     <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -62,10 +64,13 @@ export function LoginScreen({
               </p>
             </div>
           ) : (
-            <div className="space-y-2 text-sm text-[var(--app-text-2)]">
-              <p>
-                Entrá con la cuenta de Google que te invitaron. Otra cuenta no va a poder acceder.
-              </p>
+            <div className="space-y-3 text-sm text-[var(--app-text-2)]">
+              <p>Registrá gastos e ingresos hablando normal. <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span></p>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Send className="h-3 w-3" /> Bot de Telegram</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Mic className="h-3 w-3" /> Por voz</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)]"><Camera className="h-3 w-3" /> Foto de ticket</span>
+              </div>
             </div>
           )}
 
@@ -96,9 +101,23 @@ export function LoginScreen({
             </button>
           )}
 
-          <p className="text-xs text-[var(--app-text-3)] text-center pt-2">
-            Usá el mismo mail con el que te invitaron.
-          </p>
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() => setShowHelp((v) => !v)}
+              aria-expanded={showHelp}
+              className="text-xs text-[var(--app-text-3)] underline underline-offset-2 hover:text-[var(--app-text-1)]"
+            >
+              ¿Problemas para entrar?
+            </button>
+            {showHelp && (
+              <div className="mt-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 text-left text-xs text-[var(--app-text-2)] leading-relaxed space-y-1.5">
+                <p>· Entrá con el <strong>mismo email</strong> con el que te invitaron.</p>
+                <p>· ¿No te invitaron todavía? Pedile al dueño del dashboard que te sume desde <em>Equipo</em>.</p>
+                <p>· ¿Sigue sin andar? Escribinos a <a href="mailto:hola@damianjure.com" className="underline">hola@damianjure.com</a>.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

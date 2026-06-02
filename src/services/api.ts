@@ -795,6 +795,10 @@ export const api = {
     return fetchApi("/api/me/backup", { method: "POST", body: JSON.stringify({ destination: "drive" }) });
   },
 
+  async reportProblem(message: string, context: Record<string, unknown>): Promise<{ ok: boolean }> {
+    return fetchApi("/api/support/report", { method: "POST", body: JSON.stringify({ message, context }) });
+  },
+
   async listPersonas(filters?: PersonaFilters): Promise<PersonaRecord[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.set("status", filters.status);

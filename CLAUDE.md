@@ -670,6 +670,42 @@ Branch `feat/dashboard-redesign-v3` (commit `0d91c74`, PR #5). Engram #751. Mock
 - **RecurrentesTab**: ya matcheaba el screenshot (4 KPIs + heatmap + lista), no se tocó.
 - **Deploy**: Frontend Firebase Hosting `caja-chica-bot.web.app`. Tests 712 pass / 2 skip / 0 fail. tsc + build limpios.
 
+### Cambios 2026-06-02 (sesión extendida: UI rework v3 + 6 features + fixes — deploy)
+
+Sesión grande. PRs #5–#13 mergeados a `main`. Backend rev **`caja-chica-00063-vfv`**. Tests **724 pass / 2 skip / 0 fail**. Flujo: feature branch → `gh pr merge --merge` (push a main bloqueado por hook) → deploy. Frontend Firebase + Backend Cloud Run (cuando cambió backend).
+
+**Rediseño dashboard v3** (`feat/dashboard-redesign-v3` y stack):
+- Resumen: "Comparativa vs mes anterior" (`buildMonthlyComparison` en `summary.ts`) al lado de Insight; Pulso full-width (hero); Flujo de caja compacto 2-col con "Gastos que más pesan". Sacadas "Etiquetas destacadas" + "Empresas/frentes más fuertes".
+- Píldora flotante mobile (`sm:hidden`, bottom-center) con Buscar + Nueva → abre modal de carga. CTA header + búsqueda ocultos en mobile.
+- Recurrentes: "Próximos recurrentes" caja principal (primero DOM, arriba en mobile) con **+Nuevo** en header (`SectionCard` nuevo prop `action`). Sacada barra inferior Total/Proyección (redundante con KPIs).
+- Empresas: sacado ranking/comparación; tarjetas debajo de "Salud por empresa"; **Agregar empresa** dentro de la caja principal; Salud muestra ingresos+gastos+saldo (grid 3-col alineado); **toggle ARS/USD** filtra KPIs+Salud+tarjetas.
+- Config: secciones en `grid xl:grid-cols-2` (Cuenta full-width). Telegram+Drive en **una card "Vinculación"** (BotConnectionPanel + DriveSection refactor a "bare"); deep link Telegram oculto si token expiró.
+- Admin: Mantenimiento inmediato|programar y Email settings|test-send en `grid md:grid-cols-2` (apilan en mobile). Form de invitar afinado.
+- **ScrollToTop** flotante (`src/components/ScrollToTop.tsx`, aparece >400px, scroll suave + reduced-motion).
+
+**Movimientos** (`pagination.ts` + `CargaModal.tsx`):
+- Centro de carga inline ELIMINADO → **modal "Cargar"** (`CargaModal`, portal, foco, Esc, ⌘/Ctrl+Enter, drop foto/PDF). Botón "Cargar" (4º) en el header de "Historial de movimientos" (vía `SectionCard action`). Píldora mobile + CTA header abren el modal.
+- **Paginación numerada 10/pág** (`pageSlice`/`totalPages`/`pageList` con elipsis, TDD) reemplaza "Cargar más". `movementsPage` en DashboardApp, reset a 1 en cambio de filtro, scroll-to-top al paginar. El `›` fetchea next server page si estás en la última cargada.
+
+**Features nuevas:**
+- **Empresa nueva reactiva**: `getCompanySummaries(history, extraCompanies)` siembra empresas sin movimientos con ceros → aparece al instante (PR #7).
+- **Superadmin elimina cuentas**: `DELETE /api/admin/users/:id` (requireSuperadmin). Borra membresías + auth user + app_users; **conserva movimientos/empresas**. Guards `cannot_delete_self`, `last_superadmin`. Audit `account_delete`. AdminPanel: "Zona peligrosa" en el detalle con confirmación tipeando el email (PR #7).
+- **Backup manual**: `POST /api/me/backup` (informes router) `{destination:local|drive}` → **ZIP de 3 CSV** (movimientos/empresas/categorias) scoped al dashboard. `src/server/zip.ts` (encoder store sin deps) + `backup.ts` (toCsv + buildBackupZip, TDD). Botón en Config→Tu cuenta; pregunta destino si Drive disponible. `api.downloadBackup` (blob) + `api.backupToDrive` (PR #10).
+- **Ayuda/FAQ** (`HelpModal.tsx`, desde menú de usuario): comandos de voz, **glosario jerga** (mango $1/luca $1.000/gamba $100/palo $1.000.000/verde=USD/k=×mil), recomendaciones + FAQ acordeón. **Reportar problema**: `POST /api/support/report` (me router, rate-limit `tierSupportReport` 3/día) → email a superadmins vía Brevo con contexto auto (email/rol/sección/fecha/UA), fire-and-forget. `api.reportProblem` (PR #13).
+- **Onboarding tour** (`TourModal.tsx`): 4 pasos, portal + progress dots, auto-show 1ª vez (localStorage `tour_seen`), re-lanzable desde menú. Independiente de WelcomeWizard (PR #13).
+- **PWA install** (`PwaInstall.tsx`): `usePwaInstall` captura `beforeinstallprompt` (Android nativo) / detecta iOS → modal instrucciones "Compartir→Agregar a inicio". `PwaInstallBanner` flotante 1ª vez (dismiss 7d). "Instalar app" en menú (PR #13).
+- **Login** (`LoginScreen`): chips de valor (Telegram/voz/foto) + "¿Problemas para entrar?" desplegable (mailto + pedir invitación). Sin auth nuevos (PR #13).
+
+**Fixes UI:**
+- `--app-border-strong` subido (dark `#385348`→`#4C7363`, light `#C4B3A1`→`#B09A82`) → botones/inputs cliqueables contrastan más (PR #9).
+- Modales unificados: portal obligatorio + `rounded-2xl` 4 bordes + fondo `surface-1` + backdrop `color-mix 42%` full-screen. RecurrenteModal tenía `bg-black/40` sin portal (backdrop atrapado) + `dark:strong-surface` (mint) → corregido (PR #8).
+- **Marrón → blanco**: auditoría completa de `bg-surface-2` (claro = marrón #EBE0D3). Grupo 1 (9 recuadros de contenido: filas categoría, caja cuenta, /start manual, invitación/permisos/deep link, details admin, preview modal) → `surface-1` (PR #11, #12). Chips/toggles/hover/skeletons/empty intactos.
+- Alineación de títulos consistente (MiembrosSection `pt-7 md:pt-9`); MovimientosTab/AdminPanel tarjetas a tokens estándar.
+
+**Decisiones:** ZIP de CSVs (no JSON) para backup porque JSON es opaco al usuario. Sin backup automático ni restaurar (fuera de alcance). Reportar problema = box en Ayuda (no página aparte) con contexto auto.
+
+**Pendiente post-deploy:** QA visual prod claro+oscuro (tour, banner PWA mobile real, Ayuda, disparar reporte real pa' confirmar mail). Actualizar `setMyCommands`/inline mode BotFather. Mockups de referencia en `mockups/` (wireframe-*, auditoria-marron). DESIGN.md sin cambios este batch.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

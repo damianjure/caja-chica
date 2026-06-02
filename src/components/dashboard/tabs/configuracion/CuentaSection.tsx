@@ -300,7 +300,7 @@ export function CuentaSection({
               disabled={savingDisplayName}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
             >
-              {savingDisplayName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {savingDisplayName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Guardar
             </button>
           </div>
@@ -360,10 +360,10 @@ export function CuentaSection({
           <button
             onClick={handleBackup}
             disabled={backingUp}
-            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors disabled:opacity-50"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-left text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors disabled:opacity-50"
           >
-            {backingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-[var(--app-text-3)]" />}
-            Descargar backup (ZIP: movimientos, empresas, categorías)
+            {backingUp ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" /> : <Download className="w-4 h-4 shrink-0 text-[var(--app-text-3)]" />}
+            Descargar backup ZIP
           </button>
 
           {isNonOwnerMember && (

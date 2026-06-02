@@ -871,7 +871,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border-strong)] px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
                     aria-label={`Administrar ${user.email}`}
                   >
-                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <ShieldCheck className="w-4 h-4" />
                     Administrar
                   </button>
                 ) : (
@@ -1070,11 +1070,11 @@ function UserDetailModal({
                     }`}
                   >
                     {isRoleActing && isCurrent ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : isCurrent ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <CheckCircle2 className="w-4 h-4" />
                     ) : (
-                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <ShieldCheck className="w-4 h-4" />
                     )}
                     {roleLabel}
                   </button>

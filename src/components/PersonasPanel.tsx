@@ -224,7 +224,7 @@ function ActionMenu({
             }}
             className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)]"
           >
-            <Link className="w-3.5 h-3.5" />
+            <Link className="w-4 h-4" />
             {ACTION_LABELS.copyLink}
           </button>
 
@@ -240,9 +240,9 @@ function ActionMenu({
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] disabled:opacity-50"
             >
               {loadingResend ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-4 h-4" />
               )}
               {ACTION_LABELS.resend}
             </button>
@@ -260,7 +260,7 @@ function ActionMenu({
                 }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)]"
               >
-                <Smartphone className="w-3.5 h-3.5" />
+                <Smartphone className="w-4 h-4" />
                 {persona.role === "editor"
                   ? `${ACTION_LABELS.changeRole}: "${DASHBOARD_ROLE_LABELS.viewer}"`
                   : `${ACTION_LABELS.changeRole}: "${DASHBOARD_ROLE_LABELS.editor}"`}
@@ -280,7 +280,7 @@ function ActionMenu({
                 }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)]"
               >
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-4 h-4" />
                 {ACTION_LABELS.revoke}
               </button>
             </>
@@ -524,7 +524,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                   title="Copiar link de invitación"
                   aria-label="Copiar link de invitación"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-4 h-4" />
                 </button>
 
                 {/* Actions dropdown */}

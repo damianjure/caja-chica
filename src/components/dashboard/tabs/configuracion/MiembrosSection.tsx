@@ -829,7 +829,7 @@ export function MiembrosSection({
     <>
       <section className="bg-white border border-[var(--app-border)] rounded-xl shadow-[var(--app-shadow-sm)] overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-6 pb-5 space-y-5">
+        <div className="px-6 pt-7 pb-5 md:px-8 md:pt-9 space-y-5">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] shrink-0">
               <Users className="w-4 h-4" />

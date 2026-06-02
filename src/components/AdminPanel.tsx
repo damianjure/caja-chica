@@ -401,7 +401,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
   return (
     <div className="space-y-6">
-    <section className="bg-white border border-[var(--app-border-strong)] rounded-xl p-6 md:p-8 shadow-sm space-y-6">
+    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <Shield className="w-4 h-4" />
@@ -732,8 +732,8 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
   const totalCount = node.members.length + node.pending_invitations.length;
 
   return (
-    <li className="border border-[var(--app-border-strong)] rounded-xl bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b-2 border-[var(--app-text-3)]">
+    <li className="border border-[var(--app-border)] rounded-xl bg-white shadow-[var(--app-shadow-sm)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--app-border)]">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {node.owner ? (
             <>

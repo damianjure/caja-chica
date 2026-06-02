@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
@@ -100,9 +101,10 @@ function RecurrenteModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--app-text-1) 42%, transparent)' }}
       onClick={onClose}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
@@ -110,10 +112,10 @@ function RecurrenteModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="recurrente-modal-title"
-        className="bg-white dark:bg-[var(--app-strong-surface)] rounded-xl shadow-xl w-full max-w-md p-6 space-y-5"
+        className="anim-scale-in bg-[var(--app-surface-1)] border border-[var(--app-border-strong)] rounded-2xl shadow-[var(--app-shadow-md)] w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="recurrente-modal-title" className="text-base font-semibold text-[var(--app-text-1)] dark:text-neutral-100">
+        <h2 id="recurrente-modal-title" className="text-base font-semibold text-[var(--app-text-1)]">
           {form === initial && initial.monto === '' ? 'Nuevo recurrente' : 'Editar recurrente'}
         </h2>
 
@@ -127,7 +129,7 @@ function RecurrenteModal({
                 step="0.01"
                 value={form.monto}
                 onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="0.00"
                 required
               />
@@ -138,7 +140,7 @@ function RecurrenteModal({
               <select
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
               >
                 <option value="egreso">Gasto</option>
                 <option value="ingreso">Ingreso</option>
@@ -150,7 +152,7 @@ function RecurrenteModal({
               <select
                 value={form.moneda}
                 onChange={(e) => setForm((f) => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
               >
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
@@ -162,7 +164,7 @@ function RecurrenteModal({
               <select
                 value={form.frecuencia}
                 onChange={(e) => setForm((f) => ({ ...f, frecuencia: e.target.value as Frecuencia }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
               >
                 {FRECUENCIA_OPTIONS.map((f) => (
                   <option key={f} value={f}>{FRECUENCIA_LABELS[f]}</option>
@@ -176,7 +178,7 @@ function RecurrenteModal({
                 <select
                   value={form.dayOfMonth}
                   onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
-                  className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                  className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 >
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                     <option key={d} value={String(d)}>{d}</option>
@@ -191,7 +193,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.categoria}
                 onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: servicios"
               />
             </div>
@@ -202,7 +204,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.empresa_nombre}
                 onChange={(e) => setForm((f) => ({ ...f, empresa_nombre: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Personal"
               />
             </div>
@@ -213,7 +215,7 @@ function RecurrenteModal({
                 type="text"
                 value={form.descripcion}
                 onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-                className="w-full rounded-xl border border-[var(--app-border)] dark:border-neutral-700 bg-white dark:bg-[var(--app-strong-surface)] px-3 py-2 text-sm text-[var(--app-text-1)] dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: alquiler local"
               />
             </div>
@@ -223,21 +225,22 @@ function RecurrenteModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--app-text-2)] border border-transparent hover:border-[var(--app-text-2)] transition-colors"
+              className="px-4 py-2 rounded-md text-sm font-medium text-[var(--app-text-2)] border border-[var(--app-border)] hover:border-[var(--app-text-2)] transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] dark:bg-[var(--app-surface-2)] dark:text-[var(--app-text-1)] dark:border-[var(--app-border)] hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-md text-sm font-bold bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] active:scale-[0.97] disabled:opacity-50 transition"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

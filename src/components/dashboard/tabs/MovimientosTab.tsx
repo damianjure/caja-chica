@@ -32,7 +32,7 @@ function ExportMenu({
   );
 
   return (
-    <div className="relative ml-auto" ref={ref}>
+    <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -201,7 +201,25 @@ export default function MovimientosTab({
         <MetricCard label="Total movimientos" value={String(historyCount)} />
       </div>
 
-      <SectionCard title="Historial de movimientos" description="Filtrá por fecha, empresa, tipo, moneda o categoría. Todo lo cargado entra como conciliado por defecto.">
+      <SectionCard
+        title="Historial de movimientos"
+        description="Filtrá por fecha, empresa, tipo, moneda o categoría. Todo lo cargado entra como conciliado por defecto."
+        action={
+          <div className="flex items-center gap-2">
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={onOpenCarga}
+                className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97]"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                Cargar
+              </button>
+            )}
+            <ExportMenu onCsv={onExportCsv} onPdf={onExportPdf} onDrive={onExportDrive} driveConnected={driveConnected} busy={exporting} />
+          </div>
+        }
+      >
         <div className="space-y-4">
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
@@ -219,17 +237,6 @@ export default function MovimientosTab({
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </select>
-            {canWriteData && (
-              <button
-                type="button"
-                onClick={onOpenCarga}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97]"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                Cargar
-              </button>
-            )}
-            <ExportMenu onCsv={onExportCsv} onPdf={onExportPdf} onDrive={onExportDrive} driveConnected={driveConnected} busy={exporting} />
           </div>
 
           {/* Rango personalizado */}

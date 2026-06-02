@@ -148,10 +148,19 @@ export default function EmpresasTab({
                       <div className="text-sm font-medium text-[var(--app-text-1)]">{c.name}</div>
                       <div className="text-xs text-[var(--app-text-3)]">{c.movimientos} mov · {saludHint(c)}</div>
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-0.5 text-sm tabular-nums">
-                      <span className="text-[var(--app-text-3)]">Ingresos <span className="font-semibold text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</span></span>
-                      <span className="text-[var(--app-text-3)]">Gastos <span className="font-semibold text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</span></span>
-                      <span className="text-[var(--app-text-3)]">Saldo <span className={`font-semibold ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</span></span>
+                    <div className="grid grid-cols-3 gap-x-6 sm:w-[26rem] sm:shrink-0">
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Ingresos</div>
+                        <div className="text-sm font-semibold tabular-nums text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Gastos</div>
+                        <div className="text-sm font-semibold tabular-nums text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Saldo</div>
+                        <div className={`text-sm font-semibold tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</div>
+                      </div>
                     </div>
                   </div>
                 );

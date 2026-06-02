@@ -480,7 +480,7 @@ function PersonCard({
           ? "border-[var(--app-border-strong)] bg-[var(--app-surface-1)] dark:border-[var(--app-border-strong,_var(--app-border))]"
           : expanded
           ? "border-[var(--app-border)] bg-[var(--app-surface-1)] dark:border-[var(--app-border)]"
-          : "border-[var(--app-border)] bg-[var(--app-surface-2)] dark:border-[var(--app-border)]",
+          : "border-[var(--app-border)] bg-[var(--app-surface-1)] dark:border-[var(--app-border)]",
         isRevoked ? "opacity-60" : "",
       ]
         .filter(Boolean)

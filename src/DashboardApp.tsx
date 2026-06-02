@@ -347,7 +347,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const arsTotals = getCurrencyTotals(history, 'ARS');
   const usdTotals = getCurrencyTotals(history, 'USD');
-  const companySummaries = getCompanySummaries(history);
+  const companySummaries = getCompanySummaries(history, customCompanies.map((c) => c.nombre));
   const categorySummaries = getCategorySummaries(history);
   const incomeTagSummaries = getIncomeTagSummaries(history);
   const monthlySummaries = getMonthlySummaries(history);

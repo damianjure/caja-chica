@@ -148,8 +148,24 @@ export function getCurrencyTotals(history: Movimiento[], currency: 'ARS' | 'USD'
   }, { ingreso: 0, egreso: 0, neto: 0 });
 }
 
-export function getCompanySummaries(history: Movimiento[]) {
+export function getCompanySummaries(history: Movimiento[], extraCompanies: string[] = []) {
   const map = new Map<string, CompanySummary>();
+
+  const blank = (name: string): CompanySummary => ({
+    name,
+    ingresosArs: 0,
+    gastosArs: 0,
+    saldoArs: 0,
+    ingresosUsd: 0,
+    gastosUsd: 0,
+    saldoUsd: 0,
+    movimientos: 0,
+  });
+
+  // Empresas sin movimientos también deben aparecer (recién creadas).
+  extraCompanies.forEach((name) => {
+    if (name && !map.has(name)) map.set(name, blank(name));
+  });
 
   history.forEach((item) => {
     const name = item.empresa_nombre || 'Personal';

@@ -493,6 +493,70 @@ export function createAdminRouter(deps: AdminDeps) {
     },
   );
 
+  // Eliminación definitiva de cuenta. Borra login + membresías. NO borra
+  // movimientos/empresas/datos del dashboard (se preserva el historial contable).
+  router.delete(
+    "/api/admin/users/:id",
+    requireSession,
+    requireSuperadmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        const userId = req.params.id;
+
+        if (userId === session.userId) {
+          return res.status(400).json({ error: "cannot_delete_self" });
+        }
+
+        const { data: target, error: targetErr } = await supabase
+          .from("app_users")
+          .select("user_id, email, role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (targetErr) throw targetErr;
+        if (!target) return res.status(404).json({ error: "not_found" });
+
+        if (target.role === "superadmin") {
+          const { count, error: countErr } = await supabase
+            .from("app_users")
+            .select("user_id", { count: "exact", head: true })
+            .eq("role", "superadmin");
+          if (countErr) throw countErr;
+          if ((count ?? 0) <= 1) {
+            return res.status(400).json({ error: "last_superadmin" });
+          }
+        }
+
+        // Quitar todas las membresías (incluye owner — la cuenta deja de existir).
+        const { error: membersErr } = await supabase
+          .from("dashboard_members")
+          .delete()
+          .eq("user_id", userId);
+        if (membersErr) throw membersErr;
+
+        // Hard delete del usuario de auth — cascada de sesiones. Mantiene movimientos/empresas.
+        const { error: authErr } = await supabase.auth.admin.deleteUser(userId);
+        if (authErr) throw authErr;
+
+        // Limpiar app_users por si el FK no cascadea.
+        await supabase.from("app_users").delete().eq("user_id", userId);
+
+        await writeAuditLog({
+          actor_user_id: session.userId,
+          action: "account_delete",
+          entity_type: "app_user",
+          entity_id: userId,
+          before_data: { email: target.email, role: target.role },
+        });
+
+        res.json({ ok: true });
+      } catch (err) {
+        console.error("[admin] account delete error:", err);
+        res.status(500).json({ error: "failed_to_delete" });
+      }
+    },
+  );
+
   router.post(
     "/api/admin/telegram-links/:linkId/revoke",
     requireSession,

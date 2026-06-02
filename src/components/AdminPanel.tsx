@@ -13,6 +13,7 @@ import {
   Pause,
   Shield,
   ShieldCheck,
+  Trash2,
   UserPlus,
   XCircle,
 } from "lucide-react";
@@ -363,6 +364,41 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
     });
   };
 
+  const requestDeleteAccount = () => {
+    if (!detail) return;
+    const target = detail.user.email;
+    const targetId = detail.user.user_id;
+    setPendingConfirm({
+      title: "Eliminar cuenta definitivamente",
+      description: `Vas a eliminar la cuenta de ${target}. Es irreversible.`,
+      details: (
+        <p>Se borra el acceso (login y membresías). Los movimientos y empresas que cargó se conservan. El email podrá invitarse de nuevo más adelante.</p>
+      ),
+      confirmLabel: "Eliminar cuenta",
+      tone: "danger",
+      requireText: target,
+      run: async () => {
+        setActingKey("delete");
+        try {
+          await api.deleteUserAccount(targetId);
+          setUsers((prev) => prev.filter((u) => u.user_id !== targetId));
+          setDetail(null);
+          toast.success(`Cuenta de ${target} eliminada`);
+          setPendingConfirm(null);
+        } catch (err: any) {
+          const code = err?.body?.error ?? err?.message;
+          const msg =
+            code === "last_superadmin" ? "No podés eliminar al único superadmin."
+            : code === "cannot_delete_self" ? "No podés eliminar tu propia cuenta."
+            : "No se pudo eliminar la cuenta.";
+          toast.error(msg);
+        } finally {
+          setActingKey(null);
+        }
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
     <section className="bg-white border border-[var(--app-border-strong)] rounded-xl p-6 md:p-8 shadow-sm space-y-6">
@@ -564,6 +600,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           onForceLogout={requestForceLogout}
           onRoleChange={requestRoleChange}
           onRevokeTelegramLink={requestRevokeTelegramLink}
+          onDeleteAccount={requestDeleteAccount}
         />
       )}
 
@@ -905,6 +942,7 @@ interface UserDetailModalProps {
   onForceLogout: () => void;
   onRoleChange: (role: AppRole) => void;
   onRevokeTelegramLink: (linkId: string, chatId: number | null) => void;
+  onDeleteAccount: () => void;
 }
 
 function UserDetailModal({
@@ -916,6 +954,7 @@ function UserDetailModal({
   onForceLogout,
   onRoleChange,
   onRevokeTelegramLink,
+  onDeleteAccount,
 }: UserDetailModalProps) {
   const acting = actingKey !== null;
   return (
@@ -1077,6 +1116,24 @@ function UserDetailModal({
               </div>
             </section>
           )}
+
+          <section className="space-y-3 rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-red-text)]">
+              Zona peligrosa
+            </h3>
+            <p className="text-xs text-[var(--app-text-2)]">
+              Eliminar la cuenta borra el acceso (login y membresías). Los movimientos y empresas se conservan. Irreversible.
+            </p>
+            <button
+              type="button"
+              onClick={onDeleteAccount}
+              disabled={acting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--app-red-text)] px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar cuenta definitivamente
+            </button>
+          </section>
         </div>
       )}
     </ModalShell>

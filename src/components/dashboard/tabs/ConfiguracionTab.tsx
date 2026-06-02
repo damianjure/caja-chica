@@ -8,6 +8,7 @@ import { CuentaSection } from "./configuracion/CuentaSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
 import { BotConnectionPanel } from "../../BotConnectionPanel";
+import { SectionCard } from "../primitives";
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -93,12 +94,12 @@ export default function ConfiguracionTab({
 
         {canManageCategorias && <CategoriasSection />}
 
-        {/* Integraciones: Telegram + Drive agrupados. */}
+        {/* Vinculación: Telegram + Drive en una sola tarjeta. */}
         {canManage && (
-          <>
+          <SectionCard title="Vinculación" description="Conectá Telegram y Google Drive a tu cuenta.">
             <BotConnectionPanel />
             {canConnectDrive && <DriveSection />}
-          </>
+          </SectionCard>
         )}
       </div>
 

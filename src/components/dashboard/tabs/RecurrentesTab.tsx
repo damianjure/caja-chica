@@ -384,32 +384,18 @@ export default function RecurrentesTab({
       </div>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <SectionCard title="Calendario de impactos" description="Próximos 30 días — qué días vienen pesados.">
-          <div className="grid grid-cols-7 gap-1.5">
-            {summary.dias.map((d) => {
-              const cls = d.level === 'high'
-                ? 'bg-[color-mix(in_srgb,var(--chart-expense)_24%,var(--app-surface-2))] text-[var(--chart-expense)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))]'
-                : d.level === 'med'
-                  ? 'bg-[color-mix(in_srgb,var(--app-amber-text)_20%,var(--app-surface-2))] text-[var(--app-amber-text)] border-[var(--app-border)]'
-                  : d.level === 'low'
-                    ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
-                    : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
-              return (
-                <div key={d.date} title={`${d.date}: ${formatMonto(d.total, 'ARS')}`} className={`grid aspect-square place-items-center rounded-md border text-xs ${cls}`}>
-                  {Number(d.date.slice(8, 10))}
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--app-text-3)]">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)]" />Sin impacto</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-income)]" />Bajo</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-amber-text)]" />Medio</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-expense)]" />Alto</span>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Próximos recurrentes" description="Ordenados por próxima carga.">
+        <SectionCard
+          title="Próximos recurrentes"
+          description="Ordenados por próxima carga."
+          action={canWriteData ? (
+            <button
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] active:scale-[0.97] transition"
+            >
+              <Plus className="w-4 h-4" /> Nuevo
+            </button>
+          ) : undefined}
+        >
           <div className="divide-y divide-[var(--app-border)]">
             {proximos.map((r) => (
               <div key={r.id} className={`flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0 ${r.is_active ? '' : 'opacity-60'}`}>
@@ -463,29 +449,32 @@ export default function RecurrentesTab({
             ))}
           </div>
         </SectionCard>
-      </section>
 
-      <div className="flex flex-col gap-4 border-t border-[var(--app-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-        {canWriteData ? (
-          <button
-            onClick={() => setCreating(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md text-sm font-bold bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] active:scale-[0.97] transition"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo recurrente
-          </button>
-        ) : <span />}
-        <div className="flex gap-8 sm:ml-auto">
-          <div className="text-right">
-            <div className="text-[11px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Total del mes</div>
-            <div className={`text-lg font-bold tabular-nums ${summary.impactoMensualArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>{formatMonto(summary.impactoMensualArs, 'ARS')}</div>
+        <SectionCard title="Calendario de impactos" description="Próximos 30 días — qué días vienen pesados.">
+          <div className="grid grid-cols-7 gap-1.5">
+            {summary.dias.map((d) => {
+              const cls = d.level === 'high'
+                ? 'bg-[color-mix(in_srgb,var(--chart-expense)_24%,var(--app-surface-2))] text-[var(--chart-expense)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))]'
+                : d.level === 'med'
+                  ? 'bg-[color-mix(in_srgb,var(--app-amber-text)_20%,var(--app-surface-2))] text-[var(--app-amber-text)] border-[var(--app-border)]'
+                  : d.level === 'low'
+                    ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
+                    : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
+              return (
+                <div key={d.date} title={`${d.date}: ${formatMonto(d.total, 'ARS')}`} className={`grid aspect-square place-items-center rounded-md border text-xs ${cls}`}>
+                  {Number(d.date.slice(8, 10))}
+                </div>
+              );
+            })}
           </div>
-          <div className="text-right">
-            <div className="text-[11px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Proyección 30 días</div>
-            <div className={`text-lg font-bold tabular-nums ${summary.proyeccion30dArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>{formatMonto(summary.proyeccion30dArs, 'ARS')}</div>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--app-text-3)]">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)]" />Sin impacto</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-income)]" />Bajo</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-amber-text)]" />Medio</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-expense)]" />Alto</span>
           </div>
-        </div>
-      </div>
+        </SectionCard>
+      </section>
 
       {creating && (
         <RecurrenteModal

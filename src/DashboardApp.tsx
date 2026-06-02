@@ -1,9 +1,11 @@
-import { lazy, Suspense, useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { Send, AlertCircle, Loader2, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Camera, Search } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
+import { CargaModal } from './components/CargaModal';
+import { ScrollToTop } from './components/ScrollToTop';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -188,9 +190,12 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const { isExtracting, extractError, extracted, startExtract, clearExtracted } = useImageExtract();
   const [isSavingExtracted, setIsSavingExtracted] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const [isCargaOpen, setIsCargaOpen] = useState(false);
+  const [movementsPage, setMovementsPage] = useState(1);
 
   const handleImageFile = useCallback((file: File) => {
+    setIsCargaOpen(false);
     void startExtract(file);
   }, [startExtract]);
 
@@ -223,16 +228,20 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             if (!exists) void api.addEmpresa(event.companyName).then((e) => { appendEmpresa(e); showToast(`Empresa "${event.companyName}" creada.`); });
             else showToast(`La empresa "${event.companyName}" ya existe.`, 'warning');
           }
+          setIsCargaOpen(false);
           break;
         case 'ELIMINAR_MOVIMIENTO':
           if (event.deletedId) { removeMovement(event.deletedId); showToast('Último movimiento eliminado.'); }
+          setIsCargaOpen(false);
           break;
         case 'REGISTRAR':
           prependMovements(event.saved);
           showToast(`${event.saved.length} transacciones registradas.`);
+          setIsCargaOpen(false);
           break;
         case 'PENDING_COMPANY':
           setPendingItem(event.item);
+          setIsCargaOpen(false);
           break;
       }
     },
@@ -310,10 +319,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         const tabId = item.id.slice('goto-'.length) as DashboardTab;
         setActiveTab(tabId);
       } else if (item.id === 'open-composer') {
-        setActiveTab('movimientos');
-        requestAnimationFrame(() => {
-          document.getElementById('message-input')?.focus();
-        });
+        setIsCargaOpen(true);
       }
       return;
     }
@@ -323,15 +329,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   }, []);
 
   const goToComposer = useCallback(() => {
-    setActiveTab('movimientos');
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        const el = document.getElementById('message-input');
-        el?.focus();
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 60);
-    });
+    setIsCargaOpen(true);
   }, []);
+
+  // Volver a la página 1 cuando cambian los filtros.
+  useEffect(() => {
+    setMovementsPage(1);
+  }, [selectedCompany, movementType, movementCurrency, selectedCategory, datePeriod, customFrom, customTo]);
   // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -519,56 +523,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </section>
 
-        {canWriteData && activeTab === 'movimientos' && (
-          <div className="space-y-4">
-            <SectionCard title="Centro de carga" description="Usá lenguaje natural para registrar movimientos, o subí una foto de un ticket para extraerlo automáticamente.">
-              <div
-                className="relative group"
-                onDragOver={(e) => { e.preventDefault(); }}
-                onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files?.[0]; if (file) handleImageFile(file); }}
-              >
-                <label htmlFor="message-input" className="sr-only">Movimiento en lenguaje natural</label>
-                <textarea id="message-input" aria-label="Movimiento en lenguaje natural" className="w-full min-h-[92px] p-5 pb-14 sm:pb-4 bg-[var(--app-surface-1)] text-[var(--app-text-1)] border border-[var(--app-border)] rounded-md shadow-sm focus:ring-2 focus:ring-[var(--app-text-1)] focus:border-transparent outline-none transition-[border-color,box-shadow] duration-150 resize-none text-base" placeholder="Ej: 'Che, cobré 5 lucas por el laburito del taller' o arrastrá una foto de ticket acá" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && void handleProcess()} />
-                <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:bottom-4 sm:right-4 flex items-center justify-end gap-3">
-                  <span className="text-xs text-[var(--app-text-3)] hidden sm:block">Ctrl + Enter</span>
-                  <button
-                    type="button"
-                    aria-label="Subir foto de ticket"
-                    title="Subir foto de ticket"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={isExtracting}
-                    className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] active:scale-[0.94] transition disabled:opacity-50"
-                  >
-                    {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                  </button>
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="sr-only"
-                    aria-label="Seleccionar imagen de ticket"
-                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageFile(file); e.target.value = ''; }}
-                  />
-                  <button id="process-button" onClick={() => void handleProcess()} disabled={!inputText.trim() || isProcessing} className="flex items-center gap-2 bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border border-[var(--app-strong-surface)] px-6 py-2.5 rounded-md font-medium hover:border-[var(--app-border-strong)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 shadow-[var(--app-shadow-md)] sm:w-auto w-full justify-center">
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {isProcessing ? 'Procesando...' : 'Enviar'}
-                  </button>
-                </div>
-              </div>
-              {error && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-[var(--app-red-surface)] text-[var(--chart-expense)] rounded-xl border border-red-100 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
-              {extractError && <div role="alert" className="anim-fade-in-down flex items-center gap-2 p-4 bg-[var(--app-amber-surface)] text-amber-700 rounded-xl border border-amber-100 text-sm"><AlertCircle className="w-4 h-4" />{extractError}</div>}
-            </SectionCard>
-          </div>
-        )}
-        {!canWriteData && activeTab === 'movimientos' && (
-          <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 text-sm text-[var(--app-text-3)]">Solo podés ver. Para cargar movimientos, pedile al dueño del dashboard que te dé acceso de "Puede editar".</div>
-        )}
-
         <main>
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} />}
-                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
+                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} onDrilldown={(company, category) => { setSelectedCompany(company); setSelectedCategory(category); setMovementType('all'); setMovementCurrency('all'); setDatePeriod('all'); setActiveTab('movimientos'); }} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><AdminPanel viewer={viewer} /></Suspense>}
@@ -616,6 +575,21 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           onClose={() => setIsPaletteOpen(false)}
           searchInput={{ movimientos: history, empresas: customCompanies, categorias: categories, quickActions: paletteQuickActions }}
           onSelect={handlePaletteSelect}
+        />
+
+        <ScrollToTop />
+
+        <CargaModal
+          open={isCargaOpen}
+          onClose={() => setIsCargaOpen(false)}
+          inputText={inputText}
+          setInputText={setInputText}
+          isProcessing={isProcessing}
+          isExtracting={isExtracting}
+          error={error}
+          extractError={extractError}
+          onSubmit={() => void handleProcess()}
+          onImageFile={handleImageFile}
         />
 
         <DashboardModals

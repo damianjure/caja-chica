@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload } from 'lucide-react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus } from 'lucide-react';
 
 function ExportMenu({
   onCsv, onPdf, onDrive, driveConnected, busy,
@@ -152,6 +152,8 @@ export default function MovimientosTab({
   setCustomTo,
   hasActiveFilters,
   resetFilters,
+  canWriteData,
+  onOpenCarga,
   onExportCsv,
   onExportPdf,
   onExportDrive,
@@ -180,6 +182,8 @@ export default function MovimientosTab({
   setCustomTo: (value: string) => void;
   hasActiveFilters: boolean;
   resetFilters: () => void;
+  canWriteData: boolean;
+  onOpenCarga: () => void;
   onExportCsv: () => void;
   onExportPdf: () => void;
   onExportDrive: () => void;
@@ -215,6 +219,16 @@ export default function MovimientosTab({
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </select>
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={onOpenCarga}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97]"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                Cargar
+              </button>
+            )}
             <ExportMenu onCsv={onExportCsv} onPdf={onExportPdf} onDrive={onExportDrive} driveConnected={driveConnected} busy={exporting} />
           </div>
 

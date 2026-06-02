@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { HardDriveUpload, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { api, type DriveStatus } from "../../../../services/api";
-import { SectionCard } from "../../primitives";
 
 /**
  * Conexión a Google Drive (movida de InformesTab a Config — C-completo).
@@ -57,12 +56,20 @@ export function DriveSection() {
   if (loading || !status.enabled) return null;
 
   return (
-    <SectionCard
-      title="Google Drive"
-      description={status.connected
-        ? "Conectado. Desde Movimientos → Exportar podés guardar informes en Drive."
-        : "Conectá tu cuenta para guardar informes directamente en Drive."}
-    >
+    <div className="space-y-3 border-t border-[var(--app-border)] pt-5">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-md bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+          <HardDriveUpload className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold tracking-tight text-[var(--app-text-1)]">Google Drive</h3>
+          <p className="text-sm text-[var(--app-text-3)]">
+            {status.connected
+              ? "Conectado. Desde Movimientos → Exportar guardás informes en Drive."
+              : "Conectá tu cuenta para guardar informes directamente en Drive."}
+          </p>
+        </div>
+      </div>
       {status.connected ? (
         <button
           onClick={() => void disconnect()}
@@ -80,6 +87,6 @@ export function DriveSection() {
           Conectar Google Drive
         </button>
       )}
-    </SectionCard>
+    </div>
   );
 }

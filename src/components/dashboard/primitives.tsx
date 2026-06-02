@@ -25,17 +25,20 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
   );
 }
 
-export function SectionCard({ title, description, children, icon: Icon }: { title: string; description?: string; children: ReactNode; icon?: LucideIcon }) {
+export function SectionCard({ title, description, children, icon: Icon, action }: { title: string; description?: string; children: ReactNode; icon?: LucideIcon; action?: ReactNode }) {
   return (
     <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
-      <header className="mb-6">
-        <div className="flex items-center gap-2">
-          {Icon && <Icon className="w-4 h-4 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
-          <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">{title}</h2>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="w-4 h-4 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
+            <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">{title}</h2>
+          </div>
+          {description && (
+            <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">{description}</p>
+          )}
         </div>
-        {description && (
-          <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">{description}</p>
-        )}
+        {action && <div className="shrink-0">{action}</div>}
       </header>
       <div className="space-y-4">{children}</div>
     </section>

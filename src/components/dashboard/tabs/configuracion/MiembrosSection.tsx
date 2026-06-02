@@ -827,7 +827,7 @@ export function MiembrosSection({
 
   return (
     <>
-      <section className="bg-white dark:bg-[var(--app-surface-1)] border border-[var(--app-border)] dark:border-[var(--app-border)] rounded-xl shadow-sm overflow-hidden">
+      <section className="bg-white border border-[var(--app-border)] rounded-xl shadow-[var(--app-shadow-sm)] overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-5 space-y-5">
           <div className="flex items-center gap-3">

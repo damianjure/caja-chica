@@ -2,7 +2,12 @@ import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, buildEmpresaSelectorKeyboard, splitForTelegram } from "../utils.ts";
-import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
+import {
+  applyTelegramDataScope,
+  buildTelegramWriteOwnership,
+  canEditMovementViaTelegram,
+  type TelegramLinkRecord,
+} from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
@@ -113,6 +118,10 @@ export async function applyEditLast(
   ).limit(1);
   const last = data?.[0];
   if (!last) { await ctx.reply("No hay movimientos para editar."); return; }
+  if (!canEditMovementViaTelegram(last, linked)) {
+    await ctx.reply("🚫 Sin permiso para editar movimientos de otros.");
+    return;
+  }
 
   let updateQuery = supabase.from("movimientos").update(patch).eq("id", last.id);
   if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
@@ -692,6 +701,9 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
     }
     const last = await getLastMovementByType(supabase, linked, "ingreso");
     if (!last) return ctx.reply("No hay ingresos para editar.");
+    if (!canEditMovementViaTelegram(last, linked)) {
+      return ctx.reply("🚫 Sin permiso para editar movimientos de otros.");
+    }
     let updateQuery = supabase.from("movimientos").update({
       monto: parsed.monto,
       descripcion: parsed.descripcion,
@@ -727,6 +739,9 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
     }
     const last = await getLastMovementByType(supabase, linked, "egreso");
     if (!last) return ctx.reply("No hay gastos para editar.");
+    if (!canEditMovementViaTelegram(last, linked)) {
+      return ctx.reply("🚫 Sin permiso para editar movimientos de otros.");
+    }
     let updateQuery = supabase.from("movimientos").update({
       monto: parsed.monto,
       descripcion: parsed.descripcion,

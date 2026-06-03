@@ -8,7 +8,11 @@ import { buildGestionarKeyboard } from "../keyboards.ts";
 import { normalizeReportSlots, normalizeRecurrenteSlots, normalizeEditSlots } from "../intentSlots.ts";
 import { runReportFromSlots, startReportFlow } from "./reports.ts";
 import { createRecurrenteFromBot, startRecurringFlow } from "./recurring.ts";
-import { applyTelegramDataScope } from "../../server/telegramAccess.ts";
+import {
+  applyTelegramDataScope,
+  canDeleteMovementViaTelegram,
+  canEditMovementViaTelegram,
+} from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, getTopEmpresasForDashboard } from "../../server/telegramCompanyResolution.ts";
 import { resolveTelegramCategory, getTopCategoriasForDashboard } from "../../server/telegramCategoryResolution.ts";
 import {
@@ -136,6 +140,10 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       await ctx.reply(`No hay ${tipo}s para editar.`);
       return;
     }
+    if (!canEditMovementViaTelegram(last, linked)) {
+      await ctx.reply("🚫 Sin permiso para editar movimientos de otros.");
+      return;
+    }
     const data: PendingExtractionData = {
       monto: typeof last.monto === "number" ? last.monto : Number(last.monto) || 0,
       moneda: last.moneda === "USD" ? "USD" : "ARS",
@@ -235,7 +243,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       return;
     }
     const mov = rows[0];
-    if (!canUndoMovement(mov, linked)) {
+    if (!canUndoMovement(mov, linked) || !canDeleteMovementViaTelegram(mov, linked)) {
       await ctx.editMessageText("🚫 Sin permiso para deshacer este movimiento.");
       return;
     }
@@ -304,10 +312,14 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     const movId = ctx.match[1];
     const category = ctx.match[2];
     const { data: targetRows } = await applyTelegramDataScope(
-      supabase.from("movimientos").select("id"),
+      supabase.from("movimientos").select("id, owner_user_id, created_by_user_id"),
       linked,
     ).eq("id", movId).limit(1);
-    if (!targetRows?.[0]) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    const target = targetRows?.[0];
+    if (!target) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    if (!canEditMovementViaTelegram(target, linked)) {
+      return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
+    }
     await supabase.from("movimientos").update({ categoria: category }).eq("id", movId);
     await insertBotAuditLog(supabase, {
       linked,
@@ -327,10 +339,14 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!linked) return;
     const movId = ctx.match[1];
     const { data: targetRows } = await applyTelegramDataScope(
-      supabase.from("movimientos").select("id"),
+      supabase.from("movimientos").select("id, owner_user_id, created_by_user_id"),
       linked,
     ).eq("id", movId).limit(1);
-    if (!targetRows?.[0]) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    const target = targetRows?.[0];
+    if (!target) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    if (!canEditMovementViaTelegram(target, linked)) {
+      return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
+    }
     const { data: cats } = await applyTelegramDataScope(
       supabase.from("categorias").select("nombre"),
       linked,
@@ -355,6 +371,10 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     ).eq("id", movId).limit(1);
     const movement = rows?.[0];
     if (!movement) return ctx.reply("Movimiento no encontrado.");
+    if (!canDeleteMovementViaTelegram(movement, linked)) {
+      await ctx.reply("🚫 Sin permiso para borrar movimientos de otros.");
+      return;
+    }
     let delQuery = supabase.from("movimientos").update({
       deleted_at: new Date().toISOString(),
       deleted_by_user_id: linked.userId,

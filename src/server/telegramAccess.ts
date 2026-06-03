@@ -1,5 +1,5 @@
 import { isMissingSchemaArtifactError } from "./errors.ts";
-import type { MemberPermissions } from "./permissions.ts";
+import { can, type MemberPermissions } from "./permissions.ts";
 
 export interface TelegramSupabaseLike {
   from(table: string): any;
@@ -17,6 +17,11 @@ export interface TelegramLinkRecord {
   username: string | null;
   remindersEnabled: boolean;
   linkTokenExpiresAt: string | null;
+}
+
+export interface TelegramMovementMutationRecord {
+  owner_user_id?: string | null;
+  created_by_user_id?: string | null;
 }
 
 export async function resolveDashboardRole(
@@ -193,6 +198,50 @@ export function canEditViaTelegram(linked: TelegramLinkRecord | null) {
     return linked.role === "owner" || linked.role === "editor";
   }
   return Boolean(linked.ownerUserId);
+}
+
+function telegramActorUserId(linked: TelegramLinkRecord): string | null {
+  return linked.userId ?? linked.ownerUserId ?? null;
+}
+
+function telegramPermissionRole(linked: TelegramLinkRecord): "owner" | "editor" | "viewer" {
+  if (linked.role) return linked.role;
+  return linked.ownerUserId && !linked.dashboardId ? "owner" : "viewer";
+}
+
+function ownsTelegramMovement(
+  movement: TelegramMovementMutationRecord,
+  linked: TelegramLinkRecord,
+): boolean {
+  const actorUserId = telegramActorUserId(linked);
+  if (!actorUserId) return false;
+  return movement.owner_user_id === actorUserId || movement.created_by_user_id === actorUserId;
+}
+
+export function canEditMovementViaTelegram(
+  movement: TelegramMovementMutationRecord,
+  linked: TelegramLinkRecord,
+): boolean {
+  const member = {
+    role: telegramPermissionRole(linked),
+    permissions: linked.permissions ?? {},
+    user_id: telegramActorUserId(linked) ?? "",
+  };
+  if (!can(member, "write_movimiento")) return false;
+  return ownsTelegramMovement(movement, linked) || can(member, "edit_any_movimiento");
+}
+
+export function canDeleteMovementViaTelegram(
+  movement: TelegramMovementMutationRecord,
+  linked: TelegramLinkRecord,
+): boolean {
+  const member = {
+    role: telegramPermissionRole(linked),
+    permissions: linked.permissions ?? {},
+    user_id: telegramActorUserId(linked) ?? "",
+  };
+  if (!can(member, "delete_own_movimiento")) return false;
+  return ownsTelegramMovement(movement, linked) || can(member, "delete_any_movimiento");
 }
 
 export function applyTelegramDataScope(

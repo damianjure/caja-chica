@@ -85,7 +85,7 @@ function relativeTimeShort(isoDate: string | null | undefined): string | null {
 }
 
 const INVITATION_STATUS_LABELS: Record<string, string> = {
-  all: "Todas",
+  all: "Activas",
   pending: "Pendiente",
   accepted: "Aceptada",
   revoked: "Revocada",
@@ -501,7 +501,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
             <div className="space-y-3">
               {invitations
                 .filter((inv) => {
-                  if (invitationStatusFilter === "all") return true;
+                  if (invitationStatusFilter === "all") return inv.status !== "accepted";
                   if (invitationStatusFilter === "expired") {
                     return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                   }
@@ -590,7 +590,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                   );
                 })}
               {invitations.filter((inv) => {
-                if (invitationStatusFilter === "all") return true;
+                if (invitationStatusFilter === "all") return inv.status !== "accepted";
                 if (invitationStatusFilter === "expired") {
                   return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                 }
@@ -598,7 +598,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               }).length === 0 && (
                 <p className="text-sm text-[var(--app-text-2)]">
                   {invitationStatusFilter === "all"
-                    ? "Todavía no hay invitaciones."
+                    ? "No hay invitaciones activas. Las aceptadas están en su filtro."
                     : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
                 </p>
               )}

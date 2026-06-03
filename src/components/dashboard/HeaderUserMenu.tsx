@@ -11,6 +11,7 @@ import type { ThemeMode } from '../ThemeToggle';
 export function HeaderUserMenu({
   email,
   identityLabel,
+  photoUrl,
   theme,
   onToggleTheme,
   onSignOut,
@@ -20,6 +21,7 @@ export function HeaderUserMenu({
 }: {
   email: string;
   identityLabel: string;
+  photoUrl?: string | null;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onSignOut: () => void;
@@ -28,6 +30,7 @@ export function HeaderUserMenu({
   onInstallApp?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,9 +56,19 @@ export function HeaderUserMenu({
         aria-expanded={open}
         aria-label={`Cuenta: ${email}`}
         title={email}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] text-[var(--app-text-1)] text-xs font-bold active:scale-[0.94] transition"
+        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] text-[var(--app-text-1)] text-xs font-bold active:scale-[0.94] transition"
       >
-        {initialsFromEmail(email)}
+        {photoUrl && !imgError ? (
+          <img
+            src={photoUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          initialsFromEmail(email)
+        )}
       </button>
 
       {open && (

@@ -90,8 +90,16 @@ export function createMeRouter(deps: MeDeps) {
     if (!data?.display_name && profileName) metadataUpdates.display_name = profileName.slice(0, 80);
     if (profilePhotoUrl && data?.profile_photo_url !== profilePhotoUrl) metadataUpdates.profile_photo_url = profilePhotoUrl.slice(0, 500);
     if (Object.keys(metadataUpdates).length > 0) {
-      await supabase.from("app_users").update(metadataUpdates).eq("user_id", session.userId);
+      // Reflect immediately in the response, but don't block the GET on the
+      // write — fire-and-forget the profile sync.
       Object.assign(data ?? {}, metadataUpdates);
+      void supabase
+        .from("app_users")
+        .update(metadataUpdates)
+        .eq("user_id", session.userId)
+        .then(({ error }: { error: unknown }) => {
+          if (error) console.error("[GET /api/me] profile sync failed:", error);
+        });
     }
 
     res.json({
@@ -125,7 +133,7 @@ export function createMeRouter(deps: MeDeps) {
     const updates: Record<string, unknown> = {};
 
     if ("display_name" in body) {
-      updates.display_name = body.display_name ? String(body.display_name).trim().slice(0, 50) : null;
+      updates.display_name = body.display_name ? String(body.display_name).trim().slice(0, 80) : null;
     }
     if ("notification_hour" in body) {
       if (body.notification_hour === null) {

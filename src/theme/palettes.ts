@@ -22,9 +22,15 @@ export const DARK_PALETTES: PaletteOption[] = [
 const LIGHT_KEY = "caja-chica:palette-light";
 const DARK_KEY = "caja-chica:palette-dark";
 
+/** Legacy palette ids renamed over time → current id, so saved prefs survive. */
+const PALETTE_ALIASES: Record<string, string> = {
+  arena: "niebla",
+};
+
 function read(key: string, valid: PaletteOption[]): string {
   try {
-    const v = window.localStorage.getItem(key) ?? "";
+    const raw = window.localStorage.getItem(key) ?? "";
+    const v = PALETTE_ALIASES[raw] ?? raw;
     return valid.some((p) => p.id === v) ? v : "";
   } catch {
     return "";

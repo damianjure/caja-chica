@@ -88,10 +88,17 @@ function displayPersonName(displayName: string | null | undefined, email: string
 
 function PersonAvatar({ name, email, photoUrl }: { name?: string | null; email: string; photoUrl?: string | null }) {
   const label = displayPersonName(name, email);
+  const [imgError, setImgError] = useState(false);
   return (
     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] text-[var(--app-text-2)] shadow-sm">
-      {photoUrl ? (
-        <img src={photoUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      {photoUrl && !imgError ? (
+        <img
+          src={photoUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-sm font-bold">{avatarInitial(label)}</div>
       )}

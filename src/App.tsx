@@ -9,6 +9,7 @@ import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { BiometricGate } from "./components/BiometricGate";
 import type { ThemeMode, ThemePreference } from "./components/ThemeToggle";
+import { PALETTES, readPalette, applyPalette, PALETTE_STORAGE_KEY } from "./theme/palettes";
 import { api, AppViewer } from "./services/api";
 import { supabase } from "./services/supabase";
 
@@ -77,6 +78,15 @@ export default function App() {
 
   const setThemePreference = (pref: ThemePreference) => {
     setThemePreferenceState(pref);
+  };
+
+  const [palette, setPaletteState] = useState<string>(readPalette);
+  useEffect(() => { applyPalette(palette); }, [palette]);
+  const setPalette = (id: string) => {
+    setPaletteState(id);
+    try { window.localStorage.setItem(PALETTE_STORAGE_KEY, id); } catch { /* ignore */ }
+    const p = PALETTES.find((x) => x.id === id);
+    if (p) setThemePreferenceState(p.mode); // la paleta fija su modo (claro/oscuro)
   };
 
   const loadViewer = async () => {
@@ -219,6 +229,8 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           themePreference={themePreference}
           onSetThemePreference={setThemePreference}
+          palette={palette}
+          onSetPalette={setPalette}
         />
       </BiometricGate>
     </>

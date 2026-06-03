@@ -53,8 +53,10 @@ export interface DashboardAppProps {
   onToggleTheme: () => void;
   themePreference: ThemePreference;
   onSetThemePreference: (p: ThemePreference) => void;
-  palette: string;
-  onSetPalette: (id: string) => void;
+  lightPalette: string;
+  darkPalette: string;
+  onSetLightPalette: (id: string) => void;
+  onSetDarkPalette: (id: string) => void;
 }
 
 function triggerDownload(fileName: string, mimeType: string, contentBase64: string) {
@@ -98,7 +100,7 @@ function readPersistedTab(): DashboardTab {
   return 'resumen';
 }
 
-export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference, palette, onSetPalette }: DashboardAppProps) {
+export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, themePreference, onSetThemePreference, lightPalette, darkPalette, onSetLightPalette, onSetDarkPalette }: DashboardAppProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<DashboardTab>(readPersistedTab);
 
@@ -554,7 +556,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} onDrilldown={(company, category) => { setSelectedCompany(company); setSelectedCategory(category); setMovementType('all'); setMovementCurrency('all'); setDatePeriod('all'); setActiveTab('movimientos'); }} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><AdminPanel viewer={viewer} /></Suspense>}
-                {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} palette={palette} onSetPalette={onSetPalette} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} /></Suspense>}
+                {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} lightPalette={lightPalette} darkPalette={darkPalette} onSetLightPalette={onSetLightPalette} onSetDarkPalette={onSetDarkPalette} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} /></Suspense>}
               </Suspense>
             </div>
         </main>

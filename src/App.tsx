@@ -9,7 +9,7 @@ import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { BiometricGate } from "./components/BiometricGate";
 import type { ThemeMode, ThemePreference } from "./components/ThemeToggle";
-import { PALETTES, readPalette, applyPalette, PALETTE_STORAGE_KEY } from "./theme/palettes";
+import { readLightPalette, readDarkPalette, storeLightPalette, storeDarkPalette, applyPalette } from "./theme/palettes";
 import { api, AppViewer } from "./services/api";
 import { supabase } from "./services/supabase";
 
@@ -80,14 +80,12 @@ export default function App() {
     setThemePreferenceState(pref);
   };
 
-  const [palette, setPaletteState] = useState<string>(readPalette);
-  useEffect(() => { applyPalette(palette); }, [palette]);
-  const setPalette = (id: string) => {
-    setPaletteState(id);
-    try { window.localStorage.setItem(PALETTE_STORAGE_KEY, id); } catch { /* ignore */ }
-    const p = PALETTES.find((x) => x.id === id);
-    if (p) setThemePreferenceState(p.mode); // la paleta fija su modo (claro/oscuro)
-  };
+  const [lightPalette, setLightPaletteState] = useState<string>(readLightPalette);
+  const [darkPalette, setDarkPaletteState] = useState<string>(readDarkPalette);
+  // Aplica la paleta del modo activo cada vez que cambia el modo o una elección.
+  useEffect(() => { applyPalette(theme, lightPalette, darkPalette); }, [theme, lightPalette, darkPalette]);
+  const setLightPalette = (id: string) => { setLightPaletteState(id); storeLightPalette(id); };
+  const setDarkPalette = (id: string) => { setDarkPaletteState(id); storeDarkPalette(id); };
 
   const loadViewer = async () => {
     try {
@@ -229,8 +227,10 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           themePreference={themePreference}
           onSetThemePreference={setThemePreference}
-          palette={palette}
-          onSetPalette={setPalette}
+          lightPalette={lightPalette}
+          darkPalette={darkPalette}
+          onSetLightPalette={setLightPalette}
+          onSetDarkPalette={setDarkPalette}
         />
       </BiometricGate>
     </>

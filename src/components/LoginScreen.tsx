@@ -39,23 +39,18 @@ export function LoginScreen({
   const [showHelp, setShowHelp] = useState(false);
   return (
     <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
+      </div>
       <div className="w-full max-w-md">
         <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 space-y-6">
           <div className="relative">
-            <div className="absolute right-0 top-0">
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
-            </div>
-            <div className="flex flex-col items-center gap-3 pt-3 text-center">
+            <div className="flex flex-col items-center gap-3 text-center">
               <BrandMark
                 variant="login"
                 className="h-28 w-28 rounded-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.20)]"
               />
-              <div>
-                <h1 className="sr-only">Caja Chica</h1>
-                <p className="text-sm font-medium text-[var(--app-text-3)]">
-                  Solo por invitación.
-                </p>
-              </div>
+              <h1 className="sr-only">Caja Chica</h1>
             </div>
           </div>
 
@@ -68,12 +63,16 @@ export function LoginScreen({
               </p>
             </div>
           ) : (
-            <div className="space-y-3 text-sm text-[var(--app-text-2)]">
-              <p>Registrá gastos e ingresos hablando normal. <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span></p>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Send className="h-3 w-3 shrink-0" /> Telegram</span>
-                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Mic className="h-3 w-3 shrink-0" /> Voz</span>
-                <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--app-border)] px-2 py-1.5 text-[11px] font-medium text-[var(--app-text-2)] whitespace-nowrap"><Camera className="h-3 w-3 shrink-0" /> Foto</span>
+            <div className="space-y-3 text-sm text-[var(--app-text-2)] text-center">
+              <p>
+                Registrá gastos e ingresos hablando normal.
+                <br />
+                <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span>
+              </p>
+              <div className="flex items-center justify-center gap-5 text-xs text-[var(--app-text-3)]">
+                <span className="inline-flex items-center gap-1.5"><Send className="h-3.5 w-3.5 shrink-0" /> Telegram</span>
+                <span className="inline-flex items-center gap-1.5"><Mic className="h-3.5 w-3.5 shrink-0" /> Voz</span>
+                <span className="inline-flex items-center gap-1.5"><Camera className="h-3.5 w-3.5 shrink-0" /> Foto</span>
               </div>
             </div>
           )}
@@ -95,6 +94,12 @@ export function LoginScreen({
               </>
             )}
           </button>
+
+          {!blocked && (
+            <p className="text-center text-xs text-[var(--app-text-3)]">
+              El acceso es solo por invitación.
+            </p>
+          )}
 
           {secondaryActionLabel && onSecondaryAction && (
             <button

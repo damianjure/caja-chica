@@ -123,14 +123,14 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
-      setLoadingSession(false);
       if (nextSession) {
-        void loadViewer();
+        await loadViewer();
       } else {
         setViewer(null);
       }
+      setLoadingSession(false);
     });
 
     return () => {
@@ -181,7 +181,7 @@ export default function App() {
   };
 
   if (loadingSession) {
-    return <AppLoadingScreen theme={theme} onToggleTheme={handleToggleTheme} />;
+    return <AppLoadingScreen />;
   }
 
   if (!isConfigured) {

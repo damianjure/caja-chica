@@ -12,7 +12,7 @@ import { usePwaInstall, PwaInstallBanner } from './components/PwaInstall';
 import type { CommandResult, QuickAction } from './dashboard/commandSearch';
 import { MaintenanceBanner } from './components/MaintenanceBanner';
 import type { InfiniteData } from '@tanstack/react-query';
-import { DASHBOARD_ROLE_LABELS, formatIdentity, type AppRole, type DashboardRole } from './services/labels';
+import { formatIdentity, type AppRole, type DashboardRole } from './services/labels';
 import WelcomeWizard from './components/WelcomeWizard';
 import WelcomeJoined from './components/WelcomeJoined';
 import {
@@ -22,7 +22,7 @@ import {
 import { projectBalance } from './dashboard/forecast';
 import { generateInsights } from './dashboard/insights';
 import { DashboardSkeleton, SectionLoadingState } from './components/dashboard/LoadingStates';
-import { ThemeMode, ThemePreference, ThemeToggle } from './components/ThemeToggle';
+import { ThemeMode, ThemePreference } from './components/ThemeToggle';
 import { SectionCard } from './components/dashboard/primitives';
 import { ModalShell } from './components/ui/ModalShell';
 import { MovementCards } from './components/dashboard/MovementCards';
@@ -501,8 +501,22 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <header className="relative z-30">
           <div className="glass-chrome flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
-            <BrandMark variant="badge" />
-            <span id="app-title" className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
+            <div className="flex items-center gap-2">
+              <BrandMark variant="badge" />
+              <span id="app-title" className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
+            </div>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              aria-label="Búsqueda global (⌘K)"
+              title="Búsqueda global"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-sm text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors duration-150"
+            >
+              <Search className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Buscar</span>
+              <kbd className="font-mono">⌘K</kbd>
+            </button>
             {canWriteData && (
               <button
                 type="button"
@@ -513,25 +527,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <span aria-hidden="true">＋</span><span>Nueva operación</span>
               </button>
             )}
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={() => setIsPaletteOpen(true)}
-              aria-label="Búsqueda global (⌘K)"
-              title="Búsqueda global"
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-3)] hover:border-[var(--app-border-strong)] transition-colors duration-150"
-            >
-              <Search className="w-3 h-3" aria-hidden="true" />
-              <span className="hidden md:inline">Buscar</span>
-              <kbd className="font-mono">⌘K</kbd>
-            </button>
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
-            <span className="hidden md:inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2.5 py-1 text-xs font-semibold text-[var(--app-text-2)]">
-              {DASHBOARD_ROLE_LABELS[dashboardRole as DashboardRole] ?? dashboardRole}
-            </span>
             <HeaderUserMenu
               email={viewer.email}
               identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
+              theme={theme}
+              onToggleTheme={onToggleTheme}
               onSignOut={() => void handleSignOut()}
               onOpenHelp={() => setIsHelpOpen(true)}
               onReplayTour={() => setIsTourOpen(true)}

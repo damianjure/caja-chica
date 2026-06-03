@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, HelpCircle, Compass, Download } from 'lucide-react';
+import { LogOut, HelpCircle, Compass, Download, Sun, Moon } from 'lucide-react';
 import { initialsFromEmail } from '../../services/labels';
+import type { ThemeMode } from '../ThemeToggle';
 
 /**
  * Header C avatar + dropdown. Concentrates email + identity + sign-out
@@ -10,6 +11,8 @@ import { initialsFromEmail } from '../../services/labels';
 export function HeaderUserMenu({
   email,
   identityLabel,
+  theme,
+  onToggleTheme,
   onSignOut,
   onOpenHelp,
   onReplayTour,
@@ -17,6 +20,8 @@ export function HeaderUserMenu({
 }: {
   email: string;
   identityLabel: string;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
   onSignOut: () => void;
   onOpenHelp?: () => void;
   onReplayTour?: () => void;
@@ -48,7 +53,7 @@ export function HeaderUserMenu({
         aria-expanded={open}
         aria-label={`Cuenta: ${email}`}
         title={email}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] text-xs font-bold active:scale-[0.94] transition"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] text-[var(--app-text-1)] text-xs font-bold active:scale-[0.94] transition"
       >
         {initialsFromEmail(email)}
       </button>
@@ -64,6 +69,14 @@ export function HeaderUserMenu({
             <div className="text-xs text-[var(--app-text-3)] truncate">{identityLabel}</div>
           </div>
           <div className="my-1 h-px bg-[var(--app-border)]" />
+          <button
+            role="menuitem"
+            onClick={() => { onToggleTheme(); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          </button>
           {onOpenHelp && (
             <button
               role="menuitem"

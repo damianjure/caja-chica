@@ -412,7 +412,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
     <div className="space-y-6">
       {/* Invite form */}
       <div className="space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] items-center gap-3">
           <input
             aria-label="Email para invitar"
             type="email"
@@ -420,14 +420,14 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void handleInvite()}
             placeholder="colaborador@empresa.com"
-            className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] text-sm"
+            className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] text-sm text-[var(--app-text-1)]"
           />
           {scope === "dashboard" && (
             <select
               aria-label="Rol del invitado"
               value={role}
               onChange={(e) => setRole(e.target.value as DashboardInvitationRole)}
-              className="rounded-md border border-[var(--app-border)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white text-sm"
+              className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] text-sm text-[var(--app-text-1)]"
             >
               <option value="viewer">{DASHBOARD_ROLE_LABELS.viewer} — solo lectura</option>
               <option value="editor">{DASHBOARD_ROLE_LABELS.editor} — ve y carga</option>

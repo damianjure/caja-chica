@@ -21,6 +21,8 @@ interface ConfiguracionTabProps {
   companies: Empresa[];
   themePreference: ThemePreference;
   onSetThemePreference: (p: ThemePreference) => void;
+  palette: string;
+  onSetPalette: (id: string) => void;
 }
 
 export default function ConfiguracionTab({
@@ -34,6 +36,8 @@ export default function ConfiguracionTab({
   companies,
   themePreference,
   onSetThemePreference,
+  palette,
+  onSetPalette,
 }: ConfiguracionTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -77,6 +81,8 @@ export default function ConfiguracionTab({
           companies={companies}
           themePreference={themePreference}
           onSetThemePreference={onSetThemePreference}
+          palette={palette}
+          onSetPalette={onSetPalette}
           showNotice={showNotice}
           setError={setError}
         />

@@ -145,6 +145,38 @@
     --chart-baseline: #2A4036;
   }
 
+  /* ── Paletas opcionales (capa sobre claro/oscuro). data-palette en <html>.
+     Solo overridean tokens estructurales + acento; los semánticos (verde/rojo/amber)
+     se heredan del modo base para no perder el significado de los colores. ── */
+  [data-theme="light"][data-palette="arena"] {
+    --app-canvas: #F1EBE0; --app-surface-1: #FBF7F0; --app-surface-2: #ECE4D7;
+    --app-surface-3: #E4DACA; --app-surface-4: #D9CEBE; --app-border: #D9CEBE;
+    --app-border-strong: #B6A78E; --app-text-1: #23201A; --app-text-2: #5B5345;
+    --app-text-3: #8C8270; --app-text-4: #A89E8C; --app-strong-surface: #2E7D5B;
+    --app-strong-text: #FBF7F0; --chart-income: #2E7D5B; --chart-baseline: #D9CEBE;
+  }
+  [data-theme="light"][data-palette="marfil"] {
+    --app-canvas: #F6F0E7; --app-surface-1: #FFFBF4; --app-surface-2: #F0E6D8;
+    --app-surface-3: #E8DCCB; --app-surface-4: #E0D2BE; --app-border: #E0D2BE;
+    --app-border-strong: #C2A781; --app-text-1: #2A2017; --app-text-2: #63513E;
+    --app-text-3: #94806A; --app-text-4: #AD9A82; --app-strong-surface: #C2541F;
+    --app-strong-text: #FFFBF4; --chart-baseline: #E0D2BE;
+  }
+  [data-theme="dark"][data-palette="medianoche"] {
+    --app-canvas: #0C0D1A; --app-surface-1: #161827; --app-surface-2: #1E2034;
+    --app-surface-3: #262943; --app-surface-4: #313452; --app-border: #313452;
+    --app-border-strong: #565A86; --app-text-1: #F1F1FB; --app-text-2: #BFC0DC;
+    --app-text-3: #8A8CB0; --app-text-4: #6E709A; --app-strong-surface: #8C6BF0;
+    --app-strong-text: #FFFFFF; --chart-net: #8C6BF0; --chart-baseline: #313452;
+  }
+  [data-theme="dark"][data-palette="carbon"] {
+    --app-canvas: #111111; --app-surface-1: #1B1B1B; --app-surface-2: #242424;
+    --app-surface-3: #2E2E2E; --app-surface-4: #383838; --app-border: #383838;
+    --app-border-strong: #595959; --app-text-1: #F4F4F2; --app-text-2: #C2C0BC;
+    --app-text-3: #8E8C88; --app-text-4: #6F6D69; --app-strong-surface: #E0922F;
+    --app-strong-text: #1A1206; --chart-baseline: #383838;
+  }
+
   @keyframes app-fade-in {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }

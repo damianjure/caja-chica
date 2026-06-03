@@ -1,4 +1,4 @@
-# CLAUDE.md — Caja Chica (balancediario)
+# CLAUDE.md — Caja Chica (repo: caja-chica)
 
 ## REGLA MODO PLAN — SOLO SESIONES MOBILE/WEB
 
@@ -17,7 +17,8 @@ En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa
 - **CHANGELOG.md** — historial cronológico de cambios. NO autocargado, consultar on-demand.
 - **RUNBOOK.md** — URLs, deploy, infra, env vars, rotación de secretos. NO autocargado.
 
-> **Nombre canónico:** producto = **Caja Chica**; repo = `balancediario`; histórico = "Boteado".
+> **Mapa de nombres:** producto/proyecto = **Caja Chica** · repo GitHub = `caja-chica` (renombrado desde `balancediario` el 2026-06-03; GitHub redirige las URLs viejas) · carpeta local = `Boteado` (histórico). OJO: `balancediario` también fue un **proyecto GCP** viejo (roto/sin uso) — cuando aparezca en docs de infra refiere a eso, no al repo.
+> **Familia de nombres alineada:** repo `caja-chica` · Firebase `caja-chica-bot` · Cloud Run `caja-chica`.
 > Las rutas en este archivo son **relativas a la raíz del repo**.
 > Datos volátiles (conteo de tests, revisión de Cloud Run, commit HEAD) NO se hardcodean acá — se chequean en vivo.
 
@@ -99,6 +100,12 @@ Integraciones principales:
 
 ### Regla fuerte
 - **Nunca build después de cambios** salvo instrucción explícita que lo justifique.
+
+### Git (flujo simple — solo dev)
+- **Commit + push directo a `main`.** No hace falta branch+PR para cambios normales. (main NO está protegida ni hay hook que bloquee el push — verificado 2026-06-03.)
+- Usar branch + PR (`gh pr create`) SOLO si el cambio es grande/riesgoso y querés review antes de mergear.
+- Conventional commits: `feat(boteado):`, `fix(boteado):`, `chore:`.
+- Remote: `git@github.com:damianjure/caja-chica.git` (SSH).
 
 ### Cómo correr tests
 ```bash

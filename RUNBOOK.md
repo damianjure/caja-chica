@@ -1,4 +1,4 @@
-# RUNBOOK — Caja Chica (balancediario)
+# RUNBOOK — Caja Chica (repo: caja-chica)
 
 > Operación: URLs, deploy, infra, variables de entorno, rotación de secretos.
 > NO se autocarga en sesiones de Claude — consultar al deployar o tocar infra.

@@ -1,7 +1,7 @@
-# SDD Init: balancediario
+# SDD Init: caja-chica
 
 ## Project Context
-- **Project**: balancediario (in `Boteado` directory)
+- **Project**: caja-chica (in `Boteado` directory)
 - **Stack**: React 19, Vite 6, Tailwind CSS v4, Express, TypeScript, Supabase, grammY, `@google/genai`
 - **Architecture**: React frontend (dashboard), Express backend (API + Telegram Bot), Supabase for auth/data, Google Drive integration.
 - **Persistence Mode**: Hybrid (Engram + OpenSpec)

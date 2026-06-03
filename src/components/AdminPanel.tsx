@@ -529,6 +529,22 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                               Último recordatorio: {reminderText}
                             </div>
                           )}
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {invitation.invited_by_email && (
+                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
+                                Invitada por {invitation.invited_by_email}
+                              </span>
+                            )}
+                            {invitation.membership_of && invitation.membership_of.length > 0 ? (
+                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
+                                Miembro de: {invitation.membership_of.join(", ")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-3)]">
+                                Cuenta independiente
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Resend button — REQ-S4.4: disabled when accepted/revoked */}

@@ -161,14 +161,75 @@ export function createAdminRouter(deps: AdminDeps) {
     try {
       const { data, error } = await supabase
         .from("user_invitations")
-        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at")
+        .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      const invitations = (data ?? []).map((invitation: any) => ({
-        ...invitation,
-        invite_url: `${publicAppUrl || ""}/?invite=${invitation.invite_token}`,
-      }));
+      const rows = (data ?? []) as any[];
+
+      const uniq = <T,>(xs: T[]) => Array.from(new Set(xs.filter(Boolean))) as T[];
+      const inviterIds = uniq(rows.map((r) => r.invited_by));
+      const emails = uniq(rows.map((r) => r.email));
+
+      // Email del que invitó.
+      const inviterEmailById = new Map<string, string>();
+      if (inviterIds.length) {
+        const { data: inv } = await supabase.from("app_users").select("user_id, email").in("user_id", inviterIds);
+        for (const u of (inv ?? []) as any[]) inviterEmailById.set(u.user_id, u.email);
+      }
+
+      // Relación actual: ¿de qué dashboard(s) ajeno(s) es miembro hoy?
+      const membershipByUserId = new Map<string, string[]>();
+      const emailToUserId = new Map<string, string>();
+      if (emails.length) {
+        const { data: invitedUsers } = await supabase.from("app_users").select("user_id, email").in("email", emails);
+        const invitedUserIds: string[] = [];
+        for (const u of (invitedUsers ?? []) as any[]) { emailToUserId.set(u.email, u.user_id); invitedUserIds.push(u.user_id); }
+        if (invitedUserIds.length) {
+          const { data: members } = await supabase
+            .from("dashboard_members")
+            .select("user_id, dashboard_id, role")
+            .in("user_id", invitedUserIds)
+            .eq("status", "active");
+          const nonOwner = ((members ?? []) as any[]).filter((m) => m.role !== "owner");
+          const dashIds = uniq(nonOwner.map((m) => m.dashboard_id));
+          const ownerEmailByDash = new Map<string, string>();
+          if (dashIds.length) {
+            const { data: owners } = await supabase
+              .from("dashboard_members")
+              .select("user_id, dashboard_id")
+              .eq("role", "owner")
+              .in("dashboard_id", dashIds);
+            const ownerIds = uniq(((owners ?? []) as any[]).map((o) => o.user_id));
+            const ownerEmailById = new Map<string, string>();
+            if (ownerIds.length) {
+              const { data: ownerUsers } = await supabase.from("app_users").select("user_id, email").in("user_id", ownerIds);
+              for (const u of (ownerUsers ?? []) as any[]) ownerEmailById.set(u.user_id, u.email);
+            }
+            for (const o of (owners ?? []) as any[]) {
+              const e = ownerEmailById.get(o.user_id);
+              if (e) ownerEmailByDash.set(o.dashboard_id, e);
+            }
+          }
+          for (const m of nonOwner) {
+            const e = ownerEmailByDash.get(m.dashboard_id);
+            if (!e) continue;
+            const arr = membershipByUserId.get(m.user_id) ?? [];
+            if (!arr.includes(e)) arr.push(e);
+            membershipByUserId.set(m.user_id, arr);
+          }
+        }
+      }
+
+      const invitations = rows.map((r) => {
+        const userId = emailToUserId.get(r.email);
+        return {
+          ...r,
+          invite_url: `${publicAppUrl || ""}/?invite=${r.invite_token}`,
+          invited_by_email: r.invited_by ? inviterEmailById.get(r.invited_by) ?? null : null,
+          membership_of: userId ? membershipByUserId.get(userId) ?? [] : [],
+        };
+      });
       res.json(invitations);
     } catch (_err) {
       res.status(500).json({ error: "failed_to_fetch" });

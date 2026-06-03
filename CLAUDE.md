@@ -1,16 +1,13 @@
 # CLAUDE.md
 
-## REGLA OPERATIVA — SIEMPRE ACTIVA
+## REGLA MODO PLAN — SOLO SESIONES MOBILE/WEB
 
-**Modo plan obligatorio. No escribir ni modificar código sin aprobación explícita del dueño.**
-
-Ante cualquier pedido de cambio, feature, fix o tarea técnica:
+Cuando el usuario indique que está en mobile, o la sesión sea vía web (claude.ai/code):
 1. Presentar el plan: qué archivos se tocan, qué se cambia y por qué.
 2. Esperar un "ok", "dale", "arrancá" u otra confirmación explícita.
 3. Solo entonces ejecutar.
 
-Si el dueño da una instrucción que ya implica aprobación (ej: "hacé X"), ejecutar directamente.
-Esta regla aplica siempre, especialmente desde mobile donde es difícil revisar diffs grandes.
+En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa.
 
 ---
 

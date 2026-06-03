@@ -1,5 +1,19 @@
 # CLAUDE.md
 
+## REGLA OPERATIVA — SIEMPRE ACTIVA
+
+**Modo plan obligatorio. No escribir ni modificar código sin aprobación explícita del dueño.**
+
+Ante cualquier pedido de cambio, feature, fix o tarea técnica:
+1. Presentar el plan: qué archivos se tocan, qué se cambia y por qué.
+2. Esperar un "ok", "dale", "arrancá" u otra confirmación explícita.
+3. Solo entonces ejecutar.
+
+Si el dueño da una instrucción que ya implica aprobación (ej: "hacé X"), ejecutar directamente.
+Esta regla aplica siempre, especialmente desde mobile donde es difícil revisar diffs grandes.
+
+---
+
 ## Fuente de verdad única — 2026-05-27 (post modal-portal unification)
 
 Este es el **único archivo de contexto operativo** del proyecto.

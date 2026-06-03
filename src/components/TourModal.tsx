@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, BarChart3, Send, Download } from "lucide-react";
+import { Plus, BarChart3, Send, Users, HelpCircle } from "lucide-react";
 
 const STEPS = [
-  { icon: Plus, title: "Cargá en lenguaje natural", body: 'Tocá "Cargar" y escribí como hablás: "pagué 4500 de luz". Lo entiende y lo registra.' },
+  { icon: Plus, title: "Cargá en lenguaje natural", body: 'Escribí o dictá como hablás: "pagué quince mil pesos de combustible, anotalo en la empresa Personal". Lo registra y le asigna la empresa automáticamente.' },
   { icon: Send, title: "Usalo desde Telegram", body: "Vinculá el bot en Configuración → Vinculación y cargá por chat, voz o foto del ticket desde el celular." },
-  { icon: BarChart3, title: "Mirá el Resumen", body: "En Resumen ves el pulso del mes, flujo de caja y los gastos que más pesan." },
-  { icon: Download, title: "Exportá y respaldá", body: "Desde Movimientos exportás informes; desde Tu cuenta descargás un backup cuando quieras." },
+  { icon: BarChart3, title: "Mirá el Resumen", body: "En Resumen ves el pulso del mes, flujo de caja y los gastos que más pesan. Podés registrar en pesos y en dólares, y el resumen los separa automáticamente." },
+  { icon: Users, title: "Invitá a tu equipo", body: "Desde Configuración → Equipo podés sumar a otros: como editores para que carguen datos, o como espectadores para que solo miren. También exportás informes y descargás backups cuando quieras." },
+  { icon: HelpCircle, title: "¿Tenés dudas?", body: "Tocá tu perfil (el círculo con tus iniciales) en la esquina superior derecha. Desde ahí podés ver este recorrido de nuevo, acceder a la ayuda y los comandos disponibles." },
 ];
 
 export function TourModal({ open, onClose }: { open: boolean; onClose: () => void }) {

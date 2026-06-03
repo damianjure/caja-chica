@@ -167,6 +167,127 @@ export function parsePhotoExtractionResult(value: string): PhotoExtractionResult
   };
 }
 
+export const CREDIT_CARD_SUMMARY_SYSTEM_PROMPT = `Sos un extractor especializado en resúmenes de tarjeta de crédito del mercado argentino.
+Analizá el documento completo (PDF, imagen o texto) y extraé CADA TRANSACCIÓN INDIVIDUAL como un ítem separado.
+
+═══ FORMATO NUMÉRICO ARGENTINO — CRÍTICO ═══
+El separador de MILES es el PUNTO y el separador DECIMAL es la COMA.
+Ejemplos: "1.234" = 1234 / "15.430,50" = 15430.50 / "1.000.000" = 1000000
+Retorná los montos siempre como número sin separadores (ej: 15430.5 — nunca "15.430,50").
+
+═══ QUÉ INCLUIR ═══
+✓ Cada cargo/compra/consumo individual con fecha y monto
+✓ Cuotas: "AMAZON 3/6 — $8.500" → monto=8500, descripcion="Amazon (cuota 3 de 6)". NUNCA multipliques por el total de cuotas.
+✓ Impuestos discriminados por línea (Impuesto PAIS, Percepción AFIP/IIBB, IVA servicios) → categoria="Impuestos"
+✓ Cargos por servicio, comisiones, seguros → categoria="Servicios"
+✓ Devoluciones, reintegros, reversiones, créditos → tipo="ingreso" con monto positivo
+✓ Compras en el exterior → si la línea muestra USD o "dólares", moneda="USD"
+
+═══ QUÉ EXCLUIR ═══
+✗ TOTAL A PAGAR / SALDO ANTERIOR / PAGO RECIBIDO / SALDO MÍNIMO
+✗ Fechas de vencimiento y fechas de cierre
+✗ Encabezados, subtítulos y líneas de separación
+✗ Líneas de puntos/beneficios/programa de recompensas (si no tienen monto monetario real)
+✗ Cualquier línea que sea un resumen o sumatoria de otras líneas ya incluidas
+
+═══ NORMALIZACIÓN DE NOMBRES ═══
+Limpiá y normalizá los nombres de comercios:
+- MCDONALDS / MC DONALDS → McDonald's
+- MERCADOLIBRE*12345 / ML*PRODUCTO → Mercado Libre
+- SPOTIFY AB / SPOTIFY SWEDEN → Spotify
+- NETFLIX.COM → Netflix
+- AMZN / AMAZON.COM.BR → Amazon
+- YPF/AXION/SHELL + dirección → el nombre de la estación de servicio
+- Si el nombre está muy truncado o codificado y no podés inferirlo con certeza, dejalo tal cual
+
+═══ FECHAS ═══
+Convertí DD/MM/YYYY o DD/MM/YY → YYYY-MM-DD.
+Si el documento tiene una fecha de cierre global pero no fecha por ítem, usá null por ítem.
+
+═══ CATEGORÍAS SUGERIDAS ═══
+Supermercado · Restaurante · Combustible · Farmacia · Indumentaria · Electrónica ·
+Entretenimiento · Suscripciones · Transporte · Salud · Educación · Impuestos ·
+Servicios · Viajes · Transferencias · Varios
+
+═══ OUTPUT ═══
+Retorná ÚNICAMENTE un array JSON válido. Sin markdown, sin texto antes ni después.
+Cada elemento del array debe tener exactamente estos campos:
+
+{
+  "monto": <número positivo sin separadores, ej: 15430.5>,
+  "moneda": "ARS" | "USD",
+  "tipo": "egreso" | "ingreso",
+  "empresa": <nombre del comercio normalizado, o null si no hay>,
+  "categoria": <una de las categorías sugeridas>,
+  "descripcion": <descripción concisa; si es cuota incluí "cuota X de Y">,
+  "fecha": <"YYYY-MM-DD" o null>,
+  "confidence": <número 0..1 por ítem — bajá si el monto o nombre son ambiguos>
+}`;
+
+export interface CreditCardExtractionItem {
+  monto: number | null;
+  moneda: "ARS" | "USD";
+  tipo: "ingreso" | "egreso";
+  empresa: string | null;
+  categoria: string;
+  descripcion: string;
+  fecha: string | null;
+  confidence: number;
+}
+
+function parseSingleCreditCardItem(raw: unknown): CreditCardExtractionItem | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+
+  const moneda = obj.moneda === "USD" ? "USD" : "ARS";
+  const tipo = obj.tipo === "ingreso" ? "ingreso" : "egreso";
+  const confidence =
+    typeof obj.confidence === "number" ? Math.max(0, Math.min(1, obj.confidence)) : 0.7;
+  const monto =
+    typeof obj.monto === "number" && Number.isFinite(obj.monto) && obj.monto > 0
+      ? obj.monto
+      : null;
+
+  return {
+    monto,
+    moneda,
+    tipo,
+    empresa:
+      typeof obj.empresa === "string" && obj.empresa.trim() ? obj.empresa.trim() : null,
+    categoria:
+      typeof obj.categoria === "string" && obj.categoria.trim()
+        ? obj.categoria.trim()
+        : "Varios",
+    descripcion:
+      typeof obj.descripcion === "string" && obj.descripcion.trim()
+        ? obj.descripcion.trim()
+        : "Gasto registrado desde resumen",
+    fecha:
+      typeof obj.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.fecha)
+        ? obj.fecha
+        : null,
+    confidence,
+  };
+}
+
+export function parseCreditCardSummaryResult(
+  value: string
+): CreditCardExtractionItem[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value.replace(/```json|```/g, "").trim());
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  const results: CreditCardExtractionItem[] = [];
+  for (const item of parsed) {
+    const result = parseSingleCreditCardItem(item);
+    if (result) results.push(result);
+  }
+  return results.length > 0 ? results : null;
+}
+
 export function parseMultiPhotoExtractionResult(value: string): PhotoExtractionResult[] | null {
   let parsed: unknown;
   try {

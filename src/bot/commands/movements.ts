@@ -14,7 +14,9 @@ import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiW
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { buildUndoKeyboard } from "../quickActions.ts";
-import { parseIntentResult, resolveIntentAction } from "../voiceIntent.ts";
+import { parseIntentResult, resolveIntentAction, parseReminderSlots } from "../voiceIntent.ts";
+import { readReminder, writeReminder } from "../reminderPrefs.ts";
+import { buildReminderStatusText, buildReminderKeyboard } from "../reminderText.ts";
 import { buildGestionarKeyboard, buildMainKeyboard, buildIntentConfirmKeyboard } from "../keyboards.ts";
 import { startReportFlow } from "./reports.ts";
 import { startRecurringFlow, handleListRecurrentes } from "./recurring.ts";
@@ -574,6 +576,22 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
       case "abrir_dashboard": {
         const url = process.env.DASHBOARD_URL || "https://caja-chica-bot.web.app";
         await ctx.reply(`🔗 [Abrir Dashboard Web](${url})`, { parse_mode: "Markdown" });
+        return;
+      }
+      case "recordatorio_config": {
+        const patch = parseReminderSlots(intentResult.slots);
+        if (!patch) {
+          await ctx.reply("No te entendí el recordatorio. Probá /recordatorio para verlo con botones.");
+          return;
+        }
+        const userId = linked.userId ?? linked.ownerUserId;
+        if (!userId) {
+          await ctx.reply("No se pudo identificar tu cuenta.");
+          return;
+        }
+        await writeReminder(supabase, userId, patch);
+        const state = await readReminder(supabase, userId);
+        await ctx.reply(buildReminderStatusText(state), { parse_mode: "Markdown", reply_markup: buildReminderKeyboard(state) });
         return;
       }
       case "movimiento":

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%" role="img" aria-label="Caja Chica">
+  <path d="M 120 72 H 380 C 397 72 410 85 410 102 V 363 C 410 380 397 394 381 394 C 368 415 342 415 329 394 C 316 415 290 415 277 394 C 264 415 236 415 223 394 C 210 415 184 415 171 394 C 158 415 132 415 119 394 C 103 394 90 380 90 363 V 102 C 90 85 103 72 120 72 Z"
+        fill="#ffffff"
+        stroke="#27a85f"
+        stroke-width="30"
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+
+  <circle cx="250" cy="181" r="74" fill="#27a85f"/>
+  <text x="250" y="188"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif"
+        font-weight="bold"
+        font-size="112"
+        text-anchor="middle"
+        dominant-baseline="central">$</text>
+
+  <line x1="171" y1="311" x2="329" y2="311" stroke="#27a85f" stroke-width="14" stroke-linecap="square"/>
+  <line x1="171" y1="338" x2="329" y2="338" stroke="#27a85f" stroke-width="9" stroke-linecap="square"/>
+</svg>

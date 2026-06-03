@@ -12,7 +12,7 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         // Include font files in precache
-        includeAssets: ['fonts/InterVariable.woff2', 'fonts/InterVariable-Italic.woff2', 'icon.svg'],
+        includeAssets: ['fonts/InterVariable.woff2', 'fonts/InterVariable-Italic.woff2', 'favicon.png'],
         manifest: {
           name: 'Caja Chica',
           short_name: 'Caja Chica',

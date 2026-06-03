@@ -180,6 +180,8 @@ export interface AppInvitation {
   created_at: string;
   accepted_at: string | null;
   last_reminder_at?: string | null;
+  invited_by_email?: string | null;
+  membership_of?: string[];
 }
 
 export type OnboardingState = 'pending' | 'seeded' | 'completed' | 'cleaned';

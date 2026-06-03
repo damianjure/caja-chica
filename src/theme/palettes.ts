@@ -9,7 +9,7 @@ export interface PaletteOption {
 
 export const LIGHT_PALETTES: PaletteOption[] = [
   { id: "", label: "Terracota", swatch: "#147E60" },
-  { id: "arena", label: "Arena & Salvia", swatch: "#2E7D5B" },
+  { id: "niebla", label: "Niebla & Azul Tinta", swatch: "#1F6F78" },
   { id: "marfil", label: "Marfil & Terracota", swatch: "#C2541F" },
 ];
 

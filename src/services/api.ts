@@ -192,8 +192,12 @@ export interface AppViewer {
   role: AppRole;
   status: AppUserStatus;
   display_name?: string | null;
+  profile_photo_url?: string | null;
   notification_hour?: number | null;
   notification_minute?: number | null;
+  notification_enabled?: boolean;
+  notification_telegram?: boolean;
+  notification_email?: boolean;
   onboarding_state?: OnboardingState;
   is_dashboard_joiner?: boolean;
 }
@@ -221,6 +225,8 @@ export interface DashboardMember {
   id: string;
   user_id: string;
   email: string | null;
+  display_name?: string | null;
+  profile_photo_url?: string | null;
   role: DashboardMemberRole;
   status: string;
   permissions?: MemberPermissions;
@@ -231,6 +237,8 @@ export interface DashboardInvitation {
   id: string;
   dashboard_id: string;
   email: string;
+  display_name?: string | null;
+  profile_photo_url?: string | null;
   role: DashboardInvitationRole;
   status: InvitationStatus;
   invite_token: string;
@@ -315,6 +323,8 @@ export type PersonaScope = "app" | "dashboard";
 export interface PersonaRecord {
   id: string;
   email: string;
+  display_name?: string | null;
+  profile_photo_url?: string | null;
   type: PersonaScope;
   role: string;
   status: PersonaStatus;
@@ -737,7 +747,15 @@ export const api = {
     return fetchApi("/api/dashboard/leave", { method: "POST" });
   },
 
-  async updateMe(fields: { display_name?: string | null; notification_hour?: number; notification_minute?: number; onboarding_state?: OnboardingState }): Promise<void> {
+  async updateMe(fields: {
+    display_name?: string | null;
+    notification_hour?: number | null;
+    notification_minute?: number | null;
+    notification_enabled?: boolean;
+    notification_telegram?: boolean;
+    notification_email?: boolean;
+    onboarding_state?: OnboardingState;
+  }): Promise<void> {
     return fetchApi("/api/me", { method: "PATCH", body: JSON.stringify(fields) });
   },
 

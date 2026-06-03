@@ -47,7 +47,7 @@ export function SectionCard({ title, description, children, icon: Icon, action }
 
 export function PlaceholderPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface-2)] px-5 py-4 text-sm text-[var(--app-text-2)]">
+    <div className="flex min-h-[128px] flex-col items-center justify-center rounded-xl border border-dashed border-[color-mix(in_srgb,var(--app-strong-surface)_55%,var(--app-border))] bg-[var(--app-surface-2)] px-5 py-5 text-center text-sm text-[var(--app-text-2)]">
       <div className="font-semibold text-[var(--app-text-1)] mb-1">{title}</div>
       <p className="leading-relaxed">{body}</p>
     </div>
@@ -68,8 +68,8 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface-2)] px-6 py-8 text-center">
-      {icon && <div className="flex justify-center mb-3 text-[var(--app-text-3)]">{icon}</div>}
+    <div className="flex min-h-[150px] flex-col items-center justify-center rounded-xl border border-dashed border-[color-mix(in_srgb,var(--app-strong-surface)_55%,var(--app-border))] bg-[var(--app-surface-2)] px-6 py-8 text-center">
+      {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--app-strong-surface)_70%,var(--app-border))] bg-[color-mix(in_srgb,var(--app-strong-surface)_12%,var(--app-surface-1))] text-[var(--app-strong-surface)]">{icon}</div>}
       <p className="text-sm font-medium text-[var(--app-text-2)]">{title}</p>
       {hint && <p className="mt-2 text-xs text-[var(--app-text-3)] max-w-sm mx-auto leading-relaxed">{hint}</p>}
       {canWrite && cta && (

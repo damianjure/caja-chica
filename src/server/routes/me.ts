@@ -80,9 +80,19 @@ export function createMeRouter(deps: MeDeps) {
 
     const { data } = await supabase
       .from("app_users")
-      .select("display_name, notification_hour, notification_minute, onboarding_state")
+      .select("display_name, profile_photo_url, notification_hour, notification_minute, notification_enabled, notification_telegram, notification_email, onboarding_state")
       .eq("user_id", session.userId)
       .single();
+
+    const metadataUpdates: Record<string, unknown> = {};
+    const profileName = session.profileName?.trim() || null;
+    const profilePhotoUrl = session.profilePhotoUrl?.trim() || null;
+    if (!data?.display_name && profileName) metadataUpdates.display_name = profileName.slice(0, 80);
+    if (profilePhotoUrl && data?.profile_photo_url !== profilePhotoUrl) metadataUpdates.profile_photo_url = profilePhotoUrl.slice(0, 500);
+    if (Object.keys(metadataUpdates).length > 0) {
+      await supabase.from("app_users").update(metadataUpdates).eq("user_id", session.userId);
+      Object.assign(data ?? {}, metadataUpdates);
+    }
 
     res.json({
       id: session.userId,
@@ -90,8 +100,12 @@ export function createMeRouter(deps: MeDeps) {
       role: session.role,
       status: session.status,
       display_name: data?.display_name ?? null,
+      profile_photo_url: data?.profile_photo_url ?? null,
       notification_hour: data?.notification_hour ?? 21,
       notification_minute: data?.notification_minute ?? 0,
+      notification_enabled: data?.notification_enabled ?? true,
+      notification_telegram: data?.notification_telegram ?? true,
+      notification_email: data?.notification_email ?? false,
       onboarding_state: currentOnboardingState ?? data?.onboarding_state ?? "completed",
       is_dashboard_joiner: isDashboardJoiner,
     });
@@ -99,27 +113,52 @@ export function createMeRouter(deps: MeDeps) {
 
   router.patch("/api/me", requireSession, async (req, res) => {
     const session = getSession(req);
-    const body = req.body as { display_name?: string | null; notification_hour?: number; notification_minute?: number; onboarding_state?: string };
+    const body = req.body as {
+      display_name?: string | null;
+      notification_hour?: number | null;
+      notification_minute?: number | null;
+      notification_enabled?: boolean;
+      notification_telegram?: boolean;
+      notification_email?: boolean;
+      onboarding_state?: string;
+    };
     const updates: Record<string, unknown> = {};
 
     if ("display_name" in body) {
       updates.display_name = body.display_name ? String(body.display_name).trim().slice(0, 50) : null;
     }
     if ("notification_hour" in body) {
-      const h = Number(body.notification_hour);
-      if (!Number.isInteger(h) || h < 0 || h > 23) {
-        res.status(400).json({ error: "notification_hour must be 0–23" });
-        return;
+      if (body.notification_hour === null) {
+        updates.notification_hour = null;
+      } else {
+        const h = Number(body.notification_hour);
+        if (!Number.isInteger(h) || h < 0 || h > 23) {
+          res.status(400).json({ error: "notification_hour must be 0–23" });
+          return;
+        }
+        updates.notification_hour = h;
       }
-      updates.notification_hour = h;
     }
     if ("notification_minute" in body) {
-      const m = Number(body.notification_minute);
-      if (!Number.isInteger(m) || m < 0 || m > 59) {
-        res.status(400).json({ error: "notification_minute must be 0–59" });
-        return;
+      if (body.notification_minute === null) {
+        updates.notification_minute = null;
+      } else {
+        const m = Number(body.notification_minute);
+        if (!Number.isInteger(m) || m < 0 || m > 59) {
+          res.status(400).json({ error: "notification_minute must be 0–59" });
+          return;
+        }
+        updates.notification_minute = m;
       }
-      updates.notification_minute = m;
+    }
+    if ("notification_enabled" in body) {
+      updates.notification_enabled = body.notification_enabled === true;
+    }
+    if ("notification_telegram" in body) {
+      updates.notification_telegram = body.notification_telegram === true;
+    }
+    if ("notification_email" in body) {
+      updates.notification_email = body.notification_email === true;
     }
     if ("onboarding_state" in body) {
       const allowed = ["completed", "cleaned"];

@@ -372,8 +372,12 @@ test("devuelve perfil para usuario autenticado activo", async () => {
         role: "member",
         status: "active",
         display_name: null,
+        profile_photo_url: null,
         notification_hour: 21,
         notification_minute: 0,
+        notification_enabled: true,
+        notification_telegram: true,
+        notification_email: false,
         onboarding_state: "completed",
         is_dashboard_joiner: false,
       });
@@ -1032,8 +1036,8 @@ test("lista miembros e invitaciones del dashboard compartido", async () => {
     assert.deepEqual(await res.json(), {
       dashboardId: "dashboard-1",
       members: [
-        { id: "dm-1", user_id: "owner-1", email: "owner@example.com", role: "owner", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
-        { id: "dm-2", user_id: "editor-1", email: "editor@example.com", role: "editor", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
+        { id: "dm-1", user_id: "owner-1", email: "owner@example.com", display_name: null, profile_photo_url: null, role: "owner", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
+        { id: "dm-2", user_id: "editor-1", email: "editor@example.com", display_name: null, profile_photo_url: null, role: "editor", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
       ],
       invitations: [
         { id: "di-1", dashboard_id: "dashboard-1", email: "viewer@example.com", role: "viewer", status: "pending", invite_token: "dash-token-1", invite_url: "https://app.example.com/?invite=dash-token-1", expires_at: null, created_at: "2026-04-30T00:00:00.000Z", accepted_at: null },

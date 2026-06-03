@@ -175,7 +175,7 @@ Los dos modos default (Terracota claro / Petróleo oscuro) son la **paleta Prede
 | Paleta | Modo | Acento | Notas |
 |---|---|---|---|
 | **Predeterminada** | claro/oscuro | mint `#147E60` / `#5EE9B5` | Terracota / Petróleo (default, sin cambios) |
-| Arena & Salvia | claro | salvia `#2E7D5B` | prima cálida de la actual |
+| Niebla & Azul Tinta | claro | azul tinta `#1F6F78` | fría/perlada, claramente distinta de Terracota |
 | Marfil & Terracota | claro | terracota `#C2541F` | cálida bold |
 | Medianoche & Violeta | oscuro | violeta `#8C6BF0` | navy frío |
 | Carbón & Ámbar | oscuro | ámbar `#E0922F` | gris neutro + acento cálido |

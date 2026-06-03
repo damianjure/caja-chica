@@ -56,6 +56,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
               id: session.userId,
               user_id: session.userId,
               email: session.email,
+              display_name: session.profileName ?? null,
+              profile_photo_url: session.profilePhotoUrl ?? null,
               role: "owner",
               status: "active",
               created_at: new Date(0).toISOString(),
@@ -419,6 +421,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
   interface PersonaRecord {
     id: string;
     email: string;
+    display_name?: string | null;
+    profile_photo_url?: string | null;
     type: PersonaScope;
     role: string;
     status: PersonaStatus;
@@ -471,17 +475,32 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if (isAdmin && (!scopeFilter || scopeFilter === "app")) {
         const { data: uiRows, error: uiErr } = await supabase
           .from("user_invitations")
-          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, accepted_user_id")
           .order("created_at", { ascending: false })
           .limit(500);
         if (uiErr) throw uiErr;
 
+        const uiAcceptedIds = ((uiRows ?? []) as any[]).map((r) => r.accepted_user_id).filter(Boolean);
+        const uiProfiles = new Map<string, { display_name: string | null; profile_photo_url: string | null }>();
+        if (uiAcceptedIds.length > 0) {
+          const { data: profileRows } = await supabase
+            .from("app_users")
+            .select("user_id, display_name, profile_photo_url")
+            .in("user_id", uiAcceptedIds);
+          for (const profile of (profileRows ?? []) as any[]) {
+            uiProfiles.set(profile.user_id, { display_name: profile.display_name ?? null, profile_photo_url: profile.profile_photo_url ?? null });
+          }
+        }
+
         for (const row of (uiRows ?? []) as any[]) {
           const status = derivePersonaStatus(row);
           const last_action_at = deriveLastActionAt(row);
+          const profile = row.accepted_user_id ? uiProfiles.get(row.accepted_user_id) : null;
           personas.push({
             id: row.id,
             email: row.email,
+            display_name: profile?.display_name ?? null,
+            profile_photo_url: profile?.profile_photo_url ?? null,
             type: "app",
             role: row.role,
             status,
@@ -497,7 +516,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if ((!scopeFilter || scopeFilter === "dashboard") && scope.dashboardId) {
         const { data: diRows, error: diErr } = await supabase
           .from("dashboard_invitations")
-          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, telegram_preauth, telegram_invite_token_id")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, accepted_user_id, last_reminder_at, telegram_preauth, telegram_invite_token_id")
           .eq("dashboard_id", scope.dashboardId)
           .order("created_at", { ascending: false })
           .limit(500);
@@ -505,6 +524,22 @@ export function createDashboardRouter(deps: DashboardDeps) {
 
         const telegramLinksByInviteToken: Map<string, string> = new Map();
         const diInviteTokens = ((diRows ?? []) as any[]).map((r: any) => r.invite_token).filter(Boolean);
+        const acceptedUserIds = ((diRows ?? []) as any[]).map((r: any) => r.accepted_user_id).filter(Boolean);
+        const profilesByUserId = new Map<string, { display_name: string | null; profile_photo_url: string | null }>();
+
+        if (acceptedUserIds.length > 0) {
+          const { data: profileRows } = await supabase
+            .from("app_users")
+            .select("user_id, display_name, profile_photo_url")
+            .in("user_id", acceptedUserIds)
+            .limit(500);
+          for (const profile of (profileRows ?? []) as any[]) {
+            profilesByUserId.set(profile.user_id, {
+              display_name: profile.display_name ?? null,
+              profile_photo_url: profile.profile_photo_url ?? null,
+            });
+          }
+        }
 
         if (diInviteTokens.length > 0) {
           // Look up active telegram links for these invitations
@@ -525,9 +560,12 @@ export function createDashboardRouter(deps: DashboardDeps) {
           const tgStatus = row.invite_token && telegramLinksByInviteToken.has(row.invite_token)
             ? ("active" as const)
             : null;
+          const profile = row.accepted_user_id ? profilesByUserId.get(row.accepted_user_id) : null;
           personas.push({
             id: row.id,
             email: row.email,
+            display_name: profile?.display_name ?? null,
+            profile_photo_url: profile?.profile_photo_url ?? null,
             type: "dashboard",
             role: row.role,
             status,

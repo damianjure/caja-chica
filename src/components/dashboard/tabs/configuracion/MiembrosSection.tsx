@@ -77,8 +77,26 @@ const PERM_DEFS: PermDef[] = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function avatarInitial(email: string): string {
-  return email.charAt(0).toUpperCase();
+function avatarInitial(label: string): string {
+  return (label.trim().charAt(0) || "?").toUpperCase();
+}
+
+function displayPersonName(displayName: string | null | undefined, email: string): string {
+  const trimmed = displayName?.trim();
+  return trimmed || email;
+}
+
+function PersonAvatar({ name, email, photoUrl }: { name?: string | null; email: string; photoUrl?: string | null }) {
+  const label = displayPersonName(name, email);
+  return (
+    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] text-[var(--app-text-2)] shadow-sm">
+      {photoUrl ? (
+        <img src={photoUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-sm font-bold">{avatarInitial(label)}</div>
+      )}
+    </div>
+  );
 }
 
 function daysUntil(isoDate: string | null | undefined): string {
@@ -98,14 +116,13 @@ function effectivePerm(perms: MemberPermissions | undefined, key: keyof MemberPe
 // Inline badge components
 // ---------------------------------------------------------------------------
 
+const PILL_BASE = "inline-flex h-7 items-center rounded-full border px-3 text-[11px] font-bold leading-none tracking-[-0.01em]";
+
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
-    owner:
-      "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] font-semibold",
-    editor:
-      "bg-emerald-100 text-emerald-800 border-emerald-200 ring-1 ring-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
-    viewer:
-      "bg-[var(--app-surface-2)] text-[var(--app-text-2)] border-[var(--app-border)] ring-1 ring-neutral-300/50 dark:bg-neutral-700/50 dark:text-neutral-200 dark:border-neutral-600/40",
+    owner: "border-[color-mix(in_srgb,#F5A623_58%,var(--app-border))] bg-[color-mix(in_srgb,#F5A623_88%,var(--app-surface-1))] text-[#241507]",
+    editor: "border-[var(--app-green-border)] bg-[var(--app-green-surface)] text-[var(--app-green-text)]",
+    viewer: "border-[var(--app-blue-border)] bg-[var(--app-blue-surface)] text-[var(--app-blue-text)]",
   };
   const labels: Record<string, string> = {
     owner: DASHBOARD_ROLE_LABELS.owner,
@@ -113,7 +130,7 @@ function RoleBadge({ role }: { role: string }) {
     viewer: DASHBOARD_ROLE_LABELS.viewer,
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${styles[role] ?? "bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]"}`}>
+    <span className={`${PILL_BASE} ${styles[role] ?? "border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)]"}`}>
       {labels[role] ?? role}
     </span>
   );
@@ -121,40 +138,26 @@ function RoleBadge({ role }: { role: string }) {
 
 function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string | null }) {
   if (status === "active") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-[var(--app-green-border)] bg-green-100 px-2 py-0.5 text-xs text-[var(--chart-income)] ring-1 ring-green-300/50 dark:bg-[var(--app-green-surface)]0/15 dark:text-green-200 dark:border-green-500/30">
-        Activo
-      </span>
-    );
+    return <span className={`${PILL_BASE} border-[var(--app-green-border)] bg-[var(--app-surface-1)] text-[var(--app-green-text)]`}>Activo</span>;
   }
   if (status === "pending" || status === "expired") {
     const label = status === "expired" ? "Invitación vencida" : `Invitado · ${daysUntil(expiresAt)}`;
-    return (
-      <span className="inline-flex items-center rounded-full border border-[var(--app-amber-border)] bg-amber-100 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-300/50 dark:bg-[var(--app-amber-surface)]0/15 dark:text-amber-200 dark:border-amber-500/30">
-        {label}
-      </span>
-    );
+    return <span className={`${PILL_BASE} border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] text-[var(--app-amber-text)]`}>{label}</span>;
   }
   if (status === "revoked") {
-    return (
-      <span className="inline-flex items-center rounded-full border border-[var(--app-red-border)] bg-red-100 px-2 py-0.5 text-xs text-[var(--chart-expense)] ring-1 ring-red-300/50 dark:bg-[var(--app-red-surface)]0/15 dark:text-red-200 dark:border-red-500/30">
-        Sin acceso
-      </span>
-    );
+    return <span className={`${PILL_BASE} border-[var(--app-red-border)] bg-[var(--app-red-surface)] text-[var(--app-red-text)]`}>Sin acceso</span>;
   }
   return null;
 }
 
+function ContextBadge({ children }: { children: string }) {
+  return <span className={`${PILL_BASE} border-[var(--app-blue-border)] bg-[var(--app-surface-1)] text-[var(--app-blue-text)]`}>{children}</span>;
+}
+
 function TelegramBadge({ linked }: { linked: boolean }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${
-        linked
-          ? "border-blue-200 bg-blue-100 text-blue-700 ring-1 ring-blue-300/50 dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30"
-          : "border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)] dark:bg-neutral-700/40 dark:text-[var(--app-text-3)] dark:border-neutral-600/40"
-      }`}
-    >
-      {linked ? "Telegram vinculado" : "Sin Telegram"}
+    <span className={`${PILL_BASE} ${linked ? "border-[var(--app-blue-border)] bg-[var(--app-blue-surface)] text-[var(--app-blue-text)]" : "border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)]"}`}>
+      {linked ? "Telegram" : "Sin Telegram"}
     </span>
   );
 }
@@ -405,6 +408,8 @@ interface PersonCardProps {
   /** Stable key for expand/collapse */
   cardId: string;
   email: string;
+  displayName?: string | null;
+  profilePhotoUrl?: string | null;
   role: string;
   status: string;
   isOwner: boolean;
@@ -435,6 +440,8 @@ interface PersonCardProps {
 function PersonCard({
   cardId,
   email,
+  displayName,
+  profilePhotoUrl,
   role,
   status,
   isOwner,
@@ -462,6 +469,8 @@ function PersonCard({
   const isRevoked = status === "revoked";
   const isEditor = role === "editor";
   const isViewer = role === "viewer";
+  const personName = displayPersonName(displayName, email);
+  const showEmailUnderName = !!displayName && displayName.trim().toLowerCase() !== email.toLowerCase();
 
   // Determine if telegram can be managed (active members with userId only)
   const canManageTelegram = !isInvitation && !isRevoked && !!userId;
@@ -490,25 +499,24 @@ function PersonCard({
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full grid grid-cols-[36px_1fr_auto] items-center gap-3 px-4 py-3.5 text-left"
+        className="w-full grid grid-cols-[40px_1fr_auto] items-center gap-3 px-4 py-3.5 text-left"
       >
         {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-[var(--app-surface-3,_var(--app-surface-2))] border border-[var(--app-border)] dark:border-[var(--app-border)] flex items-center justify-center text-sm font-semibold text-[var(--app-text-2)] dark:text-[var(--app-text-2)] shrink-0">
-          {avatarInitial(email)}
-        </div>
+        <PersonAvatar name={displayName} email={email} photoUrl={profilePhotoUrl} />
 
         {/* Meta */}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[var(--app-text-1)] dark:text-[var(--app-text-1)] truncate leading-snug">
-            {email}
+            {personName}
           </p>
-          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          {showEmailUnderName && (
+            <p className="mt-0.5 truncate text-xs font-medium text-[var(--app-text-3)]">{email}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
             <RoleBadge role={role} />
             {!isOwner && <StatusBadge status={status} expiresAt={expiresAt} />}
             {isCurrentUser && (
-              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30">
-                Vos
-              </span>
+              <ContextBadge>Vos</ContextBadge>
             )}
             {!isInvitation && <TelegramBadge linked={telegramLinked} />}
           </div>
@@ -869,6 +877,8 @@ export function MiembrosSection({
                 <PersonCard
                   cardId={`owner-${ownerMember.user_id}`}
                   email={ownerMember.email ?? ownerMember.user_id}
+                  displayName={ownerMember.display_name}
+                  profilePhotoUrl={ownerMember.profile_photo_url}
                   role="owner"
                   status="active"
                   isOwner={true}
@@ -906,6 +916,8 @@ export function MiembrosSection({
                     key={cardId}
                     cardId={cardId}
                     email={persona.email}
+                    displayName={persona.display_name ?? member?.display_name}
+                    profilePhotoUrl={persona.profile_photo_url ?? member?.profile_photo_url}
                     role={persona.role}
                     status={persona.status}
                     isOwner={false}

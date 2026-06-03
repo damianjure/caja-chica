@@ -108,6 +108,8 @@ node --import tsx --test tests/api.test.ts tests/permissions.test.ts
 ```
 Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usan `unrefInterval` para no colgar el runner.
 
+**E2E (Playwright):** `npm run e2e`. Config en `playwright.config.ts`, specs en `e2e/` (smoke de login). Separado de los tests unit.
+
 ---
 
 ## Stack técnico real

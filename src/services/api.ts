@@ -310,6 +310,7 @@ export interface TelegramLink {
   status: "pending_owner_confirm" | "active" | "revoked";
   linked_at: string | null;
   created_at: string;
+  legacy?: boolean;
 }
 
 export interface TelegramInviteTokenResponse {

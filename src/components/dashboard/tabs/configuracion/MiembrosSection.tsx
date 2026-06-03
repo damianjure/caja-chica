@@ -269,6 +269,7 @@ function TelegramCardSection({
   const memberLinks = telegramLinks.filter((l) => l.app_user_id === userId && l.status !== "revoked");
   const activeLink = memberLinks.find((l) => l.status === "active") ?? null;
   const pendingLink = memberLinks.find((l) => l.status === "pending_owner_confirm") ?? null;
+  const activeLinkIsLegacy = activeLink?.id.startsWith("legacy-") ?? false;
 
   const handleGenerateToken = async () => {
     setGeneratingToken(true);
@@ -360,12 +361,14 @@ function TelegramCardSection({
               {generatingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
               Regenerar vínculo
             </button>
-            <button
-              onClick={() => void handleRevokeLink(activeLink.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
-            >
-              <X className="w-3 h-3" /> Desvincular
-            </button>
+            {!activeLinkIsLegacy && (
+              <button
+                onClick={() => void handleRevokeLink(activeLink.id)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+              >
+                <X className="w-3 h-3" /> Desvincular
+              </button>
+            )}
           </>
         )}
         {pendingLink && (

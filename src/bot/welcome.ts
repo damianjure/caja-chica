@@ -22,7 +22,7 @@ const INTRO_BODY =
 
 export function buildHelpMessage(firstName?: string | null): string {
   const name = firstName?.trim();
-  const hi = name ? `¡Buenísimo, ${name}! ` : "¡Bienvenida! ";
+  const hi = name ? `¡Buenísimo, ${name}! ` : "¡Bienvenido/a! ";
   return (
     `${hi}Te cuento rápido cómo cargar todo, en criollo 👇\n\n` +
     `💸 *Hablando normal* (texto o audio):\n` +

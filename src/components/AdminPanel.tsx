@@ -415,7 +415,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(160px,200px)_auto] gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(160px,200px)_auto] items-center gap-3">
         <input
           type="email"
           value={email}

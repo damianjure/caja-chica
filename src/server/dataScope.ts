@@ -41,13 +41,21 @@ export async function resolveDataAccessScope(
     }
   } catch (error) {
     if (!isMissingSchemaArtifactError(error)) throw error;
+    console.warn(
+      "[resolveDataAccessScope] dashboard_members unavailable, falling back to legacy self-scope:",
+      error,
+    );
   }
 
   return { dashboardId: null, membershipRole: null, memberPermissions: {} };
 }
 
 export function canWriteToScope(scope: DataAccessScope): boolean {
-  return scope.membershipRole !== "viewer";
+  return (
+    scope.membershipRole === null ||
+    scope.membershipRole === "owner" ||
+    scope.membershipRole === "editor"
+  );
 }
 
 export function canManageDashboardMembers(session: AppSession, scope: DataAccessScope): boolean {

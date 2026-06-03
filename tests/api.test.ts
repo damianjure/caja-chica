@@ -102,6 +102,10 @@ function createSupabaseStub(
         promise.single = () => Promise.resolve({ data: rows[0], error: null });
         return promise;
       },
+      range(from: number, to: number) {
+        callLog.push({ table, type: "range", args: [from, to] });
+        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+      },
       lt(column: string, value: string) {
         callLog.push({ table, type: "lt", args: [column, value] });
         rows = rows.filter((row: any) => row[column] < value);
@@ -1291,6 +1295,229 @@ test("permite editar un movimiento y registra audit log", async () => {
     await new Promise<void>((resolve, reject) =>
       server.close((err) => (err ? reject(err) : resolve())),
     );
+  }
+});
+
+test("editor no puede borrar el último movimiento ajeno sin delete_any", async () => {
+  const supabase = createSupabaseStub({
+    movimientos: [
+      {
+        id: "mov-other-last",
+        owner_user_id: "other-user",
+        dashboard_id: "dashboard-1",
+        created_at: "2026-04-30T00:00:00.000Z",
+        deleted_at: null,
+        tipo: "egreso",
+        moneda: "ARS",
+        monto: 2500,
+        categoria: "Comida",
+        empresa_nombre: "Personal",
+        descripcion: "café ajeno",
+        original_text: "café 2500",
+      },
+    ],
+    dashboardMembers: [
+      { user_id: "user-1", dashboard_id: "dashboard-1", role: "editor", status: "active", permissions: {} },
+    ],
+  });
+  const app = createApp({
+    supabase: supabase.client as AppDeps["supabase"],
+    genAI: {
+      models: {
+        async generateContent() {
+          return { text: '{"intent":"REGISTRAR","items":[]}' };
+        },
+      },
+    },
+    allowedOrigins: ["http://localhost:5173"],
+    botActive: false,
+    publicAppUrl: "https://app.example.com",
+    resolveSession: async () => memberSession,
+  });
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/movimientos/last`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer valid-token" },
+    });
+
+    assert.equal(res.status, 403);
+    assert.deepEqual(await res.json(), { error: "forbidden" });
+    assert.equal(
+      supabase.callLog.some((entry) => entry.table === "movimientos" && entry.type === "update"),
+      false,
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  }
+});
+
+test("editor con delete_any sí puede borrar el último movimiento ajeno", async () => {
+  const supabase = createSupabaseStub({
+    movimientos: [
+      {
+        id: "mov-other-last",
+        owner_user_id: "other-user",
+        dashboard_id: "dashboard-1",
+        created_at: "2026-04-30T00:00:00.000Z",
+        deleted_at: null,
+        tipo: "egreso",
+        moneda: "ARS",
+        monto: 2500,
+        categoria: "Comida",
+        empresa_nombre: "Personal",
+        descripcion: "café ajeno",
+        original_text: "café 2500",
+      },
+    ],
+    dashboardMembers: [
+      { user_id: "user-1", dashboard_id: "dashboard-1", role: "editor", status: "active", permissions: { delete_any: true } },
+    ],
+  });
+  const app = createApp({
+    supabase: supabase.client as AppDeps["supabase"],
+    genAI: {
+      models: {
+        async generateContent() {
+          return { text: '{"intent":"REGISTRAR","items":[]}' };
+        },
+      },
+    },
+    allowedOrigins: ["http://localhost:5173"],
+    botActive: false,
+    publicAppUrl: "https://app.example.com",
+    resolveSession: async () => memberSession,
+  });
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/movimientos/last`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer valid-token" },
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true, id: "mov-other-last" });
+    assert.equal(
+      supabase.callLog.some((entry) => entry.table === "movimientos" && entry.type === "update"),
+      true,
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  }
+});
+
+function assertScopedUpdate(
+  callLog: Array<{ table: string; type: string; args: unknown[] }>,
+  table: string,
+  scopeColumn: string,
+  scopeValue: string,
+) {
+  const updateIdx = callLog.findIndex((e) => e.table === table && e.type === "update");
+  assert.ok(updateIdx >= 0, `expected an update on ${table}`);
+  assert.ok(
+    callLog
+      .slice(updateIdx + 1)
+      .some((e) => e.type === "eq" && e.args[0] === scopeColumn && e.args[1] === scopeValue),
+    `UPDATE on ${table} must re-apply scope ${scopeColumn}=${scopeValue}`,
+  );
+}
+
+function scopedMovimientoFixtures() {
+  return createSupabaseStub({
+    movimientos: [
+      {
+        id: "mov-1",
+        owner_user_id: "user-1",
+        dashboard_id: "dashboard-1",
+        created_at: "2026-04-30T00:00:00.000Z",
+        deleted_at: null,
+        tipo: "egreso",
+        moneda: "ARS",
+        monto: 2500,
+        categoria: "Comida",
+        empresa_nombre: "Personal",
+        descripcion: "café",
+        original_text: "café 2500",
+        conciliado: false,
+      },
+    ],
+    dashboardMembers: [
+      { user_id: "user-1", dashboard_id: "dashboard-1", role: "owner", status: "active", permissions: {} },
+    ],
+  });
+}
+
+function scopedMovimientoApp(supabase: ReturnType<typeof createSupabaseStub>) {
+  return createApp({
+    supabase: supabase.client as AppDeps["supabase"],
+    genAI: { models: { async generateContent() { return { text: '{"intent":"REGISTRAR","items":[]}' }; } } },
+    allowedOrigins: ["http://localhost:5173"],
+    botActive: false,
+    publicAppUrl: "https://app.example.com",
+    resolveSession: async () => memberSession,
+  });
+}
+
+test("DELETE /movimientos/:id re-aplica el scope del dashboard en el UPDATE", async () => {
+  const supabase = scopedMovimientoFixtures();
+  const server = scopedMovimientoApp(supabase).listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/movimientos/mov-1`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    assert.equal(res.status, 200);
+    assertScopedUpdate(supabase.callLog, "movimientos", "dashboard_id", "dashboard-1");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test("PATCH /movimientos/:id re-aplica el scope del dashboard en el UPDATE", async () => {
+  const supabase = scopedMovimientoFixtures();
+  const server = scopedMovimientoApp(supabase).listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/movimientos/mov-1`, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+      body: JSON.stringify({ monto: 999 }),
+    });
+    assert.equal(res.status, 200);
+    assertScopedUpdate(supabase.callLog, "movimientos", "dashboard_id", "dashboard-1");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test("POST /movimientos/:id/conciliar re-aplica el scope del dashboard en el UPDATE", async () => {
+  const supabase = scopedMovimientoFixtures();
+  const server = scopedMovimientoApp(supabase).listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/movimientos/mov-1/conciliar`, {
+      method: "POST",
+      headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+      body: JSON.stringify({ conciliado: true }),
+    });
+    assert.equal(res.status, 200);
+    assertScopedUpdate(supabase.callLog, "movimientos", "dashboard_id", "dashboard-1");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
 });
 

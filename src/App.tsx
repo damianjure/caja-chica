@@ -35,6 +35,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [viewer, setViewer] = useState<AppViewer | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [viewerLoading, setViewerLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(resolvePreference);
   const [theme, setTheme] = useState<ThemeMode>(() => preferenceToTheme(resolvePreference()));
@@ -88,6 +89,7 @@ export default function App() {
   const setDarkPalette = (id: string) => { setDarkPaletteState(id); storeDarkPalette(id); };
 
   const loadViewer = async () => {
+    setViewerLoading(true);
     try {
       const me = await api.getMe();
       setViewer(me);
@@ -100,6 +102,8 @@ export default function App() {
       } else {
         toast.error("No se pudo validar tu acceso.");
       }
+    } finally {
+      setViewerLoading(false);
     }
   };
 
@@ -123,14 +127,18 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      // Do NOT await Supabase calls inside this callback: the auth client
+      // holds a lock during it and awaiting getMe() (which reads the session)
+      // deadlocks. Fire-and-forget loadViewer; the render guard keeps the
+      // splash up while the viewer loads so there's no login flash.
       setSession(nextSession);
+      setLoadingSession(false);
       if (nextSession) {
-        await loadViewer();
+        void loadViewer();
       } else {
         setViewer(null);
       }
-      setLoadingSession(false);
     });
 
     return () => {
@@ -196,6 +204,12 @@ export default function App() {
         />
       </>
     );
+  }
+
+  // Session restored but viewer still loading → keep the splash instead of
+  // flashing the login screen (kills the "looks disconnected" blink on refresh).
+  if (session && !viewer && viewerLoading) {
+    return <AppLoadingScreen />;
   }
 
   if (!session || !viewer) {

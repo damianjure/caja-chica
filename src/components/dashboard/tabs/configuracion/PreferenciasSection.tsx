@@ -179,9 +179,19 @@ export function PreferenciasSection({
           <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
         </div>
 
-        <PaletteRow title="Paleta clara" options={LIGHT_PALETTES} value={lightPalette} onChange={onSetLightPalette} />
-        <PaletteRow title="Paleta oscura" options={DARK_PALETTES} value={darkPalette} onChange={onSetDarkPalette} />
-        <p className="text-xs text-[var(--app-text-3)] -mt-1">Elegí una para cada modo. Al cambiar entre claro y oscuro se usa la que corresponda, y queda guardada.</p>
+        <PaletteRow
+          title="Paleta clara"
+          options={LIGHT_PALETTES}
+          value={lightPalette}
+          onChange={(id) => { onSetLightPalette(id); onSetThemePreference("light"); }}
+        />
+        <PaletteRow
+          title="Paleta oscura"
+          options={DARK_PALETTES}
+          value={darkPalette}
+          onChange={(id) => { onSetDarkPalette(id); onSetThemePreference("dark"); }}
+        />
+        <p className="text-xs text-[var(--app-text-3)] -mt-1">Tocá una paleta y se aplica al toque: cambia al modo correspondiente y queda guardada para ese modo.</p>
 
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Moneda por defecto</p>

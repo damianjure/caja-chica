@@ -542,8 +542,16 @@ function PersonCard({
       {expanded && (
         <div className="px-4 pb-4 pl-[52px]">
 
-          {/* Permissions — editors only */}
-          {isEditor && (
+          {/* Permissions — editors only, and only once the member materializes on first login */}
+          {isEditor && !memberId && (
+            <div className="mb-4 flex items-center gap-2 px-3 py-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)]">
+              <Lock className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" />
+              <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
+                Todavía no completó el ingreso. Los permisos extra se habilitan cuando entre por primera vez con este mail.
+              </p>
+            </div>
+          )}
+          {isEditor && memberId && (
             <div className="mb-4">
               <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--app-text-3)] dark:text-[var(--app-text-3)] mb-2">
                 Permisos extra

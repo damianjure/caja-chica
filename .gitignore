@@ -13,5 +13,7 @@ coverage/
 
 # tooling local + mockups de referencia
 .claude/
+.agents/
+AGENTS.md
 mockups/
 design-explorations/

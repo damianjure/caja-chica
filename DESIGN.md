@@ -259,6 +259,13 @@ Glass (chrome), sticky. **Sin título de página** (redundante con la sección a
 - **Izquierda:** monograma + wordmark "Caja Chica" + CTA primario **Nueva operación** (acento mint, atajo a cargar movimiento).
 - **Derecha (en orden):** Buscar (⌘K) · toggle de tema (Claro/Oscuro) · badge de rol (Dueño) · avatar de usuario.
 
+### Marca / BrandMark (2026-06-03)
+Logo real reemplaza el placeholder anterior (ícono `ShieldCheck` + badge de texto "CC"). Componente `BrandMark` con 3 variantes que apuntan a assets en `/public`:
+- `badge` → `logo-caja-chica-header.png`, `h-11 w-11 rounded-lg` (app-bar, monograma).
+- `login` → `logo-caja-chica-login.png`, `h-20 w-20 rounded-xl` (LoginScreen, centrado, wordmark a `sr-only`).
+- `full` (default) → `logo-caja-chica.png`, `h-16 w-16 rounded-xl` (AppLoadingScreen).
+`loading="eager"` (above-the-fold). `favicon.png` + iconos PWA (192/512/maskable) regenerados a partir del mismo logo. El acento mint de marca (color) sigue rigiendo la acción primaria/pestaña activa; el logo es la identidad visual, no compite con el acento.
+
 ### Selector de hora (componente firma)
 Selector tipo alarma para la hora del recordatorio: dos steppers (hora ±1, minutos ±5) con chevrons arriba/abajo y la cifra en `font-mono` en el medio, separados por dos puntos. Compacto, integrado en la fila de configuración.
 

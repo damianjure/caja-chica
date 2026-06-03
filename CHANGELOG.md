@@ -652,6 +652,16 @@ PRs #15–#27 a `main`. Backend rev **`caja-chica-00066-bpz`**. Tests **735 pass
 
 **Mockups nuevos:** `mockups/themes-12-opciones.html` (6 claras + 6 oscuras), `wireframe-login-ayuda-faq.html`, `wireframe-invitaciones-dashboard.html`.
 
+### Cambios 2026-06-03 (branding real + E2E Playwright + cleanup repo — deploy)
+
+PR #32 mergeado a `main` (merge `3c35608`). Solo frontend, sin backend/SQL/env vars.
+
+- **Branding (BrandMark + logos)** — nuevo `src/components/BrandMark.tsx` (variantes `badge`/`login`/`full`) reemplaza el placeholder `ShieldCheck` + badge de texto "CC". Cableado en `DashboardApp` (header, `badge`), `AppLoadingScreen` (`full`), `LoginScreen` (`login`, centrado, wordmark a `sr-only` + ThemeToggle reposicionado arriba-derecha). Assets en `/public`: `logo-caja-chica{,-header,-login,-login-source}.{png,svg}` + `favicon.png`. Iconos PWA (192/512/maskable) regenerados desde el logo. `index.html` link favicon; `vite.config.ts` PWA `includeAssets` → `favicon.png` (antes `icon.svg`). DESIGN.md §5 nuevo bloque "Marca / BrandMark".
+- **E2E Playwright** — `@playwright/test` (devDep) + `playwright.config.ts` + `e2e/login-smoke.spec.ts` + script `npm run e2e`. Fix glob de tests unit: `node --test $(find tests -name '*.test.ts' | sort)` (orden determinístico vs `**` del shell).
+- **Cleanup repo**: borrada basura de otro proyecto (`mockup-{operador,proyectores,tecnico}.html` = "I/O Proyectores", `generate_config.py`). `.gitignore` += `.agents/`, `AGENTS.md` (AGENTS.md deprecado), `.clauderules`.
+- **`.clauderules` untrackeado** (estaba committeado por error en `c4e9dd0`): es un artefacto **generado** por el hook `UserPromptSubmit` (`skill-injector match $(git diff) > .clauderules`, o `rm -f` si el árbol está limpio). Trackearlo causaba borrados fantasma en `git status`. Ahora gitignored y regenerado local por sesión.
+- **Deploy**: Frontend Firebase Hosting `caja-chica-bot.web.app`. `tsc --noEmit` + `vite build` limpios. Sin cambio de backend.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

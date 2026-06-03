@@ -102,6 +102,7 @@ export const FULL_COMMANDS: BotCommand[] = [
   { command: "empresas", description: "Listar empresas activas" },
   { command: "categorias", description: "Listar categorías" },
   { command: "dashboard", description: "Abrir dashboard web" },
+  { command: "ayuda", description: "Cómo cargar gastos (ejemplos)" },
 ];
 
 /** Returns the command list appropriate for the given dashboard role. */

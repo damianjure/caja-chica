@@ -706,6 +706,22 @@ Sesión grande. PRs #5–#13 mergeados a `main`. Backend rev **`caja-chica-00063
 
 **Pendiente post-deploy:** QA visual prod claro+oscuro (tour, banner PWA mobile real, Ayuda, disparar reporte real pa' confirmar mail). Actualizar `setMyCommands`/inline mode BotFather. Mockups de referencia en `mockups/` (wireframe-*, auditoria-marron). DESIGN.md sin cambios este batch.
 
+### Cambios 2026-06-03 (sesión extendida: biométrico + fixes + paletas — deploy)
+
+PRs #15–#27 a `main`. Backend rev **`caja-chica-00066-bpz`**. Tests **735 pass / 2 skip / 0 fail**. Front Firebase + Back Cloud Run.
+
+- **Fix menú usuario tapado** (PR #15): header `<header className="relative z-30">` — el dropdown vivía en el header `glass-chrome` (stacking context z:auto) y la barra de tabs sticky `z-20` lo tapaba.
+- **Login pulido** (PR #16): chips Telegram/Voz/Foto en `grid grid-cols-3` alineado (labels cortos); botones a `rounded-md`.
+- **App-lock biométrico** (PR #17): `src/lib/biometricLock.ts` (WebAuthn platform authenticator, `userVerification:required`; `shouldPromptUnlock` puro gracia 90s + tests). `src/components/BiometricGate.tsx` envuelve DashboardApp en App.tsx; bloquea al reabrir/volver, auto-intento, fallback cerrar sesión. Toggle en CuentaSection. **Frontend-only**: credencial en el device, sesión sigue Supabase, NO reemplaza login. iOS 16+/Android Chrome.
+- **Revocar miembro lo saca del Equipo** (PR #18, #19): MiembrosSection filtra `status==="revoked"`. Backend `/api/dashboard/members/:id/revoke` ahora también revoca la `dashboard_invitations` asociada (la lista de Equipo se arma desde invitations, no members). Scope ya filtra `status=active` (acceso cortado).
+- **Modal detalle no queda colgado al eliminar cuenta** (PR #18): AdminPanel `setSelectedUserId(null)` al borrar (antes solo `setDetail(null)` → spinner infinito).
+- **Registro de personas en INVITACIONES** (PR #23): `GET /api/admin/invitations` enriquece con `invited_by_email` (col `invited_by` ya existía — NO se necesitó migración) + `membership_of` (cruce `dashboard_members` → dueños de dashboards donde la persona es miembro hoy; queries batched). AdminPanel: badges "Invitada por X" + "Miembro de: Y" / "Cuenta independiente". Revocar 🗑 ya existía.
+- **Filtro "Activas"** (PR #26): "Todas"→"Activas" en INVITACIONES = excluye Aceptadas (siguen bajo filtro "Aceptada"). El registro real de personas = columna izquierda "Dashboards y miembros".
+- **4 paletas de color extra** (PR #27): capa **`data-palette`** en `<html>` ORTOGONAL al `data-theme` claro/oscuro. `src/theme/palettes.ts` (PALETTES + read/apply/storage `caja-chica:palette`). index.css: bloques `[data-theme="light"][data-palette="arena"|"marfil"]` + `[data-theme="dark"][data-palette="medianoche"|"carbon"]` — overridean tokens estructurales+acento; semánticos (verde/rojo/amber) heredan del modo base. App.tsx: estado `palette` + setter que FIJA el modo de la paleta. Selector "Paleta" en PreferenciasSection (Predeterminada + 4). **Predeterminada = Terracota/Petróleo (default sin cambios)**. Props App→DashboardApp→ConfiguracionTab→PreferenciasSection.
+- **WIP backend deployado** (rev `caja-chica-00066-bpz`): `dataScope.ts`, `telegramAccess.ts`, `routes/movimientos.ts`, bot `movements`/`extraction` (+6 tests). Quedaron en `main` por un `git add src` que barrió working tree; el dueño confirmó que eran intencionales → se deployaron. **Lección: usar `git add <archivos puntuales>`, nunca `git add src` con WIP sin commitear.**
+
+**Mockups nuevos:** `mockups/themes-12-opciones.html` (6 claras + 6 oscuras), `wireframe-login-ayuda-faq.html`, `wireframe-invitaciones-dashboard.html`.
+
 ### Pendiente
 - **Activar inline mode en BotFather** (manual, SOLO el dueño — no automatizable): `/setinline @<bot>` (placeholder ej. "4500 luz") + `/setinlinefeedback @<bot>` al **100%**. Sin el feedback, `chosen_inline_result` no dispara y el guardado inline queda muerto.
 1. Test envío real email Brevo (sistema deployed, no probado in-vivo todavía — disparar invite real desde `/admin` o `/configuracion → Equipo`)

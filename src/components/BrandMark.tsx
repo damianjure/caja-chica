@@ -13,7 +13,7 @@ export function BrandMark({ className = '', variant = 'full' }: BrandMarkProps) 
   const src = variant === 'badge'
     ? '/logo-caja-chica-header.svg'
     : variant === 'login'
-      ? '/logo-caja-chica-login.svg'
+      ? '/logo-caja-chica-login.png'
       : '/logo-caja-chica.png';
 
   return (

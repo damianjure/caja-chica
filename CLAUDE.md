@@ -1,5 +1,16 @@
 # CLAUDE.md
 
+## REGLA MODO PLAN — SOLO SESIONES MOBILE/WEB
+
+Cuando el usuario indique que está en mobile, o la sesión sea vía web (claude.ai/code):
+1. Presentar el plan: qué archivos se tocan, qué se cambia y por qué.
+2. Esperar un "ok", "dale", "arrancá" u otra confirmación explícita.
+3. Solo entonces ejecutar.
+
+En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa.
+
+---
+
 ## Fuente de verdad única — 2026-05-27 (post modal-portal unification)
 
 Este es el **único archivo de contexto operativo** del proyecto.

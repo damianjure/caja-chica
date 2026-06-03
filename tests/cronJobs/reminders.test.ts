@@ -10,9 +10,18 @@ import { runDailyReminders } from "../../src/server/cronJobs/reminders.ts";
 function makeSupabase(opts: {
   telegramUsers?: unknown[];
   appUsers?: unknown[];
+  telegramLinks?: unknown[];
 } = {}) {
   const telegramUsers = opts.telegramUsers ?? [];
   const appUsers = opts.appUsers ?? [];
+  const telegramLinks = opts.telegramLinks ?? [];
+
+  const dataFor = (table: string): unknown[] => {
+    if (table === "usuarios") return telegramUsers;
+    if (table === "app_users") return appUsers;
+    if (table === "telegram_links") return telegramLinks;
+    return [];
+  };
 
   return {
     from(table: string) {
@@ -21,20 +30,13 @@ function makeSupabase(opts: {
         eq: () => self,
         not: () => self,
         in: (_col: string, _vals: unknown[]) => {
-          // Filter appUsers by user_id if needed; for simplicity return all
           if (table === "app_users") {
             return Promise.resolve({ data: appUsers, error: null });
           }
           return self;
         },
         then(resolve: Function) {
-          if (table === "usuarios") {
-            return Promise.resolve({ data: telegramUsers, error: null }).then(resolve as any);
-          }
-          if (table === "app_users") {
-            return Promise.resolve({ data: appUsers, error: null }).then(resolve as any);
-          }
-          return Promise.resolve({ data: [], error: null }).then(resolve as any);
+          return Promise.resolve({ data: dataFor(table), error: null }).then(resolve as any);
         },
       };
       return self;
@@ -114,6 +116,23 @@ test("runDailyReminders: user with matching hour+minute receives message", async
   assert.strictEqual(result.sent, 1);
   assert.strictEqual(bot.calls.length, 1);
   assert.strictEqual(bot.calls[0].chatId, 12345);
+});
+
+test("runDailyReminders: editor/viewer linked via telegram_links receives message", async () => {
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+  const currentMinute = now.getUTCMinutes();
+
+  const supabase = makeSupabase({
+    telegramUsers: [], // not an owner-legacy chat
+    telegramLinks: [{ app_user_id: "member-1", telegram_user_id: 99999 }],
+    appUsers: [{ user_id: "member-1", notification_hour: currentHour, notification_minute: currentMinute }],
+  });
+  const bot = makeBot();
+  const result = await runDailyReminders({ supabase: supabase as any, bot: bot as any });
+  assert.strictEqual(result.sent, 1);
+  assert.strictEqual(bot.calls.length, 1);
+  assert.strictEqual(bot.calls[0].chatId, 99999);
 });
 
 test("runDailyReminders: user with non-matching minute is not sent", async () => {

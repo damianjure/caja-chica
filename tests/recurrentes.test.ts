@@ -61,34 +61,32 @@ function createSupabaseStub(seed: {
       },
       update(data: unknown) {
         callLog.push({ table, type: "update", args: [data] });
-        // Apply update to matching rows (after eq/is filters)
-        const updated = rows.map((r: any) => ({ ...r, ...(data as object) }));
-        return {
+        // Chainable builder: supports multiple eq/is filters (e.g. .eq("id").eq("dashboard_id"))
+        let matched = rows.map((r: any) => ({ ...r, ...(data as object) }));
+        const updateBuilder: any = {
           eq(col: string, val: unknown) {
             callLog.push({ table, type: "update.eq", args: [col, val] });
-            const matched = updated.filter((r: any) => r[col] === val);
-            const promise: any = Promise.resolve({ data: matched, error: null });
-            promise.select = () => promise;
-            promise.single = () => Promise.resolve({ data: matched[0] ?? null, error: matched[0] ? null : { code: "PGRST116" } });
-            return promise;
+            matched = matched.filter((r: any) => r[col] === val);
+            return updateBuilder;
           },
           is(col: string, val: unknown) {
             callLog.push({ table, type: "update.is", args: [col, val] });
-            const matched = updated.filter((r: any) => {
+            matched = matched.filter((r: any) => {
               const cell = r[col];
               if (val === null) return cell === null || cell === undefined;
               return cell === val;
             });
-            const promise: any = Promise.resolve({ data: matched, error: null });
-            promise.select = () => promise;
-            promise.single = () => Promise.resolve({ data: matched[0] ?? null, error: matched[0] ? null : { code: "PGRST116" } });
-            return promise;
+            return updateBuilder;
           },
-          select() { return this; },
+          select() { return updateBuilder; },
           single() {
-            return Promise.resolve({ data: updated[0] ?? null, error: updated[0] ? null : { code: "PGRST116" } });
+            return Promise.resolve({ data: matched[0] ?? null, error: matched[0] ? null : { code: "PGRST116" } });
+          },
+          then(resolve: Function) {
+            return Promise.resolve({ data: matched, error: null }).then(resolve as any);
           },
         };
+        return updateBuilder;
       },
       single() { return Promise.resolve({ data: rows[0] ?? null, error: rows[0] ? null : { code: "PGRST116" } }); },
       limit(n: number) {

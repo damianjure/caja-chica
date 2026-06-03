@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   applyTelegramDataScope,
   buildTelegramWriteOwnership,
+  canDeleteMovementViaTelegram,
   canEditViaTelegram,
+  canEditMovementViaTelegram,
   hasTelegramAccess,
   resolveTelegramIdentityByChatId,
   resolveTelegramIdentityByToken,
@@ -342,4 +344,94 @@ test("viewer no puede editar — hasTelegramAccess true, canEditViaTelegram fals
   assert.equal(canEditViaTelegram(linked), false);
   assert.equal(linked!.role, "viewer");
   assert.deepEqual(linked!.permissions, {});
+});
+
+test("editor Telegram solo puede editar/borrar movimientos propios sin toggles any", () => {
+  const linked = {
+    id: "tl-editor",
+    userId: "editor-1",
+    dashboardId: "dash-1",
+    ownerUserId: null,
+    role: "editor" as const,
+    permissions: {},
+    username: "editor",
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  };
+
+  assert.equal(
+    canEditMovementViaTelegram({ owner_user_id: "editor-1", created_by_user_id: "editor-1" }, linked),
+    true,
+  );
+  assert.equal(
+    canDeleteMovementViaTelegram({ owner_user_id: "editor-1", created_by_user_id: "editor-1" }, linked),
+    true,
+  );
+  assert.equal(
+    canEditMovementViaTelegram({ owner_user_id: "other-1", created_by_user_id: "other-1" }, linked),
+    false,
+  );
+  assert.equal(
+    canDeleteMovementViaTelegram({ owner_user_id: "other-1", created_by_user_id: "other-1" }, linked),
+    false,
+  );
+});
+
+test("editor Telegram respeta edit_any/delete_any para movimientos ajenos", () => {
+  const linked = {
+    id: "tl-editor-any",
+    userId: "editor-1",
+    dashboardId: "dash-1",
+    ownerUserId: null,
+    role: "editor" as const,
+    permissions: { edit_any: true, delete_any: true },
+    username: "editor",
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  };
+  const otherMovement = { owner_user_id: "other-1", created_by_user_id: "other-1" };
+
+  assert.equal(canEditMovementViaTelegram(otherMovement, linked), true);
+  assert.equal(canDeleteMovementViaTelegram(otherMovement, linked), true);
+});
+
+test("buildTelegramWriteOwnership graba al actor como owner_user_id, no al dueño del dashboard", () => {
+  // En un dashboard compartido, owner_user_id debe ser quien carga (actor),
+  // alineado con buildWriteOwnership del path web. created_by_user_id ya traquea el creador
+  // y dashboard_id da el scope; ownerUserId del dueño NO debe pisar al actor.
+  const linked = {
+    id: "tl-editor",
+    userId: "editor-1",
+    dashboardId: "dash-1",
+    ownerUserId: "dashboard-owner-9",
+    role: "editor" as const,
+    permissions: {},
+    username: "editor",
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  };
+
+  assert.deepEqual(buildTelegramWriteOwnership(linked), {
+    owner_user_id: "editor-1",
+    dashboard_id: "dash-1",
+    created_by_user_id: "editor-1",
+  });
+});
+
+test("owner Telegram puede editar/borrar movimientos del dashboard", () => {
+  const linked = {
+    id: "tl-owner",
+    userId: "owner-1",
+    dashboardId: "dash-1",
+    ownerUserId: null,
+    role: "owner" as const,
+    permissions: {},
+    username: "owner",
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  };
+  const otherMovement = { owner_user_id: "editor-1", created_by_user_id: "editor-1" };
+
+  assert.equal(canEditMovementViaTelegram(otherMovement, linked), true);
+  assert.equal(canDeleteMovementViaTelegram(otherMovement, linked), true);
 });

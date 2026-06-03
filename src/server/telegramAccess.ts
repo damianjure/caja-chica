@@ -257,7 +257,7 @@ export function applyTelegramDataScope(
 export function buildTelegramWriteOwnership(linked: TelegramLinkRecord) {
   if (linked.dashboardId && linked.userId) {
     return {
-      owner_user_id: linked.ownerUserId ?? linked.userId,
+      owner_user_id: linked.userId,
       dashboard_id: linked.dashboardId,
       created_by_user_id: linked.userId,
     };

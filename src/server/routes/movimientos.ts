@@ -332,13 +332,17 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
         return res.status(403).json({ error: "forbidden" });
       }
 
-      const { error } = await supabase
-        .from("movimientos")
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by_user_id: session.userId,
-        })
-        .eq("id", req.params.id);
+      const { error } = await applyDataScope(
+        supabase
+          .from("movimientos")
+          .update({
+            deleted_at: new Date().toISOString(),
+            deleted_by_user_id: session.userId,
+          })
+          .eq("id", req.params.id),
+        session,
+        scope,
+      );
       if (error) throw error;
       await logEntityMutation({
         session,
@@ -377,14 +381,18 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       if (fetchError) throw fetchError;
       if (!existing?.[0]) return res.status(404).json({ error: "not_found" });
 
-      const { error } = await supabase
-        .from("movimientos")
-        .update({
-          conciliado: payload.conciliado,
-          conciliado_at: payload.conciliado ? new Date().toISOString() : null,
-          conciliado_notas: payload.notas || null,
-        })
-        .eq("id", req.params.id);
+      const { error } = await applyDataScope(
+        supabase
+          .from("movimientos")
+          .update({
+            conciliado: payload.conciliado,
+            conciliado_at: payload.conciliado ? new Date().toISOString() : null,
+            conciliado_notas: payload.notas || null,
+          })
+          .eq("id", req.params.id),
+        session,
+        scope,
+      );
       if (error) throw error;
       res.json({ ok: true });
     } catch (_err) {
@@ -423,10 +431,14 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       if (payload.tipo !== undefined) updatePayload.tipo = payload.tipo;
       if (payload.moneda !== undefined) updatePayload.moneda = payload.moneda;
 
-      const { error } = await supabase
-        .from("movimientos")
-        .update(updatePayload)
-        .eq("id", req.params.id);
+      const { error } = await applyDataScope(
+        supabase
+          .from("movimientos")
+          .update(updatePayload)
+          .eq("id", req.params.id),
+        session,
+        scope,
+      );
       if (error) throw error;
 
       await logEntityMutation({
@@ -583,10 +595,14 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
 
-      const { data, error } = await supabase
-        .from("recurrentes")
-        .update({ is_active: !row.is_active })
-        .eq("id", req.params.id)
+      const { data, error } = await applyDataScope(
+        supabase
+          .from("recurrentes")
+          .update({ is_active: !row.is_active })
+          .eq("id", req.params.id),
+        session,
+        scope,
+      )
         .select()
         .single();
 
@@ -663,10 +679,14 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
         return res.status(400).json({ error: "no_fields" });
       }
 
-      const { data, error } = await supabase
-        .from("recurrentes")
-        .update(updates)
-        .eq("id", req.params.id)
+      const { data, error } = await applyDataScope(
+        supabase
+          .from("recurrentes")
+          .update(updates)
+          .eq("id", req.params.id),
+        session,
+        scope,
+      )
         .select()
         .single();
 
@@ -691,10 +711,14 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
 
-      const { error } = await supabase
-        .from("recurrentes")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("id", req.params.id);
+      const { error } = await applyDataScope(
+        supabase
+          .from("recurrentes")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", req.params.id),
+        session,
+        scope,
+      );
 
       if (error) throw error;
       return res.json({ ok: true });

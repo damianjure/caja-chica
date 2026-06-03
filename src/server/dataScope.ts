@@ -1,6 +1,22 @@
 import type { AppSession, DataAccessScope, SupabaseLike } from "./contracts.ts";
 import { isMissingSchemaArtifactError } from "./errors.ts";
 
+const MEMBERSHIP_ROLE_PRIORITY: Record<string, number> = {
+  owner: 0,
+  editor: 1,
+  viewer: 2,
+};
+
+function selectPrimaryMembership(rows: any[]): any | null {
+  const sorted = [...rows].sort((a, b) => {
+    const roleA = MEMBERSHIP_ROLE_PRIORITY[a?.role as string] ?? 99;
+    const roleB = MEMBERSHIP_ROLE_PRIORITY[b?.role as string] ?? 99;
+    if (roleA !== roleB) return roleA - roleB;
+    return String(a?.created_at ?? "").localeCompare(String(b?.created_at ?? ""));
+  });
+  return sorted[0] ?? null;
+}
+
 export async function resolveDataAccessScope(
   supabase: SupabaseLike,
   session: AppSession,
@@ -8,13 +24,13 @@ export async function resolveDataAccessScope(
   try {
     const { data, error } = await supabase
       .from("dashboard_members")
-      .select("dashboard_id, role, status, permissions")
+      .select("dashboard_id, role, status, permissions, created_at")
       .eq("user_id", session.userId)
       .eq("status", "active")
-      .limit(1);
+      .limit(50);
 
     if (error) throw error;
-    const membership = data?.[0];
+    const membership = selectPrimaryMembership(data ?? []);
 
     if (membership?.dashboard_id) {
       return {
@@ -88,15 +104,26 @@ export async function fetchScopedMovimientos(
   session: AppSession,
   scope: DataAccessScope,
 ): Promise<any[]> {
-  const { data, error } = await applyDataScope(
-    supabase
-      .from("movimientos")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
-    session,
-    scope,
-  ).limit(2000);
-  if (error) throw error;
-  return (data ?? []) as any[];
+  const pageSize = 1000;
+  const all: any[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await applyDataScope(
+      supabase
+        .from("movimientos")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
+      session,
+      scope,
+    ).range(from, to);
+    if (error) throw error;
+
+    const page = (data ?? []) as any[];
+    all.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return all;
 }

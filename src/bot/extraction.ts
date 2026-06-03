@@ -2,7 +2,12 @@ import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
 import { requireTelegramCan, sendTyping, buildEmpresaSelectorKeyboard } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
-import { applyTelegramDataScope, buildTelegramWriteOwnership, type TelegramLinkRecord } from "../server/telegramAccess.ts";
+import {
+  applyTelegramDataScope,
+  buildTelegramWriteOwnership,
+  canEditMovementViaTelegram,
+  type TelegramLinkRecord,
+} from "../server/telegramAccess.ts";
 import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
 import { MediaGroupBuffer } from "../server/mediaGroupBuffer.ts";
 import {
@@ -220,6 +225,25 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
     if (entry.editMovementId) {
       await ctx.answerCallbackQuery("✅ Guardando cambios...");
+      const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+      if (!linked) return;
+      const { data: rows, error: fetchError } = await applyTelegramDataScope(
+        supabase
+          .from("movimientos")
+          .select("id, owner_user_id, created_by_user_id")
+          .is("deleted_at", null),
+        linked,
+      ).eq("id", entry.editMovementId).limit(1);
+      if (fetchError || !rows?.[0]) {
+        deletePendingExtraction(extractionId);
+        await ctx.editMessageText("❌ El movimiento ya fue borrado o no existe.", { parse_mode: "Markdown" });
+        return;
+      }
+      if (!canEditMovementViaTelegram(rows[0], linked)) {
+        deletePendingExtraction(extractionId);
+        await ctx.editMessageText("🚫 Sin permiso para editar movimientos de otros.", { parse_mode: "Markdown" });
+        return;
+      }
       const e = entry.data;
       let updateQuery = supabase.from("movimientos").update({
         monto: Math.abs(e.monto ?? 0),

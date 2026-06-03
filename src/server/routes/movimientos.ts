@@ -238,6 +238,10 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       const last = data?.[0] ?? null;
       if (!last) return res.json({ ok: true, id: null });
 
+      if (last.owner_user_id !== session.userId && !canDeleteOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
       const beforeData = [last];
 
       await applyDataScope(

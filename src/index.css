@@ -148,12 +148,12 @@
   /* ── Paletas opcionales (capa sobre claro/oscuro). data-palette en <html>.
      Solo overridean tokens estructurales + acento; los semánticos (verde/rojo/amber)
      se heredan del modo base para no perder el significado de los colores. ── */
-  [data-theme="light"][data-palette="arena"] {
-    --app-canvas: #F1EBE0; --app-surface-1: #FBF7F0; --app-surface-2: #ECE4D7;
-    --app-surface-3: #E4DACA; --app-surface-4: #D9CEBE; --app-border: #D9CEBE;
-    --app-border-strong: #B6A78E; --app-text-1: #23201A; --app-text-2: #5B5345;
-    --app-text-3: #8C8270; --app-text-4: #A89E8C; --app-strong-surface: #2E7D5B;
-    --app-strong-text: #FBF7F0; --chart-income: #2E7D5B; --chart-baseline: #D9CEBE;
+  [data-theme="light"][data-palette="niebla"] {
+    --app-canvas: #EEF3F3; --app-surface-1: #FCFEFD; --app-surface-2: #E4ECEC;
+    --app-surface-3: #D8E3E4; --app-surface-4: #C9D7D9; --app-border: #C9D7D9;
+    --app-border-strong: #8EA6AA; --app-text-1: #172426; --app-text-2: #43585C;
+    --app-text-3: #6F858A; --app-text-4: #8FA1A5; --app-strong-surface: #1F6F78;
+    --app-strong-text: #F7FBFA; --chart-income: #1F7F69; --chart-net: #1F6F78; --chart-baseline: #C9D7D9;
   }
   [data-theme="light"][data-palette="marfil"] {
     --app-canvas: #F6F0E7; --app-surface-1: #FFFBF4; --app-surface-2: #F0E6D8;

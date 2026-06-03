@@ -162,7 +162,40 @@ export function createTelegramRouter(deps: TelegramDeps) {
         .limit(100);
       if (error) throw error;
 
-      return res.json({ links: data ?? [] });
+      const links = [...(data ?? [])];
+      const hasCurrentUserActiveLink = links.some(
+        (link) => link.app_user_id === session.userId && link.status === "active",
+      );
+
+      // Owners linked before the multi-user Telegram model live in the legacy
+      // `usuarios` table. Surface that link as read-only so the team panel
+      // does not show a false "Sin Telegram" badge for the owner.
+      if (!hasCurrentUserActiveLink && scope.membershipRole === "owner") {
+        const { data: legacyRows, error: legacyError } = await supabase
+          .from("usuarios")
+          .select("id, chat_id, username, linked_at, created_at")
+          .eq("owner_user_id", session.userId)
+          .not("chat_id", "is", null)
+          .limit(1);
+        if (legacyError) throw legacyError;
+
+        const legacyLink = legacyRows?.[0];
+        if (legacyLink?.chat_id) {
+          const linkedAt = legacyLink.linked_at ?? legacyLink.created_at ?? null;
+          links.push({
+            id: `legacy-owner-${legacyLink.id}`,
+            telegram_user_id: legacyLink.chat_id,
+            telegram_username: legacyLink.username ?? null,
+            app_user_id: session.userId,
+            status: "active",
+            linked_at: linkedAt,
+            created_at: linkedAt ?? new Date(0).toISOString(),
+            legacy: true,
+          });
+        }
+      }
+
+      return res.json({ links });
     } catch (err) {
       console.error("GET /api/telegram/links:", err);
       return res.status(500).json({ error: "internal" });

@@ -8,6 +8,8 @@ export interface AppSession {
   role: AppRole;
   status: AppUserStatus;
   sessionId?: string; // JWT session_id claim — present on real Supabase tokens
+  profileName?: string | null;
+  profilePhotoUrl?: string | null;
 }
 
 export type DashboardMemberRole = "owner" | "editor" | "viewer";
@@ -22,6 +24,8 @@ export interface DashboardMemberSummary {
   id: string;
   user_id: string;
   email: string | null;
+  display_name?: string | null;
+  profile_photo_url?: string | null;
   role: DashboardMemberRole;
   status: string;
   created_at: string;

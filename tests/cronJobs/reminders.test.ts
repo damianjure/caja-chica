@@ -60,17 +60,10 @@ function makeBot(sendFn?: (chatId: string | number, text: string, opts?: unknown
 // Tests
 // ---------------------------------------------------------------------------
 
-test("runDailyReminders: bot=null returns {sent:0} without querying supabase", async () => {
-  let queryCalled = false;
-  const supabase = {
-    from(_table: string) {
-      queryCalled = true;
-      return { select: () => this, eq: () => this, not: () => this, in: () => this, then: (r: Function) => Promise.resolve({ data: [], error: null }).then(r as any) };
-    },
-  };
+test("runDailyReminders: bot=null still checks due email reminders and sends none when no users", async () => {
+  const supabase = makeSupabase({ telegramUsers: [], appUsers: [] });
   const result = await runDailyReminders({ supabase: supabase as any, bot: null });
   assert.deepStrictEqual(result, { sent: 0 });
-  assert.strictEqual(queryCalled, false);
 });
 
 test("runDailyReminders: no telegram users returns {sent:0}", async () => {
@@ -79,6 +72,32 @@ test("runDailyReminders: no telegram users returns {sent:0}", async () => {
   const result = await runDailyReminders({ supabase: supabase as any, bot: bot as any });
   assert.deepStrictEqual(result, { sent: 0 });
   assert.strictEqual(bot.calls.length, 0);
+});
+
+test("runDailyReminders: due user with email channel receives email without bot", async () => {
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+  const currentMinute = now.getUTCMinutes();
+  const emails: string[] = [];
+  const supabase = makeSupabase({
+    telegramUsers: [],
+    appUsers: [{
+      user_id: "user-email",
+      email: "user@example.com",
+      notification_hour: currentHour,
+      notification_minute: currentMinute,
+      notification_enabled: true,
+      notification_telegram: false,
+      notification_email: true,
+    }],
+  });
+  const result = await runDailyReminders({
+    supabase: supabase as any,
+    bot: null,
+    sendEmail: async (to) => { emails.push(to); },
+  });
+  assert.strictEqual(result.sent, 1);
+  assert.deepStrictEqual(emails, ["user@example.com"]);
 });
 
 test("runDailyReminders: user with matching hour+minute receives message", async () => {

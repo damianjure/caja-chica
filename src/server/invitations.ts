@@ -50,7 +50,7 @@ export async function listDashboardMembers(
 ): Promise<DashboardMemberSummary[]> {
   const { data, error } = await supabase
     .from("dashboard_members")
-    .select("id, user_id, role, status, created_at, permissions, app_users!dashboard_members_user_id_fkey(email)")
+    .select("id, user_id, role, status, created_at, permissions, app_users!dashboard_members_user_id_fkey(email, display_name, profile_photo_url)")
     .eq("dashboard_id", dashboardId)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -63,6 +63,8 @@ export async function listDashboardMembers(
     id: member.id,
     user_id: member.user_id,
     email: member.app_users?.email ?? null,
+    display_name: member.app_users?.display_name ?? null,
+    profile_photo_url: member.app_users?.profile_photo_url ?? null,
     role: member.role,
     status: member.status,
     created_at: member.created_at,

@@ -530,6 +530,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             <HeaderUserMenu
               email={viewer.email}
               identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
+              photoUrl={viewer.profile_photo_url}
               theme={theme}
               onToggleTheme={onToggleTheme}
               onSignOut={() => void handleSignOut()}

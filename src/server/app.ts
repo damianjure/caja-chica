@@ -204,11 +204,24 @@ export function createApp({
       // paused users keep their session but writes are rejected by enforceUserStatus.
       if (profile.status === "blocked" || profile.status === "suspended") return null;
 
+      const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+      const profileName =
+        typeof metadata.full_name === "string" ? metadata.full_name :
+        typeof metadata.name === "string" ? metadata.name :
+        typeof metadata.display_name === "string" ? metadata.display_name :
+        null;
+      const profilePhotoUrl =
+        typeof metadata.avatar_url === "string" ? metadata.avatar_url :
+        typeof metadata.picture === "string" ? metadata.picture :
+        null;
+
       return {
         userId: profile.user_id,
         email: profile.email,
         role: profile.role,
         status: profile.status,
+        profileName,
+        profilePhotoUrl,
       };
     });
 

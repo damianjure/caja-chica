@@ -130,6 +130,15 @@ function createSupabaseStub(
         });
         return api;
       },
+      not(column: string, operator: string, value: unknown) {
+        callLog.push({ table, type: "not", args: [column, operator, value] });
+        rows = rows.filter((row: any) => {
+          const cell = row[column];
+          if (operator === "is" && value === null) return cell !== null && cell !== undefined;
+          return true;
+        });
+        return api;
+      },
       in(column: string, values: unknown[]) {
         callLog.push({ table, type: "in", args: [column, values] });
         rows = rows.filter((row: any) => values.includes(row[column]));
@@ -372,8 +381,12 @@ test("devuelve perfil para usuario autenticado activo", async () => {
         role: "member",
         status: "active",
         display_name: null,
+        profile_photo_url: null,
         notification_hour: 21,
         notification_minute: 0,
+        notification_enabled: true,
+        notification_telegram: true,
+        notification_email: false,
         onboarding_state: "completed",
         is_dashboard_joiner: false,
       });
@@ -1032,8 +1045,8 @@ test("lista miembros e invitaciones del dashboard compartido", async () => {
     assert.deepEqual(await res.json(), {
       dashboardId: "dashboard-1",
       members: [
-        { id: "dm-1", user_id: "owner-1", email: "owner@example.com", role: "owner", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
-        { id: "dm-2", user_id: "editor-1", email: "editor@example.com", role: "editor", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
+        { id: "dm-1", user_id: "owner-1", email: "owner@example.com", display_name: null, profile_photo_url: null, role: "owner", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
+        { id: "dm-2", user_id: "editor-1", email: "editor@example.com", display_name: null, profile_photo_url: null, role: "editor", status: "active", created_at: "2026-04-30T00:00:00.000Z", permissions: {} },
       ],
       invitations: [
         { id: "di-1", dashboard_id: "dashboard-1", email: "viewer@example.com", role: "viewer", status: "pending", invite_token: "dash-token-1", invite_url: "https://app.example.com/?invite=dash-token-1", expires_at: null, created_at: "2026-04-30T00:00:00.000Z", accepted_at: null },
@@ -2210,10 +2223,20 @@ test("owner recibe 404 al invitar por Telegram a usuario que no pertenece al das
   }
 });
 
-test("lista links de Telegram del dashboard", async () => {
+test("lista links de Telegram del dashboard incluyendo owner legacy", async () => {
   const supabase = createSupabaseStub({
     dashboardMembers: [
       { id: "dm-owner", user_id: "owner-1", dashboard_id: "dashboard-1", role: "owner", status: "active" },
+    ],
+    usuarios: [
+      {
+        id: "legacy-owner-link",
+        owner_user_id: "owner-1",
+        chat_id: 123456,
+        username: "damianjure",
+        linked_at: "2026-04-30T00:00:00.000Z",
+        created_at: "2026-04-29T00:00:00.000Z",
+      },
     ],
     telegramLinks: [
       { id: "tl-1", dashboard_id: "dashboard-1", telegram_user_id: "tg-100", telegram_username: "user100", app_user_id: "editor-1", status: "active", linked_at: "2026-05-01T00:00:00.000Z", created_at: "2026-05-01T00:00:00.000Z" },
@@ -2238,7 +2261,11 @@ test("lista links de Telegram del dashboard", async () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(Array.isArray(body.links), true);
-    assert.equal(body.links.length, 2);
+    assert.equal(body.links.length, 3);
+    const legacyOwnerLink = body.links.find((link: any) => link.app_user_id === "owner-1");
+    assert.equal(legacyOwnerLink.status, "active");
+    assert.equal(legacyOwnerLink.legacy, true);
+    assert.equal(legacyOwnerLink.telegram_username, "damianjure");
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }

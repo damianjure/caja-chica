@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { BrandMark } from './BrandMark';
 import { ThemeMode, ThemeToggle } from './ThemeToggle';
 
 export function AppLoadingScreen({
@@ -15,9 +15,7 @@ export function AppLoadingScreen({
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-[var(--app-border)] bg-white p-8 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-[var(--app-strong-surface)] p-2.5 text-[var(--app-strong-text)]">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
+            <BrandMark className="shadow-[var(--app-shadow-sm)]" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Caja Chica</h1>
               <p className="text-xs text-[var(--app-text-3)] mt-0.5">Dashboard financiero para operación real.</p>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%" role="img" aria-label="Caja Chica">
+  <path d="M 112 72 H 388 C 409 72 424 87 424 108 V 352 C 424 372 409 390 390 390 C 375 416 345 416 330 390 C 315 416 285 416 270 390 C 255 416 225 416 210 390 C 195 416 165 416 150 390 C 135 416 105 416 90 390 C 73 390 58 372 58 352 V 108 C 58 87 73 72 112 72 Z"
+        fill="#ffffff"
+        stroke="#1d4230"
+        stroke-width="24"
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+
+  <circle cx="161" cy="176" r="52" fill="#1d4230"/>
+  <text x="161" y="182"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif"
+        font-weight="800"
+        font-size="76"
+        text-anchor="middle"
+        dominant-baseline="central">$</text>
+
+  <text x="224" y="166"
+        fill="#1d4230"
+        font-family="Inter, Arial, Helvetica, sans-serif"
+        font-weight="800"
+        font-size="56"
+        letter-spacing="-1.5">Caja</text>
+  <text x="224" y="224"
+        fill="#1d4230"
+        font-family="Inter, Arial, Helvetica, sans-serif"
+        font-weight="800"
+        font-size="56"
+        letter-spacing="-1.5">Chica</text>
+
+  <line x1="170" y1="300" x2="338" y2="300" stroke="#5a1926" stroke-width="14" stroke-linecap="round"/>
+  <line x1="170" y1="337" x2="285" y2="337" stroke="#1d4230" stroke-width="14" stroke-linecap="round"/>
+</svg>

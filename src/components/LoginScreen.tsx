@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, ShieldCheck, Mic, Camera, Send } from "lucide-react";
+import { Loader2, Mic, Camera, Send } from "lucide-react";
+import { BrandMark } from "./BrandMark";
 import { ThemeMode, ThemeToggle } from "./ThemeToggle";
 
 function GoogleIcon() {
@@ -40,19 +41,22 @@ export function LoginScreen({
     <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 space-y-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] rounded-xl">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
+          <div className="relative">
+            <div className="absolute right-0 top-0">
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
+            </div>
+            <div className="flex flex-col items-center gap-3 pt-3 text-center">
+              <BrandMark
+                variant="login"
+                className="h-28 w-28 rounded-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.20)]"
+              />
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Caja Chica</h1>
-                <p className="text-xs text-[var(--app-text-3)] mt-0.5">
+                <h1 className="sr-only">Caja Chica</h1>
+                <p className="text-sm font-medium text-[var(--app-text-3)]">
                   Solo por invitación.
                 </p>
               </div>
             </div>
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
           </div>
 
           {blocked ? (

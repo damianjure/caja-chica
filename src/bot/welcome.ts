@@ -19,7 +19,27 @@ export interface DashboardAccess {
 
 const INTRO_BODY =
   "Desde acá vas a poder ingresar, ver y generar informes de todo lo referido a tus finanzas. ¡Que lo disfrutes!";
-const OUTRO = "Escribí /menu para ver todo lo que podés hacer.";
+
+export function buildHelpMessage(firstName?: string | null): string {
+  const name = firstName?.trim();
+  const hi = name ? `¡Buenísimo, ${name}! ` : "¡Bienvenida! ";
+  return (
+    `${hi}Te cuento rápido cómo cargar todo, en criollo 👇\n\n` +
+    `💸 *Hablando normal* (texto o audio):\n` +
+    `• "pagué 4500 de luz"\n` +
+    `• "gasté 12 lucas en el súper"\n` +
+    `• "cobré 30.000 de un laburo, anotalo en personal"\n` +
+    `• "me entraron 200 dólares"\n` +
+    `• "saqué 5000 de nafta para la empresa Norte"\n\n` +
+    `📸 *Foto del ticket*: mandá la foto y yo leo monto, fecha y comercio. Después confirmás.\n\n` +
+    `🎙️ *Audio*: mandá un audio diciendo el gasto igual que arriba.\n\n` +
+    `📊 */informes*: te armo el resumen.\n` +
+    `• "informe de este mes"\n• "gastos de la semana"\n• "saldos"\n\n` +
+    `🔁 */recurrente*: cargás algo fijo (alquiler, sueldo) y se anota solo.\n\n` +
+    `⏰ */recordatorio*: prendé/apagá el aviso diario y elegí la hora.\n\n` +
+    `Cuando quieras volver a ver esto, escribí /ayuda. Y /menu para los botones.`
+  );
+}
 
 export function buildWelcomeMessage(dashboards: DashboardAccess[], firstName?: string | null): string {
   const trimmed = firstName?.trim();
@@ -27,8 +47,9 @@ export function buildWelcomeMessage(dashboards: DashboardAccess[], firstName?: s
   const intro = `¡Hola${nameSuffix}! Te damos la bienvenida al bot de Caja Chica 🎉\n\n${INTRO_BODY}`;
 
   const accessBlock = buildAccessBlock(dashboards);
-  if (!accessBlock) return `${intro}\n\n${OUTRO}`;
-  return `${intro}\n\n${accessBlock}\n\n${OUTRO}`;
+  const guide = buildHelpMessage(firstName);
+  if (!accessBlock) return `${intro}\n\n${guide}`;
+  return `${intro}\n\n${accessBlock}\n\n${guide}`;
 }
 
 function buildAccessBlock(dashboards: DashboardAccess[]): string | null {

@@ -166,6 +166,22 @@ Reemplaza los valores "Bosque y Niebla" en `index.css` (mismos nombres de token 
 
 **Gradiente de fondo** (solo `body`): radial mint suave arriba-izquierda + radial azul tenue arriba-derecha + linear vertical del canvas. Nunca por tarjeta.
 
+### Paletas opcionales (capa `data-palette`) — 2026-06-03
+
+Los dos modos default (Terracota claro / Petróleo oscuro) son la **paleta Predeterminada**. Se sumaron 4 paletas extra **seleccionables por el usuario** en Configuración → Preferencias → Paleta.
+
+**Mecánica (buenas prácticas):** atributo **`data-palette`** en `<html>`, ORTOGONAL al `data-theme` (claro/oscuro). Cada paleta es CSS-only: un bloque `[data-theme="<modo>"][data-palette="<id>"]` en `index.css` que **overridea solo los tokens estructurales + acento** (`--app-canvas`, `--app-surface-1..4`, `--app-border(-strong)`, `--app-text-1..4`, `--app-strong-surface/text`, `--chart-baseline`). Los **tokens semánticos** (verde ingreso / rojo gasto / amber / azul) **se heredan del modo base** para no perder el significado del color. Cada paleta **fija su modo** (elegir una oscura pone `data-theme=dark`). Persistencia: `localStorage` `caja-chica:palette`. Lógica en `src/theme/palettes.ts`; estado en `App.tsx`.
+
+| Paleta | Modo | Acento | Notas |
+|---|---|---|---|
+| **Predeterminada** | claro/oscuro | mint `#147E60` / `#5EE9B5` | Terracota / Petróleo (default, sin cambios) |
+| Arena & Salvia | claro | salvia `#2E7D5B` | prima cálida de la actual |
+| Marfil & Terracota | claro | terracota `#C2541F` | cálida bold |
+| Medianoche & Violeta | oscuro | violeta `#8C6BF0` | navy frío |
+| Carbón & Ámbar | oscuro | ámbar `#E0922F` | gris neutro + acento cálido |
+
+Regla: **agregar paletas = nuevo bloque `data-palette` en `index.css`** + entrada en `PALETTES` (`src/theme/palettes.ts`). NO tocar componentes (todo via tokens `--app-*`). Mockup de referencia: `mockups/themes-12-opciones.html` (hay 6 claras + 6 oscuras; se cablearon 4).
+
 ### La Regla de la Superficie de Vidrio (glass)
 El `backdrop-blur` translúcido va SOLO en el chrome: **header/app-bar y barra de pestañas**. Las tarjetas de datos (`section`, `card`, tablas) son SÓLIDAS (`surface-1`, borde 1px, `shadow-sm`). Motivo: app de cifras/tablas + PWA móvil → el blur por tarjeta cuesta GPU y el panel translúcido sobre el gradiente degrada el contraste del texto. Glass = identidad; sólido = legibilidad.
 

@@ -1,32 +1,50 @@
 import type { ThemeMode } from "../components/ThemeToggle";
 
-/** Paleta opcional sobre el modo claro/oscuro. id "" = predeterminada (Terracota/Petróleo). */
-export interface Palette {
+/** Una paleta por modo. id "" = predeterminada (Terracota en claro / Petróleo en oscuro). */
+export interface PaletteOption {
   id: string;
   label: string;
-  mode: ThemeMode;
+  swatch: string;
 }
 
-export const PALETTES: Palette[] = [
-  { id: "arena", label: "Arena & Salvia", mode: "light" },
-  { id: "marfil", label: "Marfil & Terracota", mode: "light" },
-  { id: "medianoche", label: "Medianoche & Violeta", mode: "dark" },
-  { id: "carbon", label: "Carbón & Ámbar", mode: "dark" },
+export const LIGHT_PALETTES: PaletteOption[] = [
+  { id: "", label: "Terracota", swatch: "#147E60" },
+  { id: "arena", label: "Arena & Salvia", swatch: "#2E7D5B" },
+  { id: "marfil", label: "Marfil & Terracota", swatch: "#C2541F" },
 ];
 
-export const PALETTE_STORAGE_KEY = "caja-chica:palette";
+export const DARK_PALETTES: PaletteOption[] = [
+  { id: "", label: "Petróleo", swatch: "#5EE9B5" },
+  { id: "medianoche", label: "Medianoche & Violeta", swatch: "#8C6BF0" },
+  { id: "carbon", label: "Carbón & Ámbar", swatch: "#E0922F" },
+];
 
-export function readPalette(): string {
+const LIGHT_KEY = "caja-chica:palette-light";
+const DARK_KEY = "caja-chica:palette-dark";
+
+function read(key: string, valid: PaletteOption[]): string {
   try {
-    const v = window.localStorage.getItem(PALETTE_STORAGE_KEY) ?? "";
-    return PALETTES.some((p) => p.id === v) ? v : "";
+    const v = window.localStorage.getItem(key) ?? "";
+    return valid.some((p) => p.id === v) ? v : "";
   } catch {
     return "";
   }
 }
 
-export function applyPalette(id: string): void {
+export const readLightPalette = (): string => read(LIGHT_KEY, LIGHT_PALETTES);
+export const readDarkPalette = (): string => read(DARK_KEY, DARK_PALETTES);
+
+export function storeLightPalette(id: string): void {
+  try { window.localStorage.setItem(LIGHT_KEY, id); } catch { /* ignore */ }
+}
+export function storeDarkPalette(id: string): void {
+  try { window.localStorage.setItem(DARK_KEY, id); } catch { /* ignore */ }
+}
+
+/** Aplica en <html> la paleta que corresponde al modo activo. */
+export function applyPalette(mode: ThemeMode, lightId: string, darkId: string): void {
   if (typeof document === "undefined") return;
+  const id = mode === "light" ? lightId : darkId;
   if (id) document.documentElement.dataset.palette = id;
   else delete document.documentElement.dataset.palette;
 }

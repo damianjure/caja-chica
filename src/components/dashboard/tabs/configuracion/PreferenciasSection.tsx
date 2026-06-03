@@ -3,11 +3,7 @@ import { Bell, Loader2, SlidersHorizontal } from "lucide-react";
 import { api, type AppViewer } from "../../../../services/api";
 import { ThemeSelector, type ThemePreference } from "../../../ThemeToggle";
 import type { Empresa } from "../../../../services/api";
-import { PALETTES } from "../../../../theme/palettes";
-
-const PALETTE_SWATCH: Record<string, string> = {
-  arena: "#2E7D5B", marfil: "#C2541F", medianoche: "#8C6BF0", carbon: "#E0922F",
-};
+import { LIGHT_PALETTES, DARK_PALETTES, type PaletteOption } from "../../../../theme/palettes";
 
 const PREF_CURRENCY_KEY = "caja-chica:default-currency";
 const PREF_EMPRESA_KEY = "caja-chica:default-empresa";
@@ -17,18 +13,44 @@ interface PreferenciasSectionProps {
   companies: Empresa[];
   themePreference: ThemePreference;
   onSetThemePreference: (p: ThemePreference) => void;
-  palette: string;
-  onSetPalette: (id: string) => void;
+  lightPalette: string;
+  darkPalette: string;
+  onSetLightPalette: (id: string) => void;
+  onSetDarkPalette: (id: string) => void;
   showNotice: (msg: string) => void;
   setError: (msg: string | null) => void;
+}
+
+function PaletteRow({ title, options, value, onChange }: { title: string; options: PaletteOption[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">{title}</p>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={title}>
+        {options.map((p) => (
+          <button
+            key={p.id || "default"}
+            type="button"
+            onClick={() => onChange(p.id)}
+            aria-pressed={value === p.id}
+            className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${value === p.id ? "border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]" : "border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]"}`}
+          >
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: p.swatch }} />
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function PreferenciasSection({
   companies,
   themePreference,
   onSetThemePreference,
-  palette,
-  onSetPalette,
+  lightPalette,
+  darkPalette,
+  onSetLightPalette,
+  onSetDarkPalette,
   showNotice,
   setError,
   viewer,
@@ -87,33 +109,10 @@ export function PreferenciasSection({
           <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
         </div>
 
-        {/* Paleta */}
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Paleta</p>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Paleta de colores">
-            <button
-              type="button"
-              onClick={() => onSetPalette("")}
-              aria-pressed={palette === ""}
-              className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${palette === "" ? "border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]" : "border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]"}`}
-            >
-              Predeterminada
-            </button>
-            {PALETTES.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onSetPalette(p.id)}
-                aria-pressed={palette === p.id}
-                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${palette === p.id ? "border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]" : "border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]"}`}
-              >
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: PALETTE_SWATCH[p.id] }} />
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-[var(--app-text-3)]">Cada paleta fija su modo (claro u oscuro). "Predeterminada" usa Terracota (claro) / Petróleo (oscuro).</p>
-        </div>
+        {/* Paletas por modo — se eligen por separado, se guardan, y se aplican al togglear claro/oscuro */}
+        <PaletteRow title="Paleta clara" options={LIGHT_PALETTES} value={lightPalette} onChange={onSetLightPalette} />
+        <PaletteRow title="Paleta oscura" options={DARK_PALETTES} value={darkPalette} onChange={onSetDarkPalette} />
+        <p className="text-xs text-[var(--app-text-3)] -mt-1">Elegí una para cada modo. Al cambiar entre claro y oscuro se usa la que corresponda, y queda guardada.</p>
 
         {/* Moneda default */}
         <div className="space-y-2">

@@ -15,6 +15,7 @@ INTENCIONES posibles (campo "intent"):
 - "editar_ultimo": editar/corregir el último movimiento (ej: "cambiá lo último a 5000").
 - "borrar_ultimo": borrar el último movimiento (ej: "borrá lo último").
 - "abrir_dashboard": pedir el link al dashboard web (ej: "abrime el dashboard").
+- "recordatorio_config": prender, apagar o cambiar la hora del recordatorio/aviso diario (ej: "apagá el recordatorio", "ponémelo a las 9", "activá el aviso").
 - "desconocido": si NO entendés, o el audio viene ruidoso, ambiguo o mal pronunciado.
 
 Retorná SIEMPRE un objeto JSON con esta forma:
@@ -31,6 +32,7 @@ SLOTS por intención:
 - informe: { "periodo": "dia"|"semana"|"mes"|"anio"|"rango", "mes": <"YYYY-MM" si dijo un mes>, "anio": <número si dijo un año>, "desde": <"YYYY-MM-DD">, "hasta": <"YYYY-MM-DD">, "formato": "pdf"|"csv", "destino": "local"|"drive", "tipo": "ingresos"|"gastos"|"saldos"|"todos" }
 - recurrente_nuevo: { "monto": <número>, "tipo": "ingreso"|"egreso", "moneda": "ARS"|"USD", "frecuencia": "diario"|"semanal"|"quincenal"|"mensual"|"anual", "descripcion": <string> }
 - editar_ultimo: { "campo": "monto"|"moneda"|"categoria"|"empresa"|"descripcion", "valor": <nuevo valor>, "valor_anterior": <valor viejo si lo dijo> }
+- recordatorio_config: { "accion": "activar"|"desactivar"|"hora", "hora": <0-23, solo si accion="hora"> }
 
 REGLAS:
 - BORRAR / ELIMINAR / SACAR una EMPRESA o una CATEGORÍA NO está soportado por voz: usá intent "desconocido" (nunca "crear_empresa" ni "crear_categoria").

@@ -13,7 +13,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildWelcomeMessage, fetchUserDashboards } from "../src/bot/welcome.ts";
+import { buildWelcomeMessage, fetchUserDashboards, buildHelpMessage } from "../src/bot/welcome.ts";
 
 // ─────────────────────────────────────────────
 // buildWelcomeMessage
@@ -35,19 +35,19 @@ test("buildWelcomeMessage — blank firstName treated as absent", () => {
   assert.ok(msg.startsWith("¡Hola!"), `got: ${msg}`);
 });
 
-test("buildWelcomeMessage — always includes the intro blurb and /menu outro", () => {
+test("buildWelcomeMessage — always includes the intro blurb and help guide", () => {
   const msg = buildWelcomeMessage([{ name: "Casa", role: "editor" }], "Juan");
   assert.ok(msg.includes("bienvenida al bot de Caja Chica"));
   assert.ok(msg.includes("ingresar, ver y generar informes"));
-  assert.ok(msg.includes("/menu"));
+  assert.match(msg, /pagué 4500 de luz/i);
 });
 
 test("buildWelcomeMessage — singular dashboard uses singular phrasing + role label", () => {
   const msg = buildWelcomeMessage([{ name: "Casa", role: "editor" }], "Juan");
   assert.ok(msg.includes("El dashboard al que tenés acceso es el de Casa"), `got: ${msg}`);
   assert.ok(msg.includes("Puede editar"), `got: ${msg}`);
-  // no bullet list in singular
-  assert.ok(!msg.includes("• "), "singular should not render a bullet list");
+  // no access-block bullet list in singular (guide bullets are expected)
+  assert.ok(!msg.includes("• Casa"), "singular should not render a dashboard bullet list");
 });
 
 test("buildWelcomeMessage — viewer role label", () => {
@@ -78,7 +78,7 @@ test("buildWelcomeMessage — multiple dashboards use plural phrasing + bullet l
 test("buildWelcomeMessage — empty dashboards still greets, omits access block", () => {
   const msg = buildWelcomeMessage([], "Juan");
   assert.ok(msg.startsWith("¡Hola Juan!"));
-  assert.ok(msg.includes("/menu"));
+  assert.match(msg, /pagué 4500 de luz/i);
   assert.ok(!msg.includes("📋"), "no access block when there are no dashboards");
   assert.ok(!msg.includes("dashboard al que tenés acceso"), "no singular access line");
 });
@@ -154,4 +154,23 @@ test("fetchUserDashboards — missing dashboard name falls back to placeholder",
   assert.equal(result.length, 1);
   assert.equal(result[0].role, "editor");
   assert.ok(result[0].name.length > 0);
+});
+
+// ─────────────────────────────────────────────
+// buildHelpMessage
+// ─────────────────────────────────────────────
+
+test("buildHelpMessage — saluda con nombre y trae ejemplos clave", () => {
+  const msg = buildHelpMessage("Caro");
+  assert.match(msg, /Caro/);
+  assert.match(msg, /pagué 4500 de luz/i);
+  assert.match(msg, /anotalo en personal/i);
+  assert.match(msg, /\/informes/);
+  assert.match(msg, /\/recurrente/);
+});
+
+test("buildHelpMessage — sin nombre no rompe", () => {
+  const msg = buildHelpMessage(null);
+  assert.match(msg, /Bienvenid/i);
+  assert.doesNotMatch(msg, /undefined/);
 });

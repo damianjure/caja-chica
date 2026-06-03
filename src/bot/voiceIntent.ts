@@ -24,6 +24,7 @@ export type BotIntent =
   | "editar_ultimo"
   | "borrar_ultimo"
   | "abrir_dashboard"
+  | "recordatorio_config"
   | "desconocido"; // sentinel — unrecognized utterance, ask the user to repeat
 
 /**
@@ -47,6 +48,7 @@ export const KNOWN_INTENTS: BotIntent[] = [
   "editar_ultimo",
   "borrar_ultimo",
   "abrir_dashboard",
+  "recordatorio_config",
 ];
 
 /**
@@ -144,4 +146,21 @@ export function resolveIntentAction(result: IntentResult): IntentDecision {
     return { action: "confirm", result, reason: "destructive" };
   }
   return { action: "execute", result };
+}
+
+/**
+ * Parse slots for the `recordatorio_config` intent.
+ * Returns null if the action is unrecognized (caller should fall back to the button menu).
+ */
+export function parseReminderSlots(
+  slots: IntentSlots,
+): null | { enabled: boolean; hour?: number; minute?: number } {
+  const accion = String(slots.accion ?? "").toLowerCase();
+  if (accion === "desactivar" || accion === "apagar") return { enabled: false };
+  if (accion === "activar" || accion === "prender") return { enabled: true };
+  if (accion === "hora") {
+    const h = Number(slots.hora);
+    if (Number.isInteger(h) && h >= 0 && h <= 23) return { enabled: true, hour: h, minute: 0 };
+  }
+  return null;
 }

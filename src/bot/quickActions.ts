@@ -87,6 +87,8 @@ export const VIEWER_COMMANDS: BotCommand[] = [
   { command: "empresas", description: "Listar empresas activas" },
   { command: "categorias", description: "Listar categorías" },
   { command: "dashboard", description: "Abrir dashboard web" },
+  { command: "recordatorio", description: "Prender/apagar y elegir hora del aviso" },
+  { command: "ayuda", description: "Cómo cargar gastos (ejemplos)" },
 ];
 
 /** Full command list for owner and editor roles. */
@@ -102,6 +104,8 @@ export const FULL_COMMANDS: BotCommand[] = [
   { command: "empresas", description: "Listar empresas activas" },
   { command: "categorias", description: "Listar categorías" },
   { command: "dashboard", description: "Abrir dashboard web" },
+  { command: "recordatorio", description: "Prender/apagar y elegir hora del aviso" },
+  { command: "ayuda", description: "Cómo cargar gastos (ejemplos)" },
 ];
 
 /** Returns the command list appropriate for the given dashboard role. */

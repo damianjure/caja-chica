@@ -5,6 +5,8 @@ import { registerMovementHandlers } from "./commands/movements.ts";
 import { registerEntityHandlers } from "./commands/entities.ts";
 import { registerReportHandlers } from "./commands/reports.ts";
 import { registerRecurringHandlers } from "./commands/recurring.ts";
+import { registerReminderHandlers } from "./commands/reminder.ts";
+import { registerHelpHandlers } from "./commands/help.ts";
 import { registerExtractionHandlers } from "./extraction.ts";
 import { initSessions } from "./sessions.ts";
 import { registerInlineModeHandlers } from "./inlineMode.ts";
@@ -15,6 +17,8 @@ export function registerBotHandlers(bot: Bot, deps: BotDeps) {
   registerEntityHandlers(bot, deps);
   registerReportHandlers(bot, deps);
   registerRecurringHandlers(bot, deps);
+  registerReminderHandlers(bot, deps);
+  registerHelpHandlers(bot, deps);
   registerExtractionHandlers(bot, deps);
   registerInlineModeHandlers(bot, deps);
   // movements last: contains the catch-all message:text handler

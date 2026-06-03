@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   parseIntentResult,
   resolveIntentAction,
+  parseReminderSlots,
   INTENT_CONFIRM_THRESHOLD,
   KNOWN_INTENTS,
   type BotIntent,
@@ -119,4 +120,19 @@ test("INTENT_CONFIRM_THRESHOLD is between 0 and 1", () => {
 test("resolveIntentAction: confidence exactly at threshold → execute (not clarify)", () => {
   const d = resolveIntentAction(parseIntentResult({ intent: "saldos", confidence: INTENT_CONFIRM_THRESHOLD }, "saldo"));
   assert.equal(d.action, "execute");
+});
+
+// ===== parseReminderSlots =====
+
+test("parseReminderSlots — apagar", () => {
+  assert.deepEqual(parseReminderSlots({ accion: "desactivar" }), { enabled: false });
+});
+test("parseReminderSlots — hora 9", () => {
+  assert.deepEqual(parseReminderSlots({ accion: "hora", hora: 9 }), { enabled: true, hour: 9, minute: 0 });
+});
+test("parseReminderSlots — prender", () => {
+  assert.deepEqual(parseReminderSlots({ accion: "activar" }), { enabled: true });
+});
+test("parseReminderSlots — ruido → null", () => {
+  assert.equal(parseReminderSlots({ accion: "xyz" }), null);
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, Loader2, Mail, Send, SlidersHorizontal } from "lucide-react";
+import { Bell, Loader2, Mail, Moon, Send, SlidersHorizontal, Sun } from "lucide-react";
 import { api, type AppViewer, type BotConnectionStatus } from "../../../../services/api";
-import { ThemeSelector, type ThemePreference } from "../../../ThemeToggle";
+import { type ThemePreference } from "../../../ThemeToggle";
 import type { Empresa } from "../../../../services/api";
 import { LIGHT_PALETTES, DARK_PALETTES, type PaletteOption } from "../../../../theme/palettes";
 
@@ -21,25 +21,15 @@ interface PreferenciasSectionProps {
   setError: (msg: string | null) => void;
 }
 
-function PaletteRow({ title, options, value, onChange }: { title: string; options: PaletteOption[]; value: string; onChange: (id: string) => void }) {
+function PaletteChip({ option, active, onClick }: { option: PaletteOption; active: boolean; onClick: () => void; key?: string | number }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">{title}</p>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={title}>
-        {options.map((p) => (
-          <button
-            key={p.id || "default"}
-            type="button"
-            onClick={() => onChange(p.id)}
-            aria-pressed={value === p.id}
-            className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${value === p.id ? "border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]" : "border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]"}`}
-          >
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: p.swatch }} />
-            {p.label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <button type="button" onClick={onClick} aria-pressed={active}
+      className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+        active ? "border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_12%,var(--app-surface-1))]"
+               : "border-[var(--app-border)] bg-[var(--app-surface-1)] hover:border-[var(--app-border-strong)]"}`}>
+      <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: option.swatch }} />
+      <span className="text-sm font-bold text-[var(--app-text-1)]">{option.label}</span>
+    </button>
   );
 }
 
@@ -174,24 +164,31 @@ export function PreferenciasSection({
       </div>
 
       <div className="stack-comfort">
+        {/* Apariencia — columna clara / columna oscura, tap = aplica + cambia modo */}
         <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Tema</p>
-          <ThemeSelector preference={themePreference} onChange={onSetThemePreference} />
+          <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Apariencia</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1"><Sun className="w-3 h-3" /> Claro</p>
+              {LIGHT_PALETTES.map((p) => (
+                <PaletteChip key={p.id || "default-light"} option={p} active={lightPalette === p.id}
+                  onClick={() => { onSetLightPalette(p.id); onSetThemePreference("light"); }} />
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1"><Moon className="w-3 h-3" /> Oscuro</p>
+              {DARK_PALETTES.map((p) => (
+                <PaletteChip key={p.id || "default-dark"} option={p} active={darkPalette === p.id}
+                  onClick={() => { onSetDarkPalette(p.id); onSetThemePreference("dark"); }} />
+              ))}
+            </div>
+          </div>
+          <label className="mt-1 flex items-center justify-between rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 cursor-pointer">
+            <span className="text-sm text-[var(--app-text-2)]">Seguir el sistema<span className="block text-xs text-[var(--app-text-3)]">Cambia claro/oscuro según tu dispositivo</span></span>
+            <input type="checkbox" checked={themePreference === "system"}
+              onChange={(e) => onSetThemePreference(e.target.checked ? "system" : (themePreference !== "system" ? themePreference : "light"))} />
+          </label>
         </div>
-
-        <PaletteRow
-          title="Paleta clara"
-          options={LIGHT_PALETTES}
-          value={lightPalette}
-          onChange={(id) => { onSetLightPalette(id); onSetThemePreference("light"); }}
-        />
-        <PaletteRow
-          title="Paleta oscura"
-          options={DARK_PALETTES}
-          value={darkPalette}
-          onChange={(id) => { onSetDarkPalette(id); onSetThemePreference("dark"); }}
-        />
-        <p className="text-xs text-[var(--app-text-3)] -mt-1">Tocá una paleta y se aplica al toque: cambia al modo correspondiente y queda guardada para ese modo.</p>
 
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Moneda por defecto</p>

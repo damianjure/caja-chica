@@ -200,7 +200,7 @@ function InviteForm({ onInvited }: InviteFormProps) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_auto] items-center gap-3">
         <input
           aria-label="Email para invitar"
           type="email"

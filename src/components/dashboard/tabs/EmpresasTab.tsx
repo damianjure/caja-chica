@@ -176,7 +176,7 @@ export default function EmpresasTab({
         action={CurToggle}
       >
         {canWriteData && (
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               aria-label="Nombre de la empresa"
               value={newCompany}

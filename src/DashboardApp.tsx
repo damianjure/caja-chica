@@ -491,7 +491,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   return (
     <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
-      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} />}
+      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} canInstall={pwa.available} onInstall={() => void pwa.promptInstall()} />}
 
       <div className="max-w-7xl mx-auto space-y-8">
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}

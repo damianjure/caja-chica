@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, BarChart2, Trash2, ChevronRight, MessageCircle, X } from 'lucide-react';
+import { Sparkles, BarChart2, Trash2, ChevronRight, MessageCircle, Download, X } from 'lucide-react';
 import { api } from '../services/api';
 
 interface WelcomeWizardProps {
   onFinish: (cleanDemo: boolean) => void;
+  /** True when the app can still be installed (not standalone, and Android prompt or iOS). */
+  canInstall?: boolean;
+  /** Triggers the install flow (native prompt on Android, manual instructions on iOS). */
+  onInstall?: () => void;
 }
 
 type Step = 'welcome' | 'tour' | 'telegram' | 'finish';
 
-export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
+export default function WelcomeWizard({ onFinish, canInstall = false, onInstall }: WelcomeWizardProps) {
   const [step, setStep] = useState<Step>('welcome');
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [loadingLink, setLoadingLink] = useState(false);
@@ -162,13 +166,43 @@ export default function WelcomeWizard({ onFinish }: WelcomeWizardProps) {
               </a>
             )}
 
-            <button
-              onClick={() => finish(false)}
-              disabled={finishing}
-              className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
-            >
-              {finishing ? 'Cargando...' : 'Ir al dashboard'}
-            </button>
+            {canInstall && onInstall && (
+              <div className="flex items-start gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-4">
+                <div className="w-10 h-10 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] flex items-center justify-center flex-shrink-0">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--app-text-1)] dark:text-white">Tenela como app</h3>
+                  <p className="text-sm text-[var(--app-text-3)]">
+                    Instalala en tu pantalla de inicio y entrás más rápido, como cualquier app. En iPhone te muestro cómo.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {canInstall && onInstall && (
+                <button
+                  onClick={onInstall}
+                  disabled={finishing}
+                  className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  Instalar app
+                </button>
+              )}
+              <button
+                onClick={() => finish(false)}
+                disabled={finishing}
+                className={`w-full flex items-center justify-center gap-2 active:scale-[0.97] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50 ${
+                  canInstall && onInstall
+                    ? 'border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]'
+                    : 'bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:border-[var(--app-text-2)] text-[var(--app-strong-text)]'
+                }`}
+              >
+                {finishing ? 'Cargando...' : (canInstall && onInstall ? 'Terminar tour' : 'Ir al dashboard')}
+              </button>
+            </div>
           </div>
         )}
 

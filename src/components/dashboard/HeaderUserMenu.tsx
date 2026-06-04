@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LogOut, HelpCircle, Compass, Download, Sun, Moon } from 'lucide-react';
 import { initialsFromEmail } from '../../services/labels';
 import type { ThemeMode } from '../ThemeToggle';
@@ -31,6 +32,7 @@ export function HeaderUserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [showInstallConfirm, setShowInstallConfirm] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export function HeaderUserMenu({
           {onInstallApp && (
             <button
               role="menuitem"
-              onClick={() => { setOpen(false); onInstallApp(); }}
+              onClick={() => { setOpen(false); setShowInstallConfirm(true); }}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
             >
               <Download className="h-4 w-4" />
@@ -130,6 +132,50 @@ export function HeaderUserMenu({
             Cerrar sesión
           </button>
         </div>
+      )}
+
+      {showInstallConfirm && onInstallApp && createPortal(
+        <div
+          className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--app-text-1) 42%, transparent)' }}
+          onClick={() => setShowInstallConfirm(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="anim-scale-in w-full max-w-[400px] rounded-2xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] p-6 shadow-[var(--app-shadow-md)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+                <Download className="h-5 w-5" />
+              </div>
+              <h2 className="text-base font-bold text-[var(--app-text-1)]">Instalar Caja Chica</h2>
+            </div>
+            <p className="mt-3 text-sm text-[var(--app-text-2)] leading-relaxed">
+              Se agrega a tu pantalla de inicio y entrás más rápido, como cualquier app. En Android se
+              instala sola; en iPhone te muestro los pasos.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowInstallConfirm(false); onInstallApp(); }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-bold text-[var(--app-strong-text)] active:scale-[0.97]"
+              >
+                <Download className="h-4 w-4" />
+                Instalar app
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInstallConfirm(false)}
+                className="rounded-md border border-[var(--app-border)] px-4 py-2.5 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

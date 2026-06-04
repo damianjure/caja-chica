@@ -1,4 +1,5 @@
 import { InlineKeyboard, type Context } from "grammy";
+const tipoLabel = (t: "ingreso" | "egreso") => t === "egreso" ? "gasto" : "ingreso";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram, sendTyping } from "../utils.ts";
@@ -107,11 +108,11 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     const tipo = ctx.match[1] as "ingreso" | "egreso";
     const last = await getLastMovementByType(supabase, linked, tipo);
     if (!last) {
-      await ctx.reply(`No hay ${tipo}s para borrar.`);
+      await ctx.reply(`No hay ${tipoLabel(tipo)}s para borrar.`);
       return;
     }
     await ctx.reply(
-      `🗑️ *¿Borrar este ${tipo}?*\n\n${formatMovementSummary(last)}\n\n⚠️ No se puede deshacer.`,
+      `🗑️ *¿Borrar este ${tipoLabel(tipo)}?*\n\n${formatMovementSummary(last)}\n\n⚠️ No se puede deshacer.`,
       {
         parse_mode: "Markdown",
         reply_markup: new InlineKeyboard()
@@ -137,7 +138,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     const tipo = ctx.match[1] as "ingreso" | "egreso";
     const last = await getLastMovementByType(supabase, linked, tipo);
     if (!last) {
-      await ctx.reply(`No hay ${tipo}s para editar.`);
+      await ctx.reply(`No hay ${tipoLabel(tipo)}s para editar.`);
       return;
     }
     if (!canEditMovementViaTelegram(last, linked)) {
@@ -613,8 +614,9 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       } else if (field === "descripcion") {
         patch.descripcion = val;
       } else if (field === "tipo") {
-        if (val !== "ingreso" && val !== "egreso") { await ctx.reply("❌ Mandame `ingreso` o `egreso`."); return; }
-        patch.tipo = val;
+        const tipoNorm = val === "gasto" ? "egreso" : val;
+        if (tipoNorm !== "ingreso" && tipoNorm !== "egreso") { await ctx.reply("❌ Mandame `ingreso` o `gasto`."); return; }
+        patch.tipo = tipoNorm;
       } else if (field === "moneda") {
         if (val !== "ARS" && val !== "USD") { await ctx.reply("❌ Mandame `ARS` o `USD`."); return; }
         patch.moneda = val;
@@ -671,7 +673,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         }
         const frecLabel = { diario: "cada día", semanal: "cada semana", mensual: "cada mes" }[recSession.frecuencia!];
         return ctx.reply(
-          `✅ *Recurrente guardado*\n\n💰 ${recSession.monto} ${recSession.moneda} (${recSession.tipo})\n📅 ${frecLabel}\n📝 ${escapeMd(descripcion ?? "")}`,
+          `✅ *Recurrente guardado*\n\n💰 ${recSession.monto} ${recSession.moneda} (${tipoLabel(recSession.tipo!)})\n📅 ${frecLabel}\n📝 ${escapeMd(descripcion ?? "")}`,
           { parse_mode: "Markdown" },
         );
       }

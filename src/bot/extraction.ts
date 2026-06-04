@@ -482,7 +482,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       empresa: "✏️ Mandame el nombre de la empresa (o `ninguna`):",
       categoria: "✏️ Mandame la categoría:",
       descripcion: "✏️ Mandame la nueva descripción:",
-      tipo: "✏️ ¿Es `ingreso` o `egreso`?",
+      tipo: "✏️ ¿Es `ingreso` o `gasto`?",
       moneda: "✏️ ¿`ARS` o `USD`?",
     };
     await ctx.reply(prompts[field] ?? "✏️ Mandame el nuevo valor:", { parse_mode: "Markdown" });

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
-import { api, type AppViewer, type DashboardMember } from "../../../../services/api";
+import { Check, Loader2, Monitor, Trash2, X } from "lucide-react";
+import { api, type AppViewer, type DashboardMember, type UserSession } from "../../../../services/api";
+import { toast } from "sonner";
 import { SectionCard } from "../../primitives";
 
 function roleBadge(role: string) {
@@ -16,16 +17,71 @@ function roleBadge(role: string) {
   );
 }
 
-interface CuentaIdentidadSectionProps {
+interface SessionRowProps {
+  s: UserSession; isCurrent: boolean; revoking: boolean; onRevoke: (id: string) => void;
+  [key: string]: unknown;
+}
+
+function SessionRow({ s, isCurrent, revoking, onRevoke }: SessionRowProps) {
+  return (
+    <div className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${isCurrent ? "border-[var(--app-border-strong)] bg-[var(--app-surface-1)]" : "border-[var(--app-border)]"}`}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-[var(--app-text-2)] truncate">{s.user_agent ?? "Dispositivo desconocido"}</span>
+          {isCurrent && (
+            <span className="inline-flex items-center rounded-full bg-[var(--app-strong-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-strong-text)] shrink-0">
+              Esta sesión
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-[var(--app-text-3)] mt-0.5">
+          Iniciada {new Date(s.created_at).toLocaleString("es-AR")}
+        </div>
+      </div>
+      <button
+        onClick={() => onRevoke(s.id)}
+        disabled={revoking || isCurrent}
+        title={isCurrent ? "Usá Cerrar sesión para salir" : "Cerrar sesión"}
+        className="p-1 rounded-lg border border-[var(--app-red-border)] text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+      >
+        {revoking ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
+
+interface Props {
   viewer: AppViewer;
   selfMembership: DashboardMember | null;
   showNotice: (msg: string) => void;
   setError: (msg: string | null) => void;
+  onDemoDeleted?: () => void;
 }
 
-export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, setError }: CuentaIdentidadSectionProps) {
+export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, setError, onDemoDeleted }: Props) {
   const [displayName, setDisplayName] = useState(viewer.display_name ?? "");
   const [saving, setSaving] = useState(false);
+
+  const [deletingDemo, setDeletingDemo] = useState(false);
+
+  const handleDeleteDemo = async () => {
+    setDeletingDemo(true);
+    try {
+      await api.deleteDemoData();
+      toast.success("Datos de muestra eliminados.");
+      onDemoDeleted?.();
+    } catch {
+      setError("No se pudieron eliminar los datos de muestra.");
+    } finally {
+      setDeletingDemo(false);
+    }
+  };
+
+  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [revoking, setRevoking] = useState<string | null>(null);
 
   const handleSave = async () => {
     setSaving(true);
@@ -39,49 +95,120 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
     }
   };
 
+  const loadSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const r = await api.getMySessionsList();
+      setSessions(r.sessions);
+      setCurrentSessionId(r.currentSessionId);
+      setSessionsLoaded(true);
+    } catch {
+      setError("No se pudieron cargar las sesiones.");
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleRevoke = async (sessionId: string) => {
+    setRevoking(sessionId);
+    try {
+      await api.revokeMySession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      showNotice("Sesión cerrada");
+    } catch {
+      setError("No se pudo cerrar la sesión.");
+    } finally {
+      setRevoking(null);
+    }
+  };
+
   return (
-    <SectionCard title="Cuenta" description="Identidad y nombre visible en el dashboard.">
-      {/* Email + roles */}
-      <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 space-y-1">
-        <div className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-[var(--app-text-3)]">Rol de app:</span>
-          <span className="text-xs font-medium text-[var(--app-text-2)]">{viewer.role}</span>
+    <SectionCard title="Cuenta" description="Identidad y sesiones activas.">
+      {/* Email + roles — row compacto */}
+      <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-[var(--app-text-3)]">{viewer.role}</span>
           {selfMembership && (
             <>
-              <span className="text-xs text-neutral-300">·</span>
-              <span className="text-xs text-[var(--app-text-3)]">Dashboard:</span>
+              <span className="text-xs text-neutral-500">·</span>
               {roleBadge(selfMembership.role)}
             </>
           )}
         </div>
       </div>
 
-      {/* Nombre visible */}
-      <div className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Nombre visible</p>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder={viewer.email}
-            maxLength={50}
-            aria-label="Nombre visible"
-            onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
-            className="flex-1 rounded-xl border border-[var(--app-border-strong)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-          />
+      {/* Nombre visible — label inline + input + guardar en una fila */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-[var(--app-text-3)] shrink-0 w-24">Nombre visible</label>
+        <input
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={viewer.email}
+          maxLength={50}
+          aria-label="Nombre visible"
+          onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
+          className="flex-1 rounded-lg border border-[var(--app-border-strong)] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+        />
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="inline-flex items-center gap-1 rounded-lg bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-3 py-1.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 shrink-0"
+        >
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+          Guardar
+        </button>
+      </div>
+
+      {/* Demo data — solo si no está cleaned */}
+      {viewer.onboarding_state !== 'cleaned' && (
+        <div className="border-t border-[var(--app-border)] pt-3">
           <button
             type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
+            onClick={() => void handleDeleteDemo()}
+            disabled={deletingDemo}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-red-border)] px-3 py-1.5 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-50 transition-colors"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Guardar
+            {deletingDemo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            Borrar datos de muestra
           </button>
         </div>
-        <p className="text-xs text-[var(--app-text-3)]">Lo ven otros miembros del dashboard.</p>
+      )}
+
+      {/* Sesiones — divider + load on demand */}
+      <div className="border-t border-[var(--app-border)] pt-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[var(--app-text-3)]">
+            Sesiones activas{sessionsLoaded ? ` (${sessions.length})` : ""}
+          </span>
+          {!sessionsLoaded && (
+            <button
+              onClick={() => void loadSessions()}
+              disabled={loadingSessions}
+              className="inline-flex items-center gap-1.5 text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-2)] disabled:opacity-50"
+            >
+              {loadingSessions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Monitor className="w-3 h-3" />}
+              Ver sesiones
+            </button>
+          )}
+        </div>
+        {sessionsLoaded && (
+          sessions.length === 0
+            ? <p className="text-xs text-[var(--app-text-3)]">No hay sesiones activas.</p>
+            : <div className="space-y-1.5">
+                {sessions.map((s) => (
+                  <SessionRow
+                    key={s.id}
+                    s={s}
+                    isCurrent={currentSessionId !== null && s.id === currentSessionId}
+                    revoking={revoking === s.id}
+                    onRevoke={(id) => void handleRevoke(id)}
+                  />
+                ))}
+              </div>
+        )}
       </div>
     </SectionCard>
   );

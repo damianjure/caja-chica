@@ -783,7 +783,7 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
       beforeData: last,
       afterData: { ...last, monto: parsed.monto, descripcion: parsed.descripcion, categoria: parsed.categoria, empresa_nombre: parsed.empresa, moneda: parsed.moneda },
     });
-    ctx.reply(`✅ Último egreso actualizado.\n\n${formatMovementSummary({ ...last, tipo: "egreso", monto: parsed.monto, descripcion: parsed.descripcion, categoria: parsed.categoria, empresa_nombre: parsed.empresa, moneda: parsed.moneda })}`, { parse_mode: "Markdown" });
+    ctx.reply(`✅ Último gasto actualizado.\n\n${formatMovementSummary({ ...last, tipo: "egreso", monto: parsed.monto, descripcion: parsed.descripcion, categoria: parsed.categoria, empresa_nombre: parsed.empresa, moneda: parsed.moneda })}`, { parse_mode: "Markdown" });
   });
 
   bot.command("buscar", async (ctx) => {

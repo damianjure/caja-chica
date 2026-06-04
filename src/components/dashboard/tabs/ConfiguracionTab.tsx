@@ -6,7 +6,6 @@ import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
 import { CuentaIdentidadSection } from "./configuracion/CuentaIdentidadSection";
-import { SesionesSection } from "./configuracion/SesionesSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
 import { BotConnectionPanel } from "../../BotConnectionPanel";
@@ -27,6 +26,7 @@ interface ConfiguracionTabProps {
   darkPalette: string;
   onSetLightPalette: (id: string) => void;
   onSetDarkPalette: (id: string) => void;
+  onDemoDeleted?: () => void;
 }
 
 export default function ConfiguracionTab({
@@ -44,6 +44,7 @@ export default function ConfiguracionTab({
   darkPalette,
   onSetLightPalette,
   onSetDarkPalette,
+  onDemoDeleted,
 }: ConfiguracionTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,12 +104,7 @@ export default function ConfiguracionTab({
             selfMembership={selfMembership}
             showNotice={showNotice}
             setError={setError}
-          />
-
-          <SesionesSection
-            viewer={viewer}
-            showNotice={showNotice}
-            setError={setError}
+            onDemoDeleted={onDemoDeleted}
           />
         </div>
 

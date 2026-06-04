@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus } from 'lucide-react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2 } from 'lucide-react';
+import { api } from '../../../services/api';
+import { toast } from 'sonner';
+import type { OnboardingState } from '../../../services/api';
 
 function ExportMenu({
   onCsv, onPdf, onDrive, driveConnected, busy,
@@ -159,6 +162,8 @@ export default function MovimientosTab({
   onExportDrive,
   driveConnected,
   exporting,
+  onboardingState,
+  onDemoDeleted,
   historyCards,
 }: {
   incomeCount: number;
@@ -189,12 +194,59 @@ export default function MovimientosTab({
   onExportDrive: () => void;
   driveConnected: boolean;
   exporting: boolean;
+  onboardingState?: OnboardingState;
+  onDemoDeleted?: () => void;
   historyCards: ReactNode;
 }) {
   const dateLabel = DATE_OPTS.find((o) => o.id === datePeriod)?.label ?? 'Todo';
+  const [deletingDemo, setDeletingDemo] = useState(false);
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
+
+  const showDemoBanner = !demoBannerDismissed && onboardingState !== 'cleaned';
+
+  const handleDeleteDemo = async () => {
+    setDeletingDemo(true);
+    try {
+      await api.deleteDemoData();
+      toast.success('Datos de muestra eliminados.');
+      setDemoBannerDismissed(true);
+      onDemoDeleted?.();
+    } catch {
+      toast.error('No se pudieron eliminar los datos de muestra.');
+    } finally {
+      setDeletingDemo(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
+      {showDemoBanner && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <span className="text-sm text-amber-800 dark:text-amber-300">
+            Estás viendo datos de muestra.
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => void handleDeleteDemo()}
+              disabled={deletingDemo}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+            >
+              {deletingDemo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Borrar ahora
+            </button>
+            <button
+              type="button"
+              onClick={() => setDemoBannerDismissed(true)}
+              aria-label="Cerrar aviso"
+              className="p-0.5 text-amber-600 hover:text-amber-800 dark:text-amber-400"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard label="Ingresos" value={String(incomeCount)} tone="success" />
         <MetricCard label="Gastos" value={String(expenseCount)} tone="danger" />

@@ -25,7 +25,7 @@ function PaletteChip({ option, active, onClick }: { option: PaletteOption; activ
   return (
     <button type="button" onClick={onClick} aria-pressed={active}
       className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
-        active ? "border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_12%,var(--app-surface-1))]"
+        active ? "border-[var(--app-text-2)] bg-[var(--app-surface-2)]"
                : "border-[var(--app-border)] bg-[var(--app-surface-1)] hover:border-[var(--app-border-strong)]"}`}>
       <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: option.swatch }} />
       <span className="text-sm font-bold text-[var(--app-text-1)]">{option.label}</span>
@@ -172,15 +172,14 @@ export function PreferenciasSection({
             <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1 mb-1"><Moon className="w-3 h-3" /> Oscuro</p>
             {LIGHT_PALETTES.map((lp, i) => {
               const dp = DARK_PALETTES[i];
-              const rowActive = lightPalette === lp.id || (dp && darkPalette === dp.id);
               return (
                 <React.Fragment key={i}>
-                  <div className={`mb-2 rounded-xl ${rowActive ? "ring-2 ring-[var(--app-strong-surface)] ring-offset-1" : ""}`}>
+                  <div className="mb-2">
                     <PaletteChip option={lp} active={lightPalette === lp.id}
                       onClick={() => { onSetLightPalette(lp.id); onSetThemePreference("light"); }} />
                   </div>
                   {dp && (
-                    <div className={`mb-2 rounded-xl ${rowActive ? "ring-2 ring-[var(--app-strong-surface)] ring-offset-1" : ""}`}>
+                    <div className="mb-2">
                       <PaletteChip option={dp} active={darkPalette === dp.id}
                         onClick={() => { onSetDarkPalette(dp.id); onSetThemePreference("dark"); }} />
                     </div>

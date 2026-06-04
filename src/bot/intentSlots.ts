@@ -165,7 +165,7 @@ export function normalizeRecurrenteSlots(raw: Raw): { value: RecurrenteSlots; mi
 
 export function buildRecurrenteEcho(s: RecurrenteSlots): string {
   const monto = s.monto !== null ? `${s.monto}` : "(monto?)";
-  const tipo = s.tipo ?? "(ingreso/gasto?)";
+  const tipo = s.tipo === "egreso" ? "gasto" : (s.tipo ?? "(ingreso/gasto?)");
   const frec = s.frecuencia ?? "(frecuencia?)";
   const desc = s.descripcion ?? "(descripción?)";
   return `🔄 Recurrente: ${monto} ${s.moneda} (${tipo}) · ${frec} · ${desc}`;

@@ -45,7 +45,7 @@ export function DashboardModals({
         <ModalShell title="Editar movimiento" onClose={onCloseMovementEdit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <select value={movementEditForm.tipo} onChange={(e) => setMovementEditForm((p) => p ? { ...p, tipo: e.target.value as 'ingreso' | 'egreso' } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3">
-              <option value="ingreso">Ingreso</option><option value="egreso">Egreso</option>
+              <option value="ingreso">Ingreso</option><option value="egreso">Gasto</option>
             </select>
             <select value={movementEditForm.moneda} onChange={(e) => setMovementEditForm((p) => p ? { ...p, moneda: e.target.value as 'ARS' | 'USD' } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3">
               <option value="ARS">ARS</option><option value="USD">USD</option>

@@ -32,6 +32,11 @@ NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
 
 ## Deploy manual
 
+> ⚠️ **REGIÓN: `us-west2`. NO es el default de gcloud (`us-central1`).**
+> Antes de cualquier `gcloud run deploy`, verificá dónde vive prod: `gcloud run services list --project caja-chica-bot --format="table(metadata.name,region,status.latestReadyRevisionName)"`.
+> Deployar a la región equivocada CREA un servicio nuevo vacío (no falla) — silencioso. Prod sigue intacto pero quedás creyendo que deployaste.
+> Proyecto GCP: `caja-chica-bot` · servicio: `caja-chica` · región: `us-west2`.
+
 ```bash
 # Frontend
 npm run build

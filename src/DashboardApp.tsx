@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, Sparkles, Trash2 } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -114,6 +114,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     retry: 1,
   });
   const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
+  const [showDemoReminder, setShowDemoReminder] = useState(false);
+  const [deletingDemo, setDeletingDemo] = useState(false);
+
+  const handleDemoDeleted = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['viewer'] });
+  }, [queryClient]);
+
+  const handleDeleteDemoFromModal = useCallback(async () => {
+    setDeletingDemo(true);
+    try {
+      await api.deleteDemoData();
+      toast.success('Datos de muestra eliminados.');
+      setShowDemoReminder(false);
+      setActiveTab('movimientos');
+      handleDemoDeleted();
+    } catch {
+      toast.error('No se pudieron eliminar los datos de muestra.');
+    } finally {
+      setDeletingDemo(false);
+    }
+  }, [handleDemoDeleted]);
 
   useEffect(() => {
     try { window.sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab); } catch { /* ignore */ }
@@ -259,7 +280,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           break;
         case 'REGISTRAR':
           prependMovements(event.saved);
-          showToast(`${event.saved.length} transacciones registradas.`);
+          showToast(`${event.saved.length} movimiento${event.saved.length !== 1 ? "s" : ""} registrado${event.saved.length !== 1 ? "s" : ""}.`);
           setIsCargaOpen(false);
           break;
         case 'PENDING_COMPANY':
@@ -491,7 +512,61 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   return (
     <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
-      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} canInstall={pwa.available} onInstall={() => void pwa.promptInstall()} />}
+      {showWizard && !viewer.is_dashboard_joiner && (
+        <WelcomeWizard
+          onFinish={(cleanedDemo) => {
+            setShowWizard(false);
+            if (!cleanedDemo && viewer.onboarding_state !== 'cleaned') {
+              setShowDemoReminder(true);
+            }
+          }}
+          canInstall={pwa.available}
+          onInstall={() => void pwa.promptInstall()}
+        />
+      )}
+
+      {showDemoReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="demo-reminder-title"
+            className="bg-[var(--app-canvas)] rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
+                <Sparkles className="h-5 w-5 text-amber-500" />
+              </span>
+              <div>
+                <h2 id="demo-reminder-title" className="text-base font-bold text-[var(--app-text-1)]">
+                  Hay datos de muestra cargados
+                </h2>
+                <p className="mt-1 text-sm text-[var(--app-text-2)]">
+                  Tu dashboard tiene movimientos y empresas de ejemplo. Los encontrás en la pestaña Movimientos.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDemoReminder(false)}
+                className="rounded-lg border border-[var(--app-border)] px-4 py-2 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
+              >
+                Después
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteDemoFromModal()}
+                disabled={deletingDemo}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Borrar ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto space-y-8">
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
@@ -554,11 +629,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatCurrency(arsTotals.ingreso, 'ARS')} arsEgreso={formatCurrency(arsTotals.egreso, 'ARS')} arsNeto={formatCurrency(arsTotals.neto, 'ARS')} usdNeto={formatCurrency(usdTotals.neto, 'USD')} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} />}
-                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
+                {activeTab === 'movimientos' && <MovimientosTab incomeCount={visibleIncomeCount} expenseCount={visibleExpenseCount} historyCount={filteredHistory.length} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} />} />}
                 {activeTab === 'recurrentes' && <Suspense fallback={<SectionLoadingState message="Cargando recurrentes..." />}><RecurrentesTab viewer={viewer} canWriteData={canWriteData} /></Suspense>}
                 {activeTab === 'empresas' && <EmpresasTab companySummaries={companySummaries} topCompanies={topCompanies} customCompanies={customCompanies} canWriteData={canWriteData} onEditCompany={openCompanyEditor} onDeleteCompany={(c) => deleteCompany(c.id, c.nombre)} onCreateCompany={async (nombre) => { const t = nombre.trim(); if (!t) return; if (customCompanies.some((c) => c.nombre.toLowerCase() === t.toLowerCase())) { showToast(`La empresa "${t}" ya existe.`, 'warning'); return; } const e = await api.addEmpresa(t); appendEmpresa(e); showToast(`Empresa "${t}" creada.`); }} formatCurrency={formatCurrency} history={history} companiesList={companiesList} onDrilldown={(company, category) => { setSelectedCompany(company); setSelectedCategory(category); setMovementType('all'); setMovementCurrency('all'); setDatePeriod('all'); setActiveTab('movimientos'); }} />}
                 {activeTab === 'superadmin' && <Suspense fallback={<SectionLoadingState message="Cargando paneles avanzados..." />}><AdminPanel viewer={viewer} /></Suspense>}
-                {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} lightPalette={lightPalette} darkPalette={darkPalette} onSetLightPalette={onSetLightPalette} onSetDarkPalette={onSetDarkPalette} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} /></Suspense>}
+                {activeTab === 'configuracion' && <Suspense fallback={<SectionLoadingState message="Cargando configuración..." />}><ConfiguracionTab viewer={viewer} data={dashboardAccess} loading={isLoadingCollaboration} onRefresh={loadCollaboration} canConnectDrive={canConnectDrive} onSignOut={handleSignOut} companies={customCompanies} themePreference={themePreference} onSetThemePreference={onSetThemePreference} lightPalette={lightPalette} darkPalette={darkPalette} onSetLightPalette={onSetLightPalette} onSetDarkPalette={onSetDarkPalette} onDisconnectDrive={canConnectDrive ? async () => { try { await api.disconnectDrive(); showToast('Drive desconectado.'); } catch { showToast('No se pudo desconectar Drive.', 'warning'); } } : undefined} onDemoDeleted={handleDemoDeleted} /></Suspense>}
               </Suspense>
             </div>
         </main>

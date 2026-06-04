@@ -23,3 +23,9 @@ test("devuelve null cuando no hay invite token", () => {
 
   assert.equal(getInviteTokenFromUrl(url), null);
 });
+
+
+test("extrae invite token legacy desde /join?token", () => {
+  const url = new URL("https://caja-chica-bot.web.app/join?token=legacy123");
+  assert.equal(getInviteTokenFromUrl(url), "legacy123");
+});

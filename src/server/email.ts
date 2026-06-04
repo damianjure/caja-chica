@@ -121,6 +121,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       color: oklch(22% 0.01 95);
     }
     .content { padding: 32px 36px 8px; }
+    .hero { text-align: center; }
     .eyebrow {
       font-size: 12px;
       font-weight: 600;
@@ -144,6 +145,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       margin: 0 0 24px;
       max-width: 56ch;
     }
+    .hero p.lede { margin-left: auto; margin-right: auto; }
     p.body {
       font-size: 15px;
       line-height: 1.65;
@@ -327,6 +329,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       font-size: 15px;
       color: oklch(28% 0.01 95);
       margin: 28px 0 4px;
+      text-align: center;
     }
     .signoff strong { font-weight: 600; }
     .from {
@@ -340,6 +343,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       color: oklch(58% 0.01 95);
       margin: 24px 0 0;
       font-style: italic;
+      text-align: center;
     }
     h1.title {
       margin: 0 0 20px;
@@ -510,9 +514,11 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
     `• <strong>Puede ver</strong>: mira saldos, movimientos e informes. No modifica datos.</div>`;
 
   const body = `
-    ${fromLine}
-    <h1 class="title">${title}</h1>
-    <p class="lede">Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
+    <div class="hero">
+      ${fromLine}
+      <h1 class="title">${title}</h1>
+      <p class="lede">Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
+    </div>
 
     ${ownerSummary}
     ${caps}
@@ -567,9 +573,11 @@ export function dashboardInvitationHtml(
 
   // Body voice personal (dynamic inviter from email); signoff brand voice.
   const body = `
-    <p class="from"><strong>${safeInviterName}</strong> · vía Caja Chica</p>
-    <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
-    <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span>.</p>
+    <div class="hero">
+      <p class="from"><strong>${safeInviterName}</strong> · vía Caja Chica</p>
+      <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
+      <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span>.</p>
+    </div>
 
     ${summary}
     ${caps}

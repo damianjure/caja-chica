@@ -3,6 +3,6 @@ export function buildGoogleAuthRedirect(url: URL) {
 }
 
 export function getInviteTokenFromUrl(url: URL) {
-  const token = url.searchParams.get("invite")?.trim() ?? "";
+  const token = url.searchParams.get("invite")?.trim() || url.searchParams.get("token")?.trim() || "";
   return token || null;
 }

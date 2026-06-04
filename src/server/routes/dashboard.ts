@@ -601,7 +601,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
             created_at: row.created_at,
             last_action_at,
             telegram_link_status: tgStatus,
-            invite_url: `${publicAppUrl || ""}/join?token=${row.invite_token}`,
+            invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}`,
           });
         }
       }
@@ -703,7 +703,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         void sendAppInvitationEmail(row.email, inviteUrl, undefined, session.email.split("@")[0]);
       } else {
-        const inviteUrl = `${publicAppUrl || ""}/join?token=${currentToken}`;
+        const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         const inviterDisplayName = await resolveInviterDisplayName(session);
         void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, undefined, undefined, inviterDisplayName);
       }

@@ -549,10 +549,27 @@ test("GET /api/personas — invite_url uses publicAppUrl for app invitations", a
       const body = await res.json() as Array<{ invite_url: string; id: string }>;
       const record = body.find((r) => r.id === "ui-1");
       assert.ok(record, "record ui-1 should be present");
-      assert.ok(
-        record!.invite_url.includes("token-ui-1"),
-        `invite_url should contain token, got: ${record!.invite_url}`,
-      );
+      assert.equal(record!.invite_url, "https://app.example.com/?invite=token-ui-1");
+    },
+  );
+});
+
+test("GET /api/personas — dashboard invite_url uses ?invite format", async () => {
+  await withPersonasServer(
+    {
+      dashboardInvitations: [pendingDashboardInvite],
+      dashboardMembers: [ownerDashboardMember],
+    },
+    ownerSession,
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/personas?scope=dashboard`, {
+        headers: bearerHeader(),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json() as Array<{ invite_url: string; id: string }>;
+      const record = body.find((r) => r.id === pendingDashboardInvite.id);
+      assert.ok(record, "dashboard invite should be present");
+      assert.equal(record!.invite_url, "https://app.example.com/?invite=token-di-1");
     },
   );
 });

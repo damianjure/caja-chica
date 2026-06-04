@@ -15,7 +15,7 @@ export type DashboardRole = "owner" | "editor" | "viewer";
 export const APP_ROLE_LABELS: Record<AppRole, string> = {
   superadmin: "Super Admin",
   admin: "Admin",
-  member: "Miembro",
+  member: "Dueño",
 };
 
 export const DASHBOARD_ROLE_LABELS: Record<DashboardRole, string> = {

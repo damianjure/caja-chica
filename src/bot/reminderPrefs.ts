@@ -23,11 +23,16 @@ export async function readReminder(supabase: SupabaseLike, userId: string): Prom
   };
 }
 
+/**
+ * Persist reminder prefs. Returns true if a row was updated. Returns false when
+ * the user has no app_users row yet (e.g. linked Telegram but never logged into
+ * the web app), so the caller can tell them to log in once on the web.
+ */
 export async function writeReminder(
   supabase: SupabaseLike,
   userId: string,
   patch: Partial<{ enabled: boolean; telegram: boolean; email: boolean; hour: number; minute: number }>,
-): Promise<void> {
+): Promise<boolean> {
   const map: Record<string, string> = {
     enabled: "notification_enabled",
     telegram: "notification_telegram",
@@ -37,6 +42,11 @@ export async function writeReminder(
   };
   const dbPatch: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(patch)) if (v !== undefined) dbPatch[map[k]] = v;
-  if (Object.keys(dbPatch).length === 0) return;
-  await supabase.from("app_users").update(dbPatch).eq("user_id", userId);
+  if (Object.keys(dbPatch).length === 0) return true;
+  const { data } = await supabase
+    .from("app_users")
+    .update(dbPatch)
+    .eq("user_id", userId)
+    .select("user_id");
+  return Array.isArray(data) && data.length > 0;
 }

@@ -25,38 +25,38 @@ export function registerReminderHandlers(bot: Bot, deps: BotDeps) {
     }
   }
 
+  // Apply a change; if the user has no app_users row yet (never logged into the
+  // web app), the write affects 0 rows — tell them how to fix it instead of
+  // silently pretending it saved.
+  async function applyAndShow(ctx: Context, patch: Parameters<typeof writeReminder>[2]) {
+    const linked = await requireLinkedAccount(supabase, ctx);
+    if (!linked) return;
+    const userId = linked.userId ?? linked.ownerUserId;
+    if (!userId) return;
+    const saved = await writeReminder(supabase, userId, patch);
+    if (!saved) {
+      await ctx.reply("Para configurar el recordatorio, entrá una vez a la web con este mismo mail y volvé a probar acá.");
+      return;
+    }
+    await show(ctx, true);
+  }
+
   bot.command("recordatorio", (ctx) => show(ctx, false));
 
   bot.callbackQuery("rem_on", async (ctx) => {
     await ctx.answerCallbackQuery();
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const userId = linked.userId ?? linked.ownerUserId;
-    if (!userId) return;
-    await writeReminder(supabase, userId, { enabled: true });
-    await show(ctx, true);
+    await applyAndShow(ctx, { enabled: true });
   });
 
   bot.callbackQuery("rem_off", async (ctx) => {
     await ctx.answerCallbackQuery();
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const userId = linked.userId ?? linked.ownerUserId;
-    if (!userId) return;
-    await writeReminder(supabase, userId, { enabled: false });
-    await show(ctx, true);
+    await applyAndShow(ctx, { enabled: false });
   });
 
   bot.callbackQuery(/^rem_h:(\d{1,2})$/, async (ctx) => {
     await ctx.answerCallbackQuery();
-    const linked = await requireLinkedAccount(supabase, ctx);
-    if (!linked) return;
-    const userId = linked.userId ?? linked.ownerUserId;
-    if (!userId) return;
     const h = Number(ctx.match[1]);
-    if (h >= 0 && h <= 23) {
-      await writeReminder(supabase, userId, { hour: h, minute: 0 });
-    }
-    await show(ctx, true);
+    if (h < 0 || h > 23) return;
+    await applyAndShow(ctx, { hour: h, minute: 0 });
   });
 }

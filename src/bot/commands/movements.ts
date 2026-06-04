@@ -589,7 +589,11 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
           await ctx.reply("No se pudo identificar tu cuenta.");
           return;
         }
-        await writeReminder(supabase, userId, patch);
+        const saved = await writeReminder(supabase, userId, patch);
+        if (!saved) {
+          await ctx.reply("Para configurar el recordatorio, entrá una vez a la web con este mismo mail y volvé a probar acá.");
+          return;
+        }
         const state = await readReminder(supabase, userId);
         await ctx.reply(buildReminderStatusText(state), { parse_mode: "Markdown", reply_markup: buildReminderKeyboard(state) });
         return;

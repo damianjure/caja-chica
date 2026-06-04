@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import { Bell, Loader2, Mail, Moon, Send, SlidersHorizontal, Sun } from "lucide-react";
 import { api, type AppViewer, type BotConnectionStatus } from "../../../../services/api";
 import { type ThemePreference } from "../../../ThemeToggle";
@@ -164,24 +164,30 @@ export function PreferenciasSection({
       </div>
 
       <div className="stack-comfort">
-        {/* Apariencia — columna clara / columna oscura, tap = aplica + cambia modo */}
+        {/* Apariencia — pares claro/oscuro por fila */}
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Apariencia</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1"><Sun className="w-3 h-3" /> Claro</p>
-              {LIGHT_PALETTES.map((p) => (
-                <PaletteChip key={p.id || "default-light"} option={p} active={lightPalette === p.id}
-                  onClick={() => { onSetLightPalette(p.id); onSetThemePreference("light"); }} />
-              ))}
-            </div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1"><Moon className="w-3 h-3" /> Oscuro</p>
-              {DARK_PALETTES.map((p) => (
-                <PaletteChip key={p.id || "default-dark"} option={p} active={darkPalette === p.id}
-                  onClick={() => { onSetDarkPalette(p.id); onSetThemePreference("dark"); }} />
-              ))}
-            </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+            <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1 mb-1"><Sun className="w-3 h-3" /> Claro</p>
+            <p className="text-[11px] font-semibold text-[var(--app-text-3)] flex items-center gap-1 mb-1"><Moon className="w-3 h-3" /> Oscuro</p>
+            {LIGHT_PALETTES.map((lp, i) => {
+              const dp = DARK_PALETTES[i];
+              const rowActive = lightPalette === lp.id || (dp && darkPalette === dp.id);
+              return (
+                <React.Fragment key={i}>
+                  <div className={`mb-2 rounded-xl ${rowActive ? "ring-2 ring-[var(--app-strong-surface)] ring-offset-1" : ""}`}>
+                    <PaletteChip option={lp} active={lightPalette === lp.id}
+                      onClick={() => { onSetLightPalette(lp.id); onSetThemePreference("light"); }} />
+                  </div>
+                  {dp && (
+                    <div className={`mb-2 rounded-xl ${rowActive ? "ring-2 ring-[var(--app-strong-surface)] ring-offset-1" : ""}`}>
+                      <PaletteChip option={dp} active={darkPalette === dp.id}
+                        onClick={() => { onSetDarkPalette(dp.id); onSetThemePreference("dark"); }} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
           <label className="mt-1 flex items-center justify-between rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 cursor-pointer">
             <span className="text-sm text-[var(--app-text-2)]">Seguir el sistema<span className="block text-xs text-[var(--app-text-3)]">Cambia claro/oscuro según tu dispositivo</span></span>

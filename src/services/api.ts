@@ -651,6 +651,12 @@ export const api = {
     });
   },
 
+  async deleteInvitation(invitationId: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/admin/invitations/${invitationId}`, {
+      method: "DELETE",
+    });
+  },
+
   async getAdminUserDetail(userId: string): Promise<AdminUserDetail> {
     return fetchApi(`/api/admin/users/${userId}/detail`);
   },

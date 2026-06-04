@@ -5,7 +5,6 @@ import {
   Check,
   Download,
   Fingerprint,
-  HardDrive,
   Loader2,
   LogOut,
   Monitor,
@@ -328,16 +327,6 @@ export function CuentaSection({
             )}
           </button>
 
-          {canConnectDrive && onDisconnectDrive && (
-            <button
-              onClick={() => void onDisconnectDrive()}
-              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-text-2)] transition-colors"
-            >
-              <HardDrive className="w-4 h-4 text-[var(--app-text-3)]" />
-              Desconectar Google Drive
-            </button>
-          )}
-
           {(onboardingState === 'seeded' || onboardingState === 'pending') && (
             <button
               onClick={() => void handlePurgeDemo()}
@@ -351,10 +340,13 @@ export function CuentaSection({
 
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
+            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-left text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
           >
-            <Download className="w-4 h-4 text-[var(--app-text-3)]" />
-            Exportar mis datos (JSON)
+            <Download className="w-4 h-4 shrink-0 text-[var(--app-text-3)]" />
+            <span>
+              Exportar mis datos (JSON)
+              <span className="block text-xs font-normal text-[var(--app-text-3)]">Movimientos, empresas y categorías en formato estructurado.</span>
+            </span>
           </button>
 
           <button
@@ -363,7 +355,10 @@ export function CuentaSection({
             className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-border)] px-4 py-3 text-sm font-medium text-left text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors disabled:opacity-50"
           >
             {backingUp ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" /> : <Download className="w-4 h-4 shrink-0 text-[var(--app-text-3)]" />}
-            Descargar backup ZIP
+            <span>
+              Descargar backup ZIP
+              <span className="block text-xs font-normal text-[var(--app-text-3)]">Todos tus datos incluyendo configuración y adjuntos.</span>
+            </span>
           </button>
 
           {isNonOwnerMember && (
@@ -389,7 +384,9 @@ export function CuentaSection({
         {/* Active sessions */}
         <div className="space-y-3 border-t border-[var(--app-border)] pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Sesiones activas</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">
+              Sesiones activas{sessionsLoaded ? ` (${sessions.length})` : ""}
+            </p>
             {!sessionsLoaded && (
               <button
                 onClick={() => void loadSessions()}

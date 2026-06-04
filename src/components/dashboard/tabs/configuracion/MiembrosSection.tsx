@@ -238,14 +238,17 @@ function InviteForm({ onInvited }: InviteFormProps) {
           Invitar
         </button>
       </div>
-      <label className="flex items-center gap-2 text-sm text-[var(--app-text-2)] dark:text-[var(--app-text-2)] cursor-pointer select-none">
+      <label className="flex items-start gap-2 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={telegramPreauth}
           onChange={(e) => setTelegramPreauth(e.target.checked)}
-          className="rounded"
+          className="rounded mt-0.5 shrink-0"
         />
-        Darle acceso al bot también
+        <span>
+          <span className="text-sm text-[var(--app-text-2)] dark:text-[var(--app-text-2)]">Invitar también al bot de Telegram del dashboard</span>
+          <span className="block text-xs text-[var(--app-text-3)]">El colaborador podrá registrar movimientos desde Telegram.</span>
+        </span>
       </label>
     </div>
   );

@@ -93,6 +93,7 @@ const INVITATION_STATUS_LABELS: Record<string, string> = {
 };
 
 export function AdminPanel({ viewer }: AdminPanelProps) {
+  const [adminTab, setAdminTab] = useState<"usuarios" | "sistema">("usuarios");
   const [users, setUsers] = useState<AppUser[]>([]);
   const [tree, setTree] = useState<AdminDashboardsTree | null>(null);
   const [invitations, setInvitations] = useState<AppInvitation[]>([]);
@@ -181,6 +182,16 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo revocar la invitación.");
+    }
+  };
+
+  const handleDeleteInvitation = async (invitationId: string) => {
+    try {
+      await api.deleteInvitation(invitationId);
+      setInvitations((prev) => prev.filter((item) => item.id !== invitationId));
+      toast.success("Invitación eliminada.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar la invitación.");
     }
   };
 
@@ -402,6 +413,26 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
   return (
     <div className="space-y-6">
+    {/* Admin tabs */}
+    <div className="flex gap-1 border-b border-[var(--app-border)]">
+      {(["usuarios", "sistema"] as const).map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => setAdminTab(tab)}
+          className={[
+            "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+            adminTab === tab
+              ? "border-[var(--app-text-1)] text-[var(--app-text-1)]"
+              : "border-transparent text-[var(--app-text-3)] hover:text-[var(--app-text-2)]",
+          ].join(" ")}
+        >
+          {tab === "usuarios" ? "Usuarios" : "Sistema"}
+        </button>
+      ))}
+    </div>
+
+    {adminTab === "usuarios" && (
     <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
@@ -501,7 +532,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
             <div className="space-y-3">
               {invitations
                 .filter((inv) => {
-                  if (invitationStatusFilter === "all") return inv.status !== "accepted";
+                  if (invitationStatusFilter === "all") return inv.status === "pending";
                   if (invitationStatusFilter === "expired") {
                     return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                   }
@@ -547,29 +578,33 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* Resend button — REQ-S4.4: disabled when accepted/revoked */}
-                          <button
-                            type="button"
-                            onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
-                            disabled={!canResend || isResending}
-                            className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
-                            aria-label={`Reenviar invitación a ${invitation.email}`}
-                            title="Reenviar"
-                          >
-                            {isResending
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
-                              : <MailCheck className="w-4 h-4" />
-                            }
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleCopy(invitation)}
-                            className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]"
-                            aria-label={`Copiar link de ${invitation.email}`}
-                            title="Copiar link"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
+                          {/* Resend button — hidden for accepted invitations */}
+                          {invitation.status !== "accepted" && (
+                            <button
+                              type="button"
+                              onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
+                              disabled={!canResend || isResending}
+                              className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                              aria-label={`Reenviar invitación a ${invitation.email}`}
+                              title="Reenviar"
+                            >
+                              {isResending
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <MailCheck className="w-4 h-4" />
+                              }
+                            </button>
+                          )}
+                          {invitation.status !== "accepted" && (
+                            <button
+                              type="button"
+                              onClick={() => void handleCopy(invitation)}
+                              className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]"
+                              aria-label={`Copiar link de ${invitation.email}`}
+                              title="Copiar link"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          )}
                           {invitation.status === "pending" && (
                             <button
                               type="button"
@@ -581,16 +616,29 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                               <XCircle className="w-4 h-4" />
                             </button>
                           )}
+                          {(invitation.status === "revoked" || invitation.status === "expired") && (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteInvitation(invitation.id)}
+                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
+                              aria-label={`Eliminar invitación de ${invitation.email}`}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
-                        {invitation.invite_url}
-                      </div>
+                      {invitation.status !== "accepted" && (
+                        <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
+                          {invitation.invite_url}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               {invitations.filter((inv) => {
-                if (invitationStatusFilter === "all") return inv.status !== "accepted";
+                if (invitationStatusFilter === "all") return inv.status === "pending";
                 if (invitationStatusFilter === "expired") {
                   return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                 }
@@ -598,7 +646,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               }).length === 0 && (
                 <p className="text-sm text-[var(--app-text-2)]">
                   {invitationStatusFilter === "all"
-                    ? "No hay invitaciones activas. Las aceptadas están en su filtro."
+                    ? "No hay invitaciones pendientes."
                     : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
                 </p>
               )}
@@ -636,24 +684,29 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         />
       )}
     </section>
+    )}
 
-    <MaintenanceSection
-      showNotice={(msg) => toast.success(msg)}
-      setError={(msg) => { if (msg) toast.error(msg); }}
-    />
-
-    {isSuperadmin && (
+    {adminTab === "sistema" && (
       <>
-        <EmailSection />
-        <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
-          <header className="mb-6">
-            <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
-            <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
-              Registro de todos los emails transaccionales enviados por el sistema.
-            </p>
-          </header>
-          <EmailLogView />
-        </section>
+        <MaintenanceSection
+          showNotice={(msg) => toast.success(msg)}
+          setError={(msg) => { if (msg) toast.error(msg); }}
+        />
+
+        {isSuperadmin && (
+          <>
+            <EmailSection />
+            <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+              <header className="mb-6">
+                <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
+                <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
+                  Registro de todos los emails transaccionales enviados por el sistema.
+                </p>
+              </header>
+              <EmailLogView />
+            </section>
+          </>
+        )}
       </>
     )}
     </div>
@@ -683,7 +736,7 @@ function DashboardTreeView({ tree, viewerId, onSelectUser }: DashboardTreeViewPr
         <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
           Dashboards y miembros
         </h3>
-        <span className="text-xs text-[var(--app-text-3)]">{dashboards.length} dashboards</span>
+        <span className="text-xs text-[var(--app-text-3)]">{dashboards.length === 1 ? "1 dashboard" : `${dashboards.length} dashboards`}</span>
       </div>
 
       <ul className="space-y-3">

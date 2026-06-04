@@ -301,6 +301,25 @@ export function createAdminRouter(deps: AdminDeps) {
     },
   );
 
+  router.delete(
+    "/api/admin/invitations/:id",
+    requireSession,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const { error } = await supabase
+          .from("user_invitations")
+          .delete()
+          .eq("id", req.params.id)
+          .in("status", ["revoked", "expired"]);
+        if (error) throw error;
+        res.json({ ok: true });
+      } catch (_err) {
+        res.status(500).json({ error: "failed_to_delete" });
+      }
+    },
+  );
+
   // ----- Superadmin: user lifecycle (status / role / force-logout / detail / telegram revoke) -----
 
   const writeAuditLog = async (entry: {

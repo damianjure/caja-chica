@@ -253,8 +253,8 @@ export function CuentaSection({
 
   return (
     <>
-      <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 md:p-8 shadow-sm stack-relaxed">
-        <div className="flex items-center gap-3">
+      <section className="bg-white border border-[var(--app-border)] rounded-xl p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-5">
           <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
             <Settings className="w-4 h-4" />
           </div>
@@ -264,49 +264,92 @@ export function CuentaSection({
           </div>
         </div>
 
-        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 space-y-1">
-          <div className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-[var(--app-text-3)]">Rol de app:</span>
-            <span className="text-xs font-medium text-[var(--app-text-2)]">{viewer.role}</span>
-            {selfMembership && (
-              <>
-                <span className="text-xs text-neutral-300">·</span>
-                <span className="text-xs text-[var(--app-text-3)]">Dashboard:</span>
-                {roleBadge(selfMembership.role)}
-                {statusDot(selfMembership.status)}
-              </>
-            )}
-          </div>
-        </div>
+        {/* 2-col layout: identidad izq, acciones der */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-        {/* Display name */}
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Nombre visible</p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={viewer.email}
-              maxLength={50}
-              aria-label="Nombre visible"
-              className="flex-1 rounded-xl border border-[var(--app-border-strong)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-            />
-            <button
-              type="button"
-              onClick={() => void handleSaveDisplayName()}
-              disabled={savingDisplayName}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
-            >
-              {savingDisplayName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Guardar
-            </button>
-          </div>
-          <p className="text-xs text-[var(--app-text-3)]">Lo ven otros miembros del dashboard.</p>
-        </div>
+          {/* COL IZQ — identidad */}
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 space-y-1">
+              <div className="text-sm font-medium text-[var(--app-text-1)]">{viewer.email}</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-[var(--app-text-3)]">Rol de app:</span>
+                <span className="text-xs font-medium text-[var(--app-text-2)]">{viewer.role}</span>
+                {selfMembership && (
+                  <>
+                    <span className="text-xs text-neutral-300">·</span>
+                    <span className="text-xs text-[var(--app-text-3)]">Dashboard:</span>
+                    {roleBadge(selfMembership.role)}
+                    {statusDot(selfMembership.status)}
+                  </>
+                )}
+              </div>
+            </div>
 
-        <div className="space-y-3">
+            {/* Display name */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Nombre visible</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder={viewer.email}
+                  maxLength={50}
+                  aria-label="Nombre visible"
+                  className="flex-1 rounded-xl border border-[var(--app-border-strong)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSaveDisplayName()}
+                  disabled={savingDisplayName}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-4 py-2.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 w-full sm:w-auto"
+                >
+                  {savingDisplayName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Guardar
+                </button>
+              </div>
+              <p className="text-xs text-[var(--app-text-3)]">Lo ven otros miembros del dashboard.</p>
+            </div>
+
+            {/* Sesiones activas */}
+            <div className="space-y-3 border-t border-[var(--app-border)] pt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">
+                  Sesiones activas{sessionsLoaded ? ` (${sessions.length})` : ""}
+                </p>
+                {!sessionsLoaded && (
+                  <button
+                    onClick={() => void loadSessions()}
+                    disabled={loadingSessions}
+                    className="text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-2)] flex items-center gap-1"
+                  >
+                    {loadingSessions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Monitor className="w-3 h-3" />}
+                    Ver sesiones
+                  </button>
+                )}
+              </div>
+              {sessionsLoaded && (
+                <div className="space-y-2">
+                  {sessions.length === 0 ? (
+                    <p className="text-sm text-[var(--app-text-3)]">No hay sesiones activas.</p>
+                  ) : (
+                    sessions.map((s) => (
+                      <SessionRow
+                        key={s.id}
+                        s={s}
+                        isCurrent={currentSessionId !== null && s.id === currentSessionId}
+                        revoking={revokingSession === s.id}
+                        onRevoke={(id) => void handleRevokeSession(id)}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* COL DER — acciones */}
+          <div className="space-y-3">
           <button
             onClick={() => bioSupported && void toggleBiometric()}
             disabled={!bioSupported || bioBusy}
@@ -379,55 +422,24 @@ export function CuentaSection({
             <LogOut className="w-4 h-4 text-[var(--app-text-3)]" />
             Cerrar sesión
           </button>
-        </div>
 
-        {/* Active sessions */}
-        <div className="space-y-3 border-t border-[var(--app-border)] pt-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">
-              Sesiones activas{sessionsLoaded ? ` (${sessions.length})` : ""}
-            </p>
-            {!sessionsLoaded && (
-              <button
-                onClick={() => void loadSessions()}
-                disabled={loadingSessions}
-                className="text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-2)] flex items-center gap-1"
-              >
-                {loadingSessions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Monitor className="w-3 h-3" />}
-                Ver sesiones
-              </button>
-            )}
+          {/* Delete account — danger zone al fondo de la col derecha */}
+          <div className="border-t border-red-100 pt-3">
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Borrar mi cuenta
+            </button>
+            <p className="text-xs text-[var(--app-text-3)] mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
           </div>
-          {sessionsLoaded && (
-            <div className="space-y-2">
-              {sessions.length === 0 ? (
-                <p className="text-sm text-[var(--app-text-3)]">No hay sesiones activas.</p>
-              ) : (
-                sessions.map((s) => (
-                  <SessionRow
-                    key={s.id}
-                    s={s}
-                    isCurrent={currentSessionId !== null && s.id === currentSessionId}
-                    revoking={revokingSession === s.id}
-                    onRevoke={(id) => void handleRevokeSession(id)}
-                  />
-                ))
-              )}
-            </div>
-          )}
+          {/* fin danger zone */}
         </div>
+        {/* fin col-der */}
 
-        {/* Delete account */}
-        <div className="border-t border-red-100 pt-4">
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Borrar mi cuenta
-          </button>
-          <p className="text-xs text-[var(--app-text-3)] mt-2 px-1">Esta acción es permanente e irreversible. Exportá tus datos antes.</p>
         </div>
+        {/* fin grid */}
       </section>
 
       {showLeaveConfirm && (

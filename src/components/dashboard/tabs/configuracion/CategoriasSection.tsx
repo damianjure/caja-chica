@@ -102,7 +102,7 @@ export function CategoriasSection() {
       ) : categorias.length === 0 ? (
         <p className="text-sm text-[var(--app-text-3)]">No hay categorías todavía. Se crean solas al cargar movimientos.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {categorias.map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2.5">
               {editingId === c.id ? (

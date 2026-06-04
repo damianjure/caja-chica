@@ -414,7 +414,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (action === "o") {
       await ctx.answerCallbackQuery("Elegí la empresa correcta");
       await ctx.editMessageText(
-        `🏢 ¿A qué empresa cargamos *${payload.item.descripcion}*?`,
+        `🏢 ¿A qué empresa cargamos *${escapeMd(payload.item.descripcion ?? "")}*?`,
         {
           parse_mode: "Markdown",
           reply_markup: buildPendingCompanyKeyboardLocal(pendingId, payload.options),
@@ -438,7 +438,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     await resolvePendingTelegramMovement(supabase, pendingId);
     await ctx.answerCallbackQuery("Movimiento guardado");
     await ctx.editMessageText(
-      `✅ *Registrado:* ${payload.item.descripcion}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`,
+      `✅ *Registrado:* ${escapeMd(payload.item.descripcion ?? "")}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`,
       { parse_mode: "Markdown" },
     );
   });
@@ -474,7 +474,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     await resolvePendingTelegramMovement(supabase, pendingId);
     await ctx.answerCallbackQuery("Movimiento guardado");
     await ctx.editMessageText(
-      `✅ *Registrado:* ${payload.item.descripcion}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`,
+      `✅ *Registrado:* ${escapeMd(payload.item.descripcion ?? "")}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`,
       { parse_mode: "Markdown" },
     );
   });
@@ -532,7 +532,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
           } else if (resolution.kind === "suggest") {
             updatePendingExtraction(editingEntry.id, { editingField: null, pendingNewCompanyName: val, pendingSuggestNombre: resolution.company.nombre });
             await ctx.reply(
-              `🤔 ¿Quisiste decir *${resolution.company.nombre}*?`,
+              `🤔 ¿Quisiste decir *${escapeMd(resolution.company.nombre)}*?`,
               {
                 parse_mode: "Markdown",
                 reply_markup: { inline_keyboard: [
@@ -671,7 +671,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
         }
         const frecLabel = { diario: "cada día", semanal: "cada semana", mensual: "cada mes" }[recSession.frecuencia!];
         return ctx.reply(
-          `✅ *Recurrente guardado*\n\n💰 ${recSession.monto} ${recSession.moneda} (${recSession.tipo})\n📅 ${frecLabel}\n📝 ${descripcion}`,
+          `✅ *Recurrente guardado*\n\n💰 ${recSession.monto} ${recSession.moneda} (${recSession.tipo})\n📅 ${frecLabel}\n📝 ${escapeMd(descripcion ?? "")}`,
           { parse_mode: "Markdown" },
         );
       }

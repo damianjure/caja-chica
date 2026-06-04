@@ -1,6 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
-import { requireTelegramCan, sendTyping, buildEmpresaSelectorKeyboard } from "./utils.ts";
+import { requireTelegramCan, sendTyping, buildEmpresaSelectorKeyboard, escapeMd } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
 import {
   applyTelegramDataScope,
@@ -262,7 +262,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         return;
       }
       const editMontoStr = e.monto !== null ? `$${e.monto.toLocaleString("es-AR")} ${e.moneda}` : "monto desconocido";
-      await ctx.editMessageText(`✅ *Movimiento actualizado:* ${editMontoStr} — ${e.descripcion}`, { parse_mode: "Markdown" });
+      await ctx.editMessageText(`✅ *Movimiento actualizado:* ${editMontoStr} — ${escapeMd(e.descripcion ?? "")}`, { parse_mode: "Markdown" });
       return;
     }
 
@@ -298,7 +298,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     }
     const insertedId = insertedRows?.[0]?.id as string | undefined;
     const montoStr = d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "monto desconocido";
-    await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${d.descripcion}`, {
+    await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${escapeMd(d.descripcion ?? "")}`, {
       parse_mode: "Markdown",
       reply_markup: insertedId ? buildUndoKeyboard(insertedId) : undefined,
     });

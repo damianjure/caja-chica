@@ -310,7 +310,7 @@ async function askTelegramCompanyAssignment(supabase: BotDeps["supabase"], args:
   ) {
     const suggested = payload.options[args.suggestedCompanyIndex];
     await args.ctx.reply(
-      `🤔 No estoy 100% seguro con la empresa.\n\n¿Quisiste decir *${suggested.nombre}*?`,
+      `🤔 No estoy 100% seguro con la empresa.\n\n¿Quisiste decir *${escapeMd(suggested.nombre)}*?`,
       {
         parse_mode: "Markdown",
         reply_markup: new InlineKeyboard()
@@ -323,7 +323,7 @@ async function askTelegramCompanyAssignment(supabase: BotDeps["supabase"], args:
   }
 
   await args.ctx.reply(
-    `🏢 No me quedó clara la empresa para *${args.item.descripcion}*.\n\n¿A qué empresa cargamos esto?`,
+    `🏢 No me quedó clara la empresa para *${escapeMd(args.item.descripcion)}*.\n\n¿A qué empresa cargamos esto?`,
     {
       parse_mode: "Markdown",
       reply_markup: buildPendingCompanyKeyboardLocal(pendingId, payload.options),
@@ -649,7 +649,7 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
               ] }
             : undefined;
 
-          await ctx.reply(`${icon} *Registrado:* ${item.descripcion}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${finalCategory}\n🏢 Empresa: ${empresaNombre}`, {
+          await ctx.reply(`${icon} *Registrado:* ${escapeMd(item.descripcion ?? "")}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`, {
             parse_mode: "Markdown",
             reply_markup: confirmKb,
           });

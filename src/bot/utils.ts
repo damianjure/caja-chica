@@ -178,7 +178,7 @@ export async function createBotEmpresaBackup(supabase: SupabaseClient, args: {
 }
 
 export function formatMovementSummary(mov: any) {
-  return `${mov.tipo === "ingreso" ? "🟢" : "🔴"} ${mov.monto} ${mov.moneda}\n🏢 ${mov.empresa_nombre || "Personal"}\n📁 ${mov.categoria || "Otros"}\n📝 ${mov.descripcion}`;
+  return `${mov.tipo === "ingreso" ? "🟢" : "🔴"} ${mov.monto} ${mov.moneda}\n🏢 ${escapeMd(mov.empresa_nombre || "Personal")}\n📁 ${escapeMd(mov.categoria || "Otros")}\n📝 ${escapeMd(mov.descripcion ?? "")}`;
 }
 
 export function buildPendingCompanyKeyboard(pendingId: string, options: Array<{ nombre: string }>) {

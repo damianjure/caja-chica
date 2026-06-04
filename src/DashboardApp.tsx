@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, Sparkles, Trash2, X } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -114,6 +114,22 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     retry: 1,
   });
   const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
+  const [showDemoReminder, setShowDemoReminder] = useState(false);
+  const [deletingDemo, setDeletingDemo] = useState(false);
+
+  const handleDeleteDemo = async (navigateAfter = false) => {
+    setDeletingDemo(true);
+    try {
+      await api.deleteDemoData();
+      toast.success('Datos de muestra eliminados');
+    } catch {
+      toast.error('No se pudieron borrar los datos de muestra');
+    } finally {
+      setDeletingDemo(false);
+      setShowDemoReminder(false);
+      if (navigateAfter) setActiveTab('movimientos');
+    }
+  };
 
   useEffect(() => {
     try { window.sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab); } catch { /* ignore */ }
@@ -491,7 +507,50 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   return (
     <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
-      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={() => setShowWizard(false)} canInstall={pwa.available} onInstall={() => void pwa.promptInstall()} />}
+      {showWizard && !viewer.is_dashboard_joiner && <WelcomeWizard onFinish={(cleanDemo) => { setShowWizard(false); if (!cleanDemo) setShowDemoReminder(true); }} canInstall={pwa.available} onInstall={() => void pwa.promptInstall()} />}
+
+      {showDemoReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="anim-scale-in bg-white dark:bg-[var(--app-strong-surface)] rounded-2xl shadow-2xl w-full max-w-sm relative">
+            <button
+              onClick={() => { setShowDemoReminder(false); setActiveTab('movimientos'); }}
+              className="absolute top-4 right-4 text-[var(--app-text-3)] hover:text-[var(--app-text-2)] active:scale-[0.9] transition-transform duration-100"
+              aria-label="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="p-8 flex flex-col items-center text-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-[var(--app-text-1)] dark:text-white mb-2">
+                  Hay datos de muestra cargados
+                </h2>
+                <p className="text-sm text-[var(--app-text-3)] leading-relaxed">
+                  Tu dashboard tiene movimientos y empresas de ejemplo. Los encontrás en la pestaña <strong className="text-[var(--app-text-2)]">Movimientos</strong>.
+                </p>
+              </div>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => { setShowDemoReminder(false); setActiveTab('movimientos'); }}
+                  className="flex-1 py-2.5 px-4 rounded-lg border border-[var(--app-border-strong)] text-[var(--app-text-2)] text-sm font-medium hover:border-[var(--app-text-2)] transition-colors"
+                >
+                  Después
+                </button>
+                <button
+                  onClick={() => void handleDeleteDemo(true)}
+                  disabled={deletingDemo}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deletingDemo ? 'Borrando...' : 'Borrar ahora'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto space-y-8">
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}

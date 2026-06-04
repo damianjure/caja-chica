@@ -549,7 +549,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             <div className="flex gap-2 justify-end pt-1">
               <button
                 type="button"
-                onClick={() => setShowDemoReminder(false)}
+                onClick={() => { setShowDemoReminder(false); setActiveTab('movimientos'); }}
                 className="rounded-lg border border-[var(--app-border)] px-4 py-2 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
               >
                 Después
@@ -561,7 +561,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Borrar ahora
+                {deletingDemo ? 'Borrando...' : 'Borrar ahora'}
               </button>
             </div>
           </div>

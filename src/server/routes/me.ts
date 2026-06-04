@@ -45,6 +45,7 @@ export function createMeRouter(deps: MeDeps) {
         .from("dashboard_members")
         .select("id")
         .eq("user_id", session.userId)
+        .neq("role", "owner")
         .not("invited_by_user_id", "is", null)
         .limit(1);
       isDashboardJoiner = !!(memberRows && memberRows.length > 0);

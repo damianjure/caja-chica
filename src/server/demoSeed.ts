@@ -69,7 +69,6 @@ export async function ensurePersonalDashboard(
       user_id: session.userId,
       role: "owner",
       status: "active",
-      invited_by_user_id: session.userId,
     });
 
   if (memberErr) throw memberErr;

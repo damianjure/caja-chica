@@ -87,10 +87,10 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
             </div>
             <div>
               <h2 id="wizard-title" className="text-2xl font-bold text-[var(--app-text-1)] dark:text-white mb-2">
-                Bienvenido a Caja Chica
+                Gracias por usar Caja Chica
               </h2>
               <p className="text-[var(--app-text-3)] text-sm leading-relaxed">
-                Tu cuenta está lista. Cargamos datos de ejemplo para que veas cómo funciona todo antes de empezar con los datos reales.
+                Tu dashboard está listo. Cargamos datos de ejemplo para que explores todo antes de arrancar con los datos reales.
               </p>
             </div>
             <button

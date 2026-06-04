@@ -72,8 +72,8 @@ export async function processInviteReminders(
   const sendApp = opts.sendAppEmail ?? sendAppInvitationEmail;
   const sendDash =
     opts.sendDashboardEmail ??
-    ((to: string, url: string, role: string, inviterEmail: string) =>
-      sendDashboardInvitationEmail(to, url, role, inviterEmail));
+    ((to: string, url: string, role: string, inviterEmail: string, inviterDisplayName?: string | null) =>
+      sendDashboardInvitationEmail(to, url, role, inviterEmail, undefined, undefined, inviterDisplayName));
   const baseUrl = opts.baseUrl ?? "";
 
   const now = new Date();
@@ -125,7 +125,7 @@ export async function processInviteReminders(
     console.error("[inviteReminder] Failed to fetch dashboard_invitations:", dashError);
   }
 
-  // Batch-resolve inviter emails from app_users
+  // Batch-resolve inviter identity from app_users
   const inviterIds = [...new Set(
     (dashRows ?? [])
       .map((r) => r.invited_by_user_id)
@@ -133,13 +133,14 @@ export async function processInviteReminders(
   )];
 
   const inviterEmailMap: Record<string, string> = {};
+  const inviterNameMap: Record<string, string> = {};
   if (inviterIds.length > 0) {
     try {
       const { data: userRows, error: userErr } = await (
         supabase
           .from("app_users")
-          .select("user_id, email") as unknown as Promise<{
-            data: Array<{ user_id: string; email: string }> | null;
+          .select("user_id, email, display_name") as unknown as Promise<{
+            data: Array<{ user_id: string; email: string; display_name?: string | null }> | null;
             error: unknown;
           }>
       );
@@ -149,6 +150,7 @@ export async function processInviteReminders(
       for (const u of userRows ?? []) {
         if (inviterIds.includes(u.user_id)) {
           inviterEmailMap[u.user_id] = u.email;
+          if (u.display_name?.trim()) inviterNameMap[u.user_id] = u.display_name.trim();
         }
       }
     } catch (err) {
@@ -162,11 +164,13 @@ export async function processInviteReminders(
     try {
       const url = `${baseUrl}/?invite=${row.invite_token}`;
       const inviterEmail = (row.invited_by_user_id && inviterEmailMap[row.invited_by_user_id]) || "";
+      const inviterDisplayName = (row.invited_by_user_id && inviterNameMap[row.invited_by_user_id]) || null;
       await sendDash(
         row.email,
         url,
         row.role ?? "viewer",
         inviterEmail,
+        inviterDisplayName,
       );
       const updateResult = await (
         supabase

@@ -275,6 +275,69 @@ test("dashboardInvitationHtml: editor flavor = checklist of edit+view caps, bran
   assert.doesNotMatch(html, /Damián/);
 });
 
+
+test("invitation emails include the login logo asset", async () => {
+  const { appInvitationHtml, dashboardInvitationHtml } = await import("../src/server/email.ts");
+  assert.match(appInvitationHtml("https://x/invite", "Lucía"), /logo-caja-chica-login\.png/);
+  assert.match(dashboardInvitationHtml("https://x/join", "editor", "ana@empresa.com"), /logo-caja-chica-login\.png/);
+});
+
+
+
+test("invitation emails explain Telegram as a product differentiator", async () => {
+  const { appInvitationHtml, dashboardInvitationHtml } = await import("../src/server/email.ts");
+  const appHtml = appInvitationHtml("https://x/invite", "Lucía");
+  const dashHtml = dashboardInvitationHtml("https://x/join", "editor", "ana@empresa.com", "https://t.me/bot?start=abc", "Ana Empresa");
+
+  assert.match(appHtml, /Diferencial Caja Chica/);
+  assert.match(appHtml, /Telegram/);
+  assert.match(appHtml, /foto del ticket|nota de voz|audio/);
+  assert.match(dashHtml, /Conectar Telegram después del primer login/);
+});
+
+test("dashboardInvitationHtml: prefers inviter display name over email local-part", async () => {
+  const { dashboardInvitationHtml } = await import("../src/server/email.ts");
+  const html = dashboardInvitationHtml("https://x/join", "editor", "damianjure@gmail.com", undefined, "Damián Jure");
+  assert.match(html, /Damián Jure te sumó al dashboard/);
+  assert.match(html, /Te escribe damianjure@gmail\.com/);
+  assert.doesNotMatch(html, /damianjure te sumó al dashboard/);
+});
+
+test("sendDashboardInvitationEmail: subject prefers inviter display name", async () => {
+  const { configureEmail, sendDashboardInvitationEmail } = await import("../src/server/email.ts");
+  const { invalidateSenderCache } = await import("../src/server/emailSettings.ts");
+  invalidateSenderCache();
+
+  const supabase = {
+    from: () => ({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+      insert: () => Promise.resolve({ error: null }),
+    }),
+  };
+  configureEmail({ supabase: supabase as any });
+
+  const { calls, mock } = captureFetch();
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = mock;
+
+  try {
+    await sendDashboardInvitationEmail(
+      "user@test.com",
+      "https://example.com/join",
+      "editor",
+      "damianjure@gmail.com",
+      undefined,
+      undefined,
+      "Damián Jure",
+    );
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  const brevoPayload = JSON.parse(calls[0].init.body as string);
+  assert.equal(brevoPayload.subject, "Damián Jure te invitó a su dashboard en Caja Chica");
+});
+
 test("dashboardInvitationHtml: viewer flavor = read-only caps", async () => {
   const { dashboardInvitationHtml } = await import("../src/server/email.ts");
   const html = dashboardInvitationHtml("https://x/join", "viewer", "ana@empresa.com");

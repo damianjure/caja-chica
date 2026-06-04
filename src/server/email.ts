@@ -12,6 +12,8 @@ const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 // Module-level env constants (kept for back-compat and as fallback baseline).
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "hola@damianjure.com";
 const FROM_NAME = process.env.FROM_NAME ?? "Caja Chica";
+const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL ?? "https://caja-chica-bot.web.app").replace(/\/$/, "");
+const EMAIL_LOGO_URL = `${PUBLIC_APP_URL}/logo-caja-chica-login.png`;
 
 function getApiKey(): string | null {
   return process.env.BREVO_API_KEY ?? null;
@@ -95,20 +97,22 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       padding: 28px 36px 0;
       display: flex;
       align-items: center;
+      gap: 12px;
     }
-    .mark {
-      display: inline-block;
-      width: 36px;
-      height: 36px;
-      line-height: 36px;
-      text-align: center;
-      background: oklch(62% 0.14 148);
-      color: oklch(100% 0 0);
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 16px;
-      letter-spacing: -0.5px;
-      margin-right: 12px;
+    .logo-shell {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: oklch(18% 0.05 148);
+      box-shadow: 0 8px 18px rgba(14, 40, 26, 0.10);
+      flex: 0 0 auto;
+    }
+    .logo-shell img {
+      display: block;
+      width: 44px;
+      height: 44px;
+      border: 0;
     }
     .wordmark {
       font-size: 15px;
@@ -187,8 +191,64 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       line-height: 1.55;
       color: oklch(32% 0.04 80);
     }
+    .telegram-block {
+      margin: 18px 0 24px;
+      padding: 16px 18px;
+      border-radius: 12px;
+      background: oklch(97% 0.018 148);
+      border: 1px solid oklch(88% 0.05 148);
+      color: oklch(30% 0.05 148);
+      max-width: 56ch;
+    }
+    .telegram-block h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.3;
+      letter-spacing: -0.2px;
+      color: oklch(24% 0.08 148);
+    }
+    .telegram-block p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .telegram-block .telegram-kicker {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: oklch(42% 0.1 148);
+    }
+    .telegram-block ul {
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .telegram-block li {
+      display: inline-block;
+      margin: 0 6px 6px 0;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: oklch(100% 0 0 / 72%);
+      border: 1px solid oklch(88% 0.04 148);
+      font-size: 12.5px;
+      color: oklch(30% 0.06 148);
+    }
+    .role-summary {
+      margin: 4px 0 20px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: oklch(96.5% 0.02 148);
+      border: 1px solid oklch(88% 0.045 148);
+      color: oklch(32% 0.06 148);
+      font-size: 14px;
+      line-height: 1.55;
+      max-width: 56ch;
+    }
+    .role-summary strong { color: oklch(24% 0.08 148); }
     .caps {
-      margin: 18px 0 22px;
+      margin: 16px 0 22px;
       border: 1px solid oklch(92% 0.005 95);
       border-radius: 12px;
       padding: 16px 18px;
@@ -344,10 +404,18 @@ function baseTemplate(title: string, preheader: string, body: string): string {
       .section h3 { color: oklch(65% 0.01 95); }
       ol.steps li { color: oklch(82% 0.005 95); }
       ol.steps li::before { background: oklch(26% 0.008 95); color: oklch(82% 0.005 95); }
+      .telegram-block { background: oklch(22% 0.035 148); border-color: oklch(34% 0.07 148); color: oklch(82% 0.05 148); }
+      .telegram-block h3 { color: oklch(92% 0.08 148); }
+      .telegram-block .telegram-kicker { color: oklch(78% 0.12 148); }
+      .telegram-block li { background: oklch(18% 0.02 148); border-color: oklch(34% 0.05 148); color: oklch(84% 0.05 148); }
+      .role-summary { background: oklch(24% 0.04 148); border-color: oklch(34% 0.06 148); color: oklch(82% 0.06 148); }
+      .role-summary strong { color: oklch(92% 0.08 148); }
       .caps { background: oklch(24% 0.008 95); border-color: oklch(30% 0.008 95); }
       .caps h3 { color: oklch(65% 0.01 95); }
       .caps li { color: oklch(82% 0.005 95); }
       .rule { border-top-color: oklch(28% 0.008 95); }
+      .signoff { color: oklch(84% 0.005 95); }
+      .signoff strong { color: oklch(94% 0.005 95); }
       .footer p { color: oklch(58% 0.01 95); }
       .badge { background: oklch(30% 0.06 148); color: oklch(88% 0.08 148); }
       .from { color: oklch(60% 0.01 95); }
@@ -364,7 +432,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
   <div class="wrapper">
     <div class="card">
       <div class="brandbar">
-        <span class="mark">C</span>
+        <span class="logo-shell"><img src="${escapeHtml(EMAIL_LOGO_URL)}" width="44" height="44" alt="Caja Chica" /></span>
         <span class="wordmark">Caja Chica</span>
       </div>
       <div class="content padbottom">
@@ -385,6 +453,28 @@ function capsBlock(title: string, items: string[]): string {
   return `<div class="caps"><h3>${escapeHtml(title)}</h3><ul>${lis}</ul></div>`;
 }
 
+function roleSummary(label: string, copy: string): string {
+  return `<p class="role-summary"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(copy)}</p>`;
+}
+
+function telegramBlock(deepLink?: string): string {
+  const link = deepLink
+    ? `<br><a class="link" href="${escapeHtml(deepLink)}">Conectar Telegram después del primer login →</a>`
+    : "";
+
+  return `<div class="telegram-block">
+    <p class="telegram-kicker">Diferencial Caja Chica</p>
+    <h3>También podés usarlo desde Telegram</h3>
+    <p>Registrá gastos sin abrir la app: escribí, mandá una foto del ticket o usá audio. Caja Chica lo interpreta y lo guarda en el dashboard compartido.</p>
+    <ul>
+      <li>“pagué 4500 de luz”</li>
+      <li>foto de un ticket</li>
+      <li>nota de voz rápida</li>
+    </ul>
+    ${link}
+  </div>`;
+}
+
 // Brand signoff (decision 2026-05: personal body voice + brand closing).
 const BRAND_SIGNOFF = `
     <p class="signoff">Cualquier duda, respondé este email.</p>
@@ -402,23 +492,31 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
     ? `${safeName} te dio tu propio dashboard.`
     : `Tu dashboard en Caja Chica está listo.`;
 
+  const ownerSummary = roleSummary(
+    "Dueño",
+    "administrás el dashboard, cargás movimientos, exportás informes e invitás a otras personas.",
+  );
+
   const caps = capsBlock("Como dueño vas a poder", [
     "Cargar, editar y borrar movimientos",
     "Crear empresas y categorías",
     "Generar y exportar informes",
-    "Invitar gente: editores y lectores",
+    "Usar Telegram para cargar por texto, foto o voz",
+    "Invitar gente como editor o viewer",
   ]);
 
   const team = `<div class="note"><strong>Cuando sumes gente, elegís el acceso:</strong><br>` +
-    `• <strong>Puede editar</strong>: ve y carga movimientos en tiempo real, crea empresas y categorías. No invita.<br>` +
-    `• <strong>Puede ver</strong>: solo lectura — ve movimientos, saldos e informes. No carga ni edita.</div>`;
+    `• <strong>Puede editar</strong>: carga movimientos y ayuda a ordenar empresas/categorías.<br>` +
+    `• <strong>Puede ver</strong>: mira saldos, movimientos e informes. No modifica datos.</div>`;
 
   const body = `
     ${fromLine}
     <h1 class="title">${title}</h1>
     <p class="lede">Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
 
+    ${ownerSummary}
     ${caps}
+    ${telegramBlock()}
 
     <div class="cta">
       <a href="${safeUrl}">Entrar con Google</a>
@@ -436,23 +534,33 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
   );
 }
 
-export function dashboardInvitationHtml(inviteUrl: string, role: string, inviterEmail: string, telegramDeepLink?: string): string {
+export function dashboardInvitationHtml(
+  inviteUrl: string,
+  role: string,
+  inviterEmail: string,
+  telegramDeepLink?: string,
+  inviterDisplayName?: string | null,
+): string {
   const safeUrl = escapeHtml(inviteUrl);
   const safeInviter = escapeHtml(inviterEmail);
-  const inviterName = inviterEmail.split("@")[0] ?? "Alguien";
+  const inviterName = inviterDisplayName?.trim() || inviterEmail.split("@")[0] || "Alguien";
   const safeInviterName = escapeHtml(inviterName);
   const isEditor = role === "editor";
   const roleBadge = isEditor ? "Puede editar" : "Puede ver";
 
+  const summary = isEditor
+    ? roleSummary("Puede editar", "podés cargar movimientos y ver saldos e informes. No cambiás accesos salvo que el dueño te dé permisos extra.")
+    : roleSummary("Puede ver", "tenés acceso de solo lectura para consultar movimientos, saldos e informes. No modificás datos.");
+
   // Design B: capabilities as a ✓ checklist, tailored to the role.
   const caps = isEditor
-    ? capsBlock("Con tu acceso (Puede editar) vas a poder", [
-        "Ver todos los movimientos en tiempo real",
-        "Cargar movimientos (texto, foto o voz)",
+    ? capsBlock("Tu acceso incluye", [
+        "Ver movimientos y saldos en tiempo real",
+        "Cargar movimientos por texto, foto o voz",
         "Crear empresas y categorías",
       ])
-    : capsBlock("Con tu acceso (Puede ver) vas a poder", [
-        "Ver todos los movimientos del dashboard",
+    : capsBlock("Tu acceso incluye", [
+        "Ver movimientos del dashboard",
         "Consultar saldos por empresa",
         "Ver y descargar informes",
       ]);
@@ -463,7 +571,9 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
     <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
     <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span>.</p>
 
+    ${summary}
     ${caps}
+    ${telegramBlock(telegramDeepLink)}
 
     <div class="cta">
       <a href="${safeUrl}">Entrar con Google</a>
@@ -471,9 +581,6 @@ export function dashboardInvitationHtml(inviteUrl: string, role: string, inviter
 
     <p class="fine">Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.</p>
 
-    ${telegramDeepLink ? `
-    <p class="aside">¿Preferís cargar gastos por Telegram? <a class="link" href="${escapeHtml(telegramDeepLink)}">Sumarlo después del primer login →</a></p>
-    ` : ``}
     ${BRAND_SIGNOFF}
     <p class="from-footer">Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.</p>
   `;
@@ -640,11 +747,13 @@ export async function sendDashboardInvitationEmail(
   inviterEmail: string,
   telegramDeepLink?: string,
   emailType?: EmailType,
+  inviterDisplayName?: string | null,
 ): Promise<void> {
+  const inviterName = inviterDisplayName?.trim() || inviterEmail.split("@")[0] || inviterEmail;
   await sendViaBrevo(
     to,
-    `${inviterEmail} te invitó a su dashboard en Caja Chica`,
-    dashboardInvitationHtml(inviteUrl, role, inviterEmail, telegramDeepLink),
+    `${inviterName} te invitó a su dashboard en Caja Chica`,
+    dashboardInvitationHtml(inviteUrl, role, inviterEmail, telegramDeepLink, inviterDisplayName),
     { emailType: emailType ?? "dashboard_invite" },
   );
 }

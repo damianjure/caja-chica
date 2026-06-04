@@ -13,7 +13,15 @@ export interface DashboardDeps {
   parseDashboardInvitationRequest: (body: unknown) => any;
   randomBytes: (size: number) => Buffer;
   buildTelegramDeepLink: (token: string | null) => string | null;
-  sendDashboardInvitationEmail: (to: string, inviteUrl: string, role: string, inviterEmail: string, telegramDeepLink?: string) => Promise<void>;
+  sendDashboardInvitationEmail: (
+    to: string,
+    inviteUrl: string,
+    role: string,
+    inviterEmail: string,
+    telegramDeepLink?: string,
+    emailType?: import("../email.ts").EmailType,
+    inviterDisplayName?: string | null,
+  ) => Promise<void>;
   sendAppInvitationEmail: (to: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<void>;
   purgeDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
   tierRead: RequestHandler;
@@ -42,6 +50,26 @@ export function createDashboardRouter(deps: DashboardDeps) {
     tierResend,
     tierWrite,
   } = deps;
+
+  async function resolveInviterDisplayName(session: AppSession): Promise<string | null> {
+    const sessionName = session.profileName?.trim();
+    if (sessionName) return sessionName;
+
+    try {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select("display_name")
+        .eq("user_id", session.userId)
+        .limit(1);
+      if (error) throw error;
+
+      const displayName = data?.[0]?.display_name?.trim();
+      return displayName || null;
+    } catch (err) {
+      console.error("[dashboardInvitations] Failed to resolve inviter display_name:", err);
+      return null;
+    }
+  }
 
   router.get("/api/dashboard/members", requireSession, async (req, res) => {
     try {
@@ -219,7 +247,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
         invite_url: inviteUrl,
         ...(telegramDeepLink ? { telegram_deep_link: telegramDeepLink } : {}),
       });
-      void sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email, telegramDeepLink);
+      const inviterDisplayName = await resolveInviterDisplayName(session);
+      void sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email, telegramDeepLink, undefined, inviterDisplayName);
 
       // Auto-purge demo data when owner invites their first collaborator
       void (async () => {
@@ -675,7 +704,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
         void sendAppInvitationEmail(row.email, inviteUrl, undefined, session.email.split("@")[0]);
       } else {
         const inviteUrl = `${publicAppUrl || ""}/join?token=${currentToken}`;
-        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email);
+        const inviterDisplayName = await resolveInviterDisplayName(session);
+        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, undefined, undefined, inviterDisplayName);
       }
 
       return res.json({ ok: true });

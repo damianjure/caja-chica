@@ -133,11 +133,18 @@ export default function App() {
       // deadlocks. Fire-and-forget loadViewer; the render guard keeps the
       // splash up while the viewer loads so there's no login flash.
       setSession(nextSession);
-      setLoadingSession(false);
       if (nextSession) {
+        // Mark viewer-loading BEFORE clearing loadingSession so the render
+        // guard (session && !viewer && viewerLoading) stays on the splash even
+        // if React doesn't batch these setStates (happens on mobile, since this
+        // is a Supabase callback, not a React event). Otherwise an intermediate
+        // render flashes the login screen before the viewer resolves.
+        setViewerLoading(true);
+        setLoadingSession(false);
         void loadViewer();
       } else {
         setViewer(null);
+        setLoadingSession(false);
       }
     });
 

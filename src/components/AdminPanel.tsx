@@ -611,6 +611,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
         <UserDetailModal
           loading={detailLoading}
           detail={detail}
+          viewerId={viewer.id}
           actingKey={actingKey}
           onClose={() => setSelectedUserId(null)}
           onStatusChange={requestStatusChange}
@@ -953,6 +954,7 @@ function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuick
 interface UserDetailModalProps {
   loading: boolean;
   detail: AdminUserDetail | null;
+  viewerId: string;
   actingKey: string | null;
   onClose: () => void;
   onStatusChange: (status: ActionableStatus) => void;
@@ -965,6 +967,7 @@ interface UserDetailModalProps {
 function UserDetailModal({
   loading,
   detail,
+  viewerId,
   actingKey,
   onClose,
   onStatusChange,
@@ -974,6 +977,10 @@ function UserDetailModal({
   onDeleteAccount,
 }: UserDetailModalProps) {
   const acting = actingKey !== null;
+  // Self-deletion and deleting a superadmin are blocked server-side
+  // (cannot_delete_self / last_superadmin). Hide the affordance so the modal
+  // can't even be opened for those targets.
+  const canDelete = !!detail && detail.user.user_id !== viewerId && detail.user.role !== "superadmin";
   return (
     <ModalShell
       title={detail?.user.email ?? "Detalle de usuario"}
@@ -1134,23 +1141,25 @@ function UserDetailModal({
             </section>
           )}
 
-          <section className="space-y-3 rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-red-text)]">
-              Zona peligrosa
-            </h3>
-            <p className="text-xs text-[var(--app-text-2)]">
-              Eliminar la cuenta borra el acceso (login y membresías). Los movimientos y empresas se conservan. Irreversible.
-            </p>
-            <button
-              type="button"
-              onClick={onDeleteAccount}
-              disabled={acting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--app-red-text)] px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            >
-              <Trash2 className="w-4 h-4" />
-              Eliminar cuenta definitivamente
-            </button>
-          </section>
+          {canDelete && (
+            <section className="space-y-3 rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-red-text)]">
+                Zona peligrosa
+              </h3>
+              <p className="text-xs text-[var(--app-text-2)]">
+                Eliminar la cuenta borra el acceso (login y membresías). Los movimientos y empresas se conservan. Irreversible.
+              </p>
+              <button
+                type="button"
+                onClick={onDeleteAccount}
+                disabled={acting}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--app-red-text)] px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Eliminar cuenta definitivamente
+              </button>
+            </section>
+          )}
         </div>
       )}
     </ModalShell>

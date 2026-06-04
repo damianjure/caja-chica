@@ -269,6 +269,13 @@ export function createMeRouter(deps: MeDeps) {
 
   router.delete("/api/me", requireSession, async (req, res) => {
     const session = getSession(req);
+    // A superadmin (bootstrap/system admin) must not be able to self-delete:
+    // it would orphan owner memberships and can lock the whole system out of
+    // admin. Deleting a superadmin is a deliberate DB-level operation.
+    if (session.role === "superadmin") {
+      res.status(403).json({ error: "Un superadmin no puede eliminar su propia cuenta." });
+      return;
+    }
     // Remove from non-owned dashboard memberships
     await supabase
       .from("dashboard_members")

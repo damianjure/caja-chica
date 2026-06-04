@@ -5,6 +5,8 @@ import { type ThemePreference } from "../../ThemeToggle";
 import { PreferenciasSection } from "./configuracion/PreferenciasSection";
 import { MiembrosSection } from "./configuracion/MiembrosSection";
 import { CuentaSection } from "./configuracion/CuentaSection";
+import { CuentaIdentidadSection } from "./configuracion/CuentaIdentidadSection";
+import { SesionesSection } from "./configuracion/SesionesSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
 import { BotConnectionPanel } from "../../BotConnectionPanel";
@@ -56,7 +58,6 @@ export default function ConfiguracionTab({
     viewer.role === "superadmin" ||
     selfMembership?.role === "owner";
 
-  // Espeja canManageCategoriasOp del backend: owner-like, o editor salvo manage_categorias:false explícito.
   const canManageCategorias =
     canManage ||
     (selfMembership?.role === "editor" &&
@@ -78,35 +79,60 @@ export default function ConfiguracionTab({
         <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
       )}
 
-      {/* Si el ancho da (xl+), las secciones se acomodan en 2 columnas compactas. */}
+      {/*
+        Layout fila superior: 2 columnas explícitas
+        Col izq: Equipo → Cuenta (identidad) → Sesiones activas
+        Col der: Preferencias
+      */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        <PreferenciasSection
-          viewer={viewer}
-          companies={companies}
-          themePreference={themePreference}
-          onSetThemePreference={onSetThemePreference}
-          lightPalette={lightPalette}
-          darkPalette={darkPalette}
-          onSetLightPalette={onSetLightPalette}
-          onSetDarkPalette={onSetDarkPalette}
-          showNotice={showNotice}
-          setError={setError}
-        />
+        {/* Columna izquierda */}
+        <div className="space-y-6">
+          {canManage && (
+            <MiembrosSection
+              viewer={viewer}
+              data={data}
+              loading={loading}
+              onRefresh={onRefresh}
+              showNotice={showNotice}
+              setError={setError}
+            />
+          )}
 
-        {canManage && (
-          <MiembrosSection
+          <CuentaIdentidadSection
             viewer={viewer}
-            data={data}
-            loading={loading}
-            onRefresh={onRefresh}
+            selfMembership={selfMembership}
             showNotice={showNotice}
             setError={setError}
           />
-        )}
 
+          <SesionesSection
+            viewer={viewer}
+            showNotice={showNotice}
+            setError={setError}
+          />
+        </div>
+
+        {/* Columna derecha */}
+        <div className="space-y-6">
+          <PreferenciasSection
+            viewer={viewer}
+            companies={companies}
+            themePreference={themePreference}
+            onSetThemePreference={onSetThemePreference}
+            lightPalette={lightPalette}
+            darkPalette={darkPalette}
+            onSetLightPalette={onSetLightPalette}
+            onSetDarkPalette={onSetDarkPalette}
+            showNotice={showNotice}
+            setError={setError}
+          />
+        </div>
+      </div>
+
+      {/* Fila inferior: Categorías + Vinculación (ya estaba bien) */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         {canManageCategorias && <CategoriasSection />}
 
-        {/* Vinculación: Telegram + Drive en una sola tarjeta. */}
         {canManage && (
           <SectionCard title="Vinculación" description="Conectá Telegram y Google Drive a tu cuenta.">
             <BotConnectionPanel />
@@ -115,6 +141,7 @@ export default function ConfiguracionTab({
         )}
       </div>
 
+      {/* Acceso y datos: full-width */}
       <CuentaSection
         viewer={viewer}
         selfMembership={selfMembership}

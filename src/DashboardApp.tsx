@@ -525,7 +525,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
 
   return (
-    <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
+    <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard

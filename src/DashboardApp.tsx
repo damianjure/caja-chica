@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, Sparkles, Trash2 } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2 } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -114,27 +114,42 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     retry: 1,
   });
   const [showWizard, setShowWizard] = useState(viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded');
-  const [showDemoReminder, setShowDemoReminder] = useState(false);
-  const [deletingDemo, setDeletingDemo] = useState(false);
 
   const handleDemoDeleted = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['viewer'] });
   }, [queryClient]);
 
-  const handleDeleteDemoFromModal = useCallback(async () => {
-    setDeletingDemo(true);
+  // Telegram banner state (session-only dismiss)
+  const [telegramBannerDismissed, setTelegramBannerDismissed] = useState(false);
+  const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
+  const [telegramLinkingBanner, setTelegramLinkingBanner] = useState(false);
+
+  useEffect(() => {
+    if (showWizard) return; // wizard handles it; don't double-fetch
+    let active = true;
+    api.getBotConnection()
+      .then((r) => { if (active) setTelegramLinked(r.connected); })
+      .catch(() => { if (active) setTelegramLinked(false); });
+    return () => { active = false; };
+  }, [showWizard]);
+
+  const handleTelegramBannerActivate = useCallback(async () => {
+    setTelegramLinkingBanner(true);
     try {
-      await api.deleteDemoData();
-      toast.success('Datos de muestra eliminados.');
-      setShowDemoReminder(false);
-      setActiveTab('movimientos');
-      handleDemoDeleted();
+      const res = await api.selfLinkTelegram();
+      if (res.telegramDeepLink) {
+        window.open(res.telegramDeepLink, '_blank', 'noopener');
+        toast.success('Abrí Telegram y tocá Start.');
+      } else {
+        toast.success(`Enviá /start ${res.manualStartCode} al bot en Telegram.`);
+      }
+      setTelegramBannerDismissed(true);
     } catch {
-      toast.error('No se pudieron eliminar los datos de muestra.');
+      toast.error('No se pudo generar el link de activación.');
     } finally {
-      setDeletingDemo(false);
+      setTelegramLinkingBanner(false);
     }
-  }, [handleDemoDeleted]);
+  }, []);
 
   useEffect(() => {
     try { window.sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab); } catch { /* ignore */ }
@@ -514,58 +529,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard
-          onFinish={(cleanedDemo) => {
-            setShowWizard(false);
-            if (!cleanedDemo && viewer.onboarding_state !== 'cleaned') {
-              setShowDemoReminder(true);
-            }
-          }}
+          onFinish={() => setShowWizard(false)}
           canInstall={pwa.available}
           onInstall={() => void pwa.promptInstall()}
         />
-      )}
-
-      {showDemoReminder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demo-reminder-title"
-            className="bg-[var(--app-canvas)] rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
-          >
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-              </span>
-              <div>
-                <h2 id="demo-reminder-title" className="text-base font-bold text-[var(--app-text-1)]">
-                  Hay datos de muestra cargados
-                </h2>
-                <p className="mt-1 text-sm text-[var(--app-text-2)]">
-                  Tu dashboard tiene movimientos y empresas de ejemplo. Los encontrás en la pestaña Movimientos.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                type="button"
-                onClick={() => { setShowDemoReminder(false); setActiveTab('movimientos'); }}
-                className="rounded-lg border border-[var(--app-border)] px-4 py-2 text-sm font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors"
-              >
-                Después
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDeleteDemoFromModal()}
-                disabled={deletingDemo}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deletingDemo ? 'Borrando...' : 'Borrar ahora'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       <div className="max-w-7xl mx-auto space-y-8">
@@ -573,6 +540,31 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         {apiStatus === 'load_error' && <div role="alert" className="bg-[var(--app-red-surface)] border border-[var(--app-red-border)] p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
         <MaintenanceBanner status={maintenanceStatus} />
+
+        {/* Telegram activation banner — shown only when not linked, not dismissed, and wizard not open */}
+        {!showWizard && !telegramBannerDismissed && telegramLinked === false && (
+          <div role="status" className="flex items-center gap-3 rounded-xl border border-sky-200 dark:border-sky-700 bg-sky-50 dark:bg-sky-500/10 px-4 py-3 text-sky-800 dark:text-sky-200 text-sm">
+            <MessageCircle className="w-4 h-4 shrink-0 text-sky-500" aria-hidden="true" />
+            <p className="flex-1">Activá el bot de Telegram para cargar gastos por texto, foto o voz.</p>
+            <button
+              type="button"
+              onClick={() => void handleTelegramBannerActivate()}
+              disabled={telegramLinkingBanner}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400 bg-white dark:bg-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:text-sky-200 hover:border-sky-500 disabled:opacity-50 shrink-0"
+            >
+              {telegramLinkingBanner ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+              Activar
+            </button>
+            <button
+              type="button"
+              onClick={() => setTelegramBannerDismissed(true)}
+              aria-label="Cerrar"
+              className="p-1 rounded-lg text-sky-500 hover:text-sky-700 dark:hover:text-sky-200 shrink-0"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         <header className="relative z-30">
           <div className="glass-chrome flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">

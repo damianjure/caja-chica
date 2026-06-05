@@ -3,7 +3,7 @@ import { Sparkles, BarChart2, Trash2, ChevronRight, MessageCircle, Download, X }
 import { api } from '../services/api';
 
 interface WelcomeWizardProps {
-  onFinish: (cleanDemo: boolean) => void;
+  onFinish: () => void;
   /** True when the app can still be installed (not standalone, and Android prompt or iOS). */
   canInstall?: boolean;
   /** Triggers the install flow (native prompt on Android, manual instructions on iOS). */
@@ -25,7 +25,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
     if (deepLink) return;
     setLoadingLink(true);
     try {
-      const res = await api.getBotConnection();
+      const res = await api.selfLinkTelegram();
       setDeepLink(res.telegramDeepLink ?? null);
     } catch {
       // non-fatal — user can skip
@@ -34,22 +34,21 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
     }
   };
 
-  const finish = async (cleanDemo: boolean) => {
+  const finish = async () => {
     setFinishing(true);
     try {
-      if (cleanDemo) await api.deleteDemoData();
       await api.updateMe({ onboarding_state: 'completed' });
     } catch {
       // non-fatal — wizard closes regardless
     } finally {
-      onFinish(cleanDemo);
+      onFinish();
     }
   };
 
   return (
     <div
       className="anim-backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onKeyDown={(e) => { if (e.key === 'Escape' && !finishing) void finish(false); }}
+      onKeyDown={(e) => { if (e.key === 'Escape' && !finishing) void finish(); }}
     >
       <div
         ref={dialogRef}
@@ -62,7 +61,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
 
         {/* Skip button */}
         <button
-          onClick={() => finish(false)}
+          onClick={() => finish()}
           className="absolute top-4 right-4 text-[var(--app-text-3)] hover:text-[var(--app-text-2)] active:scale-[0.9] transition-transform duration-100"
           aria-label="Saltear bienvenida"
         >
@@ -192,7 +191,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
                 </button>
               )}
               <button
-                onClick={() => finish(false)}
+                onClick={() => finish()}
                 disabled={finishing}
                 className={`w-full flex items-center justify-center gap-2 active:scale-[0.97] font-medium py-3 px-4 rounded-md transition duration-150 text-sm disabled:opacity-50 ${
                   canInstall && onInstall

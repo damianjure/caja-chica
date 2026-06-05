@@ -479,6 +479,10 @@ export const api = {
     });
   },
 
+  async selfLinkTelegram(): Promise<{ token: string; telegramDeepLink: string | null; manualStartCode: string; expiresAt: string }> {
+    return fetchApi("/api/telegram/self-link", { method: "POST" });
+  },
+
   async extract(text: string, categories: Categoria[]): Promise<GeminiResponse> {
     return fetchApi("/api/extract", {
       method: "POST",

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Loader2, Monitor, Trash2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, Loader2, Monitor, Trash2, X, MessageCircle } from "lucide-react";
 import { api, type AppViewer, type DashboardMember, type UserSession } from "../../../../services/api";
 import { toast } from "sonner";
 import { SectionCard } from "../../primitives";
@@ -74,6 +74,35 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
       setError("No se pudieron eliminar los datos de muestra.");
     } finally {
       setDeletingDemo(false);
+    }
+  };
+
+  const [telegramConnected, setTelegramConnected] = useState<boolean | null>(null);
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
+  const [linkingTelegram, setLinkingTelegram] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api.getBotConnection()
+      .then((r) => { if (active) { setTelegramConnected(r.connected); setTelegramUsername(r.telegramUsername); } })
+      .catch(() => { if (active) setTelegramConnected(false); });
+    return () => { active = false; };
+  }, []);
+
+  const handleActivateTelegram = async () => {
+    setLinkingTelegram(true);
+    try {
+      const res = await api.selfLinkTelegram();
+      if (res.telegramDeepLink) {
+        window.open(res.telegramDeepLink, '_blank', 'noopener');
+        toast.success("Abrí Telegram y tocá Start.");
+      } else {
+        toast.success(`Enviá /start ${res.manualStartCode} al bot en Telegram.`);
+      }
+    } catch {
+      toast.error("No se pudo generar el link de activación.");
+    } finally {
+      setLinkingTelegram(false);
     }
   };
 
@@ -176,6 +205,50 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
           </button>
         </div>
       )}
+
+      {/* Bot de Telegram */}
+      <div className="border-t border-[var(--app-border)] pt-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <MessageCircle className="w-3.5 h-3.5 text-[var(--app-text-3)]" />
+            <span className="text-xs text-[var(--app-text-3)]">Bot de Telegram</span>
+          </div>
+          {telegramConnected === null ? (
+            <Loader2 className="w-3 h-3 animate-spin text-[var(--app-text-3)]" />
+          ) : telegramConnected ? (
+            <div className="flex items-center gap-2">
+              {telegramUsername && (
+                <span className="text-xs font-medium text-[var(--app-text-2)]">@{telegramUsername}</span>
+              )}
+              <span className="inline-flex items-center rounded-full bg-[var(--app-green-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-green-text)]">
+                Conectado
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleActivateTelegram()}
+                disabled={linkingTelegram}
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--app-border)] px-2.5 py-1 text-xs font-medium text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-50"
+              >
+                {linkingTelegram ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                Reconectar
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleActivateTelegram()}
+              disabled={linkingTelegram}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400 bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-700 dark:text-sky-300 hover:border-sky-500 disabled:opacity-50"
+            >
+              {linkingTelegram ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageCircle className="w-3 h-3" />}
+              Activar bot de Telegram
+            </button>
+          )}
+        </div>
+        {telegramConnected && (
+          <p className="text-[10px] text-[var(--app-text-3)]">¿Cambiaste de teléfono? Reconectá para vincular tu nueva cuenta de Telegram.</p>
+        )}
+      </div>
 
       {/* Sesiones — divider + load on demand */}
       <div className="border-t border-[var(--app-border)] pt-3 space-y-2">

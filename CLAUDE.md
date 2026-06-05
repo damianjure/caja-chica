@@ -13,6 +13,7 @@ En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa
 
 ## Mapa de documentación
 
+- **README.md** — entrada del repo: overview, stack, cómo correr, índice de docs.
 - **CLAUDE.md** (este archivo) — estado actual, arquitectura, reglas e invariantes. Atemporal.
 - **CHANGELOG.md** — historial cronológico de cambios. NO autocargado, consultar on-demand.
 - **RUNBOOK.md** — URLs, deploy, infra, env vars, rotación de secretos. NO autocargado.
@@ -235,22 +236,11 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   ├── telegramAccess.test.ts     ← incluye tests multiusuario
 │   ├── telegramAudio.test.ts
 │   └── telegramMedia.test.ts      ← 14 tests: inferMediaMimeType, parse functions, extractFromPhoto mock
-├── supabase_schema.sql
-├── phase1_supabase_patch.sql
-├── report_exports_phase.sql              ✔ aplicado en prod
-├── fix_auth_hook.sql                     ✔ aplicado en prod
-├── shared_dashboard_phase.sql            ✔ aplicado en prod
-├── shared_dashboard_invitations_phase.sql ✔ aplicado en prod
-├── shared_dashboard_cutover_final.sql    ✔ aplicado en prod
-├── mutations_audit_soft_delete_phase.sql ✔ aplicado en prod
-├── security_definer_hook_patch.sql       ✔ aplicado en prod 2026-05-03
-├── security_hardening_phase.sql          ✔ aplicado en prod 2026-05-03
-├── soft_delete_movimientos_phase.sql     ✔ aplicado en prod 2026-05-03
-├── telegram_multi_user_phase.sql         ✔ aplicado en prod 2026-05-04
-├── drive_oauth_phase.sql                 ✔ aplicado en prod 2026-05-07
-├── photo_ticket_phase.sql                ✔ aplicado en prod 2026-05-07
-├── drop_pending_extractions.sql          ✔ aplicado en prod 2026-05-08
-├── user_settings_phase.sql               ✔ aplicado en prod 2026-05-12
+├── db/                                   ← SQL fuera del root (housekeeping 2026-06-05)
+│   ├── schema.sql                        ← snapshot completo del schema (antes supabase_schema.sql)
+│   └── patches/                          ← patches históricos aplicados a prod a mano
+│       └── *.sql                         (ver tabla "Base de datos y SQL" + db/patches/README.md)
+├── supabase/migrations/                  ← migraciones gestionadas por el Supabase CLI
 ├── firebase.json
 ├── .firebaserc
 ├── Dockerfile
@@ -555,6 +545,8 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 ---
 
 ## Base de datos y SQL
+
+> **Ubicación (housekeeping 2026-06-05):** los patches viven en `db/patches/*.sql` y el snapshot del schema en `db/schema.sql` (antes estaban sueltos en el root). NO están en `supabase/migrations/` a propósito — son históricos aplicados a mano, el CLI no debe re-aplicarlos. Migraciones gestionadas por el CLI: `supabase/migrations/`.
 
 ### Patches SQL
 | Patch | Estado |

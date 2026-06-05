@@ -226,19 +226,28 @@ export function createDashboardRouter(deps: DashboardDeps) {
           );
         if (memberError) throw memberError;
       } else {
-        const { error: globalInviteError } = await supabase
+        // Skip upsert if a pending app invitation already exists — avoids downgrading role
+        const { data: existingAppInvite } = await supabase
           .from("user_invitations")
-          .upsert(
-            {
-              email: payload.email,
-              role: "member",
-              status: "pending",
-              invited_by: session.userId,
-              expires_at: sevenDaysFromNow,
-            },
-            { onConflict: "email" },
-          );
-        if (globalInviteError) throw globalInviteError;
+          .select("id")
+          .eq("email", payload.email)
+          .eq("status", "pending")
+          .limit(1);
+        if (!existingAppInvite || existingAppInvite.length === 0) {
+          const { error: globalInviteError } = await supabase
+            .from("user_invitations")
+            .upsert(
+              {
+                email: payload.email,
+                role: "member",
+                status: "pending",
+                invited_by: session.userId,
+                expires_at: sevenDaysFromNow,
+              },
+              { onConflict: "email" },
+            );
+          if (globalInviteError) throw globalInviteError;
+        }
       }
 
       const inviteUrl = `${publicAppUrl || ""}/?invite=${data.invite_token}`;
@@ -705,7 +714,54 @@ export function createDashboardRouter(deps: DashboardDeps) {
       } else {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         const inviterDisplayName = await resolveInviterDisplayName(session);
-        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, undefined, undefined, inviterDisplayName);
+
+        // Regenerate telegram deep link if this invitation had telegram_preauth
+        let resendTelegramDeepLink: string | undefined;
+        if (row.telegram_preauth) {
+          try {
+            const telegramToken = randomBytes(24).toString("hex");
+            const telegramTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+            // Look up invitee's user_id if they've already registered
+            let targetUserId: string | null = null;
+            const { data: inviteeRows } = await supabase
+              .from("app_users")
+              .select("user_id")
+              .eq("email", row.email)
+              .limit(1);
+            targetUserId = inviteeRows?.[0]?.user_id ?? null;
+
+            const { data: newTokenData, error: newTokenErr } = await supabase
+              .from("telegram_invite_tokens")
+              .insert({
+                token: telegramToken,
+                dashboard_id: row.dashboard_id,
+                target_user_id: targetUserId,
+                pre_authorized: true,
+                expires_at: telegramTokenExpiresAt,
+                status: "pending",
+              })
+              .select()
+              .single();
+
+            if (newTokenErr) {
+              console.error("[resend] Failed to create new telegram invite token:", newTokenErr);
+            } else {
+              resendTelegramDeepLink = buildTelegramDeepLink(telegramToken) ?? undefined;
+              // Update dashboard_invitation to point to new token
+              if (newTokenData?.id) {
+                await supabase
+                  .from("dashboard_invitations")
+                  .update({ telegram_invite_token_id: newTokenData.id })
+                  .eq("id", row.id);
+              }
+            }
+          } catch (telegramErr) {
+            console.error("[resend] Unexpected error regenerating telegram token:", telegramErr);
+          }
+        }
+
+        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, resendTelegramDeepLink, undefined, inviterDisplayName);
       }
 
       return res.json({ ok: true });

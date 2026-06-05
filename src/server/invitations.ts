@@ -8,7 +8,7 @@ export async function syncPendingDashboardInvitations(
   try {
     const { data, error } = await supabase
       .from("dashboard_invitations")
-      .select("id, dashboard_id, role, invited_by_user_id")
+      .select("id, dashboard_id, role, invited_by_user_id, telegram_invite_token_id")
       .eq("email", session.email.toLowerCase())
       .eq("status", "pending")
       .limit(50);
@@ -38,6 +38,20 @@ export async function syncPendingDashboardInvitations(
           updated_at: new Date().toISOString(),
         })
         .eq("id", invitation.id);
+
+      // Backfill target_user_id on the pre-authorized telegram token (best-effort)
+      if ((invitation as any).telegram_invite_token_id) {
+        try {
+          await supabase
+            .from("telegram_invite_tokens")
+            .update({ target_user_id: session.userId })
+            .eq("id", (invitation as any).telegram_invite_token_id)
+            .is("target_user_id", null)
+            .eq("status", "pending");
+        } catch (tokenErr) {
+          console.error("[syncPendingDashboardInvitations] Failed to backfill telegram token target_user_id:", tokenErr);
+        }
+      }
     }
   } catch (error) {
     if (!isMissingSchemaArtifactError(error)) throw error;

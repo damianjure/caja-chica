@@ -246,6 +246,17 @@ export function createAdminRouter(deps: AdminDeps) {
         return res.status(403).json({ error: "forbidden" });
       }
 
+      // Reject if accepted invitation already exists for this email
+      const { data: acceptedRows } = await supabase
+        .from("user_invitations")
+        .select("id")
+        .eq("email", payload.email)
+        .eq("status", "accepted")
+        .limit(1) as { data: unknown[] | null };
+      if (acceptedRows && acceptedRows.length > 0) {
+        return res.status(409).json({ error: "already_accepted" });
+      }
+
       // Reject if active (pending + not expired) invitation already exists for this email
       const { data: existingRows } = await supabase
         .from("user_invitations")

@@ -88,6 +88,56 @@ export function createTelegramRouter(deps: TelegramDeps) {
     }
   });
 
+  router.post("/api/telegram/self-link", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!scope.dashboardId) return res.status(403).json({ error: "forbidden" });
+
+      // Revoke any non-revoked telegram_links for this user+dashboard (recovery path)
+      await supabase
+        .from("telegram_links")
+        .update({ status: "revoked" })
+        .eq("app_user_id", session.userId)
+        .eq("dashboard_id", scope.dashboardId)
+        .neq("status", "revoked");
+
+      // Expire any prior pending invite tokens for this user+dashboard
+      await supabase
+        .from("telegram_invite_tokens")
+        .update({ status: "expired" })
+        .eq("target_user_id", session.userId)
+        .eq("dashboard_id", scope.dashboardId)
+        .eq("status", "pending");
+
+      const token = randomBytes(16).toString("hex");
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+      const { error: insertError } = await supabase
+        .from("telegram_invite_tokens")
+        .insert({
+          token,
+          dashboard_id: scope.dashboardId,
+          target_user_id: session.userId,
+          created_by_user_id: session.userId,
+          pre_authorized: true,
+          expires_at: expiresAt,
+          status: "pending",
+        });
+      if (insertError) throw insertError;
+
+      return res.status(201).json({
+        token,
+        telegramDeepLink: buildTelegramDeepLink(token),
+        manualStartCode: `/start ${token}`,
+        expiresAt,
+      });
+    } catch (err) {
+      console.error("POST /api/telegram/self-link:", err);
+      return res.status(500).json({ error: "internal" });
+    }
+  });
+
   router.post("/api/telegram/invite-token", requireSession, async (req, res) => {
     try {
       const session = getSession(req);

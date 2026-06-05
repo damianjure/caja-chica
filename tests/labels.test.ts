@@ -6,12 +6,12 @@ import { formatIdentity, initialsFromEmail } from "../src/services/labels.ts";
 // formatIdentity — usado en el header. Debe manejar dashboardRole null sin "null".
 test("formatIdentity: con dashboardRole → app · rol scope", () => {
   assert.equal(formatIdentity("superadmin", "owner"), "Super Admin · Dueño de este dashboard");
-  assert.equal(formatIdentity("member", "editor"), "Miembro · Puede editar este dashboard");
+  assert.equal(formatIdentity("member", "editor"), "Dueño · Puede editar este dashboard");
 });
 
 test("formatIdentity: sin dashboardRole (null) → solo app, sin 'null'", () => {
   const r = formatIdentity("member", null);
-  assert.equal(r, "Miembro");
+  assert.equal(r, "Dueño");
   assert.doesNotMatch(r, /null/);
 });
 

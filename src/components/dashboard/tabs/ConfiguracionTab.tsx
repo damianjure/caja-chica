@@ -8,7 +8,6 @@ import { CuentaSection } from "./configuracion/CuentaSection";
 import { CuentaIdentidadSection } from "./configuracion/CuentaIdentidadSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
-import { BotConnectionPanel } from "../../BotConnectionPanel";
 import { SectionCard } from "../primitives";
 
 interface ConfiguracionTabProps {
@@ -129,10 +128,9 @@ export default function ConfiguracionTab({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         {canManageCategorias && <CategoriasSection />}
 
-        {canManage && (
-          <SectionCard title="Vinculación" description="Conectá Telegram y Google Drive a tu cuenta.">
-            <BotConnectionPanel />
-            {canConnectDrive && <DriveSection />}
+        {canManage && canConnectDrive && (
+          <SectionCard title="Google Drive" description="Conectá Google Drive para guardar tus informes.">
+            <DriveSection />
           </SectionCard>
         )}
       </div>

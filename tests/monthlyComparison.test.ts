@@ -13,9 +13,12 @@ test('buildMonthlyComparison: delta % ARS vs mes anterior', () => {
   const c = buildMonthlyComparison([cur, prev], 'ARS');
   assert.equal(c.hasPrev, true);
   assert.equal(c.ingresos.deltaPct, 10); // 1100 vs 1000
+  assert.equal(c.ingresos.isNew, false);
   assert.equal(c.ingresos.current, 1100);
   assert.equal(c.gastos.deltaPct, -20); // 800 vs 1000
+  assert.equal(c.gastos.isNew, false);
   assert.equal(c.utilidad.deltaPct, null); // prev neto 0 → null
+  assert.equal(c.utilidad.isNew, true); // base~0, prev exists, current 300 > 0
 });
 
 test('buildMonthlyComparison: sin mes previo → hasPrev false, deltas null', () => {
@@ -39,5 +42,20 @@ test('buildMonthlyComparison: utilidad negativa vs positiva', () => {
   const c = buildMonthlyComparison([cur, prev], 'ARS');
   // (-200 - 300) / |300| = -166.67 → -167
   assert.equal(c.utilidad.deltaPct, -167);
+  assert.equal(c.utilidad.isNew, false);
   assert.equal(c.utilidad.current, -200);
+});
+
+test('buildMonthlyComparison: base ~0 → isNew true, sin porcentaje explosivo', () => {
+  // prev month had nearly nothing, current has real values → should show "nuevo", not ▲1863%
+  const cur = sum({ period: '2026-06', ingresosArs: 18630 });
+  const prev = sum({ period: '2026-05', ingresosArs: 0 });
+  const c = buildMonthlyComparison([cur, prev], 'ARS');
+  assert.equal(c.ingresos.deltaPct, null); // no percentage shown
+  assert.equal(c.ingresos.isNew, true);    // "nuevo" label shown instead
+});
+
+test('buildMonthlyComparison: sin mes previo → isNew false', () => {
+  const c = buildMonthlyComparison([sum({ ingresosArs: 500 })], 'ARS');
+  assert.equal(c.ingresos.isNew, false); // no prev month → not "new", just missing data
 });

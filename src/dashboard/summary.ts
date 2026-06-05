@@ -321,8 +321,10 @@ export interface MonthlyChartPoint {
 }
 
 export interface ComparisonRow {
-  /** % de cambio vs mes anterior; null si no hay mes anterior o era 0. */
+  /** % de cambio vs mes anterior; null si no hay mes anterior o base ~0. */
   deltaPct: number | null;
+  /** true cuando hay mes previo pero base ~0 y valor actual > 0: "nuevo". */
+  isNew: boolean;
   current: number;
 }
 export interface MonthlyComparison {
@@ -347,8 +349,10 @@ export function buildMonthlyComparison(summaries: MonthlySummary[], currency: 'A
   const row = (k: 'ingresos' | 'gastos' | 'neto'): ComparisonRow => {
     const c = pick(cur, k);
     const p = pick(prev, k);
-    const deltaPct = !prev || p === 0 ? null : Math.round(((c - p) / Math.abs(p)) * 100);
-    return { deltaPct, current: c };
+    const baseZero = !prev || Math.abs(p) < 1;
+    const deltaPct = baseZero ? null : Math.round(((c - p) / Math.abs(p)) * 100);
+    const isNew = baseZero && !!prev && c > 0;
+    return { deltaPct, isNew, current: c };
   };
   return {
     hasPrev: !!prev,

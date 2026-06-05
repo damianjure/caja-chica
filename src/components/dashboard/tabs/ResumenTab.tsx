@@ -101,7 +101,9 @@ export default function ResumenTab(props: ResumenTabProps) {
                       <span className="text-sm text-[var(--app-text-2)]">{label}</span>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-semibold tabular-nums text-[var(--app-text-1)]">{formatted}</span>
-                        {row.deltaPct === null ? (
+                        {row.isNew ? (
+                          <span className="text-xs font-medium tabular-nums w-16 text-right text-[var(--chart-income)]">nuevo</span>
+                        ) : row.deltaPct === null ? (
                           <span className="text-xs text-[var(--app-text-3)] tabular-nums w-16 text-right">—</span>
                         ) : (
                           <span

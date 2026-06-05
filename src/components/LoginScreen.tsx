@@ -69,10 +69,10 @@ export function LoginScreen({
                 <br />
                 <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span>
               </p>
-              <div className="flex items-center justify-center gap-5 text-xs text-[var(--app-text-3)]">
-                <span className="inline-flex items-center gap-1.5"><Send className="h-3.5 w-3.5 shrink-0" /> Telegram</span>
-                <span className="inline-flex items-center gap-1.5"><Mic className="h-3.5 w-3.5 shrink-0" /> Voz</span>
-                <span className="inline-flex items-center gap-1.5"><Camera className="h-3.5 w-3.5 shrink-0" /> Foto</span>
+              <div className="flex items-center justify-center gap-5 text-xs text-[var(--app-text-3)] pointer-events-none select-none" aria-hidden="true">
+                <span className="inline-flex items-center gap-1.5 opacity-60"><Send className="h-3.5 w-3.5 shrink-0" /> Telegram</span>
+                <span className="inline-flex items-center gap-1.5 opacity-60"><Mic className="h-3.5 w-3.5 shrink-0" /> Voz</span>
+                <span className="inline-flex items-center gap-1.5 opacity-60"><Camera className="h-3.5 w-3.5 shrink-0" /> Foto</span>
               </div>
             </div>
           )}

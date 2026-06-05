@@ -819,7 +819,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
                 Dueño
               </span>
-              {node.owner.app_role && (
+              {node.owner.app_role && APP_ROLE_LABELS[node.owner.app_role] !== "Dueño" && (
                 <span className="text-xs px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-2)] bg-[var(--app-surface-2)]">
                   {APP_ROLE_LABELS[node.owner.app_role]}
                 </span>

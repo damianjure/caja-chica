@@ -21,3 +21,6 @@ design-explorations/
 
 # Supabase CLI: estado local (link, refs, pooler-url) — no va en git
 supabase/.temp/
+
+# Lockfile de skills de IA — personal del setup local, no del proyecto
+skills-lock.json

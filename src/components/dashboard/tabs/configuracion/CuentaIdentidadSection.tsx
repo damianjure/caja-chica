@@ -167,9 +167,9 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
         </div>
       </div>
 
-      {/* Nombre visible — label inline + input + guardar en una fila */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-[var(--app-text-3)] shrink-0 w-24">Nombre visible</label>
+      {/* Nombre visible — label + input + guardar, sin overflow en mobile */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[6rem_minmax(0,1fr)_auto] sm:items-center">
+        <label className="col-span-2 text-xs text-[var(--app-text-3)] sm:col-span-1">Nombre visible</label>
         <input
           type="text"
           value={displayName}
@@ -178,16 +178,16 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
           maxLength={50}
           aria-label="Nombre visible"
           onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
-          className="flex-1 rounded-lg border border-[var(--app-border-strong)] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+          className="min-w-0 w-full rounded-lg border border-[var(--app-border-strong)] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
         />
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          className="inline-flex items-center gap-1 rounded-lg bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-3 py-1.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 shrink-0"
+          className="inline-flex items-center justify-center gap-1 rounded-lg bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-2.5 py-1.5 text-sm font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50 sm:px-3"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          Guardar
+          <span className="sr-only sm:not-sr-only">Guardar</span>
         </button>
       </div>
 

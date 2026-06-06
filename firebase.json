@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "caja-chica-bot",
     "public": "dist",
     "ignore": [
       "firebase.json",

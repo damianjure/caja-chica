@@ -50,451 +50,248 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
+// ---------------------------------------------------------------------------
+// Visual layer (Stripo-derived): Imprima font, table-based layout, VML button
+// for Outlook, mobile-responsive media queries, sectioned rounded cards.
+// Only the *look* comes from Stripo — all dynamic logic stays ours.
+// ---------------------------------------------------------------------------
+
+const EMAIL_FONT = "Imprima, Arial, sans-serif";
+const TEXT_COLOR = "#2D3142";
+const CARD_BG = "#EFEFEF";
+const BLOCK_BG = "#fafafa";
+const BTN_BG = "#0b5394";
+
+// Body paragraph with the Imprima base style.
+// `cls` drives the dark-mode override: "cc-text" (default) or "cc-muted".
+function p(html: string, opts?: { size?: number; lh?: number; extra?: string; cls?: string }): string {
+  const size = opts?.size ?? 18;
+  const lh = opts?.lh ?? 27;
+  const extra = opts?.extra ?? "";
+  const cls = opts?.cls ?? "cc-text";
+  return `<p class="${cls}" style="Margin:0;mso-line-height-rule:exactly;font-family:${EMAIL_FONT};line-height:${lh}px;letter-spacing:0;font-weight:normal;color:${TEXT_COLOR};font-size:${size}px;${extra}">${html}</p>`;
+}
+
+function spacer(): string {
+  return p("<br>");
+}
+
+// A rounded #fafafa section block — gives the "separación de secciones" look.
+function block(inner: string): string {
+  return `<table cellpadding="0" cellspacing="0" width="100%" bgcolor="${BLOCK_BG}" class="cc-block" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;border-collapse:separate;background-color:${BLOCK_BG};border-radius:10px;margin:0 0 16px">
+    <tr><td align="left" class="es-m-text" style="padding:15px;Margin:0">${inner}</td></tr>
+  </table><table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="border-spacing:0px"><tr><td style="padding:0;Margin:0;height:16px;line-height:16px;font-size:0">&nbsp;</td></tr></table>`;
+}
+
+// Outlook-safe CTA button (VML for mso, anchor for everyone else).
+function ctaButton(url: string, label: string): string {
+  const u = escapeHtml(url);
+  return `<table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="border-spacing:0px"><tr><td align="center" style="padding:8px 0 24px;Margin:0">
+<!--[if mso]><a href="${u}" target="_blank" hidden>
+  <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${u}" style="height:48px;v-text-anchor:middle;width:293px" arcsize="50%" stroke="f" fillcolor="${BTN_BG}">
+    <w:anchorlock></w:anchorlock>
+    <center style="color:#ffffff;font-family:${EMAIL_FONT};font-size:18px;font-weight:700;mso-text-raise:1px">${escapeHtml(label)}</center>
+  </v:roundrect></a>
+<![endif]--><!--[if !mso]><!-- --><span class="cc-btn-border" style="border-style:solid;border-color:${BTN_BG};background:${BTN_BG};border-width:0;display:inline-block;border-radius:30px;width:auto;text-align:center;mso-border-alt:10px"><a href="${u}" target="_blank" class="es-button cc-btn" style="mso-style-priority:100 !important;text-decoration:none !important;mso-line-height-rule:exactly;color:#FFFFFF;font-size:22px;font-weight:bold;padding:15px 40px;display:inline-block;background:${BTN_BG};border-radius:30px;font-family:${EMAIL_FONT};font-style:normal;line-height:26px;width:auto;text-align:center;letter-spacing:0"><span style="display:inline-block;background:#FFFFFF;border-radius:4px;padding:3px;margin-right:10px;vertical-align:middle;line-height:0"><img src="https://developers.google.com/identity/images/g-logo.png" alt="" width="18" height="18" style="display:block;border:0" /></span><span style="vertical-align:middle">${escapeHtml(label)}</span></a></span><!--<![endif]-->
+</td></tr></table>`;
+}
+
 function baseTemplate(title: string, preheader: string, body: string): string {
-  return `<!DOCTYPE html>
-<html lang="es">
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta content="telephone=no" name="format-detection" />
   <meta name="color-scheme" content="light dark" />
   <meta name="supported-color-schemes" content="light dark" />
-  <title>${title}</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      background: oklch(98% 0.005 95);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: oklch(22% 0.01 95);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
+  <title>${escapeHtml(title)}</title>
+  <!--[if (mso 16)]><style type="text/css">a {text-decoration: none;}</style><![endif]-->
+  <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]-->
+  <!--[if gte mso 9]>
+  <noscript><xml><o:OfficeDocumentSettings><o:AllowPNG></o:AllowPNG><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <!--[if !mso]><!-- -->
+  <link href="https://fonts.googleapis.com/css2?family=Imprima&display=swap" rel="stylesheet" />
+  <!--<![endif]-->
+  <!--[if mso]><xml><w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word"><w:DontUseAdvancedTypographyReadingMail/></w:WordDocument></xml><![endif]-->
+  <style type="text/css">
+    #outlook a { padding: 0; }
+    a.es-button { mso-style-priority: 100 !important; text-decoration: none !important; }
+    a[x-apple-data-detectors], #MessageViewBody a {
+      color: inherit !important; text-decoration: none !important; font-size: inherit !important;
+      font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important;
     }
     .preheader {
-      display: none !important;
-      visibility: hidden;
-      opacity: 0;
-      color: transparent;
-      height: 0;
-      width: 0;
-      overflow: hidden;
-      mso-hide: all;
+      display: none !important; visibility: hidden; opacity: 0; color: transparent;
+      height: 0; width: 0; max-height: 0; max-width: 0; overflow: hidden; mso-hide: all;
+      font-size: 1px; line-height: 1px;
     }
-    .wrapper {
-      max-width: 560px;
-      margin: 48px auto;
-      padding: 0 20px;
-    }
-    .card {
-      background: oklch(100% 0 0);
-      border: 1px solid oklch(93% 0.005 95);
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .brandbar {
-      padding: 28px 36px 0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .logo-shell {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      overflow: hidden;
-      background: oklch(18% 0.05 148);
-      box-shadow: 0 8px 18px rgba(14, 40, 26, 0.10);
-      flex: 0 0 auto;
-    }
-    .logo-shell img {
-      display: block;
-      width: 44px;
-      height: 44px;
-      border: 0;
-    }
-    .wordmark {
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.2px;
-      color: oklch(22% 0.01 95);
-    }
-    .content { padding: 32px 36px 8px; }
-    .hero { text-align: center; }
-    .eyebrow {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: oklch(55% 0.08 148);
-      margin: 0 0 12px;
-    }
-    h2.title {
-      margin: 0 0 20px;
-      font-size: 26px;
-      line-height: 1.2;
-      font-weight: 700;
-      letter-spacing: -0.6px;
-      color: oklch(18% 0.01 95);
-    }
-    p.lede {
-      font-size: 16px;
-      line-height: 1.6;
-      color: oklch(32% 0.01 95);
-      margin: 0 0 24px;
-      max-width: 56ch;
-    }
-    .hero p.lede { margin-left: auto; margin-right: auto; }
-    p.body {
-      font-size: 15px;
-      line-height: 1.65;
-      color: oklch(32% 0.01 95);
-      margin: 0 0 16px;
-      max-width: 60ch;
-    }
-    .cta {
-      margin: 28px 0 12px;
-    }
-    .cta a {
-      display: inline-block;
-      background: oklch(22% 0.01 95);
-      color: oklch(100% 0 0);
-      text-decoration: none;
-      padding: 14px 26px;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.1px;
-    }
-    .cta .hint {
-      display: block;
-      margin-top: 10px;
-      font-size: 13px;
-      color: oklch(52% 0.01 95);
-    }
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: oklch(94% 0.04 148);
-      color: oklch(38% 0.1 148);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-    .note {
-      margin: 8px 0 24px;
-      padding: 14px 16px;
-      border-radius: 10px;
-      background: oklch(97% 0.025 90);
-      border: 1px solid oklch(90% 0.05 90);
-      font-size: 13px;
-      line-height: 1.55;
-      color: oklch(32% 0.04 80);
-    }
-    .telegram-block {
-      margin: 18px 0 24px;
-      padding: 16px 18px;
-      border-radius: 12px;
-      background: oklch(97% 0.018 148);
-      border: 1px solid oklch(88% 0.05 148);
-      color: oklch(30% 0.05 148);
-      max-width: 56ch;
-    }
-    .telegram-block h3 {
-      margin: 0 0 8px;
-      font-size: 16px;
-      line-height: 1.3;
-      letter-spacing: -0.2px;
-      color: oklch(24% 0.08 148);
-    }
-    .telegram-block p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.55;
-    }
-    .telegram-block .telegram-kicker {
-      margin: 0 0 8px;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: oklch(42% 0.1 148);
-    }
-    .telegram-block ul {
-      margin: 10px 0 0;
-      padding: 0;
-      list-style: none;
-    }
-    .telegram-block li {
-      display: inline-block;
-      margin: 0 6px 6px 0;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: oklch(100% 0 0 / 72%);
-      border: 1px solid oklch(88% 0.04 148);
-      font-size: 12.5px;
-      color: oklch(30% 0.06 148);
-    }
-    .role-summary {
-      margin: 4px 0 20px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: oklch(96.5% 0.02 148);
-      border: 1px solid oklch(88% 0.045 148);
-      color: oklch(32% 0.06 148);
-      font-size: 14px;
-      line-height: 1.55;
-      max-width: 56ch;
-    }
-    .role-summary strong { color: oklch(24% 0.08 148); }
-    .caps {
-      margin: 16px 0 22px;
-      border: 1px solid oklch(92% 0.005 95);
-      border-radius: 12px;
-      padding: 16px 18px;
-      background: oklch(98.5% 0.003 95);
-    }
-    .caps h3 {
-      margin: 0 0 12px;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: oklch(45% 0.01 95);
-    }
-    .caps ul { list-style: none; margin: 0; padding: 0; }
-    .caps li {
-      position: relative;
-      padding: 0 0 9px 26px;
-      font-size: 14px;
-      line-height: 1.45;
-      color: oklch(30% 0.01 95);
-    }
-    .caps li:last-child { padding-bottom: 0; }
-    .caps li::before {
-      content: "✓";
-      position: absolute;
-      left: 0;
-      top: 0;
-      color: oklch(55% 0.12 148);
-      font-weight: 800;
-    }
-    .section { margin: 32px 0 8px; }
-    .section h3 {
-      margin: 0 0 14px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: oklch(45% 0.01 95);
-    }
-    ol.steps {
-      list-style: none;
-      counter-reset: step;
-      margin: 0;
-      padding: 0;
-    }
-    ol.steps li {
-      counter-increment: step;
-      position: relative;
-      padding: 0 0 14px 36px;
-      font-size: 14.5px;
-      line-height: 1.6;
-      color: oklch(28% 0.01 95);
-    }
-    ol.steps li:last-child { padding-bottom: 0; }
-    ol.steps li::before {
-      content: counter(step);
-      position: absolute;
-      left: 0;
-      top: 1px;
-      width: 24px;
-      height: 24px;
-      line-height: 24px;
-      text-align: center;
-      background: oklch(95% 0.005 95);
-      color: oklch(35% 0.01 95);
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .rule {
-      border: none;
-      border-top: 1px solid oklch(93% 0.005 95);
-      margin: 36px 0 8px;
-    }
-    .signoff {
-      font-size: 15px;
-      color: oklch(28% 0.01 95);
-      margin: 28px 0 4px;
-      text-align: center;
-    }
-    .signoff strong { font-weight: 600; }
-    .from {
-      font-size: 13px;
-      color: oklch(48% 0.01 95);
-      margin: 0 0 24px;
-    }
-    .from strong { color: oklch(22% 0.01 95); font-weight: 600; }
-    .from-footer {
-      font-size: 12.5px;
-      color: oklch(58% 0.01 95);
-      margin: 24px 0 0;
-      font-style: italic;
-      text-align: center;
-    }
-    h1.title {
-      margin: 0 0 20px;
-      font-size: 24px;
-      line-height: 1.25;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-      color: oklch(18% 0.01 95);
-    }
-    .fine {
-      font-size: 13.5px;
-      color: oklch(48% 0.01 95);
-      line-height: 1.6;
-      margin: 0 0 20px;
-      max-width: 56ch;
-    }
-    .aside {
-      font-size: 14px;
-      color: oklch(42% 0.01 95);
-      line-height: 1.55;
-      margin: 24px 0 16px;
-      padding: 12px 14px;
-      background: oklch(96% 0.005 95);
-      border-radius: 8px;
-      max-width: 56ch;
-    }
-    .link {
-      color: oklch(38% 0.1 148);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .link:hover { text-decoration: underline; }
-    .padbottom { padding-bottom: 32px; }
-    .footer {
-      padding: 20px 36px 0;
-      text-align: center;
-    }
-    .footer p {
-      margin: 0;
-      font-size: 12.5px;
-      line-height: 1.55;
-      color: oklch(58% 0.01 95);
-    }
-    @media (max-width: 480px) {
-      .wrapper { margin: 16px auto; padding: 0 12px; }
-      .brandbar { padding: 22px 22px 0; }
-      .content { padding: 24px 22px 4px; }
-      .footer { padding: 16px 22px 0; }
-      h1.title, h2.title { font-size: 22px; }
-      p.lede { font-size: 15px; }
-      .cta a { display: block; text-align: center; }
+    @media only screen and (max-width: 600px) {
+      p, a { line-height: 150% !important; }
+      h1, h1 a { line-height: 120% !important; }
+      h3, h3 a { line-height: 120% !important; }
+      h1 { font-size: 30px !important; text-align: left; }
+      h3 { font-size: 20px !important; text-align: left; }
+      .es-content-body p, .es-content-body a { font-size: 16px !important; }
+      a.es-button, button.es-button { display: block !important; font-size: 18px !important; padding: 14px 20px !important; line-height: 120% !important; }
+      .es-content table, .es-footer table, .es-content, .es-footer { width: 100% !important; max-width: 600px !important; }
+      .adapt-img { width: 100% !important; height: auto !important; }
     }
     @media (prefers-color-scheme: dark) {
-      body { background: oklch(16% 0.008 95); color: oklch(92% 0.005 95); }
-      .card { background: oklch(20% 0.008 95); border-color: oklch(26% 0.008 95); }
-      .wordmark { color: oklch(94% 0.005 95); }
-      h1.title, h2.title { color: oklch(96% 0.005 95); }
-      p.lede, p.body { color: oklch(78% 0.005 95); }
-      .cta a { background: oklch(94% 0.005 95); color: oklch(18% 0.01 95); }
-      .cta .hint { color: oklch(62% 0.01 95); }
-      .note { background: oklch(26% 0.02 90); border-color: oklch(32% 0.04 90); color: oklch(85% 0.02 90); }
-      .section h3 { color: oklch(65% 0.01 95); }
-      ol.steps li { color: oklch(82% 0.005 95); }
-      ol.steps li::before { background: oklch(26% 0.008 95); color: oklch(82% 0.005 95); }
-      .telegram-block { background: oklch(22% 0.035 148); border-color: oklch(34% 0.07 148); color: oklch(82% 0.05 148); }
-      .telegram-block h3 { color: oklch(92% 0.08 148); }
-      .telegram-block .telegram-kicker { color: oklch(78% 0.12 148); }
-      .telegram-block li { background: oklch(18% 0.02 148); border-color: oklch(34% 0.05 148); color: oklch(84% 0.05 148); }
-      .role-summary { background: oklch(24% 0.04 148); border-color: oklch(34% 0.06 148); color: oklch(82% 0.06 148); }
-      .role-summary strong { color: oklch(92% 0.08 148); }
-      .caps { background: oklch(24% 0.008 95); border-color: oklch(30% 0.008 95); }
-      .caps h3 { color: oklch(65% 0.01 95); }
-      .caps li { color: oklch(82% 0.005 95); }
-      .rule { border-top-color: oklch(28% 0.008 95); }
-      .signoff { color: oklch(84% 0.005 95); }
-      .signoff strong { color: oklch(94% 0.005 95); }
-      .footer p { color: oklch(58% 0.01 95); }
-      .badge { background: oklch(30% 0.06 148); color: oklch(88% 0.08 148); }
-      .from { color: oklch(60% 0.01 95); }
-      .from strong { color: oklch(94% 0.005 95); }
-      .from-footer { color: oklch(60% 0.01 95); }
-      .fine { color: oklch(60% 0.01 95); }
-      .aside { background: oklch(24% 0.008 95); color: oklch(72% 0.01 95); }
-      .link { color: oklch(75% 0.12 148); }
+      body, .es-wrapper-color { background-color: #1c1c1e !important; }
+      .cc-card { background-color: #26262a !important; }
+      .cc-block { background-color: #2f2f34 !important; }
+      .cc-text, .cc-title, .cc-h3 { color: #ECECEC !important; }
+      .cc-muted { color: #A9A7A0 !important; }
+      .cc-footer-card { background-color: #1c1c1e !important; }
     }
   </style>
 </head>
-<body>
-  <span class="preheader">${escapeHtml(preheader)}</span>
-  <div class="wrapper">
-    <div class="card">
-      <div class="brandbar">
-        <span class="logo-shell"><img src="${escapeHtml(EMAIL_LOGO_URL)}" width="44" height="44" alt="Caja Chica" /></span>
-        <span class="wordmark">Caja Chica</span>
-      </div>
-      <div class="content padbottom">
-        ${body}
-      </div>
-    </div>
-    <div class="footer">
-      <p>Recibís este mail porque alguien usó tu dirección para invitarte a Caja Chica. Si no esperabas la invitación, ignoralo.</p>
-    </div>
+<body class="body" style="width:100%;height:100%;font-family:${EMAIL_FONT};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;padding:0;Margin:0;background-color:#FFFFFF">
+  <div class="preheader" style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;max-height:0;max-width:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+  <div dir="ltr" class="es-wrapper-color" lang="es" style="background-color:#FFFFFF">
+    <!--[if gte mso 9]><v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t"><v:fill type="tile" color="#ffffff"></v:fill></v:background><![endif]-->
+    <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;padding:0;Margin:0;width:100%;height:100%;background-repeat:repeat;background-position:center top">
+      <tr><td valign="top" style="padding:0;Margin:0">
+
+        <!-- Logo strip -->
+        <table cellpadding="0" cellspacing="0" align="center" class="es-content" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:100%;table-layout:fixed !important">
+          <tr><td align="center" style="padding:0;Margin:0">
+            <table align="center" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:600px" role="none">
+              <tr><td align="left" style="padding:24px 40px 16px;Margin:0;font-size:0px">
+                <a target="_blank" href="${escapeHtml(PUBLIC_APP_URL)}" style="mso-line-height-rule:exactly;text-decoration:none">
+                  <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Caja Chica" width="100" title="Caja Chica" class="adapt-img" style="display:block;border:0;outline:none;text-decoration:none;margin:0" />
+                </a>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+
+        <!-- Main card -->
+        <table cellpadding="0" cellspacing="0" align="center" class="es-content" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:100%;table-layout:fixed !important">
+          <tr><td align="center" style="padding:0;Margin:0">
+            <table bgcolor="${CARD_BG}" align="center" cellpadding="0" cellspacing="0" class="es-content-body cc-card" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;background-color:${CARD_BG};border-radius:20px;width:600px">
+              <tr><td align="left" style="padding:30px 40px 40px;Margin:0">
+                ${body}
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+
+        <!-- Footer -->
+        <table cellpadding="0" cellspacing="0" align="center" class="es-footer" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:100%;table-layout:fixed !important;background-color:transparent">
+          <tr><td align="center" style="padding:0;Margin:0">
+            <table bgcolor="#ffffff" align="center" cellpadding="0" cellspacing="0" class="es-footer-body cc-footer-card" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;background-color:#FFFFFF;width:600px">
+              <tr><td align="left" style="padding:20px 40px;Margin:0">
+                ${p("Recibís este mail porque alguien usó tu dirección para invitarte a Caja Chica. Si no esperabas la invitación, ignoralo.", { size: 14, lh: 22, extra: "color:#8A8880", cls: "cc-muted" })}
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+
+      </td></tr>
+    </table>
   </div>
 </body>
 </html>`;
 }
 
-// Checklist block (design B) — capabilities rendered as a ✓ list.
+// Checklist block — capabilities rendered as a bulleted list inside a section.
 function capsBlock(title: string, items: string[]): string {
-  const lis = items.map((i) => `<li>${escapeHtml(i)}</li>`).join("");
-  return `<div class="caps"><h3>${escapeHtml(title)}</h3><ul>${lis}</ul></div>`;
+  const lis = items
+    .map(
+      (i) =>
+        `<li class="cc-text" style="color:#2D3142;margin:0 0 12px;font-size:18px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:${EMAIL_FONT};line-height:27px;letter-spacing:0;font-weight:normal;color:#2D3142;font-size:18px" class="cc-text">${escapeHtml(i)}</p></li>`,
+    )
+    .join("");
+  const heading = `<h3 class="cc-h3" style="Margin:0 0 6px;font-family:${EMAIL_FONT};mso-line-height-rule:exactly;letter-spacing:0;font-size:24px;font-style:normal;font-weight:bold;line-height:29px;color:${TEXT_COLOR}">${escapeHtml(title)}</h3>`;
+  const list = `<ul style="font-family:${EMAIL_FONT};padding:0 0 0 24px;margin:12px 0 0">${lis}</ul>`;
+  return block(`${heading}${list}`);
 }
 
 function roleSummary(label: string, copy: string): string {
-  return `<p class="role-summary"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(copy)}</p>`;
+  return p(`<strong style="font-weight:bolder !important">${escapeHtml(label)}:</strong> ${escapeHtml(copy)}`);
 }
 
-function telegramBlock(deepLink?: string): string {
+// readOnly=true tailors the Telegram block to a viewer: only consulting, no loading.
+function telegramBlock(deepLink?: string, readOnly = false): string {
   const link = deepLink
-    ? `<br><a class="link" href="${escapeHtml(deepLink)}">Conectar Telegram después del primer login →</a>`
+    ? p(
+        `<a href="${escapeHtml(deepLink)}" style="color:${BTN_BG};text-decoration:underline;font-weight:bold">Conectar Telegram después del primer login →</a>`,
+        { extra: "margin-top:12px" },
+      )
     : "";
+  const kicker = p(
+    `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.06em">Diferencial Caja Chica</strong>`,
+    { size: 13, lh: 18, extra: "color:#7630a8" },
+  );
+  const headingText = readOnly
+    ? "También podés consultarlo desde Telegram"
+    : "También podés usarlo desde Telegram";
+  const heading = `<h3 class="cc-h3" style="Margin:0 0 6px;font-family:${EMAIL_FONT};mso-line-height-rule:exactly;letter-spacing:0;font-size:24px;font-style:normal;font-weight:bold;line-height:29px;color:${TEXT_COLOR}">${headingText}</h3>`;
+  const intro = readOnly
+    ? p(
+        "Consultá saldos, movimientos e informes sin abrir la app. Preguntale al bot y te responde al toque.",
+      )
+    : p(
+        "Registrá gastos sin abrir la app: escribí, mandá una foto del ticket o usá audio. Caja Chica lo interpreta y lo guarda en el dashboard compartido.",
+      );
+  const items = readOnly
+    ? ["saldos al día", "buscar un movimiento", "pedir un informe"]
+    : ["“pagué 4500 de luz”", "foto de un ticket", "nota de voz rápida"];
+  const lis = items
+    .map(
+      (it, idx) =>
+        `<li class="cc-text" style="color:#2D3142;margin:${idx === items.length - 1 ? "0" : "0 0 8px"};font-size:18px">${p(it)}</li>`,
+    )
+    .join("");
+  const examples = `<ul style="font-family:${EMAIL_FONT};padding:0 0 0 24px;margin:10px 0 0">${lis}</ul>`;
+  return block(`${kicker}${heading}${intro}${examples}${link}`);
+}
 
-  return `<div class="telegram-block">
-    <p class="telegram-kicker">Diferencial Caja Chica</p>
-    <h3>También podés usarlo desde Telegram</h3>
-    <p>Registrá gastos sin abrir la app: escribí, mandá una foto del ticket o usá audio. Caja Chica lo interpreta y lo guarda en el dashboard compartido.</p>
-    <ul>
-      <li>“pagué 4500 de luz”</li>
-      <li>foto de un ticket</li>
-      <li>nota de voz rápida</li>
-    </ul>
-    ${link}
-  </div>`;
+// Small uppercase label above the title (replaces the old `.from` pill).
+function eyebrow(text: string): string {
+  return p(
+    `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.08em">${text}</strong>`,
+    { size: 13, lh: 18, extra: "color:#7a7870;margin:0 0 4px" },
+  );
+}
+
+// Rounded role pill (e.g. "Puede editar", "Puede invitar").
+function badge(text: string): string {
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#d9e6f4;color:${BTN_BG};font-size:15px;font-weight:bold">${escapeHtml(text)}</span>`;
+}
+
+// A row of pills with spacing between them.
+function pillRow(labels: string[]): string {
+  const pills = labels
+    .map((l) => `<span style="display:inline-block;margin:0 8px 8px 0">${badge(l)}</span>`)
+    .join("");
+  return `<div style="margin:2px 0 0">${pills}</div>`;
+}
+
+// Hero section: eyebrow + big title + optional pills + lede, in a #fafafa block.
+function heroBlock(eyebrowHtml: string, title: string, ledeHtml: string, pillsHtml = ""): string {
+  const h1 = `<h1 class="cc-title" style="Margin:0 0 6px;font-family:${EMAIL_FONT};mso-line-height-rule:exactly;letter-spacing:0;font-size:36px;font-style:normal;font-weight:bold;line-height:43px;color:${TEXT_COLOR}">${escapeHtml(title)}</h1>`;
+  return block(`${eyebrowHtml}${h1}${pillsHtml}${spacer()}${p(ledeHtml)}`);
 }
 
 // Brand signoff (decision 2026-05: personal body voice + brand closing).
 const BRAND_SIGNOFF = `
-    <p class="signoff">Cualquier duda, respondé este email.</p>
-    <p class="signoff"><strong>El equipo de Caja Chica</strong></p>`;
+    ${p("Cualquier duda, respondé este email.")}
+    ${p('<strong style="font-weight:bolder !important">El equipo de Caja Chica</strong>')}`;
 
 export function appInvitationHtml(inviteUrl: string, inviterName?: string): string {
-  const safeUrl = escapeHtml(inviteUrl);
   const safeName = inviterName?.trim() ? escapeHtml(inviterName.trim()) : null;
   // Owner flavor: this invite gives the person their own dashboard (they become owner).
   // Body voice is personal (dynamic inviter — no hardcoded name); signoff is brand voice.
   const fromLine = safeName
-    ? `<p class="from"><strong>${safeName}</strong> · Caja Chica</p>`
-    : `<p class="from"><strong>Caja Chica</strong></p>`;
-  const title = safeName
-    ? `${safeName} te dio tu propio dashboard.`
-    : `Tu dashboard en Caja Chica está listo.`;
+    ? eyebrow(`Invitación de ${safeName}`)
+    : eyebrow("Invitación");
+  const title = `Tu dashboard está listo.`;
 
   const ownerSummary = roleSummary(
     "Dueño",
@@ -506,30 +303,26 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
     "Crear empresas y categorías",
     "Generar y exportar informes",
     "Usar Telegram para cargar por texto, foto o voz",
-    "Invitar gente como editor o viewer",
+    "Invitar gente con acceso Puede editar o Puede ver",
   ]);
 
-  const team = `<div class="note"><strong>Cuando sumes gente, elegís el acceso:</strong><br>` +
-    `• <strong>Puede editar</strong>: carga movimientos y ayuda a ordenar empresas/categorías.<br>` +
-    `• <strong>Puede ver</strong>: mira saldos, movimientos e informes. No modifica datos.</div>`;
+  const team = block(
+    p('<strong style="font-weight:bolder !important">Cuando sumes gente, elegís el acceso:</strong>') +
+      p(
+        '• <strong style="font-weight:bolder !important">Puede editar</strong>: carga movimientos y ayuda a ordenar empresas/categorías.<br>' +
+          '• <strong style="font-weight:bolder !important">Puede ver</strong>: mira saldos, movimientos e informes. No modifica datos.',
+      ),
+  );
 
   const body = `
-    <div class="hero">
-      ${fromLine}
-      <h1 class="title">${title}</h1>
-      <p class="lede">Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.</p>
-    </div>
-
+    ${heroBlock(fromLine, title, 'Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.', pillRow(["Puede editar", "Puede invitar"]))}
     ${ownerSummary}
+    ${spacer()}
     ${caps}
     ${telegramBlock()}
-
-    <div class="cta">
-      <a href="${safeUrl}">Entrar con Google</a>
-    </div>
-
-    <p class="fine">Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.</p>
-
+    ${ctaButton(inviteUrl, "Entrar con Google")}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${spacer()}
     ${team}
     ${BRAND_SIGNOFF}
   `;
@@ -547,7 +340,6 @@ export function dashboardInvitationHtml(
   telegramDeepLink?: string,
   inviterDisplayName?: string | null,
 ): string {
-  const safeUrl = escapeHtml(inviteUrl);
   const safeInviter = escapeHtml(inviterEmail);
   const inviterName = inviterDisplayName?.trim() || inviterEmail.split("@")[0] || "Alguien";
   const safeInviterName = escapeHtml(inviterName);
@@ -573,24 +365,16 @@ export function dashboardInvitationHtml(
 
   // Body voice personal (dynamic inviter from email); signoff brand voice.
   const body = `
-    <div class="hero">
-      <p class="from"><strong>${safeInviterName}</strong> · vía Caja Chica</p>
-      <h1 class="title">${safeInviterName} te sumó al dashboard.</h1>
-      <p class="lede">Compartimos los mismos movimientos. Entrás con acceso <span class="badge">${roleBadge}</span>.</p>
-    </div>
-
+    ${heroBlock(eyebrow(`Invitación de ${safeInviterName}`), "Te sumaron al dashboard.", `Compartimos los mismos movimientos. Entrás con acceso ${badge(roleBadge)}`)}
     ${summary}
+    ${spacer()}
     ${caps}
-    ${telegramBlock(telegramDeepLink)}
-
-    <div class="cta">
-      <a href="${safeUrl}">Entrar con Google</a>
-    </div>
-
-    <p class="fine">Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.</p>
-
+    ${telegramBlock(telegramDeepLink, !isEditor)}
+    ${ctaButton(inviteUrl, "Entrar con Google")}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${spacer()}
     ${BRAND_SIGNOFF}
-    <p class="from-footer">Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.</p>
+    ${p(`Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.`, { size: 13, lh: 20, extra: "color:#8A8880;font-style:italic;margin-top:16px", cls: "cc-muted" })}
   `;
   return baseTemplate(
     `${inviterName} te sumó al dashboard`,

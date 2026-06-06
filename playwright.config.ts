@@ -1,4 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
+
+const braveExecutablePath =
+  process.env.BRAVE_EXECUTABLE_PATH ??
+  '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
+
+const braveProject = existsSync(braveExecutablePath)
+  ? [{
+      name: 'brave',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { executablePath: braveExecutablePath },
+      },
+    }]
+  : [];
 
 export default defineConfig({
   testDir: './e2e',
@@ -20,5 +35,6 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    ...braveProject,
   ],
 });

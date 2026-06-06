@@ -10,7 +10,9 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "node --import tsx --test $(find tests -name '*.test.ts' | sort)",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:brave": "playwright test --project=brave",
+    "e2e:brave:headed": "playwright test --project=brave --headed"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

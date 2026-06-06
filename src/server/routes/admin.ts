@@ -44,6 +44,25 @@ export function createAdminRouter(deps: AdminDeps) {
     emailDeps,
   } = deps;
 
+  async function resolveInviterDisplayName(session: AppSession): Promise<string | null> {
+    const sessionName = session.profileName?.trim();
+    if (sessionName) return sessionName;
+
+    try {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select("display_name")
+        .eq("user_id", session.userId)
+        .limit(1);
+      if (error) throw error;
+
+      const displayName = data?.[0]?.display_name?.trim();
+      return displayName || null;
+    } catch (err) {
+      console.error("[adminInvitations] Failed to resolve inviter display_name:", err);
+      return null;
+    }
+  }
 
   router.get("/api/health", (_req, res) => {
     res.json({ status: "ok", botActive });
@@ -287,7 +306,8 @@ export function createAdminRouter(deps: AdminDeps) {
 
       const inviteUrl = `${publicAppUrl || ""}/?invite=${data.invite_token}`;
       res.status(201).json({ ...data, invite_url: inviteUrl });
-      void sendAppInvitationEmail(data.email, inviteUrl, undefined, session.email.split("@")[0]);
+      const inviterName = await resolveInviterDisplayName(session);
+      void sendAppInvitationEmail(data.email, inviteUrl, undefined, inviterName ?? session.email.split("@")[0]);
     } catch (err) {
       console.error("Invitation error:", err);
       res.status(500).json({ error: "failed_to_save" });

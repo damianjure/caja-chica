@@ -710,7 +710,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
       // Dispatch email based on table type
       if (table === "user_invitations") {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
-        void sendAppInvitationEmail(row.email, inviteUrl, undefined, session.email.split("@")[0]);
+        const inviterDisplayName = await resolveInviterDisplayName(session);
+        void sendAppInvitationEmail(row.email, inviteUrl, undefined, inviterDisplayName ?? session.email.split("@")[0]);
       } else {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         const inviterDisplayName = await resolveInviterDisplayName(session);

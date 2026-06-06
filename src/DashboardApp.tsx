@@ -639,16 +639,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           />
         )}
 
-        {/* Píldora flotante (solo mobile): acceso rápido a buscar y cargar */}
-        <div className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-30">
-          <div className="glass-chrome flex items-center gap-1 rounded-full border border-[var(--app-border-strong)] p-1 shadow-[var(--app-shadow-md)]">
+        {/* Barra flotante (solo mobile): acceso rápido a buscar y cargar */}
+        <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <div className="flex min-h-12 items-center gap-1.5 rounded-full border border-white/15 bg-[#202020]/95 px-1.5 py-1.5 shadow-[0_-10px_34px_rgba(0,0,0,0.42),0_10px_28px_rgba(0,0,0,0.32)] backdrop-blur-md ring-1 ring-black/40">
             <button
               type="button"
               onClick={() => setIsPaletteOpen(true)}
               aria-label="Búsqueda global"
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--app-text-2)] active:scale-[0.97]"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold text-neutral-200 transition duration-150 hover:bg-white/5 active:scale-[0.97]"
             >
-              <Search className="w-3.5 h-3.5" aria-hidden="true" />
+              <Search className="w-4 h-4" aria-hidden="true" />
               Buscar
             </button>
             {canWriteData && (
@@ -656,7 +656,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 type="button"
                 onClick={goToComposer}
                 aria-label="Nueva operación"
-                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] active:scale-[0.97]"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--app-strong-surface)] px-4 text-sm font-black text-[var(--app-strong-text)] shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition duration-150 active:scale-[0.97]"
               >
                 <span aria-hidden="true">＋</span>Nueva
               </button>

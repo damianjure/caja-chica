@@ -161,25 +161,17 @@ function baseTemplate(title: string, preheader: string, body: string): string {
     <table width="100%" cellspacing="0" cellpadding="0" class="es-wrapper" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;padding:0;Margin:0;width:100%;height:100%;background-repeat:repeat;background-position:center top">
       <tr><td valign="top" style="padding:0;Margin:0">
 
-        <!-- Logo strip -->
-        <table cellpadding="0" cellspacing="0" align="center" class="es-content" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:100%;table-layout:fixed !important">
-          <tr><td align="center" style="padding:0;Margin:0">
-            <table align="center" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:600px" role="none">
-              <tr><td align="left" style="padding:24px 40px 16px;Margin:0;font-size:0px">
-                <a target="_blank" href="${escapeHtml(PUBLIC_APP_URL)}" style="mso-line-height-rule:exactly;text-decoration:none">
-                  <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Caja Chica" width="48" height="48" title="Caja Chica" style="display:block;border:0;outline:none;text-decoration:none;margin:0" />
-                </a>
-              </td></tr>
-            </table>
-          </td></tr>
-        </table>
-
         <!-- Main card -->
         <table cellpadding="0" cellspacing="0" align="center" class="es-content" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:100%;table-layout:fixed !important">
           <tr><td align="center" style="padding:0;Margin:0">
             <table bgcolor="${CARD_BG}" align="center" cellpadding="0" cellspacing="0" class="es-content-body cc-card" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;background-color:${CARD_BG};border-radius:20px;width:600px">
-              <tr><td align="left" style="padding:30px 40px 40px;Margin:0">
+              <tr><td align="left" style="padding:40px 40px;Margin:0">
                 ${body}
+                <table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="border-spacing:0px"><tr><td align="center" style="padding:28px 0 4px;Margin:0;font-size:0px">
+                  <a target="_blank" href="${escapeHtml(PUBLIC_APP_URL)}" style="mso-line-height-rule:exactly;text-decoration:none">
+                    <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Caja Chica" width="56" height="56" title="Caja Chica" style="display:inline-block;border:0;outline:none;text-decoration:none;margin:0" />
+                  </a>
+                </td></tr></table>
               </td></tr>
             </table>
           </td></tr>
@@ -203,16 +195,20 @@ function baseTemplate(title: string, preheader: string, body: string): string {
 </html>`;
 }
 
-// Checklist block — capabilities rendered as a bulleted list inside a section.
+// Checklist block — capabilities rendered with green ✓ markers (table rows for
+// Outlook-safe alignment, no native bullets).
 function capsBlock(title: string, items: string[]): string {
-  const lis = items
+  const rows = items
     .map(
       (i) =>
-        `<li class="cc-text" style="color:#2D3142;margin:0 0 12px;font-size:18px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:${EMAIL_FONT};line-height:27px;letter-spacing:0;font-weight:normal;color:#2D3142;font-size:18px" class="cc-text">${escapeHtml(i)}</p></li>`,
+        `<tr>
+          <td valign="top" style="padding:0 10px 10px 0;Margin:0;font-family:${EMAIL_FONT};font-size:18px;line-height:27px;font-weight:bold;color:${BTN_BG}">✓</td>
+          <td valign="top" style="padding:0 0 10px;Margin:0">${p(escapeHtml(i))}</td>
+        </tr>`,
     )
     .join("");
   const heading = `<h3 class="cc-h3" style="Margin:0 0 6px;font-family:${EMAIL_FONT};mso-line-height-rule:exactly;letter-spacing:0;font-size:24px;font-style:normal;font-weight:bold;line-height:29px;color:${TEXT_COLOR}">${escapeHtml(title)}</h3>`;
-  const list = `<ul style="font-family:${EMAIL_FONT};padding:0 0 0 24px;margin:12px 0 0">${lis}</ul>`;
+  const list = `<table cellpadding="0" cellspacing="0" role="presentation" style="border-spacing:0px;margin:12px 0 0">${rows}</table>`;
   return block(`${heading}${list}`);
 }
 
@@ -246,13 +242,13 @@ function telegramBlock(deepLink?: string, readOnly = false): string {
   const items = readOnly
     ? ["saldos al día", "buscar un movimiento", "pedir un informe"]
     : ["“pagué 4500 de luz”", "foto de un ticket", "nota de voz rápida"];
-  const lis = items
+  const chips = items
     .map(
-      (it, idx) =>
-        `<li class="cc-text" style="color:#2D3142;margin:${idx === items.length - 1 ? "0" : "0 0 8px"};font-size:18px">${p(it)}</li>`,
+      (it) =>
+        `<span style="display:inline-block;margin:8px 8px 0 0;padding:6px 12px;border-radius:999px;background:${PILL_BG};color:${PILL_TEXT};font-family:${EMAIL_FONT};font-size:15px;font-weight:bold;line-height:1">${escapeHtml(it)}</span>`,
     )
     .join("");
-  const examples = `<ul style="font-family:${EMAIL_FONT};padding:0 0 0 24px;margin:10px 0 0">${lis}</ul>`;
+  const examples = `<div style="margin:6px 0 0">${chips}</div>`;
   return block(`${kicker}${heading}${intro}${examples}${link}`);
 }
 
@@ -297,11 +293,6 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
     : eyebrow("Invitación");
   const title = `Tu dashboard está listo.`;
 
-  const ownerSummary = roleSummary(
-    "Dueño",
-    "administrás el dashboard, cargás movimientos, exportás informes e invitás a otras personas.",
-  );
-
   const caps = capsBlock("Como dueño vas a poder", [
     "Cargar, editar y borrar movimientos",
     "Crear empresas y categorías",
@@ -322,8 +313,6 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
     ${heroBlock(fromLine, title, 'Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.', pillRow(["Puede editar", "Puede invitar"]))}
     ${ctaButton(inviteUrl, "Entrar con Google")}
     ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
-    ${spacer()}
-    ${ownerSummary}
     ${spacer()}
     ${caps}
     ${telegramBlock()}

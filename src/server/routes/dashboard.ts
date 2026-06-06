@@ -376,16 +376,14 @@ export function createDashboardRouter(deps: DashboardDeps) {
     try {
       const session = getSession(req);
       const memberId = req.params.id;
-      const { data: callerMembership } = await supabase
-        .from("dashboard_members")
-        .select("dashboard_id, role")
-        .eq("user_id", session.userId)
-        .eq("status", "active")
-        .limit(1);
+      // Single-source the caller's dashboard via the scope resolver (owner-priority,
+      // deterministic) instead of an unordered .limit(1) pick — otherwise a user with
+      // multiple active memberships could act on a non-deterministic dashboard.
+      const scope = await resolveDataAccessScope(session);
       const isAdminOrSuper = session.role === "admin" || session.role === "superadmin";
-      const isOwner = callerMembership?.[0]?.role === "owner";
+      const isOwner = scope.membershipRole === "owner";
       if (!isAdminOrSuper && !isOwner) return res.status(403).json({ error: "Forbidden" });
-      const dashboardId = callerMembership?.[0]?.dashboard_id;
+      const dashboardId = scope.dashboardId;
       if (!dashboardId) return res.status(404).json({ error: "No dashboard" });
       const { data: target } = await supabase
         .from("dashboard_members")
@@ -429,18 +427,17 @@ export function createDashboardRouter(deps: DashboardDeps) {
   router.post("/api/dashboard/leave", requireSession, async (req, res) => {
     try {
       const session = getSession(req);
-      const { data: membership } = await supabase
-        .from("dashboard_members")
-        .select("id, role, dashboard_id")
-        .eq("user_id", session.userId)
-        .eq("status", "active")
-        .limit(1);
-      if (!membership?.[0]) return res.status(404).json({ error: "No active membership" });
-      if (membership[0].role === "owner") return res.status(400).json({ error: "Owner cannot leave. Transfer ownership first." });
+      // Deterministic scope (owner-priority) instead of an unordered .limit(1) pick,
+      // so a multi-membership user always leaves the dashboard they actually operate in.
+      const scope = await resolveDataAccessScope(session);
+      if (!scope.dashboardId) return res.status(404).json({ error: "No active membership" });
+      if (scope.membershipRole === "owner") return res.status(400).json({ error: "Owner cannot leave. Transfer ownership first." });
       const { error } = await supabase
         .from("dashboard_members")
         .update({ status: "revoked" })
-        .eq("id", membership[0].id);
+        .eq("user_id", session.userId)
+        .eq("dashboard_id", scope.dashboardId)
+        .eq("status", "active");
       if (error) return res.status(500).json({ error: error.message });
       return res.json({ left: true });
     } catch (err) {

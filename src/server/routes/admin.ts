@@ -3,6 +3,7 @@ import type { AppSession, AppUserStatus, SupabaseLike } from "../contracts.ts";
 import type { ActiveSender } from "../emailSettings.ts";
 import type { EmailLogRow, EmailLogFilters } from "../emailLog.ts";
 import type { BrevoSender } from "../brevoSenders.ts";
+import { warnIfListCapped } from "../listCap.ts";
 
 export interface AdminEmailDeps {
   brevoApiKey?: string;
@@ -76,6 +77,7 @@ export function createAdminRouter(deps: AdminDeps) {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
+      warnIfListCapped(data, "GET /api/admin/users");
       res.json(data ?? []);
     } catch (_err) {
       res.status(500).json({ error: "failed_to_fetch" });
@@ -184,6 +186,7 @@ export function createAdminRouter(deps: AdminDeps) {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
+      warnIfListCapped(data, "GET /api/admin/invitations");
       const rows = (data ?? []) as any[];
 
       const uniq = <T,>(xs: T[]) => Array.from(new Set(xs.filter(Boolean))) as T[];

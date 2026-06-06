@@ -2,6 +2,7 @@
 // Fan-out via Promise.allSettled — one failure does not abort others.
 
 import type { SupabaseLike } from "./app.ts";
+import { warnIfListCapped } from "./listCap.ts";
 
 export interface NotifyOpts {
   type: "start" | "end" | "reminder";
@@ -100,6 +101,7 @@ export async function notifyMaintenance(
     .eq("status", "active")
     .is("deleted_at", null)
     .limit(500) as { data: Array<{ user_id: string; email: string }> | null };
+  warnIfListCapped(emailUsers, "maintenanceNotify email recipients");
 
   // Fetch Telegram recipients: active linked users
   const { data: telegramLinks } = await (supabase as any)
@@ -107,6 +109,7 @@ export async function notifyMaintenance(
     .select("telegram_chat_id, user_id")
     .eq("status", "active")
     .limit(500) as { data: Array<{ telegram_chat_id: string; user_id: string }> | null };
+  warnIfListCapped(telegramLinks, "maintenanceNotify telegram recipients");
 
   const emailTasks = (emailUsers ?? []).map((u) =>
     sendEmail(u.email, subject, html).catch((err) => {

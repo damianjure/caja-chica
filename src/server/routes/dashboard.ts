@@ -1,5 +1,6 @@
 import express, { type Request, type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike, DashboardMemberSummary } from "../contracts.ts";
+import { warnIfListCapped } from "../listCap.ts";
 
 export interface DashboardDeps {
   supabase: SupabaseLike;
@@ -523,6 +524,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
           .order("created_at", { ascending: false })
           .limit(500);
         if (uiErr) throw uiErr;
+        warnIfListCapped(uiRows, "GET /api/personas (app invitations)");
 
         const uiAcceptedIds = ((uiRows ?? []) as any[]).map((r) => r.accepted_user_id).filter(Boolean);
         const uiProfiles = new Map<string, { display_name: string | null; profile_photo_url: string | null }>();
@@ -565,6 +567,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
           .order("created_at", { ascending: false })
           .limit(500);
         if (diErr) throw diErr;
+        warnIfListCapped(diRows, "GET /api/personas (dashboard invitations)");
 
         const telegramLinksByInviteToken: Map<string, string> = new Map();
         const diInviteTokens = ((diRows ?? []) as any[]).map((r: any) => r.invite_token).filter(Boolean);

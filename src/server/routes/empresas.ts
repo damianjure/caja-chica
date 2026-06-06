@@ -1,6 +1,7 @@
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 import type { UpdateEmpresaRequest } from "../validation.ts";
+import { warnIfListCapped } from "../listCap.ts";
 
 export interface EmpresasDeps {
   supabase: SupabaseLike;
@@ -206,6 +207,7 @@ export function createEmpresasRouter(deps: EmpresasDeps) {
         .is("deleted_at", null)
         .limit(500);
       if (error) throw error;
+      warnIfListCapped(data, "GET /api/empresas");
       res.json(data);
     } catch (_err) {
       res.status(500).json({ error: "failed_to_fetch" });

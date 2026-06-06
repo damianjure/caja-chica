@@ -65,6 +65,14 @@ const BLOCK_BG = "#fafafa";
 const BTN_BG = "#147E60";
 const PILL_BG = "#E3F3EA";
 const PILL_TEXT = "#147E60";
+// Secondary text — darkened to meet WCAG AA (4.5:1) on both #EFEFEF and #FFFFFF.
+const MUTED = "#5F5B54";
+
+// Escape + restrict an href to http(s); anything else falls back to the app URL.
+// Defends against javascript:/data: schemes sneaking into the CTA.
+function safeHref(url: string): string {
+  return /^https?:\/\//i.test(url) ? escapeHtml(url) : escapeHtml(PUBLIC_APP_URL);
+}
 
 // Body paragraph with the Imprima base style.
 // `cls` drives the dark-mode override: "cc-text" (default) or "cc-muted".
@@ -89,7 +97,7 @@ function block(inner: string): string {
 
 // Outlook-safe CTA button (VML for mso, anchor for everyone else).
 function ctaButton(url: string, label: string): string {
-  const u = escapeHtml(url);
+  const u = safeHref(url);
   return `<table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="border-spacing:0px"><tr><td align="center" style="padding:8px 0 24px;Margin:0">
 <!--[if mso]><a href="${u}" target="_blank" hidden>
   <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${u}" style="height:48px;v-text-anchor:middle;width:293px" arcsize="50%" stroke="f" fillcolor="${BTN_BG}">
@@ -182,7 +190,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
           <tr><td align="center" style="padding:0;Margin:0">
             <table bgcolor="#ffffff" align="center" cellpadding="0" cellspacing="0" class="es-footer-body cc-footer-card" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;background-color:#FFFFFF;width:600px">
               <tr><td align="left" style="padding:20px 40px;Margin:0">
-                ${p("Recibís este mail porque alguien usó tu dirección para invitarte a Caja Chica. Si no esperabas la invitación, ignoralo.", { size: 14, lh: 22, extra: "color:#8A8880", cls: "cc-muted" })}
+                ${p("Recibís este mail porque alguien usó tu dirección para invitarte a Caja Chica. Si no esperabas la invitación, ignoralo.", { size: 14, lh: 22, extra: `color:${MUTED}`, cls: "cc-muted" })}
               </td></tr>
             </table>
           </td></tr>
@@ -247,10 +255,11 @@ function telegramBlock(readOnly = false): string {
 }
 
 // Small uppercase label above the title (replaces the old `.from` pill).
+// Escapes its own input — pass raw text, not pre-escaped.
 function eyebrow(text: string): string {
   return p(
-    `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.08em">${text}</strong>`,
-    { size: 13, lh: 18, extra: "color:#7a7870;margin:0 0 4px" },
+    `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.08em">${escapeHtml(text)}</strong>`,
+    { size: 13, lh: 18, extra: `color:${MUTED};margin:0 0 4px` },
   );
 }
 
@@ -279,11 +288,12 @@ const BRAND_SIGNOFF = `
     ${p('<strong style="font-weight:bolder !important">El equipo de Caja Chica</strong>')}`;
 
 export function appInvitationHtml(inviteUrl: string, inviterName?: string): string {
-  const safeName = inviterName?.trim() ? escapeHtml(inviterName.trim()) : null;
+  const rawName = inviterName?.trim() || null;
   // Owner flavor: this invite gives the person their own dashboard (they become owner).
   // Body voice is personal (dynamic inviter — no hardcoded name); signoff is brand voice.
-  const fromLine = safeName
-    ? eyebrow(`Invitación de ${safeName}`)
+  // eyebrow() escapes its own input, so pass the raw name.
+  const fromLine = rawName
+    ? eyebrow(`Invitación de ${rawName}`)
     : eyebrow("Invitación");
   const title = `Tu dashboard está listo.`;
 
@@ -306,7 +316,7 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
   const body = `
     ${heroBlock(fromLine, title, 'Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.', pillRow(["Puede editar", "Puede invitar"]))}
     ${ctaButton(inviteUrl, "Entrar con Google")}
-    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: `color:${MUTED}`, cls: "cc-muted" })}
     ${spacer()}
     ${caps}
     ${telegramBlock()}
@@ -329,7 +339,6 @@ export function dashboardInvitationHtml(
 ): string {
   const safeInviter = escapeHtml(inviterEmail);
   const inviterName = inviterDisplayName?.trim() || inviterEmail.split("@")[0] || "Alguien";
-  const safeInviterName = escapeHtml(inviterName);
   const isEditor = role === "editor";
   const roleBadge = isEditor ? "Puede editar" : "Puede ver";
 
@@ -352,16 +361,16 @@ export function dashboardInvitationHtml(
 
   // Body voice personal (dynamic inviter from email); signoff brand voice.
   const body = `
-    ${heroBlock(eyebrow(`Invitación de ${safeInviterName}`), "Te sumaron al dashboard.", `Compartimos los mismos movimientos. Entrás con acceso ${badge(roleBadge)}`)}
+    ${heroBlock(eyebrow(`Invitación de ${inviterName}`), "Te sumaron al dashboard.", `Compartimos los mismos movimientos. Entrás con acceso ${badge(roleBadge)}`)}
     ${ctaButton(inviteUrl, "Entrar con Google")}
-    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: `color:${MUTED}`, cls: "cc-muted" })}
     ${spacer()}
     ${summary}
     ${spacer()}
     ${caps}
     ${telegramBlock(!isEditor)}
     ${BRAND_SIGNOFF}
-    ${p(`Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.`, { size: 13, lh: 20, extra: "color:#8A8880;font-style:italic;margin-top:16px", cls: "cc-muted" })}
+    ${p(`Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.`, { size: 13, lh: 20, extra: `color:${MUTED};font-style:italic;margin-top:16px`, cls: "cc-muted" })}
   `;
   return baseTemplate(
     `${inviterName} te sumó al dashboard`,

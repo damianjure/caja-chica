@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { ReportExportFormat, ReportExportRequest } from "../reports/shared";
+import { normalizeExtractResponse } from "./extractIntent";
 
 const API_BASE = (import.meta as any).env.VITE_API_URL;
 if (!API_BASE) {
@@ -484,10 +485,13 @@ export const api = {
   },
 
   async extract(text: string, categories: Categoria[]): Promise<GeminiResponse> {
-    return fetchApi("/api/extract", {
+    // Backend shares the bot's intent vocabulary ("movimiento", ...); normalize
+    // it into the union the web composer expects.
+    const raw = await fetchApi("/api/extract", {
       method: "POST",
       body: JSON.stringify({ text, categories }),
     });
+    return normalizeExtractResponse(raw);
   },
 
   async extractImage(imageBase64: string, mimeType: string): Promise<ImageExtractionResult> {

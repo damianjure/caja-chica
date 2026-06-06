@@ -138,7 +138,7 @@ export default function EmpresasTab({
             <MetricCard label="Utilidad total" value={formatCurrency(totals.sal, cur)} tone={totals.sal >= 0 ? 'success' : 'danger'} critical={totals.sal < 0} icon={Wallet} />
           </div>
 
-          <SectionCard title="Salud por empresa" description={`Ingresos, gastos y saldo en ${cur} por unidad. Las de mayor riesgo primero.`} action={CurToggle}>
+          <SectionCard title="Salud por empresa" description={`Ingresos, gastos y saldo en ${cur} por empresa.`} action={CurToggle}>
             <div className="space-y-2">
               {salud.map((c) => {
                 const p = pick(c);
@@ -172,7 +172,7 @@ export default function EmpresasTab({
 
       <SectionCard
         title="Empresas"
-        description="Todas tus empresas con su detalle. Agregá una para poder editarla y borrarla."
+        description="Tus empresas. Agregá una para editarla o borrarla."
         action={CurToggle}
       >
         {canWriteData && (

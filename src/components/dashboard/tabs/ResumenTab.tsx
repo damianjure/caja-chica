@@ -126,7 +126,7 @@ export default function ResumenTab(props: ResumenTabProps) {
       {/* Pulso: hero, ancho completo */}
       <ChartCard
             title="Pulso mensual"
-            description="Cuánto entró, cuánto salió y qué saldo quedó, mes a mes. Filtrá por empresa y cambiá entre pesos y dólares."
+            description="Cuánto entró, salió y quedó, mes a mes."
             footer={
               <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar u ocultar series del gráfico">
                 {([
@@ -212,7 +212,7 @@ export default function ResumenTab(props: ResumenTabProps) {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard
           title="Flujo de caja"
-          description="De los ingresos al saldo: cómo cada categoría reduce la caja. Mismo filtro de empresa y moneda del Pulso."
+          description="Cómo cada categoría reduce la caja, del ingreso al saldo."
         >
           {bridgeData.length === 0 ? (
             <EmptyState
@@ -225,13 +225,13 @@ export default function ResumenTab(props: ResumenTabProps) {
             <WaterfallChart segments={bridgeData} currency={pulseCurrency} />
           )}
         </ChartCard>
-        <ChartCard title="Gastos que más pesan" description="Top categorías por gasto real. Deja comparar magnitudes de un vistazo.">
+        <ChartCard title="Gastos que más pesan" description="Top categorías por gasto.">
           <HorizontalBarList items={props.topExpenseCategories.map((item) => ({ ...item, accent: 'danger' as const }))} emptyLabel="Todavía no hay gastos cargados." />
         </ChartCard>
       </section>
 
       {props.incomeTags.length > 0 && (
-        <ChartCard title="Etiquetas de ingreso" description="Qué tipo de ingreso entra más seguido, sin leer uno por uno.">
+        <ChartCard title="Etiquetas de ingreso" description="Qué tipo de ingreso entra más seguido.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {props.incomeTags.map((tag) => (
               <div key={tag.label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3">
@@ -248,7 +248,7 @@ export default function ResumenTab(props: ResumenTabProps) {
 
       <SectionCard
         title="Proyección a 30 días"
-        description="Saldo estimado al procesar los recurrentes activos en los próximos 30 días. No incluye gastos imprevistos."
+        description="Saldo estimado con los recurrentes activos (no incluye imprevistos)."
         icon={LineChart}
       >
         {props.forecast.occurrences.length === 0 ? (

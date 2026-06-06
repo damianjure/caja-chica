@@ -254,8 +254,8 @@ export default function MovimientosTab({
       </div>
 
       <SectionCard
-        title="Historial de movimientos"
-        description="Filtrá por fecha, empresa, tipo, moneda o categoría. Todo lo cargado entra como conciliado por defecto."
+        title="Movimientos"
+        description="Filtrá por fecha, empresa, tipo, moneda o categoría."
         action={
           <div className="flex items-center gap-2">
             {canWriteData && (

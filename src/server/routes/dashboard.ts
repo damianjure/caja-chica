@@ -385,12 +385,13 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if (!isAdminOrSuper && !isOwner) return res.status(403).json({ error: "Forbidden" });
       const dashboardId = scope.dashboardId;
       if (!dashboardId) return res.status(404).json({ error: "No dashboard" });
-      const { data: target } = await supabase
+      const { data: target, error: targetError } = await supabase
         .from("dashboard_members")
         .select("user_id, role")
         .eq("id", memberId)
         .eq("dashboard_id", dashboardId)
         .limit(1);
+      if (targetError) return res.status(500).json({ error: targetError.message });
       if (!target?.[0]) return res.status(404).json({ error: "Member not found" });
       if (target[0].user_id === session.userId) return res.status(400).json({ error: "Cannot revoke yourself" });
       if (target[0].role === "owner") return res.status(400).json({ error: "Cannot revoke owner" });
@@ -403,18 +404,26 @@ export function createDashboardRouter(deps: DashboardDeps) {
 
       // Revocar también la invitación asociada para que salga de la lista de Equipo
       // (la vista de personas se arma desde dashboard_invitations, no desde members).
-      const { data: targetUser } = await supabase
+      // Best-effort: el miembro ya quedó revocado; si la limpieza falla, log y seguimos
+      // (no revertimos el revoke ni devolvemos error al usuario).
+      const { data: targetUser, error: targetUserError } = await supabase
         .from("app_users")
         .select("email")
         .eq("user_id", target[0].user_id)
         .limit(1);
+      if (targetUserError) {
+        console.error("POST /api/dashboard/members/:id/revoke: app_users lookup failed:", targetUserError);
+      }
       const targetEmail = targetUser?.[0]?.email;
       if (targetEmail) {
-        await supabase
+        const { error: inviteError } = await supabase
           .from("dashboard_invitations")
           .update({ status: "revoked" })
           .eq("dashboard_id", dashboardId)
           .eq("email", targetEmail);
+        if (inviteError) {
+          console.error("POST /api/dashboard/members/:id/revoke: invitation cleanup failed:", inviteError);
+        }
       }
 
       return res.json({ revoked: true });

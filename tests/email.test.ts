@@ -292,7 +292,7 @@ test("invitation emails explain Telegram as a product differentiator", async () 
   assert.match(appHtml, /Diferencial Caja Chica/);
   assert.match(appHtml, /Telegram/);
   assert.match(appHtml, /foto del ticket|nota de voz|audio/);
-  assert.match(dashHtml, /Conectar Telegram después del primer login/);
+  assert.match(dashHtml, /Telegram/);
 });
 
 test("dashboardInvitationHtml: prefers inviter display name over email local-part", async () => {

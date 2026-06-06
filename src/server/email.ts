@@ -217,13 +217,7 @@ function roleSummary(label: string, copy: string): string {
 }
 
 // readOnly=true tailors the Telegram block to a viewer: only consulting, no loading.
-function telegramBlock(deepLink?: string, readOnly = false): string {
-  const link = deepLink
-    ? p(
-        `<a href="${escapeHtml(deepLink)}" style="color:${BTN_BG};text-decoration:underline;font-weight:bold">Conectar Telegram después del primer login →</a>`,
-        { extra: "margin-top:12px" },
-      )
-    : "";
+function telegramBlock(readOnly = false): string {
   const kicker = p(
     `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.06em">Diferencial Caja Chica</strong>`,
     { size: 13, lh: 18, extra: `color:${BTN_BG}` },
@@ -249,7 +243,7 @@ function telegramBlock(deepLink?: string, readOnly = false): string {
     )
     .join("");
   const examples = `<div style="margin:6px 0 0">${chips}</div>`;
-  return block(`${kicker}${heading}${intro}${examples}${link}`);
+  return block(`${kicker}${heading}${intro}${examples}`);
 }
 
 // Small uppercase label above the title (replaces the old `.from` pill).
@@ -365,7 +359,7 @@ export function dashboardInvitationHtml(
     ${summary}
     ${spacer()}
     ${caps}
-    ${telegramBlock(telegramDeepLink, !isEditor)}
+    ${telegramBlock(!isEditor)}
     ${BRAND_SIGNOFF}
     ${p(`Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.`, { size: 13, lh: 20, extra: "color:#8A8880;font-style:italic;margin-top:16px", cls: "cc-muted" })}
   `;

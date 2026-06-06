@@ -60,7 +60,11 @@ const EMAIL_FONT = "Imprima, Arial, sans-serif";
 const TEXT_COLOR = "#2D3142";
 const CARD_BG = "#EFEFEF";
 const BLOCK_BG = "#fafafa";
-const BTN_BG = "#0b5394";
+// Brand accent = app primary action (--app-strong-surface). Unified green so the
+// email matches the logo (no more blue/purple mismatch).
+const BTN_BG = "#147E60";
+const PILL_BG = "#E3F3EA";
+const PILL_TEXT = "#147E60";
 
 // Body paragraph with the Imprima base style.
 // `cls` drives the dark-mode override: "cc-text" (default) or "cc-muted".
@@ -142,8 +146,8 @@ function baseTemplate(title: string, preheader: string, body: string): string {
     }
     @media (prefers-color-scheme: dark) {
       body, .es-wrapper-color { background-color: #1c1c1e !important; }
-      .cc-card { background-color: #26262a !important; }
-      .cc-block { background-color: #2f2f34 !important; }
+      .cc-card { background-color: #26262a !important; border: 1px solid #34343a !important; }
+      .cc-block { background-color: #2f2f34 !important; border: 1px solid #3d3d44 !important; }
       .cc-text, .cc-title, .cc-h3 { color: #ECECEC !important; }
       .cc-muted { color: #A9A7A0 !important; }
       .cc-footer-card { background-color: #1c1c1e !important; }
@@ -163,7 +167,7 @@ function baseTemplate(title: string, preheader: string, body: string): string {
             <table align="center" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0px;width:600px" role="none">
               <tr><td align="left" style="padding:24px 40px 16px;Margin:0;font-size:0px">
                 <a target="_blank" href="${escapeHtml(PUBLIC_APP_URL)}" style="mso-line-height-rule:exactly;text-decoration:none">
-                  <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Caja Chica" width="100" title="Caja Chica" class="adapt-img" style="display:block;border:0;outline:none;text-decoration:none;margin:0" />
+                  <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Caja Chica" width="48" height="48" title="Caja Chica" style="display:block;border:0;outline:none;text-decoration:none;margin:0" />
                 </a>
               </td></tr>
             </table>
@@ -226,7 +230,7 @@ function telegramBlock(deepLink?: string, readOnly = false): string {
     : "";
   const kicker = p(
     `<strong style="font-weight:bolder !important;text-transform:uppercase;letter-spacing:0.06em">Diferencial Caja Chica</strong>`,
-    { size: 13, lh: 18, extra: "color:#7630a8" },
+    { size: 13, lh: 18, extra: `color:${BTN_BG}` },
   );
   const headingText = readOnly
     ? "También podés consultarlo desde Telegram"
@@ -262,7 +266,7 @@ function eyebrow(text: string): string {
 
 // Rounded role pill (e.g. "Puede editar", "Puede invitar").
 function badge(text: string): string {
-  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#d9e6f4;color:${BTN_BG};font-size:15px;font-weight:bold">${escapeHtml(text)}</span>`;
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${PILL_BG};color:${PILL_TEXT};font-size:15px;font-weight:bold">${escapeHtml(text)}</span>`;
 }
 
 // A row of pills with spacing between them.
@@ -316,13 +320,13 @@ export function appInvitationHtml(inviteUrl: string, inviterName?: string): stri
 
   const body = `
     ${heroBlock(fromLine, title, 'Caja Chica es una app para registrar gastos e ingresos escribiendo como hablás. Tipo: <em>"pagué 4500 de luz"</em>.', pillRow(["Puede editar", "Puede invitar"]))}
+    ${ctaButton(inviteUrl, "Entrar con Google")}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${spacer()}
     ${ownerSummary}
     ${spacer()}
     ${caps}
     ${telegramBlock()}
-    ${ctaButton(inviteUrl, "Entrar con Google")}
-    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
-    ${spacer()}
     ${team}
     ${BRAND_SIGNOFF}
   `;
@@ -366,13 +370,13 @@ export function dashboardInvitationHtml(
   // Body voice personal (dynamic inviter from email); signoff brand voice.
   const body = `
     ${heroBlock(eyebrow(`Invitación de ${safeInviterName}`), "Te sumaron al dashboard.", `Compartimos los mismos movimientos. Entrás con acceso ${badge(roleBadge)}`)}
+    ${ctaButton(inviteUrl, "Entrar con Google")}
+    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
+    ${spacer()}
     ${summary}
     ${spacer()}
     ${caps}
     ${telegramBlock(telegramDeepLink, !isEditor)}
-    ${ctaButton(inviteUrl, "Entrar con Google")}
-    ${p("Usá la cuenta de Google asociada a este mail. Otra cuenta no va a poder acceder.", { size: 14, lh: 22, extra: "color:#6f6a62", cls: "cc-muted" })}
-    ${spacer()}
     ${BRAND_SIGNOFF}
     ${p(`Te escribe ${safeInviter}. Caja Chica solo le presta el sobre.`, { size: 13, lh: 20, extra: "color:#8A8880;font-style:italic;margin-top:16px", cls: "cc-muted" })}
   `;

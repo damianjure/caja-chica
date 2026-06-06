@@ -1,4 +1,5 @@
 import type { GenAILike } from "./app.ts";
+import { alertSuperadmin } from "./alertSuperadmin.ts";
 
 export class GeminiUnavailableError extends Error {
   constructor() {
@@ -37,6 +38,20 @@ export async function geminiGenerateText(
   } catch (err) {
     if (!isGeminiCapacityError(err)) throw err;
     console.warn("[gemini] Primary key quota exhausted — trying fallback key");
+    alertSuperadmin({
+      code: "gemini:primary-quota-exhausted",
+      title: "Gemini: cuota de la key primaria agotada",
+      problem: "La key primaria de Gemini devolvió 429/RESOURCE_EXHAUSTED. El backend está intentando con la key de fallback.",
+      impact: fallback
+        ? "Servicio degradado: dependés de la key de fallback. Si también se agota, la extracción por IA (texto/foto/voz) deja de funcionar."
+        : "No hay key de fallback configurada: la extracción por IA fallará hasta que se restablezca la cuota.",
+      context: { hasFallback: fallback ? "sí" : "no" },
+      steps: [
+        "Revisar el uso/cuota en Google AI Studio para la key primaria (GEMINI_API_KEY).",
+        "Si es recurrente, subir el límite de cuota o configurar/rotar GEMINI_API_KEY_2 (fallback) en Cloud Run.",
+        "Verificar que no haya un loop o volumen anómalo de extracciones disparando el consumo.",
+      ],
+    });
     if (!fallback) throw new GeminiUnavailableError();
     try {
       return await fallback.models.generateContent(args);

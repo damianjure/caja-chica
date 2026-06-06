@@ -5,6 +5,7 @@ import { runRecurrentes } from "../cronJobs/recurrentes.ts";
 import { reconcileTransitions } from "../maintenance.ts";
 import { processInviteReminders } from "../inviteReminders.ts";
 import { notifyMaintenance } from "../maintenanceNotify.ts";
+import { alertSuperadmin } from "../alertSuperadmin.ts";
 
 type SupabaseLike = { from(table: string): any };
 type BotLike = { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
@@ -18,7 +19,21 @@ export interface CronsDeps {
 
 function requireCronSecret(cronSecret: string | undefined): RequestHandler {
   return (req, res, next) => {
-    if (!cronSecret) return void res.status(401).json({ error: "cron_disabled" });
+    if (!cronSecret) {
+      alertSuperadmin({
+        code: "cron:secret-missing",
+        title: "Crons deshabilitados: CRON_SECRET ausente",
+        problem: "Llegó una petición a /api/crons/* pero CRON_SECRET no está seteado en el backend, así que TODAS las peticiones de cron se rechazan con 401 (fail-closed).",
+        impact: "No corren los jobs: recordatorios diarios, recurrentes, reconciliación de mantenimiento y recordatorios de invitación.",
+        context: { endpoint: req.path },
+        steps: [
+          "Setear CRON_SECRET en las env vars de Cloud Run (servicio caja-chica, us-west2).",
+          "Usar el mismo valor en el header X-Cron-Secret de los jobs de Cloud Scheduler.",
+          "Valor de respaldo en Secret Manager: caja-chica-cron-secret. Redeployar tras setearlo.",
+        ],
+      });
+      return void res.status(401).json({ error: "cron_disabled" });
+    }
     const provided = req.header("X-Cron-Secret") || "";
     const expected = Buffer.from(cronSecret, "utf8");
     const got = Buffer.from(provided, "utf8");

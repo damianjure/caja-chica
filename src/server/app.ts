@@ -6,6 +6,7 @@ import { filterMovementsForReport, resolveReportDateRange } from "../reports/sha
 import { buildReportFile } from "./reportExports.ts";
 import { getDriveAuthUrl, exchangeCodeForTokens, uploadFileToDrive, encryptToken, decryptToken } from "./drive.ts";
 import { sendAppInvitationEmail, sendDashboardInvitationEmail } from "./email.ts";
+import { alertSuperadmin } from "./alertSuperadmin.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "./gemini.ts";
 import { isMissingSchemaArtifactError } from "./errors.ts";
 import { ensurePersonalDashboard, seedDemoData, purgeDemoData } from "./demoSeed.ts";
@@ -374,6 +375,16 @@ export function createApp({
   // WARNING-18: warn at startup if DASHBOARD_URL is missing — Drive OAuth callback will redirect incorrectly
   if (driveEnabled && !publicAppUrl) {
     console.warn("[drive] WARNING: DASHBOARD_URL is not set. Drive OAuth callback will redirect to backend root instead of frontend.");
+    alertSuperadmin({
+      code: "config:dashboard-url-missing",
+      title: "Config: DASHBOARD_URL ausente con Drive habilitado",
+      problem: "Drive OAuth está habilitado pero DASHBOARD_URL no está seteado. El callback de OAuth redirige a la raíz del backend en vez del frontend.",
+      impact: "El flujo de conectar Google Drive termina en una URL incorrecta: el usuario no vuelve al dashboard tras autorizar.",
+      steps: [
+        "Setear DASHBOARD_URL en las env vars de Cloud Run (servicio caja-chica, us-west2) apuntando al frontend (https://caja-chica-bot.web.app).",
+        "Redeployar el backend para tomar la variable.",
+      ],
+    });
   }
 
   const resolveDriveOwnerUserId = (session: AppSession, scope: DataAccessScope) =>

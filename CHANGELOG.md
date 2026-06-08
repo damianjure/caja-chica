@@ -15,7 +15,11 @@
 - **`src/bot/extraction.ts`**: las 3 entradas de foto/doc/álbum-de-1 ahora usan `extractReceiptWithItems`. Si el ticket tiene ≥2 renglones → tarjeta de selección (`li:*`); si no → flujo de revisión actual intacto. Al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (un único movimiento con el total). Callbacks `li:t` (toggle), `li:all`, `li:save`, `li:g:<id>:<s|u>`, `li:cancel`.
 - **`src/bot/sessions.ts`**: `initSessions()` arranca también `startLineItemsSweep()`.
 - Tests: `tests/lineItemsReview.test.ts` (17 casos — parser + estado + rendering).
-- Pendiente Fase 2: misma selección en el dashboard web (hoy la web no recibe fotos).
+
+**Pendiente — Fase 2 (selección de ítems en el dashboard web).** Hoy la web no recibe fotos; el flujo de selección solo existe en el bot. Plan acordado:
+- **Backend**: `POST /api/movimientos/extract-receipt` — recibe la imagen (multipart/base64), corre `extractReceiptWithItems` y devuelve la lista de ítems + metadata **sin guardar**. `POST /api/movimientos/from-items` — recibe los ítems tildados + modo (`sep`/`sum`) y los inserta (reutilizar la lógica de `insertLineItemMovements` de `src/bot/extraction.ts`, hoy acoplada al bot → conviene extraerla a un módulo compartido).
+- **Frontend**: botón de subir foto en `MovimientosTab.tsx` (o componente nuevo) → spinner → lista de ítems con checkboxes → toggle Separados/Sumados → confirmar.
+- Reusar el prompt/parser ya existentes (`RECEIPT_ITEMS_SYSTEM_PROMPT` / `parseReceiptItemsResult`) — la Fase 2 es solo UI + endpoints, no toca la extracción.
 
 ---
 

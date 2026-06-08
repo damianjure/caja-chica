@@ -1,11 +1,14 @@
 import { createPartFromUri, createUserContent } from "@google/genai";
 import {
   RECEIPT_SYSTEM_PROMPT,
+  RECEIPT_ITEMS_SYSTEM_PROMPT,
   HANDWRITTEN_SYSTEM_PROMPT,
   MULTI_RECEIPT_SYSTEM_PROMPT,
   parsePhotoExtractionResult,
   parseMultiPhotoExtractionResult,
+  parseReceiptItemsResult,
   type PhotoExtractionResult,
+  type ReceiptItemsResult,
 } from "./gemini.ts";
 import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
 import type { PhotoSourceType } from "./validation.ts";
@@ -172,6 +175,66 @@ export async function extractFromPhoto({
   }
 
   return { result: parsed, sourceType };
+}
+
+/**
+ * Item-level receipt extraction: pulls the merchant metadata plus every line
+ * item in a single Gemini call. When the receipt is unreadable (parse failure
+ * or confidence < 0.5) it falls back to the permissive HANDWRITTEN prompt and
+ * returns a single-movement shape (items: []), mirroring extractFromPhoto's
+ * robustness profile so the common case stays a single model call.
+ */
+export async function extractReceiptWithItems({
+  genAI,
+  botToken,
+  filePath,
+  mimeType,
+  displayName,
+  fetchImpl = fetch,
+}: ExtractFromPhotoArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  const name = displayName ?? filePath.split("/").pop() ?? "telegram-media";
+  const uploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
+
+  const rawText = await generateWithCleanup(
+    genAI,
+    [uploaded],
+    () => createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), "Extraé los datos del comercio y cada renglón del ticket."]),
+    RECEIPT_ITEMS_SYSTEM_PROMPT,
+  );
+
+  const parsed = parseReceiptItemsResult(rawText);
+  const sourceType: PhotoSourceType = mimeType === "application/pdf" ? "pdf" : "photo";
+
+  if (parsed && parsed.confidence >= 0.5 && (parsed.items.length > 0 || parsed.total !== null)) {
+    return { result: parsed, sourceType };
+  }
+
+  // Fallback: permissive handwritten single-movement extraction.
+  const retryUploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
+  const retryText = await generateWithCleanup(
+    genAI,
+    [retryUploaded],
+    () => createUserContent([createPartFromUri(retryUploaded.uri, retryUploaded.mimeType), "Extraé la información financiera de esta imagen."]),
+    HANDWRITTEN_SYSTEM_PROMPT,
+  );
+  const retryParsed = parsePhotoExtractionResult(retryText);
+  if (retryParsed) {
+    return {
+      result: {
+        empresa: retryParsed.empresa,
+        cuit: retryParsed.cuit,
+        moneda: retryParsed.moneda,
+        fecha: retryParsed.fecha,
+        total: retryParsed.monto,
+        confidence: retryParsed.confidence,
+        items: [],
+      },
+      sourceType: "handwritten",
+    };
+  }
+
+  if (parsed) return { result: parsed, sourceType };
+  throw new Error("gemini_photo_extraction_failed");
 }
 
 export async function extractFromMultiplePhotos({

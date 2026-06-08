@@ -5,6 +5,20 @@
 
 ---
 
+### Cambios 2026-06-08 (Bot: selección interactiva de ítems de ticket — Fase 0+1)
+
+**Foto de ticket → elegir qué renglones guardar.** Antes, una foto de ticket = un solo movimiento (el total). Ahora el bot extrae cada renglón y deja tildar cuáles registrar.
+
+- **`src/server/gemini.ts`**: nuevo `RECEIPT_ITEMS_SYSTEM_PROMPT` + `parseReceiptItemsResult()` — una sola llamada a Gemini devuelve metadata del comercio (empresa, CUIT, fecha, total) + array de ítems (`descripcion`, `monto`, `cantidad`, `categoria`). Mismas validaciones/clamps que el resto (`MAX_EXTRACTION_AMOUNT`, `MAX_BULK_ITEMS`).
+- **`src/server/telegramMedia.ts`**: `extractReceiptWithItems()` — espejo de `extractFromPhoto` (mismo upload/cleanup); fallback a `HANDWRITTEN` cuando el ticket es ilegible (confidence < 0.5), devolviendo shape de movimiento único (`items: []`). Mantiene el perfil de una sola llamada en el caso común.
+- **`src/server/lineItemsReview.ts`** (nuevo): estado en memoria (Map + sweep 5 min con `unref`, TTL 10 min — single-instance invariant), tarjeta con checkboxes y teclados inline. Metadata del ticket se aplica a TODOS los ítems.
+- **`src/bot/extraction.ts`**: las 3 entradas de foto/doc/álbum-de-1 ahora usan `extractReceiptWithItems`. Si el ticket tiene ≥2 renglones → tarjeta de selección (`li:*`); si no → flujo de revisión actual intacto. Al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (un único movimiento con el total). Callbacks `li:t` (toggle), `li:all`, `li:save`, `li:g:<id>:<s|u>`, `li:cancel`.
+- **`src/bot/sessions.ts`**: `initSessions()` arranca también `startLineItemsSweep()`.
+- Tests: `tests/lineItemsReview.test.ts` (17 casos — parser + estado + rendering).
+- Pendiente Fase 2: misma selección en el dashboard web (hoy la web no recibe fotos).
+
+---
+
 ### Cambios 2026-06-08 (CI/CD vía GitHub Actions + fix blank-screen prod)
 
 **Pipeline de deploy automático.** El repo no tenía NINGÚN secret de GitHub seteado → todo push a `main` fallaba ambos jobs de deploy (auth errors), generando emails de fallo de GCP. Migrado a un pipeline funcional con Workload Identity Federation.

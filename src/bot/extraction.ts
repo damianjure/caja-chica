@@ -8,7 +8,21 @@ import {
   canEditMovementViaTelegram,
   type TelegramLinkRecord,
 } from "../server/telegramAccess.ts";
-import { extractFromPhoto, extractFromMultiplePhotos, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
+import { extractFromMultiplePhotos, extractReceiptWithItems, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
+import type { ReceiptItemsResult } from "../server/gemini.ts";
+import {
+  createPendingLineItems,
+  getPendingLineItems,
+  deletePendingLineItems,
+  toggleLineItem,
+  setAllLineItems,
+  selectedLineItems,
+  buildLineItemsCardText,
+  buildLineItemsKeyboard,
+  buildGroupingPromptText,
+  buildGroupingKeyboard,
+  type PendingLineItems,
+} from "../server/lineItemsReview.ts";
 import { MediaGroupBuffer } from "../server/mediaGroupBuffer.ts";
 import {
   createPendingExtraction,
@@ -128,6 +142,114 @@ async function insertExtractionMovement(supabase: BotDeps["supabase"], entry: Pe
   return { id: (data?.[0]?.id as string | undefined) };
 }
 
+// Branch after an item-aware extraction: if the receipt has ≥2 line items show
+// the interactive selection card; otherwise fall back to the single review card
+// (built from the receipt total / first item), keeping the existing UX intact.
+async function showReceiptReview(
+  supabase: BotDeps["supabase"],
+  ctx: Context,
+  linked: any,
+  result: ReceiptItemsResult,
+  sourceType: PendingExtractionData["sourceType"],
+  processingMsgId: number,
+) {
+  if (result.items.length >= 2) {
+    try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+    const entry = createPendingLineItems({
+      chatId: ctx.chat.id,
+      dashboardId: linked.dashboardId ?? null,
+      userId: linked.userId ?? null,
+      ownerUserId: linked.ownerUserId ?? null,
+      meta: result,
+      sourceType,
+    });
+    await ctx.reply(buildLineItemsCardText(entry), {
+      parse_mode: "Markdown",
+      reply_markup: buildLineItemsKeyboard(entry),
+    });
+    return;
+  }
+
+  const firstItem = result.items[0];
+  const single: PendingExtractionData = {
+    monto: result.total ?? firstItem?.monto ?? null,
+    moneda: result.moneda,
+    tipo: "egreso",
+    empresa: result.empresa,
+    cuit: result.cuit,
+    categoria: firstItem?.categoria ?? "Varios",
+    descripcion:
+      firstItem?.descripcion ??
+      (result.empresa ? `Compra en ${result.empresa}` : "Gasto registrado desde foto"),
+    fecha: result.fecha,
+    confidence: result.confidence,
+    sourceType,
+  };
+  await showReviewCard(supabase, ctx, linked, single, processingMsgId);
+}
+
+// Insert the selected line items, either as one movement per item ("sep") or a
+// single summed movement ("sum"). Merchant metadata applies to every item.
+// Items without a readable amount are skipped — they can't be a movement.
+async function insertLineItemMovements(
+  supabase: BotDeps["supabase"],
+  entry: PendingLineItems,
+  mode: "sep" | "sum",
+): Promise<{ saved: number; total: number; error?: unknown }> {
+  const payable = selectedLineItems(entry).filter((it) => it.monto !== null);
+  if (payable.length === 0) return { saved: 0, total: 0 };
+
+  const ownership = buildTelegramWriteOwnership({
+    userId: entry.userId,
+    dashboardId: entry.dashboardId,
+    ownerUserId: entry.ownerUserId,
+    role: null,
+    permissions: {},
+    username: null,
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  });
+  const total = payable.reduce((acc, it) => acc + Math.abs(it.monto ?? 0), 0);
+  const empresa = entry.empresa;
+
+  if (mode === "sum") {
+    const desc =
+      empresa && empresa !== "Personal"
+        ? `Compra en ${empresa} (${payable.length} ítems)`
+        : `Compra (${payable.length} ítems)`;
+    const { error } = await supabase.from("movimientos").insert([{
+      ...ownership,
+      monto: total,
+      tipo: "egreso",
+      moneda: entry.moneda,
+      categoria: "Varios",
+      empresa_nombre: empresa,
+      descripcion: desc,
+      original_text: `[${entry.sourceType}] ${desc}`,
+      conciliado: true,
+      conciliado_notas: null,
+    }]);
+    if (error) return { saved: 0, total: 0, error };
+    return { saved: 1, total };
+  }
+
+  const rows = payable.map((it) => ({
+    ...ownership,
+    monto: Math.abs(it.monto ?? 0),
+    tipo: "egreso" as const,
+    moneda: entry.moneda,
+    categoria: it.categoria,
+    empresa_nombre: empresa,
+    descripcion: it.descripcion,
+    original_text: `[${entry.sourceType}] ${it.descripcion}`,
+    conciliado: true,
+    conciliado_notas: null,
+  }));
+  const { error } = await supabase.from("movimientos").insert(rows);
+  if (error) return { saved: 0, total: 0, error };
+  return { saved: rows.length, total };
+}
+
 export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
   const { supabase, genAI, botToken } = deps;
 
@@ -160,13 +282,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
               displayName: `ticket-${i + 1}.jpg`,
             }));
             if (files.length === 1) {
-              const { result, sourceType } = await extractFromPhoto({
+              const { result, sourceType } = await extractReceiptWithItems({
                 genAI,
                 botToken,
                 filePath: files[0].filePath,
                 mimeType: files[0].mimeType,
               });
-              await showReviewCard(supabase, firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
+              await showReceiptReview(supabase, firstCtx, linked2, result, sourceType, processingMsg.message_id);
             } else {
               const results = await extractFromMultiplePhotos({ genAI, botToken, files });
               try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -229,13 +351,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         await ctx.reply("❌ No pude obtener la imagen.");
         return;
       }
-      const { result, sourceType } = await extractFromPhoto({
+      const { result, sourceType } = await extractReceiptWithItems({
         genAI,
         botToken,
         filePath: file.file_path,
         mimeType: "image/jpeg",
       });
-      await showReviewCard(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {
@@ -274,14 +396,14 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         await ctx.reply("❌ No pude obtener el archivo.");
         return;
       }
-      const { result, sourceType } = await extractFromPhoto({
+      const { result, sourceType } = await extractReceiptWithItems({
         genAI,
         botToken,
         filePath: file.file_path,
         mimeType,
         displayName: doc.file_name ?? "document",
       });
-      await showReviewCard(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {
@@ -594,6 +716,101 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       moneda: "✏️ ¿`ARS` o `USD`?",
     };
     await ctx.reply(prompts[field] ?? "✏️ Mandame el nuevo valor:", { parse_mode: "Markdown" });
+  });
+
+  // --- Line-item selection (interactive ticket items) ---
+  bot.callbackQuery(/^li:t:([^:]+):(\d+)$/, async (ctx) => {
+    const id = ctx.match[1];
+    const idx = parseInt(ctx.match[2], 10);
+    const entry = getPendingLineItems(id);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta selección ya venció.");
+      return;
+    }
+    toggleLineItem(id, idx);
+    await ctx.answerCallbackQuery();
+    const updated = getPendingLineItems(id);
+    if (!updated) return;
+    await ctx.editMessageText(buildLineItemsCardText(updated), {
+      parse_mode: "Markdown",
+      reply_markup: buildLineItemsKeyboard(updated),
+    });
+  });
+
+  bot.callbackQuery(/^li:all:(.+)$/, async (ctx) => {
+    const id = ctx.match[1];
+    const entry = getPendingLineItems(id);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta selección ya venció.");
+      return;
+    }
+    const allSelected = entry.items.every((it) => it.selected);
+    setAllLineItems(id, !allSelected);
+    await ctx.answerCallbackQuery();
+    const updated = getPendingLineItems(id);
+    if (!updated) return;
+    await ctx.editMessageText(buildLineItemsCardText(updated), {
+      parse_mode: "Markdown",
+      reply_markup: buildLineItemsKeyboard(updated),
+    });
+  });
+
+  bot.callbackQuery(/^li:save:(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
+    const id = ctx.match[1];
+    const entry = getPendingLineItems(id);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta selección ya venció.");
+      return;
+    }
+    const payableCount = selectedLineItems(entry).filter((it) => it.monto !== null).length;
+    if (payableCount === 0) {
+      await ctx.answerCallbackQuery("Tildá al menos un ítem con monto.");
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(buildGroupingPromptText(entry), {
+      parse_mode: "Markdown",
+      reply_markup: buildGroupingKeyboard(id),
+    });
+  });
+
+  bot.callbackQuery(/^li:g:([^:]+):([su])$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const id = ctx.match[1];
+    const mode: "sep" | "sum" = ctx.match[2] === "s" ? "sep" : "sum";
+    const entry = getPendingLineItems(id);
+    if (!entry || entry.chatId !== ctx.chat.id) {
+      await ctx.answerCallbackQuery("Esta selección ya venció.");
+      return;
+    }
+    await ctx.answerCallbackQuery("✅ Guardando...");
+    const { saved, total, error } = await insertLineItemMovements(supabase, entry, mode);
+    deletePendingLineItems(id);
+    if (error) {
+      console.error("lineItems insert error:", error);
+      await ctx.editMessageText("❌ Error al guardar. Intentá de nuevo.", { parse_mode: "Markdown" });
+      return;
+    }
+    if (saved === 0) {
+      await ctx.editMessageText("No quedaba nada para guardar.", { parse_mode: "Markdown" });
+      return;
+    }
+    const totalStr = `$${total.toLocaleString("es-AR")} ${entry.moneda}`;
+    const summary =
+      mode === "sum"
+        ? `✅ *Guardé 1 movimiento* · ${totalStr}`
+        : `✅ *Guardé ${saved} movimiento${saved !== 1 ? "s" : ""}* · Total ${totalStr}`;
+    await ctx.editMessageText(summary, { parse_mode: "Markdown" });
+  });
+
+  bot.callbackQuery(/^li:cancel:(.+)$/, async (ctx) => {
+    const id = ctx.match[1];
+    deletePendingLineItems(id);
+    await ctx.answerCallbackQuery("Cancelado");
+    await ctx.editMessageText("❌ Cancelado.");
   });
 
   return { mediaGroupBuffer };

@@ -30,7 +30,47 @@ NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
 
 ---
 
-## Deploy manual
+## Deploy automático (CI/CD vía GitHub Actions) — camino primario desde 2026-06-08
+
+**Todo push/merge a `main` dispara el workflow `Deploy` (`.github/workflows/deploy.yml`).** Dos jobs en paralelo:
+- **Frontend → Firebase Hosting**: `npm ci` → `npm run build` (con secrets `VITE_*`) → `firebase deploy --only hosting --project caja-chica-bot`
+- **Backend → Cloud Run**: `docker build` + `docker push gcr.io/caja-chica-bot/caja-chica` (en el runner) → `gcloud run deploy caja-chica --region us-west2`
+
+No requiere correr nada local. Ver el resultado: `gh run list --repo damianjure/caja-chica` / `gh run watch <id>`.
+
+### Auth: Workload Identity Federation (sin keys de larga vida)
+- La org policy `constraints/iam.disableServiceAccountKeyCreation` **bloquea crear SA JSON keys** → no se puede usar `credentials_json`. Por eso WIF (OIDC).
+- SA dedicado: `github-deployer@caja-chica-bot.iam.gserviceaccount.com`
+- WIF pool `github-actions-pool` · provider OIDC `github-provider` (issuer `https://token.actions.githubusercontent.com`), con attribute-condition que lo limita al repo `damianjure/caja-chica`.
+- Provider resource: `projects/442790495206/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider`
+- SA bindeado via `roles/iam.workloadIdentityUser` a `principalSet://.../attribute.repository/damianjure/caja-chica`.
+- Roles del SA: `cloudbuild.builds.editor`, `run.admin`, `storage.admin`, `iam.serviceAccountUser`, `firebasehosting.admin`, `logging.viewer`, `artifactregistry.writer`.
+- Ambos jobs declaran `permissions: id-token: write` (requerido por WIF).
+
+### Secrets requeridos en el repo (GitHub → Settings → Secrets → Actions)
+| Secret | Para qué |
+|--------|----------|
+| `VITE_SUPABASE_URL` | build frontend |
+| `VITE_SUPABASE_ANON_KEY` | build frontend |
+| `VITE_API_URL` | build frontend |
+
+> ⚠️ **Si faltan los `VITE_*`, el frontend buildea con env vacío → bundle sin Supabase → `supabase` = null → la app crashea en blanco en prod** (sin error boundary). Síntoma: pantalla totalmente blanca en mobile/desktop. Verificar que el bundle tenga la URL: `curl -s https://caja-chica-bot.web.app/ | rg -o 'assets/index[^"]+\.js'` y luego `curl -s .../<bundle> | rg supabase.co`.
+> Los `VITE_*` (URL + anon key) son **públicos por diseño** — viajan en el bundle del cliente. Setearlos como secret igual conviene para no hardcodearlos. La anon key **conviene rotarla** (pendiente).
+> NO hay `GCP_SA_KEY` ni `FIREBASE_TOKEN` — ambos deprecados/bloqueados, reemplazados por WIF.
+
+### Cómo setear los secrets
+```bash
+# desde el repo, leyendo de .env.local (NO existe .env)
+for VAR in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_API_URL; do
+  VAL=$(grep "^$VAR=" .env.local | cut -d= -f2- | sed 's/^"//;s/"$//')
+  printf '%s' "$VAL" | gh secret set "$VAR" --repo damianjure/caja-chica
+done
+```
+> Si `gh secret set` da `HTTP 403: Resource not accessible by personal access token`, el token de `gh` no tiene scope de secrets: `gh auth refresh -h github.com -s repo`, o cargarlos por la web UI.
+
+---
+
+## Deploy manual (fallback / emergencia)
 
 > ⚠️ **REGIÓN: `us-west2`. NO es el default de gcloud (`us-central1`).**
 > Antes de cualquier `gcloud run deploy`, verificá dónde vive prod: `gcloud run services list --project caja-chica-bot --format="table(metadata.name,region,status.latestReadyRevisionName)"`.

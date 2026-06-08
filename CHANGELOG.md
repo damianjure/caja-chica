@@ -5,6 +5,26 @@
 
 ---
 
+### Cambios 2026-06-08 (CI/CD vía GitHub Actions + fix blank-screen prod)
+
+**Pipeline de deploy automático.** El repo no tenía NINGÚN secret de GitHub seteado → todo push a `main` fallaba ambos jobs de deploy (auth errors), generando emails de fallo de GCP. Migrado a un pipeline funcional con Workload Identity Federation.
+
+- **WIF en vez de SA JSON keys**: la org policy `constraints/iam.disableServiceAccountKeyCreation` bloquea crear keys → `credentials_json` y `FIREBASE_TOKEN` (deprecado) descartados. SA dedicado `github-deployer@caja-chica-bot.iam.gserviceaccount.com`, pool `github-actions-pool`, provider OIDC `github-provider` limitado al repo `damianjure/caja-chica`.
+- Roles del SA: `cloudbuild.builds.editor`, `run.admin`, `storage.admin`, `iam.serviceAccountUser`, `firebasehosting.admin`, `logging.viewer`, `artifactregistry.writer`.
+- **Backend**: reemplazado `gcloud builds submit` (Cloud Build) por `docker build` + `docker push` en el runner. Motivo: Cloud Build fallaba en el log streaming y el flag `--no-logstreaming` no existe en esa versión de gcloud. `gcr.io` ahora respaldado por Artifact Registry → requirió `artifactregistry.writer`.
+- Ambos jobs con `permissions: id-token: write`.
+- `.github/workflows/deploy.yml` reescrito. Commits: `152d8a1`, `c5f584a`, `1e8d7af`, `c175f4d`.
+
+**Fix blank-screen en prod (misma causa: secrets faltantes).** Los 3 `VITE_*` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`) nunca se setearon → el frontend buildeaba con env vacío → `src/services/supabase.ts` exporta `supabase = null` → los consumidores llaman `supabase.auth.*` sobre null → toda la app React crashea en blanco (sin error boundary). Confirmado curleando el bundle de prod (sin URL de Supabase embebida). Seteados los 3 secrets desde `.env.local` y redeployado; bundle nuevo embebe `https://dezgusgxotihxkfkxico.supabase.co`. **No era el código del PR #36.**
+
+**PR #36 mergeado y deployado**: gráficos del Resumen legibles en mobile (variantes `md:hidden`/`hidden md:block`, desktop intacto) + pills de empresa compactas/ordenadas. Charts SVG en mobile: `AreaTrendChart` agrega tarjetas con números grandes (últimos 2 meses + saldo); `WaterfallChart` pasa a barras horizontales tipo lista. Ver DESIGN.md.
+
+**Limpieza**: borrado el secret muerto `GCP_SA_KEY` (vacío, ya no usado bajo WIF).
+
+**Pendiente**: rotar la anon key de Supabase; actualizar las actions a Node 24 antes de sept-2026.
+
+---
+
 ### Estado deploy (2026-05-26 — sesión extendida)
 - Frontend ✔ deployado en `caja-chica-bot.web.app` (último deploy: UI audit round 3)
 - Backend ✔ deployado en Cloud Run rev `caja-chica-00045-dpj` (crons-to-cloud-scheduler + `min-instances=0`)

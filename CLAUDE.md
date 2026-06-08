@@ -108,6 +108,13 @@ Integraciones principales:
 - Conventional commits: `feat(boteado):`, `fix(boteado):`, `chore:`.
 - Remote: `git@github.com:damianjure/caja-chica.git` (SSH).
 
+### Deploy automático (CI/CD) — desde 2026-06-08
+- **Todo push a `main` dispara el workflow `Deploy` (`.github/workflows/deploy.yml`)** → frontend a Firebase Hosting + backend a Cloud Run. No más deploy manual salvo emergencia (ver RUNBOOK).
+- Mergear un PR a `main` también deploya. Para un cambio terminado: push (o merge) y el deploy corre solo.
+- Auth via **Workload Identity Federation** (OIDC), no hay keys de larga vida. SA `github-deployer@caja-chica-bot.iam.gserviceaccount.com`. La org policy bloquea crear SA JSON keys, por eso WIF.
+- Secrets requeridos en el repo (GitHub → Settings → Secrets → Actions): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`. **Si faltan, el frontend buildea sin Supabase y la app queda en blanco en prod** (`supabase` = null → crash sin error boundary). Detalle completo en RUNBOOK.
+- Warnings "Node.js 20 deprecated" en las actions son no-bloqueantes hasta sept-2026.
+
 ### Cómo correr tests
 ```bash
 node --import tsx --test tests/**/*.test.ts

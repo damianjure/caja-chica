@@ -278,6 +278,12 @@ Menú de acciones por fila (ej. `PersonasPanel`). Trigger con `aria-haspopup="me
 ### Toasts (sonner)
 Notificaciones efímeras vía `sonner`, ancladas `bottom-center`. Confirmaciones de acción ("Movimiento guardado", "Link copiado"). No bloquean, se apilan, autodesaparecen. Color semántico solo cuando comunica estado real (rojo error / verde éxito).
 
+### Charts / Gráficos del Resumen (responsive, 2026-06-08)
+SVG puro + tokens (`--chart-income/expense/net/baseline`), sin librería externa. **No hay hooks de media query: las variantes se eligen por clases Tailwind `hidden md:block` / `md:hidden`** — el desktop queda intacto, el mobile es una vista aparte. Componentes en `src/components/dashboard/Charts.tsx`.
+- **`AreaTrendChart` (Pulso mensual):** desktop = trazos con la cifra de saldo flotando sobre cada punto. Mobile = trazos limpios (sin texto encima, ilegible a ese ancho) + una fila de tarjetas con números grandes: últimos 2 meses (ingreso/gasto) y **saldo actual** destacado en una tarjeta con borde de acento `--chart-net`.
+- **`WaterfallChart` (Flujo de caja):** desktop = barras verticales tipo puente. Mobile = **barras horizontales tipo lista**, una fila por paso (`grid-cols-[5.5rem_1fr_auto]`): etiqueta · barra centrada en la línea base (verde a la derecha = suma, rojo a la izquierda = resta) · monto grande. El saldo final va separado abajo con borde superior.
+- **Regla:** en mobile el número se lee como dato (tarjeta/fila), el SVG solo comunica tendencia. Nunca texto chico incrustado en el SVG a ancho mobile.
+
 ## 6. Motion
 
 El movimiento es funcional, nunca decorativo (coherente con la Regla del Color Semántico: nada adorna). Transiciones cortas que confirman causa→efecto.

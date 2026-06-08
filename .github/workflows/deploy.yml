@@ -58,13 +58,13 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build image via Cloud Build
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and push Docker image
         run: |
-          gcloud builds submit \
-            --tag gcr.io/caja-chica-bot/caja-chica \
-            --region us-west2 \
-            --project caja-chica-bot \
-            --no-logstreaming
+          docker build -t gcr.io/caja-chica-bot/caja-chica .
+          docker push gcr.io/caja-chica-bot/caja-chica
 
       - name: Deploy to Cloud Run
         run: |

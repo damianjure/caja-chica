@@ -28,15 +28,11 @@ import { transcribeTelegramAudioWithGemini } from "../../server/telegramAudio.ts
 import { GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { getRecurrenceSession, pendingRecurrenceSessions } from "../sessions.ts";
 import {
-  type PendingMovementPayload,
   persistTelegramMovement,
   runMovementSearch,
   processTelegramFinancialText,
   getLastMovementByType,
-  getPendingTelegramMovement,
-  resolvePendingTelegramMovement,
   getSaldosText,
-  buildPendingCompanyKeyboardLocal,
   applyEditLast,
 } from "./movements.ts";
 import { canUndoMovement, computeQuickBalance } from "../quickActions.ts";
@@ -452,87 +448,6 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   bot.callbackQuery(/^cancel_delete_mov_(.+)$/, async (ctx) => {
     ctx.answerCallbackQuery("Cancelado");
     await ctx.editMessageText("Operación cancelada.");
-  });
-
-  bot.callbackQuery(/^tcp:([\w-]+):(y|o|p)$/, async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
-    if (!linked) return;
-    const pendingId = ctx.match[1];
-    const action = ctx.match[2];
-    const pending = await getPendingTelegramMovement(supabase, pendingId, ctx.chat.id);
-    if (!pending) {
-      await ctx.answerCallbackQuery("Esta asignación ya venció o fue resuelta.");
-      return;
-    }
-
-    const payload = pending.payload;
-    if (action === "o") {
-      await ctx.answerCallbackQuery("Elegí la empresa correcta");
-      await ctx.editMessageText(
-        `🏢 ¿A qué empresa cargamos *${escapeMd(payload.item.descripcion ?? "")}*?`,
-        {
-          parse_mode: "Markdown",
-          reply_markup: buildPendingCompanyKeyboardLocal(pendingId, payload.options),
-        },
-      );
-      return;
-    }
-
-    const selectedCompany =
-      action === "p"
-        ? "Personal"
-        : payload.suggestedOptionIndex !== null
-          ? payload.options[payload.suggestedOptionIndex]?.nombre ?? "Personal"
-          : "Personal";
-
-    const { finalCategory, empresaNombre } = await persistTelegramMovement(supabase, {
-      linked,
-      item: { ...payload.item, empresa: selectedCompany },
-      originalText: payload.originalText,
-    });
-    await resolvePendingTelegramMovement(supabase, pendingId);
-    await ctx.answerCallbackQuery("Movimiento guardado");
-    await ctx.editMessageText(
-      `✅ *Registrado:* ${escapeMd(payload.item.descripcion ?? "")}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`,
-      { parse_mode: "Markdown" },
-    );
-  });
-
-  bot.callbackQuery(/^tca:([\w-]+):(p|\d+)$/, async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
-    if (!linked) return;
-    const pendingId = ctx.match[1];
-    const rawSelection = ctx.match[2];
-    const pending = await getPendingTelegramMovement(supabase, pendingId, ctx.chat.id);
-    if (!pending) {
-      await ctx.answerCallbackQuery("Esta asignación ya venció o fue resuelta.");
-      return;
-    }
-
-    const payload = pending.payload;
-    const selectedCompany =
-      rawSelection === "p"
-        ? "Personal"
-        : payload.options[Number(rawSelection)]?.nombre;
-
-    if (!selectedCompany) {
-      await ctx.answerCallbackQuery("No encontré esa empresa.");
-      return;
-    }
-
-    const { finalCategory, empresaNombre } = await persistTelegramMovement(supabase, {
-      linked,
-      item: { ...payload.item, empresa: selectedCompany },
-      originalText: payload.originalText,
-    });
-    await resolvePendingTelegramMovement(supabase, pendingId);
-    await ctx.answerCallbackQuery("Movimiento guardado");
-    await ctx.editMessageText(
-      `✅ *Registrado:* ${escapeMd(payload.item.descripcion ?? "")}\n💰 ${payload.item.monto} ${payload.item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`,
-      { parse_mode: "Markdown" },
-    );
   });
 
   // Text message handler (main input + guided flows)

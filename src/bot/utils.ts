@@ -181,16 +181,6 @@ export function formatMovementSummary(mov: any) {
   return `${mov.tipo === "ingreso" ? "🟢" : "🔴"} ${mov.monto} ${mov.moneda}\n🏢 ${escapeMd(mov.empresa_nombre || "Personal")}\n📁 ${escapeMd(mov.categoria || "Otros")}\n📝 ${escapeMd(mov.descripcion ?? "")}`;
 }
 
-export function buildPendingCompanyKeyboard(pendingId: string, options: Array<{ nombre: string }>) {
-  const kb = new InlineKeyboard();
-  options.forEach((option, index) => {
-    kb.text(option.nombre, `tca:${pendingId}:${index}`);
-    if ((index + 1) % 2 === 0) kb.row();
-  });
-  kb.row().text("Personal", `tca:${pendingId}:p`);
-  return kb;
-}
-
 // Uses index (0-7) instead of UUID — Telegram callback_data limit is 64 bytes
 export function buildEmpresaSelectorKeyboard(extractionId: string, empresas: Array<{ id: string; nombre: string }>) {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];

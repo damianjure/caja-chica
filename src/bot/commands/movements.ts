@@ -27,20 +27,6 @@ import {
 } from "../intentSlots.ts";
 import { setIntentConfirmSession } from "../sessions.ts";
 
-export type PendingMovementPayload = {
-  item: {
-    monto: number | null;
-    tipo: "ingreso" | "egreso";
-    moneda: "ARS" | "USD";
-    categoria: string;
-    empresa: string | null;
-    descripcion: string;
-  };
-  originalText: string;
-  options: Array<{ nombre: string }>;
-  suggestedOptionIndex: number | null;
-};
-
 export async function getLastMovementByType(
   supabase: BotDeps["supabase"],
   linked: TelegramLinkRecord,
@@ -171,54 +157,6 @@ export async function listTelegramCompanies(supabase: BotDeps["supabase"], linke
   return (data ?? []).map((entry: any) => ({ id: entry.id, nombre: entry.nombre, cuit: entry.cuit ?? null }));
 }
 
-export async function cancelPendingTelegramMovements(supabase: BotDeps["supabase"], chatId: number) {
-  await supabase
-    .from("telegram_pending_movements")
-    .update({ status: "cancelled", resolved_at: new Date().toISOString() })
-    .eq("chat_id", chatId)
-    .eq("status", "pending");
-}
-
-async function createPendingTelegramMovement(supabase: BotDeps["supabase"], args: {
-  linked: TelegramLinkRecord;
-  chatId: number;
-  payload: PendingMovementPayload;
-}) {
-  await cancelPendingTelegramMovements(supabase, args.chatId);
-  const { data, error } = await supabase
-    .from("telegram_pending_movements")
-    .insert([{
-      chat_id: args.chatId,
-      user_id: args.linked.userId,
-      dashboard_id: args.linked.dashboardId,
-      payload: args.payload,
-      status: "pending",
-    }])
-    .select("id")
-    .limit(1);
-  if (error) throw error;
-  return data?.[0]?.id as string | undefined;
-}
-
-export async function getPendingTelegramMovement(supabase: BotDeps["supabase"], pendingId: string, chatId: number) {
-  const { data, error } = await supabase
-    .from("telegram_pending_movements")
-    .select("*")
-    .eq("id", pendingId)
-    .eq("chat_id", chatId)
-    .eq("status", "pending")
-    .limit(1);
-  if (error) throw error;
-  return data?.[0] as { id: string; payload: PendingMovementPayload } | undefined;
-}
-
-export async function resolvePendingTelegramMovement(supabase: BotDeps["supabase"], pendingId: string) {
-  await supabase
-    .from("telegram_pending_movements")
-    .update({ status: "resolved", resolved_at: new Date().toISOString() })
-    .eq("id", pendingId);
-}
-
 export async function persistTelegramMovement(supabase: BotDeps["supabase"], args: {
   linked: TelegramLinkRecord;
   item: {
@@ -276,70 +214,6 @@ export async function persistTelegramMovement(supabase: BotDeps["supabase"], arg
     empresaNombre,
     icon: args.item.tipo === "ingreso" ? "🟢" : "🔴",
   };
-}
-
-async function askTelegramCompanyAssignment(supabase: BotDeps["supabase"], args: {
-  ctx: Context;
-  linked: TelegramLinkRecord;
-  item: PendingMovementPayload["item"];
-  originalText: string;
-  companies: TelegramCompanyOption[];
-  suggestedCompanyIndex?: number | null;
-}) {
-  const payload: PendingMovementPayload = {
-    item: { ...args.item, empresa: null },
-    originalText: args.originalText,
-    options: args.companies.map((company) => ({ nombre: company.nombre })),
-    suggestedOptionIndex: args.suggestedCompanyIndex ?? null,
-  };
-
-  const pendingId = await createPendingTelegramMovement(supabase, {
-    linked: args.linked,
-    chatId: args.ctx.chat.id,
-    payload,
-  });
-
-  if (!pendingId) {
-    await args.ctx.reply("❌ No pude guardar la asignación pendiente de empresa.");
-    return true;
-  }
-
-  if (
-    typeof args.suggestedCompanyIndex === "number" &&
-    payload.options[args.suggestedCompanyIndex]
-  ) {
-    const suggested = payload.options[args.suggestedCompanyIndex];
-    await args.ctx.reply(
-      `🤔 No estoy 100% seguro con la empresa.\n\n¿Quisiste decir *${escapeMd(suggested.nombre)}*?`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: new InlineKeyboard()
-          .text(`Sí, ${suggested.nombre}`, `tcp:${pendingId}:y`).row()
-          .text("Elegir otra", `tcp:${pendingId}:o`)
-          .text("Personal", `tcp:${pendingId}:p`),
-      },
-    );
-    return true;
-  }
-
-  await args.ctx.reply(
-    `🏢 No me quedó clara la empresa para *${escapeMd(args.item.descripcion)}*.\n\n¿A qué empresa cargamos esto?`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: buildPendingCompanyKeyboardLocal(pendingId, payload.options),
-    },
-  );
-  return true;
-}
-
-export function buildPendingCompanyKeyboardLocal(pendingId: string, options: Array<{ nombre: string }>) {
-  const kb = new InlineKeyboard();
-  options.forEach((option, index) => {
-    kb.text(option.nombre, `tca:${pendingId}:${index}`);
-    if ((index + 1) % 2 === 0) kb.row();
-  });
-  kb.row().text("Personal", `tca:${pendingId}:p`);
-  return kb;
 }
 
 export async function getSaldosText(supabase: BotDeps["supabase"], linked: TelegramLinkRecord): Promise<string | null> {

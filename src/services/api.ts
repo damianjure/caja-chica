@@ -461,6 +461,33 @@ export interface ImageItemsExtractionResult {
   items: ImageLineItem[];
 }
 
+/** A persisted ticket line (child of a movimiento). */
+export interface MovimientoLinea {
+  id: string;
+  movimiento_id: string;
+  descripcion: string;
+  monto: number;
+  categoria: string;
+  cantidad: number | null;
+  created_at?: string;
+}
+
+export interface TicketLinePayload {
+  descripcion: string;
+  monto: number;
+  categoria: string;
+  cantidad?: number | null;
+}
+
+export interface SaveTicketPayload {
+  /** Chosen empresa (default/Personal). Server never auto-creates it. */
+  empresa: string | null;
+  moneda: "ARS" | "USD";
+  /** Parent description (merchant folded in here). */
+  descripcion: string;
+  lineas: TicketLinePayload[];
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -533,6 +560,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ items, originalText }),
     });
+  },
+
+  async saveTicket(payload: SaveTicketPayload): Promise<{ movimiento: Movimiento; lineas: MovimientoLinea[] }> {
+    return fetchApi("/api/movimientos/ticket", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getLineas(movimientoId: string): Promise<{ items: MovimientoLinea[] }> {
+    return fetchApi(`/api/movimientos/${movimientoId}/lineas`);
+  },
+
+  async updateLinea(id: string, patch: Partial<Pick<MovimientoLinea, "monto" | "categoria" | "descripcion">>): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/movimientos/lineas/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  },
+
+  async deleteLinea(id: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/movimientos/lineas/${id}`, { method: "DELETE" });
   },
 
   async addEmpresa(nombre: string): Promise<Empresa> {

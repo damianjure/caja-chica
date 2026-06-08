@@ -37,10 +37,8 @@ import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
 import { useCategoryAssignment } from './hooks/dashboard/useCategoryAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
 import { useImageExtract } from './hooks/dashboard/useImageExtract';
-import { ImageReviewModal, type ReviewFields } from './components/dashboard/ImageReviewModal';
-import { ImageItemsReviewModal } from './components/dashboard/ImageItemsReviewModal';
-import { buildLineItemMovements, toSingleReview } from './dashboard/lineItems';
-import type { ImageLineItem } from './services/api';
+import { ImageTicketModal } from './components/dashboard/ImageTicketModal';
+import type { SaveTicketPayload } from './services/api';
 import { type MovementEditForm, type ConfirmationModalState } from './types/dashboard';
 
 export type { MovementEditForm, ConfirmationModalState };
@@ -269,44 +267,29 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (extracted) setIsCargaOpen(false);
   }, [extracted]);
 
-  const handleSaveExtracted = useCallback(async (fields: ReviewFields) => {
+  const handleSaveTicket = useCallback(async (payload: SaveTicketPayload) => {
     setIsSavingExtracted(true);
     try {
-      const saved = await api.saveMovimientos(
-        [{ monto: fields.monto, tipo: fields.tipo, moneda: fields.moneda, categoria: fields.categoria, empresa: fields.empresa || null, descripcion: fields.descripcion }],
-        'Ticket extraído desde imagen',
-      );
-      prependMovements(saved.map((m) => ({ ...m, conciliado: m.conciliado ?? true })));
-      toast.success('Movimiento guardado desde imagen.');
+      const { movimiento } = await api.saveTicket(payload);
+      prependMovements([{ ...movimiento, conciliado: movimiento.conciliado ?? true }]);
       clearExtracted();
+      toast.success('Ticket guardado.', {
+        action: {
+          label: 'Deshacer',
+          onClick: () => {
+            void api.deleteMovimiento(movimiento.id)
+              .then(() => removeMovement(movimiento.id))
+              .catch(() => toast.error('No se pudo deshacer.'));
+          },
+        },
+      });
     } catch {
-      toast.error('No se pudo guardar el movimiento.');
+      toast.error('No se pudo guardar el ticket.');
     } finally {
       setIsSavingExtracted(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearExtracted, queryClient]);
-
-  const handleSaveLineItems = useCallback(async (selected: ImageLineItem[], mode: 'sep' | 'sum') => {
-    if (!extracted) return;
-    const movements = buildLineItemMovements(selected, { empresa: extracted.empresa, moneda: extracted.moneda }, mode);
-    if (movements.length === 0) {
-      toast.error('Seleccioná al menos un ítem con monto.');
-      return;
-    }
-    setIsSavingExtracted(true);
-    try {
-      const saved = await api.saveMovimientos(movements, 'Ticket extraído desde imagen');
-      prependMovements(saved.map((m) => ({ ...m, conciliado: m.conciliado ?? true })));
-      toast.success(saved.length === 1 ? 'Movimiento guardado desde imagen.' : `${saved.length} movimientos guardados desde imagen.`);
-      clearExtracted();
-    } catch {
-      toast.error('No se pudieron guardar los movimientos.');
-    } finally {
-      setIsSavingExtracted(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extracted, clearExtracted, queryClient]);
 
   const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
     categories, customCompanies, canWriteData,
@@ -666,21 +649,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             </div>
         </main>
 
-        {extracted && extracted.items.length >= 2 ? (
-          <ImageItemsReviewModal
+        {extracted && (
+          <ImageTicketModal
             extracted={extracted}
+            companiesList={companiesList}
+            defaultEmpresa={readDefaultEmpresa()}
             isSaving={isSavingExtracted}
-            onSave={(selected, mode) => void handleSaveLineItems(selected, mode)}
+            onSave={(payload) => void handleSaveTicket(payload)}
             onCancel={clearExtracted}
           />
-        ) : extracted ? (
-          <ImageReviewModal
-            extracted={toSingleReview(extracted)}
-            isSaving={isSavingExtracted}
-            onSave={(fields) => void handleSaveExtracted(fields)}
-            onCancel={clearExtracted}
-          />
-        ) : null}
+        )}
 
         {/* Barra flotante (solo mobile): acceso rápido a buscar y cargar */}
         <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">

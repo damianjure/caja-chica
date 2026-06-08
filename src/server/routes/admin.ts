@@ -250,6 +250,8 @@ export function createAdminRouter(deps: AdminDeps) {
           invite_url: `${publicAppUrl || ""}/?invite=${r.invite_token}`,
           invited_by_email: r.invited_by ? inviterEmailById.get(r.invited_by) ?? null : null,
           membership_of: userId ? membershipByUserId.get(userId) ?? [] : [],
+          // Accepted invitation whose user account no longer exists → deleted user.
+          user_deleted: r.status === "accepted" && !emailToUserId.has(r.email),
         };
       });
       res.json(invitations);

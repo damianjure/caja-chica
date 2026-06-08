@@ -90,6 +90,7 @@ const INVITATION_STATUS_LABELS: Record<string, string> = {
   accepted: "Aceptada",
   revoked: "Revocada",
   expired: "Vencida",
+  deleted: "Eliminada",
 };
 
 export function AdminPanel({ viewer }: AdminPanelProps) {
@@ -508,7 +509,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               aria-label="Filtrar por estado"
               className="flex flex-wrap gap-2"
             >
-              {(["all", "pending", "accepted", "revoked", "expired"] as const).map((status) => {
+              {(["all", "pending", "accepted", "revoked", "expired", "deleted"] as const).map((status) => {
                 const isSelected = invitationStatusFilter === status;
                 return (
                   <button
@@ -536,6 +537,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                   if (invitationStatusFilter === "expired") {
                     return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                   }
+                  if (invitationStatusFilter === "deleted") return inv.user_deleted === true;
+                  if (invitationStatusFilter === "accepted") return inv.status === "accepted" && !inv.user_deleted;
                   return inv.status === invitationStatusFilter;
                 })
                 .map((invitation) => {
@@ -642,6 +645,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                 if (invitationStatusFilter === "expired") {
                   return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
                 }
+                if (invitationStatusFilter === "deleted") return inv.user_deleted === true;
+                if (invitationStatusFilter === "accepted") return inv.status === "accepted" && !inv.user_deleted;
                 return inv.status === invitationStatusFilter;
               }).length === 0 && (
                 <p className="text-sm text-[var(--app-text-2)]">

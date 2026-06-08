@@ -183,6 +183,8 @@ export interface AppInvitation {
   last_reminder_at?: string | null;
   invited_by_email?: string | null;
   membership_of?: string[];
+  /** Accepted invitation whose user account was deleted. */
+  user_deleted?: boolean;
 }
 
 export type OnboardingState = 'pending' | 'seeded' | 'completed' | 'cleaned';

@@ -31,7 +31,10 @@ export default function ResumenTab(props: ResumenTabProps) {
   const [pulseSeries, setPulseSeries] = useState({ income: true, expense: true, net: true });
   const [hiddenCompanies, setHiddenCompanies] = useState<Set<string>>(new Set());
 
-  const companyNames = useMemo(() => props.companiesList.filter((c) => c !== 'all'), [props.companiesList]);
+  const companyNames = useMemo(
+    () => props.companiesList.filter((c) => c !== 'all').slice().sort((a, b) => a.localeCompare(b, 'es')),
+    [props.companiesList],
+  );
   const pulseData = useMemo(() => {
     const visible = companyNames.filter((c) => !hiddenCompanies.has(c));
     return buildMonthlyChartData(props.history, pulseCurrency, hiddenCompanies.size ? visible : null);
@@ -155,12 +158,12 @@ export default function ResumenTab(props: ResumenTabProps) {
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {companyNames.length > 1 ? (
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por empresa">
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por empresa">
                   <button
                     type="button"
                     onClick={() => setHiddenCompanies(new Set())}
                     aria-pressed={hiddenCompanies.size === 0}
-                    className={`rounded-full border px-3 py-1 text-xs transition ${hiddenCompanies.size === 0 ? 'border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+                    className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${hiddenCompanies.size === 0 ? 'border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] font-semibold' : 'border-[var(--app-border)] text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
                   >
                     Todas
                   </button>
@@ -173,7 +176,7 @@ export default function ResumenTab(props: ResumenTabProps) {
                         onClick={() => toggleCompany(name)}
                         aria-pressed={on}
                         aria-label={`${on ? 'Ocultar' : 'Mostrar'} ${name}`}
-                        className={`rounded-full border px-3 py-1 text-xs transition ${on ? 'border-[var(--app-border-strong)] text-[var(--app-text-2)]' : 'border-[var(--app-border)] text-[var(--app-text-3)] line-through opacity-50'}`}
+                        className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${on ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_16%,transparent)] text-[var(--app-text-1)] font-medium' : 'border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)] opacity-45 hover:opacity-75'}`}
                       >
                         {name}
                       </button>

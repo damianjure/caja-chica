@@ -34,6 +34,7 @@ import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
 import { buildMovimientosCsv, shareOrDownloadCsv } from './dashboard/exportCsv';
 import { buildExportRequest } from './dashboard/reportRequest';
 import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
+import { useCategoryAssignment } from './hooks/dashboard/useCategoryAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
 import { useImageExtract } from './hooks/dashboard/useImageExtract';
 import { ImageReviewModal, type ReviewFields } from './components/dashboard/ImageReviewModal';
@@ -175,6 +176,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   } = useMovementsFilter(history);
 
   const { pendingItem, setPendingItem, isAssigning, assignPendingMovement } = useCompanyAssignment();
+  const { pendingCategory, setPendingCategory, isAssigningCategory, assignPendingCategory } = useCategoryAssignment();
 
   const currentDashboardMember = dashboardAccess?.members.find((m) => m.user_id === viewer.id) ?? null;
   const dashboardRole = currentDashboardMember?.role ?? 'owner';
@@ -300,6 +302,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           break;
         case 'PENDING_COMPANY':
           setPendingItem(event.item);
+          setIsCargaOpen(false);
+          break;
+        case 'PENDING_CATEGORY':
+          setPendingCategory(event.item);
           setIsCargaOpen(false);
           break;
       }
@@ -697,6 +703,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           pendingItem={pendingItem} isAssigning={isAssigning} companiesList={companiesList} readDefaultEmpresa={readDefaultEmpresa}
           onAssignCompany={(empresa) => void assignPendingMovement(empresa, (saved) => { prependMovements(saved); showToast(empresa === 'Personal' ? 'Asignado a Personal' : `Asignado a ${empresa}`); }, () => showToast('No se pudo guardar el movimiento.', 'warning'))}
           onCancelPending={() => setPendingItem(null)}
+          pendingCategory={pendingCategory} isAssigningCategory={isAssigningCategory} categoriesList={categories.map((c) => c.nombre)}
+          onAssignCategory={(categoria, create) => void assignPendingCategory(categoria, { create }, (saved) => { prependMovements(saved); if (create) void queryClient.invalidateQueries({ queryKey: ['categorias'] }); showToast(`Movimiento registrado en ${categoria}.`); }, () => showToast('No se pudo guardar el movimiento.', 'warning'))}
+          onCancelPendingCategory={() => setPendingCategory(null)}
           confirmationModal={confirmationModal} confirmationInput={confirmationInput} setConfirmationInput={setConfirmationInput}
           isConfirmingAction={isConfirmingAction}
           onCloseConfirmation={() => { if (!isConfirmingAction) { setConfirmationModal(null); setConfirmationInput(''); } }}

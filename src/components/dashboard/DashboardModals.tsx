@@ -4,6 +4,7 @@ import { ModalShell } from '../ui/ModalShell';
 import { ConfirmDestructive } from '../ui/ConfirmDestructive';
 import { type MovementEditForm, type ConfirmationModalState } from '../../types/dashboard';
 import { type PendingCompanyItem } from '../../hooks/dashboard/useCompanyAssignment';
+import { type PendingCategoryAssignment } from '../../dashboard/categoryAssignment';
 
 interface DashboardModalsProps {
   editingMovement: Movimiento | null;
@@ -25,6 +26,12 @@ interface DashboardModalsProps {
   onAssignCompany: (empresa: string) => void;
   onCancelPending: () => void;
 
+  pendingCategory: PendingCategoryAssignment | null;
+  isAssigningCategory: boolean;
+  categoriesList: string[];
+  onAssignCategory: (categoria: string, create: boolean) => void;
+  onCancelPendingCategory: () => void;
+
   confirmationModal: ConfirmationModalState | null;
   confirmationInput: string;
   setConfirmationInput: Dispatch<SetStateAction<string>>;
@@ -37,6 +44,7 @@ export function DashboardModals({
   editingMovement, movementEditForm, setMovementEditForm, onCloseMovementEdit, onSaveMovementEdit,
   editingCompany, companyEditName, setCompanyEditName, onCloseCompanyEdit, onSaveCompanyEdit,
   pendingItem, isAssigning, companiesList, readDefaultEmpresa, onAssignCompany, onCancelPending,
+  pendingCategory, isAssigningCategory, categoriesList, onAssignCategory, onCancelPendingCategory,
   confirmationModal, confirmationInput, setConfirmationInput, isConfirmingAction, onCloseConfirmation, onRunConfirmation,
 }: DashboardModalsProps) {
   return (
@@ -103,6 +111,47 @@ export function DashboardModals({
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCancelPending} disabled={isAssigning} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar registro</button>
+          </div>
+        </ModalShell>
+      )}
+
+      {pendingCategory && (
+        <ModalShell title="Categoría" onClose={() => { if (!isAssigningCategory) onCancelPendingCategory(); }}>
+          <div className="space-y-5">
+            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-4">
+              <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">Categoría nueva sugerida</div>
+              <p className="mt-2 text-lg font-semibold text-[var(--app-text-1)]">¿Creamos la categoría «{pendingCategory.suggested}»?</p>
+              <p className="mt-2 text-sm italic text-[var(--app-text-3)]">"{pendingCategory.originalText}"</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <button onClick={() => onAssignCategory(pendingCategory.suggested, true)} disabled={isAssigningCategory}
+                className="rounded-xl border border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] px-4 py-4 text-left font-semibold text-[var(--app-strong-text)] transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
+              >
+                Crear «{pendingCategory.suggested}»
+              </button>
+              <button onClick={() => onAssignCategory('Otros', false)} disabled={isAssigningCategory}
+                className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-4 text-left font-medium text-[var(--app-text-2)] transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
+              >
+                Usar "Otros"
+              </button>
+            </div>
+            {categoriesList.filter((c) => c !== 'all').length > 0 && (
+              <div>
+                <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)] mb-2">O usá una existente</div>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                  {categoriesList.filter((c) => c !== 'all').map((cat) => (
+                    <button key={cat} onClick={() => onAssignCategory(cat, false)} disabled={isAssigningCategory}
+                      className="rounded-lg border border-[var(--app-border)] bg-white px-3 py-2 text-left text-sm font-medium text-[var(--app-text-1)] transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <button onClick={onCancelPendingCategory} disabled={isAssigningCategory} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar registro</button>
           </div>
         </ModalShell>
       )}

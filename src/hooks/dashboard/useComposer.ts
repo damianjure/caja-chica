@@ -1,12 +1,14 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { api, ApiError, type ExtractedItem, type Movimiento, type Empresa, type Categoria } from '../../services/api';
 import { getPendingCompanyAssignment } from '../../dashboard/companyAssignment';
+import { getPendingCategoryAssignment, type PendingCategoryAssignment } from '../../dashboard/categoryAssignment';
 
 export type ComposerCommitEvent =
   | { type: 'GESTIONAR_EMPRESA'; action: string; companyName: string }
   | { type: 'ELIMINAR_MOVIMIENTO'; deletedId?: string }
   | { type: 'REGISTRAR'; saved: Movimiento[] }
-  | { type: 'PENDING_COMPANY'; item: ExtractedItem & { originalText: string } };
+  | { type: 'PENDING_COMPANY'; item: ExtractedItem & { originalText: string } }
+  | { type: 'PENDING_CATEGORY'; item: PendingCategoryAssignment };
 
 export interface ComposerOpts {
   categories: Categoria[];
@@ -69,6 +71,12 @@ export function useComposer(opts: ComposerOpts): ComposerResult {
             if (pendingAssignment) {
               opts.onCommit({ type: 'PENDING_COMPANY', item: pendingAssignment });
               opts.onWarning('Elegí la empresa antes de guardar el movimiento.');
+              break;
+            }
+            const pendingCategory = getPendingCategoryAssignment(typed.items, inputText, opts.categories);
+            if (pendingCategory) {
+              opts.onCommit({ type: 'PENDING_CATEGORY', item: pendingCategory });
+              opts.onWarning('Elegí o creá la categoría antes de guardar.');
               break;
             }
             const saved = await api.saveMovimientos(typed.items, inputText);

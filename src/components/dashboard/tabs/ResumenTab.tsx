@@ -26,6 +26,48 @@ interface ResumenTabProps {
   insights: string[];
 }
 
+/**
+ * Company filter pills. Shared across the Pulso and Flujo de caja charts —
+ * both read the same `hiddenCompanies` state, so toggling here filters both.
+ */
+function CompanyFilterPills({
+  companyNames, hiddenCompanies, onReset, onToggle,
+}: {
+  companyNames: string[];
+  hiddenCompanies: Set<string>;
+  onReset: () => void;
+  onToggle: (name: string) => void;
+}) {
+  if (companyNames.length <= 1) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por empresa">
+      <button
+        type="button"
+        onClick={onReset}
+        aria-pressed={hiddenCompanies.size === 0}
+        className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${hiddenCompanies.size === 0 ? 'border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] font-semibold' : 'border-[var(--app-border)] text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+      >
+        Todas
+      </button>
+      {companyNames.map((name) => {
+        const on = !hiddenCompanies.has(name);
+        return (
+          <button
+            key={name}
+            type="button"
+            onClick={() => onToggle(name)}
+            aria-pressed={on}
+            aria-label={`${on ? 'Ocultar' : 'Mostrar'} ${name}`}
+            className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${on ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_16%,transparent)] text-[var(--app-text-1)] font-medium' : 'border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)] opacity-45 hover:opacity-75'}`}
+          >
+            {name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ResumenTab(props: ResumenTabProps) {
   const [pulseCurrency, setPulseCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [pulseSeries, setPulseSeries] = useState({ income: true, expense: true, net: true });
@@ -158,31 +200,12 @@ export default function ResumenTab(props: ResumenTabProps) {
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {companyNames.length > 1 ? (
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por empresa">
-                  <button
-                    type="button"
-                    onClick={() => setHiddenCompanies(new Set())}
-                    aria-pressed={hiddenCompanies.size === 0}
-                    className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${hiddenCompanies.size === 0 ? 'border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] font-semibold' : 'border-[var(--app-border)] text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
-                  >
-                    Todas
-                  </button>
-                  {companyNames.map((name) => {
-                    const on = !hiddenCompanies.has(name);
-                    return (
-                      <button
-                        key={name}
-                        type="button"
-                        onClick={() => toggleCompany(name)}
-                        aria-pressed={on}
-                        aria-label={`${on ? 'Ocultar' : 'Mostrar'} ${name}`}
-                        className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition ${on ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_16%,transparent)] text-[var(--app-text-1)] font-medium' : 'border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-3)] opacity-45 hover:opacity-75'}`}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <CompanyFilterPills
+                  companyNames={companyNames}
+                  hiddenCompanies={hiddenCompanies}
+                  onReset={() => setHiddenCompanies(new Set())}
+                  onToggle={toggleCompany}
+                />
               ) : <span />}
               <div className="inline-flex shrink-0 self-end rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5 sm:self-auto" role="group" aria-label="Moneda del gráfico">
                 {(['ARS', 'USD'] as const).map((c) => (
@@ -217,6 +240,16 @@ export default function ResumenTab(props: ResumenTabProps) {
           title="Flujo de caja"
           description="Cómo cada categoría reduce la caja, del ingreso al saldo."
         >
+          {companyNames.length > 1 && (
+            <div className="mb-4">
+              <CompanyFilterPills
+                companyNames={companyNames}
+                hiddenCompanies={hiddenCompanies}
+                onReset={() => setHiddenCompanies(new Set())}
+                onToggle={toggleCompany}
+              />
+            </div>
+          )}
           {bridgeData.length === 0 ? (
             <EmptyState
               title="Sin datos para el puente de caja."

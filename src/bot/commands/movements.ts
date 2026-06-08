@@ -610,29 +610,12 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
         for (const rawItem of extracted.items) {
           const item = rawItem as { monto: number; tipo: "ingreso" | "egreso"; moneda: "ARS" | "USD"; categoria: string; empresa: string | null; descripcion: string };
           const companyResolution = resolveTelegramCompany(item, companies);
-          if (companyResolution.kind === "exact") {
+          // F — never block on company. Use an exact/fuzzy match if there is one;
+          // otherwise fall through to Personal (normalized on save). The user can
+          // fix it afterwards with the "Cambiar empresa" button — the load is
+          // never interrupted by a question.
+          if (companyResolution.kind === "exact" || companyResolution.kind === "suggest") {
             item.empresa = companyResolution.company.nombre;
-          }
-
-          const needsCompanyPrompt =
-            extracted.items.length === 1 &&
-            (companyResolution.kind === "missing" || companyResolution.kind === "suggest" || companyResolution.kind === "unresolved");
-
-          if (needsCompanyPrompt) {
-            const suggestedIndex =
-              companyResolution.kind === "suggest"
-                ? companies.findIndex((company) => company.nombre === companyResolution.company.nombre)
-                : null;
-
-            await askTelegramCompanyAssignment(supabase, {
-              ctx,
-              linked: linkedW,
-              item,
-              originalText: args.originalText,
-              companies,
-              suggestedCompanyIndex: suggestedIndex,
-            });
-            return;
           }
 
           const { created, finalCategory, empresaNombre, icon } = await persistTelegramMovement(supabase, {
@@ -644,7 +627,10 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
           const movId = created?.id as string | undefined;
           const confirmKb = movId
             ? { inline_keyboard: [
-                [{ text: "✏️ Cambiar Categoría", callback_data: `change_cat_${movId}` }],
+                [
+                  { text: "✏️ Categoría", callback_data: `change_cat_${movId}` },
+                  { text: "🏢 Empresa", callback_data: `change_emp_${movId}` },
+                ],
                 ...buildUndoKeyboard(movId).inline_keyboard,
               ] }
             : undefined;

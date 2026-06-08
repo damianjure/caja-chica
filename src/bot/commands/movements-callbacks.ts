@@ -14,7 +14,7 @@ import {
   canDeleteMovementViaTelegram,
   canEditMovementViaTelegram,
 } from "../../server/telegramAccess.ts";
-import { resolveTelegramCompany, getTopEmpresasForDashboard } from "../../server/telegramCompanyResolution.ts";
+import { resolveTelegramCompany, getTopEmpresasForDashboard, normalizeEmpresaName } from "../../server/telegramCompanyResolution.ts";
 import { resolveTelegramCategory, getTopCategoriasForDashboard } from "../../server/telegramCategoryResolution.ts";
 import {
   createPendingExtraction,
@@ -358,6 +358,61 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       if ((i + 1) % 3 === 0) kb.row();
     });
     ctx.editMessageText("Seleccioná la categoría correcta:", { reply_markup: kb });
+  });
+
+  bot.callbackQuery(/^change_emp_([\w-]+)$/, async (ctx) => {
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const movId = ctx.match[1];
+    const { data: targetRows } = await applyTelegramDataScope(
+      supabase.from("movimientos").select("id, owner_user_id, created_by_user_id"),
+      linked,
+    ).eq("id", movId).limit(1);
+    const target = targetRows?.[0];
+    if (!target) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    if (!canEditMovementViaTelegram(target, linked)) {
+      return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
+    }
+    const { data: emps } = await applyTelegramDataScope(
+      supabase.from("empresas").select("nombre").is("deleted_at", null),
+      linked,
+    );
+    const kb = new InlineKeyboard();
+    kb.text("Personal", `set_emp_${movId}_Personal`).row();
+    (emps ?? []).forEach((e, i) => {
+      kb.text(e.nombre, `set_emp_${movId}_${e.nombre}`);
+      if ((i + 1) % 2 === 0) kb.row();
+    });
+    ctx.editMessageText("Seleccioná la empresa:", { reply_markup: kb });
+  });
+
+  bot.callbackQuery(/^set_emp_([\w-]+)_(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const movId = ctx.match[1];
+    const empresa = normalizeEmpresaName(ctx.match[2]);
+    const { data: targetRows } = await applyTelegramDataScope(
+      supabase.from("movimientos").select("id, owner_user_id, created_by_user_id"),
+      linked,
+    ).eq("id", movId).limit(1);
+    const target = targetRows?.[0];
+    if (!target) return ctx.answerCallbackQuery("Movimiento no encontrado.");
+    if (!canEditMovementViaTelegram(target, linked)) {
+      return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
+    }
+    await supabase.from("movimientos").update({ empresa_nombre: empresa }).eq("id", movId);
+    await insertBotAuditLog(supabase, {
+      linked,
+      actorUserId: linked.userId,
+      action: "update",
+      entityType: "movimiento",
+      entityId: movId,
+      beforeData: { id: movId },
+      afterData: { id: movId, empresa_nombre: empresa },
+    });
+    ctx.answerCallbackQuery(`Empresa actualizada: ${empresa}`);
+    ctx.editMessageText(`✅ Empresa actualizada a *${empresa}*`, { parse_mode: "Markdown" });
   });
 
   bot.callbackQuery(/^confirm_delete_mov_(.+)$/, async (ctx) => {

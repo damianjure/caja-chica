@@ -1,7 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveTelegramCompany } from '../src/server/telegramCompanyResolution.ts';
+import { resolveTelegramCompany, normalizeEmpresaName, isPersonalEmpresa } from '../src/server/telegramCompanyResolution.ts';
+
+test('"personal" resuelve directo a Personal (no pregunta)', () => {
+  for (const raw of ['personal', 'Personal', 'PERSONAL', 'empresa personal', 'ninguna', 'sin empresa']) {
+    const r = resolveTelegramCompany({ empresa: raw }, [{ id: '1', nombre: 'Taller Central' }]);
+    assert.equal(r.kind, 'exact', `"${raw}" debe ser exact`);
+    if (r.kind === 'exact') assert.equal(r.company.nombre, 'Personal');
+  }
+});
+
+test('normalizeEmpresaName: alias/empty → Personal, real name pasa', () => {
+  assert.equal(normalizeEmpresaName('personal'), 'Personal');
+  assert.equal(normalizeEmpresaName(''), 'Personal');
+  assert.equal(normalizeEmpresaName(null), 'Personal');
+  assert.equal(normalizeEmpresaName('  Carrefour '), 'Carrefour');
+  assert.equal(isPersonalEmpresa('Carrefour'), false);
+  assert.equal(isPersonalEmpresa('ninguna'), true);
+});
 
 const companies = [
   { id: '1', nombre: 'Taller Central' },

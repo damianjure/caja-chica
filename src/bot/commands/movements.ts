@@ -8,7 +8,7 @@ import {
   canEditMovementViaTelegram,
   type TelegramLinkRecord,
 } from "../../server/telegramAccess.ts";
-import { resolveTelegramCompany, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
+import { resolveTelegramCompany, normalizeEmpresaName, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
@@ -240,7 +240,7 @@ export async function persistTelegramMovement(supabase: BotDeps["supabase"], arg
     else finalCategory = "Otros";
   }
 
-  const empresaNombre = args.item.empresa?.trim() || "Personal";
+  const empresaNombre = normalizeEmpresaName(args.item.empresa);
   const { data, error } = await supabase
     .from("movimientos")
     .insert([{

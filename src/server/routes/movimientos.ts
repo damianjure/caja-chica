@@ -3,6 +3,7 @@ import { geminiGenerateText, GeminiUnavailableError } from "../geminiWithFallbac
 import type { AppSession, DataAccessScope, SupabaseLike, GenAILike } from "../contracts.ts";
 import type { Frecuencia } from "../recurrentes.ts";
 import type { GeminiExtractResponse } from "../gemini.ts";
+import { normalizeEmpresaName } from "../telegramCompanyResolution.ts";
 import type {
   SaveMovimientosRequest,
   PaginationQuery,
@@ -135,7 +136,7 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       const referencedCompanies = [
         ...new Set(
           payload.items
-            .map((item) => (item.empresa || "Personal").trim())
+            .map((item) => normalizeEmpresaName(item.empresa))
             .filter((name) => name.length > 0 && name !== "Personal"),
         ),
       ];
@@ -185,7 +186,7 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
               moneda: item.moneda,
               monto: Math.abs(item.monto || 0),
               categoria: item.categoria || "Otros",
-              empresa_nombre: item.empresa || "Personal",
+              empresa_nombre: normalizeEmpresaName(item.empresa),
               descripcion: item.descripcion,
               original_text: payload.originalText,
               conciliado: true,

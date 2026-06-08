@@ -37,6 +37,7 @@ SLOTS por intención:
 REGLAS:
 - BORRAR / ELIMINAR / SACAR una EMPRESA o una CATEGORÍA NO está soportado por voz: usá intent "desconocido" (nunca "crear_empresa" ni "crear_categoria").
 - Para "movimiento": llená "items" (uno o más). Dejá "slots" vacío.
+- Si el usuario dice "personal", "sin empresa" o "ninguna" como empresa, poné "empresa": "Personal" (no la dejes vacía ni inventes una empresa).
 - Para los comandos: llená "slots" según corresponda y dejá "items" como [].
 - Si dudás entre movimiento y comando, y hay un monto que se registra, elegí "movimiento".
 - En "informe"/"recurrente_nuevo"/"editar_ultimo" extraé TODO lo que el usuario haya dicho; lo que no dijo, omitilo.

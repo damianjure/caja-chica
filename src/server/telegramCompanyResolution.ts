@@ -14,6 +14,25 @@ export type TelegramCompanyResolution =
   | { kind: 'suggest'; company: TelegramCompanyOption; score: number }
   | { kind: 'unresolved' };
 
+export const PERSONAL_EMPRESA = "Personal";
+
+// Aliases the user might say/write to mean "no company → the Personal bucket".
+const PERSONAL_ALIASES = new Set([
+  "personal", "empresa personal", "ninguna", "ninguno", "ningun", "sin empresa", "sin",
+]);
+
+// True when a free-text empresa should map to the Personal bucket.
+export function isPersonalEmpresa(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return PERSONAL_ALIASES.has(normalizeName(value));
+}
+
+// Canonical empresa name for storage: empty/personal-aliases → "Personal".
+export function normalizeEmpresaName(value: string | null | undefined): string {
+  if (!value || isPersonalEmpresa(value)) return PERSONAL_EMPRESA;
+  return value.trim();
+}
+
 function normalizeName(value: string) {
   return value
     .normalize('NFD')
@@ -150,6 +169,11 @@ export function resolveTelegramCompany(
 ): TelegramCompanyResolution {
   const raw = item.empresa?.trim() ?? '';
   if (!raw) return { kind: 'missing' };
+  // "personal" / "ninguna" / "sin empresa" → resolve straight to the Personal
+  // bucket, never prompt.
+  if (isPersonalEmpresa(raw)) {
+    return { kind: 'exact', company: { nombre: PERSONAL_EMPRESA } };
+  }
 
   const cuitCandidates = extractCuitCandidates(raw);
   if (cuitCandidates.length > 0) {

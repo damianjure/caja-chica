@@ -15,6 +15,7 @@ export function buildTipoKeyboard() {
 
 export function buildMainKeyboard(dashboardUrl: string) {
   return new InlineKeyboard()
+    .text("📸 Cargar ticket", "cargar_ticket").row()
     .text("📊 Informes", "rp_start").row()
     .text("🏢 Empresas", "empresas").text("📁 Categorías", "categorias").row()
     .text("💰 Saldos", "saldos").text("🔍 Buscar", "buscar_mode").row()

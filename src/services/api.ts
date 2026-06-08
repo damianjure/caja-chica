@@ -436,6 +436,31 @@ export interface ImageExtractionResult {
   sourceType: PhotoSourceType;
 }
 
+/** One extracted line item from a receipt (mirrors server ReceiptLineItem). */
+export interface ImageLineItem {
+  descripcion: string;
+  monto: number | null;
+  cantidad: number | null;
+  categoria: string;
+}
+
+/**
+ * Item-level extraction result from POST /api/extract-image. Merchant metadata
+ * plus every line item. When `items.length < 2` the web maps it to a single
+ * ImageExtractionResult (see toSingleReview); when `>= 2` it shows the
+ * interactive item-selection modal.
+ */
+export interface ImageItemsExtractionResult {
+  empresa: string | null;
+  cuit: string | null;
+  moneda: "ARS" | "USD";
+  fecha: string | null;
+  total: number | null;
+  confidence: number;
+  sourceType: PhotoSourceType;
+  items: ImageLineItem[];
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -496,7 +521,7 @@ export const api = {
     return normalizeExtractResponse(raw);
   },
 
-  async extractImage(imageBase64: string, mimeType: string): Promise<ImageExtractionResult> {
+  async extractImage(imageBase64: string, mimeType: string): Promise<ImageItemsExtractionResult> {
     return fetchApi("/api/extract-image", {
       method: "POST",
       body: JSON.stringify({ image: imageBase64, mimeType }),

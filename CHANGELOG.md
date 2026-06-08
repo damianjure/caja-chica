@@ -5,6 +5,30 @@
 
 ---
 
+### Cambios 2026-06-08 (Web: selección interactiva de ítems de ticket — Fase 2 + PDF)
+
+**Portada la selección de renglones del bot (Fase 1) al dashboard web, ahora también con PDF.** La web ya recibía fotos (`/api/extract-image` → 1 movimiento); ahora extrae cada renglón y deja tildar cuáles guardar, igual que el bot.
+
+- **`src/server/imageExtract.ts`**: nuevo `extractItemsFromBuffer()` — espejo de `extractReceiptWithItems` (bot) pero desde Buffer; usa `RECEIPT_ITEMS_SYSTEM_PROMPT` + `parseReceiptItemsResult`, con fallback HANDWRITTEN → shape de movimiento único (`items: []`). Se agregó `application/pdf` a `WEB_IMAGE_MIME_ALLOWLIST` (Gemini Files API maneja PDF como imagen).
+- **`src/server/routes/imageExtract.ts`**: swap a `extractItemsFromBuffer`; el endpoint ahora devuelve `ReceiptItemsResult` + `sourceType` (antes: shape de movimiento único). El cliente decide por cantidad de ítems.
+- **Bug arreglado**: `CargaModal` ofrecía PDF en el file picker pero el endpoint lo rechazaba (`unsupported_mime_type`). Ahora PDF de tickets/facturas entra por el mismo flujo.
+- **`src/dashboard/lineItems.ts`** (nuevo): `buildLineItemMovements` (Separados/Sumados, filtro payable, abs montos) + `toSingleReview` (mapea <2 ítems a movimiento único). Lógica pura, espejo de `insertLineItemMovements`/`showReceiptReview` del bot.
+- **`src/components/dashboard/ImageItemsReviewModal.tsx`** (nuevo): checkboxes, tildar/destildar todos, contador + total, botones **Separados** (un movimiento por ítem) y **Sumados** (uno con el total).
+- **`src/DashboardApp.tsx`**: branch — si `items.length >= 2` → modal de selección; si no → `toSingleReview` → `ImageReviewModal` actual. `handleSaveLineItems` persiste vía `api.saveMovimientos`.
+- **`src/services/api.ts` / `useImageExtract.ts`**: tipos `ImageLineItem` + `ImageItemsExtractionResult`; allowlist web suma PDF; mensajes "imagen o PDF".
+- Tests: `tests/lineItems.test.ts` (7 casos puros) + `tests/imageExtract.test.ts` ampliado (PDF aceptado, shape de ítems, `extractItemsFromBuffer` con fallback). Suite total 831 pass.
+- **Decisión de scope**: un solo endpoint que decide por cantidad de ítems (igual que el bot). PDFs de **resúmenes de tarjeta/banco** = Fase 3 separada — el prompt `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` + `parseCreditCardSummaryResult` ya existen en `gemini.ts` pero están **sin cablear** (código dormido, 0 consumidores).
+- `extractFromBuffer` queda como helper tested pero ya no lo usa el endpoint (lo reemplazó `extractItemsFromBuffer`).
+
+**Discoverability "Cargar ticket" (web + bot).** La carga de ticket era la función estrella pero estaba enterrada (web: botón dashed secundario; bot: gesto oculto sin botón en `/menu`).
+- **Web `CargaModal.tsx`**: el dropzone de foto/PDF ahora **lidera** la jerarquía (tarjeta prominente con ícono + microcopy "detecto cada renglón y elegís cuáles guardar"), el textarea pasa a "— o escribilo a mano —". Título → "Cargar ticket o movimiento". Nuevo prop `autoPick` abre el file picker directo.
+- **Web `DashboardApp.tsx`**: FAB mobile suma atajo dedicado **📷 Ticket** (`goToTicket` → `autoPick`), separado de "＋ Nueva".
+- **Bot `keyboards.ts`**: `buildMainKeyboard` suma **📸 Cargar ticket** arriba de todo.
+- **Bot `menu.ts`**: callback `cargar_ticket` → mensaje-guía ("mandame la foto o el PDF ahora 👇"). No reemplaza el gesto directo, lo hace visible.
+- Mockup before/after documentado en `docs/mockups/ticket-upload-ux.html`.
+
+---
+
 ### Cambios 2026-06-08 (Bot: selección interactiva de ítems de ticket — Fase 0+1)
 
 **Foto de ticket → elegir qué renglones guardar.** Antes, una foto de ticket = un solo movimiento (el total). Ahora el bot extrae cada renglón y deja tildar cuáles registrar.
@@ -15,7 +39,7 @@
 - **`src/bot/extraction.ts`**: las 3 entradas de foto/doc/álbum-de-1 ahora usan `extractReceiptWithItems`. Si el ticket tiene ≥2 renglones → tarjeta de selección (`li:*`); si no → flujo de revisión actual intacto. Al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (un único movimiento con el total). Callbacks `li:t` (toggle), `li:all`, `li:save`, `li:g:<id>:<s|u>`, `li:cancel`.
 - **`src/bot/sessions.ts`**: `initSessions()` arranca también `startLineItemsSweep()`.
 - Tests: `tests/lineItemsReview.test.ts` (17 casos — parser + estado + rendering).
-- Pendiente Fase 2: misma selección en el dashboard web (hoy la web no recibe fotos).
+- ✔ Fase 2 (web) completada — ver entrada de arriba.
 
 ---
 

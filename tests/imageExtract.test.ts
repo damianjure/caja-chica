@@ -2,20 +2,20 @@
  * TDD tests for POST /api/extract-image
  *
  * Covers:
- * - mime validation (allowlist: jpeg, png, webp, gif; pdf excluded from web)
+ * - mime validation (allowlist: jpeg, png, webp, gif, pdf)
  * - size cap enforcement (≤ 7MB decoded base64)
  * - auth gate (401 without session)
- * - success path → returns PendingExtractionData shape
+ * - success path → returns ReceiptItemsResult shape
  * - Gemini capacity error → 503 { error: "ai_unavailable" }
- * - extractFromBuffer shared fn: upload/generateContent/delete lifecycle
- * - extractFromBuffer HANDWRITTEN fallback on low confidence
+ * - extractFromBuffer / extractItemsFromBuffer shared fns: upload/generate/delete lifecycle
+ * - HANDWRITTEN fallback on low confidence
  */
 
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AddressInfo } from "node:net";
 import { createApp, type AppDeps, type AppSession } from "../src/server/app.ts";
-import { extractFromBuffer } from "../src/server/imageExtract.ts";
+import { extractFromBuffer, extractItemsFromBuffer } from "../src/server/imageExtract.ts";
 import { GeminiUnavailableError } from "../src/server/geminiWithFallback.ts";
 
 // ─────────────────────────────────────────────
@@ -55,7 +55,7 @@ function makeSupabaseStub() {
   };
 }
 
-/** Minimal genAI stub — returns a valid receipt JSON */
+/** Minimal genAI stub — returns a valid receipt-items JSON (2 line items) */
 function makeGenAI(opts?: { status?: number; message?: string }) {
   return {
     files: {
@@ -73,15 +73,16 @@ function makeGenAI(opts?: { status?: number; message?: string }) {
         }
         return {
           text: JSON.stringify({
-            monto: 1500,
-            moneda: "ARS",
-            tipo: "egreso",
             empresa: "Carrefour",
             cuit: null,
-            categoria: "Supermercado",
-            descripcion: "Compra supermercado",
+            moneda: "ARS",
             fecha: "2026-05-30",
+            total: 2000,
             confidence: 0.95,
+            items: [
+              { descripcion: "Leche", monto: 1200, cantidad: 1, categoria: "Supermercado" },
+              { descripcion: "Pan", monto: 800, cantidad: 2, categoria: "Panadería" },
+            ],
           }),
         };
       },
@@ -158,12 +159,31 @@ test("POST /api/extract-image — 400 unsupported mime type", async () => {
         "Content-Type": "application/json",
         Authorization: "Bearer valid-token",
       },
-      body: JSON.stringify({ image: TINY_PNG_B64, mimeType: "application/pdf" }),
+      body: JSON.stringify({ image: TINY_PNG_B64, mimeType: "image/svg+xml" }),
     });
     assert.equal(res.status, 400);
     const body = await res.json() as any;
     assert.equal(body.error, "unsupported_mime_type");
   });
+});
+
+test("POST /api/extract-image — application/pdf accepted (tickets/facturas)", async () => {
+  await withServer(
+    { resolveSession: async () => memberSession, genAI: makeGenAI() as any },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/extract-image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer valid-token",
+        },
+        body: JSON.stringify({ image: TINY_PNG_B64, mimeType: "application/pdf" }),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json() as any;
+      assert.equal(body.sourceType, "pdf");
+    },
+  );
 });
 
 test("POST /api/extract-image — 400 for video/* mime", async () => {
@@ -216,7 +236,7 @@ test("POST /api/extract-image — 400 when image too large", async () => {
   });
 });
 
-test("POST /api/extract-image — 200 returns PendingExtractionData shape", async () => {
+test("POST /api/extract-image — 200 returns ReceiptItemsResult shape", async () => {
   await withServer(
     { resolveSession: async () => memberSession, genAI: makeGenAI() as any },
     async (baseUrl) => {
@@ -230,20 +250,22 @@ test("POST /api/extract-image — 200 returns PendingExtractionData shape", asyn
       });
       assert.equal(res.status, 200);
       const body = await res.json() as any;
-      // Must have PendingExtractionData fields
-      assert.ok("monto" in body);
-      assert.ok("moneda" in body);
-      assert.ok("tipo" in body);
+      // Must have ReceiptItemsResult fields
       assert.ok("empresa" in body);
       assert.ok("cuit" in body);
-      assert.ok("categoria" in body);
-      assert.ok("descripcion" in body);
+      assert.ok("moneda" in body);
+      assert.ok("fecha" in body);
+      assert.ok("total" in body);
       assert.ok("confidence" in body);
+      assert.ok("items" in body);
       assert.ok("sourceType" in body);
       // Values from stub
-      assert.equal(body.monto, 1500);
       assert.equal(body.empresa, "Carrefour");
+      assert.equal(body.total, 2000);
       assert.equal(body.sourceType, "photo");
+      assert.equal(body.items.length, 2);
+      assert.equal(body.items[0].descripcion, "Leche");
+      assert.equal(body.items[0].categoria, "Supermercado");
     },
   );
 });
@@ -425,4 +447,75 @@ test("extractFromBuffer — sourceType is photo for jpeg, webp, png", async () =
     const { sourceType } = await extractFromBuffer({ genAI: makeQuickGenAI() as any, imageBuffer: buf, mimeType });
     assert.equal(sourceType, "photo", `expected 'photo' for ${mimeType}`);
   }
+});
+
+// ─────────────────────────────────────────────
+// extractItemsFromBuffer unit tests
+// ─────────────────────────────────────────────
+
+/** genAI stub returning a receipt-items JSON with N line items. */
+function makeItemsGenAI(itemsJson: unknown) {
+  return {
+    files: {
+      async upload() { return { name: "files/items-1", uri: "gs://gemini/items-1", mimeType: "image/jpeg" }; },
+      async delete() {},
+    },
+    models: {
+      async generateContent() { return { text: JSON.stringify(itemsJson) }; },
+    },
+  };
+}
+
+test("extractItemsFromBuffer — returns items + metadata on confident receipt", async () => {
+  const genAI = makeItemsGenAI({
+    empresa: "Coto", cuit: null, moneda: "ARS", fecha: "2026-06-01", total: 2000, confidence: 0.9,
+    items: [
+      { descripcion: "Leche", monto: 1200, cantidad: 1, categoria: "Supermercado" },
+      { descripcion: "Pan", monto: 800, cantidad: 1, categoria: "Panadería" },
+    ],
+  });
+  const buf = Buffer.from(TINY_PNG_B64, "base64");
+  const { result, sourceType } = await extractItemsFromBuffer({ genAI: genAI as any, imageBuffer: buf, mimeType: "image/jpeg" });
+  assert.equal(sourceType, "photo");
+  assert.equal(result.empresa, "Coto");
+  assert.equal(result.items.length, 2);
+  assert.equal(result.items[1].descripcion, "Pan");
+});
+
+test("extractItemsFromBuffer — pdf mime yields sourceType pdf", async () => {
+  const genAI = makeItemsGenAI({
+    empresa: "Coto", cuit: null, moneda: "ARS", fecha: null, total: 1200, confidence: 0.9,
+    items: [{ descripcion: "Café", monto: 1200, cantidad: 1, categoria: "Bar" }],
+  });
+  const buf = Buffer.from(TINY_PNG_B64, "base64");
+  const { sourceType } = await extractItemsFromBuffer({ genAI: genAI as any, imageBuffer: buf, mimeType: "application/pdf" });
+  assert.equal(sourceType, "pdf");
+});
+
+test("extractItemsFromBuffer — HANDWRITTEN fallback returns single-movement shape (items: [])", async () => {
+  let callCount = 0;
+  const fakeGenAI: any = {
+    files: {
+      async upload() { return { name: `files/h-${callCount}`, uri: `gs://gemini/h-${callCount}`, mimeType: "image/jpeg" }; },
+      async delete() {},
+    },
+    models: {
+      async generateContent() {
+        callCount++;
+        if (callCount === 1) {
+          // Low confidence, no items → triggers fallback
+          return { text: JSON.stringify({ empresa: null, cuit: null, moneda: "ARS", fecha: null, total: null, confidence: 0.2, items: [] }) };
+        }
+        // HANDWRITTEN single-movement JSON
+        return { text: JSON.stringify({ monto: 500, moneda: "ARS", tipo: "egreso", empresa: "Kiosco", cuit: null, categoria: "Varios", descripcion: "kiosco", fecha: null, confidence: 0.7 }) };
+      },
+    },
+  };
+  const buf = Buffer.from(TINY_PNG_B64, "base64");
+  const { result, sourceType } = await extractItemsFromBuffer({ genAI: fakeGenAI, imageBuffer: buf, mimeType: "image/jpeg" });
+  assert.equal(callCount, 2, "should fall back to HANDWRITTEN");
+  assert.equal(sourceType, "handwritten");
+  assert.equal(result.total, 500);
+  assert.equal(result.empresa, "Kiosco");
+  assert.deepEqual(result.items, []);
 });

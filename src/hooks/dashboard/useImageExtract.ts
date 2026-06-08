@@ -7,13 +7,14 @@
  */
 
 import { useState } from "react";
-import { api, ApiError, type ImageExtractionResult } from "../../services/api";
+import { api, ApiError, type ImageItemsExtractionResult } from "../../services/api";
 
 export const WEB_IMAGE_MIME_ALLOWLIST = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
+  "application/pdf",
 ]);
 
 export const WEB_IMAGE_MAX_BYTES = 7 * 1024 * 1024;
@@ -21,7 +22,7 @@ export const WEB_IMAGE_MAX_BYTES = 7 * 1024 * 1024;
 export interface UseImageExtractResult {
   isExtracting: boolean;
   extractError: string | null;
-  extracted: ImageExtractionResult | null;
+  extracted: ImageItemsExtractionResult | null;
   startExtract: (file: File) => Promise<void>;
   clearExtracted: () => void;
 }
@@ -44,17 +45,17 @@ function readFileAsBase64(file: File): Promise<string> {
 export function useImageExtract(): UseImageExtractResult {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
-  const [extracted, setExtracted] = useState<ImageExtractionResult | null>(null);
+  const [extracted, setExtracted] = useState<ImageItemsExtractionResult | null>(null);
 
   const startExtract = async (file: File) => {
     setExtractError(null);
 
     if (!WEB_IMAGE_MIME_ALLOWLIST.has(file.type)) {
-      setExtractError("Solo se aceptan imágenes (JPEG, PNG, WEBP, GIF).");
+      setExtractError("Solo se aceptan imágenes (JPEG, PNG, WEBP, GIF) o PDF.");
       return;
     }
     if (file.size > WEB_IMAGE_MAX_BYTES) {
-      setExtractError("La imagen es demasiado grande (máximo 7 MB).");
+      setExtractError("El archivo es demasiado grande (máximo 7 MB).");
       return;
     }
 

@@ -10,9 +10,12 @@
 import { createPartFromUri, createUserContent } from "@google/genai";
 import {
   RECEIPT_SYSTEM_PROMPT,
+  RECEIPT_ITEMS_SYSTEM_PROMPT,
   HANDWRITTEN_SYSTEM_PROMPT,
   parsePhotoExtractionResult,
+  parseReceiptItemsResult,
   type PhotoExtractionResult,
+  type ReceiptItemsResult,
 } from "./gemini.ts";
 import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
 import type { TelegramMediaGenAI } from "./telegramMedia.ts";
@@ -23,6 +26,7 @@ export const WEB_IMAGE_MIME_ALLOWLIST = new Set([
   "image/png",
   "image/webp",
   "image/gif",
+  "application/pdf",
 ]);
 
 /** 7 MB decoded limit — keeps payload size reasonable for JSON transport */
@@ -114,4 +118,61 @@ export async function extractFromBuffer({
   }
 
   return { result: parsed, sourceType };
+}
+
+/**
+ * Item-level web extraction: pulls merchant metadata plus every line item in a
+ * single Gemini call. Mirror of the bot's extractReceiptWithItems but from a
+ * Buffer (no Telegram download). Falls back to the permissive HANDWRITTEN
+ * prompt when the receipt is unreadable (parse failure or confidence < 0.5),
+ * returning a single-movement shape (items: []) so the common case stays one
+ * model call. PDFs are supported — Gemini Files API handles them like images.
+ */
+export async function extractItemsFromBuffer({
+  genAI,
+  imageBuffer,
+  mimeType,
+  displayName = "web-upload",
+}: ExtractFromBufferArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  const uploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
+  const rawText = await generateAndCleanup(
+    genAI,
+    uploaded,
+    RECEIPT_ITEMS_SYSTEM_PROMPT,
+    "Extraé los datos del comercio y cada renglón del ticket.",
+  );
+
+  const parsed = parseReceiptItemsResult(rawText);
+  const sourceType: PhotoSourceType = mimeType === "application/pdf" ? "pdf" : "photo";
+
+  if (parsed && parsed.confidence >= 0.5 && (parsed.items.length > 0 || parsed.total !== null)) {
+    return { result: parsed, sourceType };
+  }
+
+  // Fallback: permissive handwritten single-movement extraction.
+  const retryUploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
+  const retryText = await generateAndCleanup(
+    genAI,
+    retryUploaded,
+    HANDWRITTEN_SYSTEM_PROMPT,
+    "Extraé la información financiera de esta imagen.",
+  );
+  const retryParsed = parsePhotoExtractionResult(retryText);
+  if (retryParsed) {
+    return {
+      result: {
+        empresa: retryParsed.empresa,
+        cuit: retryParsed.cuit,
+        moneda: retryParsed.moneda,
+        fecha: retryParsed.fecha,
+        total: retryParsed.monto,
+        confidence: retryParsed.confidence,
+        items: [],
+      },
+      sourceType: "handwritten",
+    };
+  }
+
+  if (parsed) return { result: parsed, sourceType };
+  throw new Error("gemini_web_extraction_failed");
 }

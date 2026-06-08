@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2 } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, Camera } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -38,6 +38,9 @@ import { useCategoryAssignment } from './hooks/dashboard/useCategoryAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
 import { useImageExtract } from './hooks/dashboard/useImageExtract';
 import { ImageReviewModal, type ReviewFields } from './components/dashboard/ImageReviewModal';
+import { ImageItemsReviewModal } from './components/dashboard/ImageItemsReviewModal';
+import { buildLineItemMovements, toSingleReview } from './dashboard/lineItems';
+import type { ImageLineItem } from './services/api';
 import { type MovementEditForm, type ConfirmationModalState } from './types/dashboard';
 
 export type { MovementEditForm, ConfirmationModalState };
@@ -239,6 +242,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [isSavingExtracted, setIsSavingExtracted] = useState(false);
 
   const [isCargaOpen, setIsCargaOpen] = useState(false);
+  const [cargaAutoPick, setCargaAutoPick] = useState(false);
   const [movementsPage, setMovementsPage] = useState(1);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
@@ -258,6 +262,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const handleImageFile = useCallback((file: File) => {
     setIsCargaOpen(false);
+    setCargaAutoPick(false);
     void startExtract(file);
   }, [startExtract]);
 
@@ -278,6 +283,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearExtracted, queryClient]);
+
+  const handleSaveLineItems = useCallback(async (selected: ImageLineItem[], mode: 'sep' | 'sum') => {
+    if (!extracted) return;
+    const movements = buildLineItemMovements(selected, { empresa: extracted.empresa, moneda: extracted.moneda }, mode);
+    if (movements.length === 0) {
+      toast.error('Seleccioná al menos un ítem con monto.');
+      return;
+    }
+    setIsSavingExtracted(true);
+    try {
+      const saved = await api.saveMovimientos(movements, 'Ticket extraído desde imagen');
+      prependMovements(saved.map((m) => ({ ...m, conciliado: m.conciliado ?? true })));
+      toast.success(saved.length === 1 ? 'Movimiento guardado desde imagen.' : `${saved.length} movimientos guardados desde imagen.`);
+      clearExtracted();
+    } catch {
+      toast.error('No se pudieron guardar los movimientos.');
+    } finally {
+      setIsSavingExtracted(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extracted, clearExtracted, queryClient]);
 
   const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
     categories, customCompanies, canWriteData,
@@ -395,7 +421,18 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   }, []);
 
   const goToComposer = useCallback(() => {
+    setCargaAutoPick(false);
     setIsCargaOpen(true);
+  }, []);
+
+  const goToTicket = useCallback(() => {
+    setCargaAutoPick(true);
+    setIsCargaOpen(true);
+  }, []);
+
+  const closeCarga = useCallback(() => {
+    setIsCargaOpen(false);
+    setCargaAutoPick(false);
   }, []);
 
   // Volver a la página 1 cuando cambian los filtros.
@@ -637,14 +674,21 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             </div>
         </main>
 
-        {extracted && (
-          <ImageReviewModal
+        {extracted && extracted.items.length >= 2 ? (
+          <ImageItemsReviewModal
             extracted={extracted}
+            isSaving={isSavingExtracted}
+            onSave={(selected, mode) => void handleSaveLineItems(selected, mode)}
+            onCancel={clearExtracted}
+          />
+        ) : extracted ? (
+          <ImageReviewModal
+            extracted={toSingleReview(extracted)}
             isSaving={isSavingExtracted}
             onSave={(fields) => void handleSaveExtracted(fields)}
             onCancel={clearExtracted}
           />
-        )}
+        ) : null}
 
         {/* Barra flotante (solo mobile): acceso rápido a buscar y cargar */}
         <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
@@ -658,6 +702,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <Search className="w-4 h-4" aria-hidden="true" />
               Buscar
             </button>
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={goToTicket}
+                aria-label="Cargar ticket con foto o PDF"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold text-neutral-200 transition duration-150 hover:bg-white/5 active:scale-[0.97]"
+              >
+                <Camera className="w-4 h-4" aria-hidden="true" />
+                Ticket
+              </button>
+            )}
             {canWriteData && (
               <button
                 type="button"
@@ -685,7 +740,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <CargaModal
           open={isCargaOpen}
-          onClose={() => setIsCargaOpen(false)}
+          onClose={closeCarga}
+          autoPick={cargaAutoPick}
           inputText={inputText}
           setInputText={setInputText}
           isProcessing={isProcessing}

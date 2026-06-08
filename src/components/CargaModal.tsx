@@ -13,10 +13,12 @@ interface CargaModalProps {
   extractError: string | null;
   onSubmit: () => void;
   onImageFile: (file: File) => void;
+  /** When true, open the file picker immediately on mount (ticket shortcut). */
+  autoPick?: boolean;
 }
 
 export function CargaModal({
-  open, onClose, inputText, setInputText, isProcessing, isExtracting, error, extractError, onSubmit, onImageFile,
+  open, onClose, inputText, setInputText, isProcessing, isExtracting, error, extractError, onSubmit, onImageFile, autoPick = false,
 }: CargaModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -25,9 +27,13 @@ export function CargaModal({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    const t = setTimeout(() => textareaRef.current?.focus(), 40);
+    // Ticket shortcut jumps straight to the file picker; otherwise focus the textarea.
+    const t = setTimeout(() => {
+      if (autoPick) fileRef.current?.click();
+      else textareaRef.current?.focus();
+    }, 40);
     return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
-  }, [open, onClose]);
+  }, [open, onClose, autoPick]);
 
   if (!open) return null;
 
@@ -44,7 +50,7 @@ export function CargaModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
-          <h2 id="carga-modal-title" className="text-base font-bold text-[var(--app-text-1)]">Cargar movimiento</h2>
+          <h2 id="carga-modal-title" className="text-base font-bold text-[var(--app-text-1)]">Cargar ticket o movimiento</h2>
           <button
             type="button"
             onClick={onClose}
@@ -60,26 +66,21 @@ export function CargaModal({
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onImageFile(f); }}
         >
-          <p className="text-sm text-[var(--app-text-3)]">Escribilo en lenguaje natural, o subí una foto o PDF del ticket.</p>
-          <label htmlFor="carga-input" className="sr-only">Movimiento en lenguaje natural</label>
-          <textarea
-            id="carga-input"
-            ref={textareaRef}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') onSubmit(); }}
-            placeholder="Ej: 'cobré 5 lucas por el laburito del taller'"
-            className="min-h-[96px] w-full resize-none rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] p-4 text-base text-[var(--app-text-1)] outline-none transition-[border-color,box-shadow] duration-150 focus:ring-2 focus:ring-[var(--app-text-1)]"
-          />
-
+          {/* Primary action: snap/upload a ticket. Leads the hierarchy because
+              it's the differentiating feature; typing it out is the fallback. */}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={isExtracting}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-[var(--app-border-strong)] px-4 py-3 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] disabled:opacity-50 transition-colors"
+            className="flex w-full flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-[var(--app-strong-surface)] bg-[var(--app-surface-2)] px-4 py-6 text-center hover:bg-[var(--app-surface-3)] disabled:opacity-60 transition-colors"
           >
-            {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-            {isExtracting ? 'Leyendo el ticket…' : 'Subir foto o PDF del ticket'}
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+              {isExtracting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+            </span>
+            <span className="text-sm font-bold text-[var(--app-text-1)]">
+              {isExtracting ? 'Leyendo el ticket…' : 'Subí una foto o PDF del ticket'}
+            </span>
+            <span className="text-xs text-[var(--app-text-3)]">Detecto cada renglón y elegís cuáles guardar · JPG · PNG · PDF</span>
           </button>
           <input
             ref={fileRef}
@@ -88,6 +89,21 @@ export function CargaModal({
             className="sr-only"
             aria-label="Seleccionar foto o PDF del ticket"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageFile(f); e.target.value = ''; }}
+          />
+
+          <div className="flex items-center gap-3 text-xs text-[var(--app-text-3)]" aria-hidden="true">
+            <span className="h-px flex-1 bg-[var(--app-border)]" />o escribilo a mano<span className="h-px flex-1 bg-[var(--app-border)]" />
+          </div>
+
+          <label htmlFor="carga-input" className="sr-only">Movimiento en lenguaje natural</label>
+          <textarea
+            id="carga-input"
+            ref={textareaRef}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') onSubmit(); }}
+            placeholder="Ej: 'cobré 5 lucas por el laburito del taller'"
+            className="min-h-[88px] w-full resize-none rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] p-4 text-base text-[var(--app-text-1)] outline-none transition-[border-color,box-shadow] duration-150 focus:ring-2 focus:ring-[var(--app-text-1)]"
           />
 
           {error && <div role="alert" className="flex items-center gap-2 rounded-md border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-3 text-sm text-[var(--chart-expense)]"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}

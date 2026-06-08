@@ -239,6 +239,17 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery("menu", (ctx) => ctx.editMessageText("📋 *Menú Principal*", { parse_mode: "Markdown", reply_markup: mainKeyboard }));
 
+  // Surfaces the (otherwise hidden) photo/PDF gesture: tapping the menu button
+  // tells the user exactly what to do next. Sending the photo still works on
+  // its own — this only makes the capability discoverable.
+  bot.callbackQuery("cargar_ticket", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    return ctx.reply(
+      "📸 *Mandame la foto o el PDF del ticket ahora* 👇\n\nDetecto los renglones y elegís cuáles guardar. También podés mandar varias fotos juntas.",
+      { parse_mode: "Markdown" },
+    );
+  });
+
   bot.callbackQuery("mng:open", (ctx) => {
     ctx.answerCallbackQuery();
     return ctx.editMessageText("✏️ *Gestionar*\n\nEditá o borrá lo último cargado, o borrá una empresa.", {

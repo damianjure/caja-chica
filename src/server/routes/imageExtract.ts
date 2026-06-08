@@ -1,21 +1,23 @@
 /**
- * POST /api/extract-image — web image extraction endpoint.
+ * POST /api/extract-image — web image/PDF extraction endpoint.
  *
  * Accepts: { image: <base64>, mimeType: string }
- * Returns: PendingExtractionData (same shape as bot photo review)
+ * Returns: ReceiptItemsResult + sourceType — merchant metadata plus every
+ *   line item. The web maps `items.length < 2` to a single editable movement
+ *   and shows the interactive selection modal for `>= 2`.
  *
  * Auth: requireSession
  * Rate limit: tierStrict (same as /api/extract)
  * Size cap: 7 MB decoded
- * Mime allowlist: image/jpeg, image/png, image/webp, image/gif
- *   PDF is excluded — browser file pickers accept images; PDF flow
- *   is not in scope for web upload (bot uses Gemini Files API for PDFs).
+ * Mime allowlist: image/jpeg, image/png, image/webp, image/gif, application/pdf
+ *   PDF is supported for tickets/facturas (Gemini Files API handles it like an
+ *   image). Credit-card / bank statements are a separate future flow.
  */
 
 import express, { type RequestHandler } from "express";
 import type { GenAILike } from "../contracts.ts";
 import { GeminiUnavailableError } from "../geminiWithFallback.ts";
-import { extractFromBuffer, WEB_IMAGE_MIME_ALLOWLIST, WEB_IMAGE_MAX_BYTES } from "../imageExtract.ts";
+import { extractItemsFromBuffer, WEB_IMAGE_MIME_ALLOWLIST, WEB_IMAGE_MAX_BYTES } from "../imageExtract.ts";
 
 // The decoded cap is WEB_IMAGE_MAX_BYTES (7MB) — the real gate, enforced after decode.
 // The JSON body limit only needs to exceed base64(7MB)≈9.5MB plus JSON overhead so a
@@ -68,23 +70,22 @@ export function createImageExtractRouter({ genAI, requireSession, tierStrict }: 
         return res.status(400).json({ error: "image_too_large" });
       }
 
-      const { result, sourceType } = await extractFromBuffer({
+      const { result, sourceType } = await extractItemsFromBuffer({
         genAI: genAI as any,
         imageBuffer,
         mimeType,
       });
 
-      // Return PendingExtractionData shape
+      // Return ReceiptItemsResult shape (+ sourceType). The client decides
+      // single-movement vs item-selection based on items.length.
       return res.json({
-        monto: result.monto,
-        moneda: result.moneda,
-        tipo: result.tipo,
         empresa: result.empresa,
         cuit: result.cuit,
-        categoria: result.categoria,
-        descripcion: result.descripcion,
+        moneda: result.moneda,
         fecha: result.fecha,
+        total: result.total,
         confidence: result.confidence,
+        items: result.items,
         sourceType,
       });
     } catch (err) {

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, Camera } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2 } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -242,7 +242,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [isSavingExtracted, setIsSavingExtracted] = useState(false);
 
   const [isCargaOpen, setIsCargaOpen] = useState(false);
-  const [cargaAutoPick, setCargaAutoPick] = useState(false);
   const [movementsPage, setMovementsPage] = useState(1);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
@@ -261,10 +260,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   }, []);
 
   const handleImageFile = useCallback((file: File) => {
-    setIsCargaOpen(false);
-    setCargaAutoPick(false);
+    // Keep CargaModal open so the user sees the "Leyendo el ticket…" state
+    // while extraction runs; an effect closes it once the result arrives.
     void startExtract(file);
   }, [startExtract]);
+
+  useEffect(() => {
+    if (extracted) setIsCargaOpen(false);
+  }, [extracted]);
 
   const handleSaveExtracted = useCallback(async (fields: ReviewFields) => {
     setIsSavingExtracted(true);
@@ -421,18 +424,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   }, []);
 
   const goToComposer = useCallback(() => {
-    setCargaAutoPick(false);
     setIsCargaOpen(true);
-  }, []);
-
-  const goToTicket = useCallback(() => {
-    setCargaAutoPick(true);
-    setIsCargaOpen(true);
-  }, []);
-
-  const closeCarga = useCallback(() => {
-    setIsCargaOpen(false);
-    setCargaAutoPick(false);
   }, []);
 
   // Volver a la página 1 cuando cambian los filtros.
@@ -705,17 +697,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             {canWriteData && (
               <button
                 type="button"
-                onClick={goToTicket}
-                aria-label="Cargar ticket con foto o PDF"
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-bold text-neutral-200 transition duration-150 hover:bg-white/5 active:scale-[0.97]"
-              >
-                <Camera className="w-4 h-4" aria-hidden="true" />
-                Ticket
-              </button>
-            )}
-            {canWriteData && (
-              <button
-                type="button"
                 onClick={goToComposer}
                 aria-label="Nueva operación"
                 className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--app-strong-surface)] px-4 text-sm font-black text-[var(--app-strong-text)] shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition duration-150 active:scale-[0.97]"
@@ -740,8 +721,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <CargaModal
           open={isCargaOpen}
-          onClose={closeCarga}
-          autoPick={cargaAutoPick}
+          onClose={() => setIsCargaOpen(false)}
           inputText={inputText}
           setInputText={setInputText}
           isProcessing={isProcessing}

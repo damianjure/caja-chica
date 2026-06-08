@@ -13,12 +13,10 @@ interface CargaModalProps {
   extractError: string | null;
   onSubmit: () => void;
   onImageFile: (file: File) => void;
-  /** When true, open the file picker immediately on mount (ticket shortcut). */
-  autoPick?: boolean;
 }
 
 export function CargaModal({
-  open, onClose, inputText, setInputText, isProcessing, isExtracting, error, extractError, onSubmit, onImageFile, autoPick = false,
+  open, onClose, inputText, setInputText, isProcessing, isExtracting, error, extractError, onSubmit, onImageFile,
 }: CargaModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -27,13 +25,9 @@ export function CargaModal({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    // Ticket shortcut jumps straight to the file picker; otherwise focus the textarea.
-    const t = setTimeout(() => {
-      if (autoPick) fileRef.current?.click();
-      else textareaRef.current?.focus();
-    }, 40);
+    const t = setTimeout(() => textareaRef.current?.focus(), 40);
     return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
-  }, [open, onClose, autoPick]);
+  }, [open, onClose]);
 
   if (!open) return null;
 

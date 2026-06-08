@@ -619,7 +619,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                               <XCircle className="w-4 h-4" />
                             </button>
                           )}
-                          {(invitation.status === "revoked" || invitation.status === "expired") && (
+                          {(invitation.status === "revoked" || invitation.status === "expired" || invitation.user_deleted) && (
                             <button
                               type="button"
                               onClick={() => void handleDeleteInvitation(invitation.id)}

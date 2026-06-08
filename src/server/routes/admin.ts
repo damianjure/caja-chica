@@ -343,11 +343,24 @@ export function createAdminRouter(deps: AdminDeps) {
     requireAdmin,
     async (req, res) => {
       try {
-        const { error } = await supabase
+        const { data: rows, error: fetchError } = await supabase
           .from("user_invitations")
-          .delete()
+          .select("id, status, email")
           .eq("id", req.params.id)
-          .in("status", ["revoked", "expired"]);
+          .limit(1);
+        if (fetchError) throw fetchError;
+        const inv = rows?.[0] as { status?: string; email?: string } | undefined;
+        if (!inv) return res.status(404).json({ error: "not_found" });
+
+        let deletable = inv.status === "revoked" || inv.status === "expired";
+        // Accepted invitation is deletable only if its user account no longer exists.
+        if (!deletable && inv.status === "accepted" && inv.email) {
+          const { data: u } = await supabase.from("app_users").select("user_id").eq("email", inv.email).limit(1);
+          deletable = !u || u.length === 0;
+        }
+        if (!deletable) return res.status(400).json({ error: "not_deletable" });
+
+        const { error } = await supabase.from("user_invitations").delete().eq("id", req.params.id);
         if (error) throw error;
         res.json({ ok: true });
       } catch (_err) {

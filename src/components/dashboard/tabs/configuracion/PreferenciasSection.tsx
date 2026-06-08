@@ -229,6 +229,7 @@ export function PreferenciasSection({
               <option key={c.id} value={c.nombre}>{c.nombre}</option>
             ))}
           </select>
+          <p className="text-xs text-[var(--app-text-3)]">Los movimientos que cargues sin nombrar una empresa se asignan a esta empresa (por defecto, Personal).</p>
         </div>
 
         <div className="space-y-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-4">

@@ -507,6 +507,7 @@ Runtime: `server.ts`
 - borrado/soft delete de movimiento con confirmación
 - borrado/soft delete de empresa con confirmación (filtra `deleted_at`)
 - **fotos/tickets**: imagen → Gemini Vision → tarjeta revisión → inline keyboard → guardar
+- **selección de ítems de ticket** (Fase 0+1, 2026-06-08): si el ticket tiene ≥2 renglones, el bot muestra una tarjeta con checkboxes (`li:*`) para elegir qué ítems guardar; al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (uno solo con el total). Extracción ítem-level en `extractReceiptWithItems()` (`telegramMedia.ts`) + `RECEIPT_ITEMS_SYSTEM_PROMPT`/`parseReceiptItemsResult` (`gemini.ts`); estado en memoria en `src/server/lineItemsReview.ts` (Map + sweep, single-instance invariant). La metadata del comercio (empresa/fecha) se aplica a todos los ítems. Si hay <2 renglones cae al flujo de revisión de movimiento único. Pendiente Fase 2: misma UI en dashboard web.
 - **PDFs**: documento → Gemini Files API → extracción → confirmar → guardar
 - **álbumes (media groups)**: múltiples fotos → debounce 1500ms → MULTI_RECEIPT → revisar cada uno
 - **audio**: voz → transcripción → extracción texto (implementado en `telegramAudio.ts`)

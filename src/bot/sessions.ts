@@ -1,6 +1,7 @@
 import type { TelegramLinkRecord } from "../server/telegramAccess.ts";
 import type { CompanyChoice } from "../server/reportBotHelpers.ts";
 import { startExtractionSweep, clearPendingExtractionsByChat } from "../server/extractionReview.ts";
+import { startLineItemsSweep } from "../server/lineItemsReview.ts";
 
 function unrefInterval(timer: ReturnType<typeof setInterval>) {
   const maybeUnref = (timer as { unref?: () => void }).unref;
@@ -156,4 +157,5 @@ export function clearChatSessions(chatId: number): void {
 // Call once at startup to activate the extraction session TTL sweep.
 export function initSessions() {
   startExtractionSweep();
+  startLineItemsSweep();
 }

@@ -258,6 +258,8 @@ export default function RecurrentesTab({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'ingreso' | 'egreso'>('all');
+  const [empresaFilter, setEmpresaFilter] = useState<string>('all');
 
   const load = async () => {
     try {
@@ -349,7 +351,15 @@ export default function RecurrentesTab({
   const proximos = [...recurrentes].sort(
     (a, b) => new Date(a.next_run_at).getTime() - new Date(b.next_run_at).getTime(),
   );
+  const empresaOptions = ['all', ...Array.from(new Set(recurrentes.map((r) => r.empresa_nombre || 'Personal'))).sort()];
+  const filtered = proximos.filter((r) =>
+    (typeFilter === 'all' || r.tipo === typeFilter) &&
+    (empresaFilter === 'all' || (r.empresa_nombre || 'Personal') === empresaFilter),
+  );
+  const hasRecurrenteFilters = typeFilter !== 'all' || empresaFilter !== 'all';
   const signedMonto = (r: Recurrente) => formatMonto(r.tipo === 'egreso' ? -r.monto : r.monto, r.moneda);
+  const formatNextRun = (iso: string) =>
+    new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }).replace('.', '');
 
   if (loading) {
     return (
@@ -399,8 +409,47 @@ export default function RecurrentesTab({
             </button>
           ) : undefined}
         >
+          {/* Filtros — mismo formato que Movimientos */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-lg border border-[var(--app-border)] p-0.5" role="group" aria-label="Filtrar por tipo">
+              {([['all', 'Todos'], ['ingreso', 'Ingresos'], ['egreso', 'Gastos']] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTypeFilter(id)}
+                  aria-pressed={typeFilter === id}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold transition ${typeFilter === id ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <select
+              aria-label="Filtrar por empresa"
+              value={empresaFilter}
+              onChange={(e) => setEmpresaFilter(e.target.value)}
+              className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+            >
+              {empresaOptions.map((c) => (
+                <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
+              ))}
+            </select>
+            {hasRecurrenteFilters && (
+              <button
+                type="button"
+                onClick={() => { setTypeFilter('all'); setEmpresaFilter('all'); }}
+                className="text-xs text-[var(--app-text-3)] underline underline-offset-2 hover:text-[var(--app-text-1)]"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
           <div className="divide-y divide-[var(--app-border)]">
-            {proximos.map((r) => (
+            {filtered.length === 0 && (
+              <p className="py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
+            )}
+            {filtered.map((r) => (
               <div key={r.id} className={`flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0 ${r.is_active ? '' : 'opacity-60'}`}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -408,9 +457,12 @@ export default function RecurrentesTab({
                     {!r.is_active && <span className={badgePaused}>Pausado</span>}
                   </div>
                   <div className="mt-0.5 text-xs text-[var(--app-text-3)]">
+                    🏢 {r.empresa_nombre || 'Personal'} · 📁 {r.categoria || 'Otros'}
+                  </div>
+                  <div className="mt-0.5 text-xs text-[var(--app-text-3)]">
                     {FRECUENCIA_LABELS[r.frecuencia]}
                     {r.frecuencia === 'mensual' && r.day_of_month ? ` · día ${r.day_of_month}` : ''}
-                    {r.categoria ? ` · ${r.categoria}` : r.descripcion && r.empresa_nombre ? ` · ${r.empresa_nombre}` : ''}
+                    {' · próx. '}{formatNextRun(r.next_run_at)}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">

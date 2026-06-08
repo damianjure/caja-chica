@@ -17,6 +17,8 @@ export interface MovementsFilterResult {
   setCustomFrom: Dispatch<SetStateAction<string>>;
   customTo: string;
   setCustomTo: Dispatch<SetStateAction<string>>;
+  searchText: string;
+  setSearchText: Dispatch<SetStateAction<string>>;
   filteredMovimientos: Movimiento[];
   hasActiveFilters: boolean;
   resetFilters: () => void;
@@ -30,30 +32,36 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
   const [datePeriod, setDatePeriod] = useState<DatePeriod>('all');
   const [customFrom, setCustomFrom] = useState<string>('');
   const [customTo, setCustomTo] = useState<string>('');
+  const [searchText, setSearchText] = useState<string>('');
 
   const dateRange = useMemo(() => {
     if (datePeriod === 'rango') return { from: customFrom || undefined, to: customTo || undefined };
     return periodToRange(datePeriod, new Date()) ?? { from: undefined, to: undefined };
   }, [datePeriod, customFrom, customTo]);
 
-  const filteredMovimientos = useMemo(
-    () => filterMovements(movimientos, {
+  const filteredMovimientos = useMemo(() => {
+    const base = filterMovements(movimientos, {
       company: selectedCompany,
       tipo: movementType,
       moneda: movementCurrency,
       category: selectedCategory,
       from: dateRange.from,
       to: dateRange.to,
-    }),
-    [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange],
-  );
+    });
+    const q = searchText.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((m) =>
+      `${m.descripcion ?? ''} ${m.empresa_nombre ?? ''} ${m.categoria ?? ''}`.toLowerCase().includes(q),
+    );
+  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, searchText]);
 
   const hasActiveFilters =
     selectedCompany !== 'all' ||
     movementType !== 'all' ||
     movementCurrency !== 'all' ||
     selectedCategory !== 'all' ||
-    datePeriod !== 'all';
+    datePeriod !== 'all' ||
+    searchText.trim() !== '';
 
   const resetFilters = () => {
     setSelectedCompany('all');
@@ -63,6 +71,7 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     setDatePeriod('all');
     setCustomFrom('');
     setCustomTo('');
+    setSearchText('');
   };
 
   return {
@@ -80,6 +89,8 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     setCustomFrom,
     customTo,
     setCustomTo,
+    searchText,
+    setSearchText,
     filteredMovimientos,
     hasActiveFilters,
     resetFilters,

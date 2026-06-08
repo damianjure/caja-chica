@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2 } from 'lucide-react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2, Search } from 'lucide-react';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
 import type { OnboardingState } from '../../../services/api';
@@ -153,6 +153,9 @@ export default function MovimientosTab({
   setCustomFrom,
   customTo,
   setCustomTo,
+  searchText,
+  setSearchText,
+  onOpenSearch,
   hasActiveFilters,
   resetFilters,
   canWriteData,
@@ -185,6 +188,9 @@ export default function MovimientosTab({
   setCustomFrom: (value: string) => void;
   customTo: string;
   setCustomTo: (value: string) => void;
+  searchText: string;
+  setSearchText: (value: string) => void;
+  onOpenSearch: () => void;
   hasActiveFilters: boolean;
   resetFilters: () => void;
   canWriteData: boolean;
@@ -273,6 +279,29 @@ export default function MovimientosTab({
         }
       >
         <div className="space-y-4">
+          {/* Buscar: campo inline (filtra la lista) + acceso al buscador global */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-text-3)]" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Buscar por descripción, empresa o categoría…"
+                aria-label="Buscar en movimientos"
+                className="w-full rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] py-2 pl-9 pr-3 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-border)] px-3 py-2 text-xs font-semibold text-[var(--app-text-2)] hover:border-[var(--app-text-2)] hover:text-[var(--app-text-1)] transition"
+              title="Búsqueda global"
+            >
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Global</span>
+            </button>
+          </div>
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <Segmented value={datePeriod} options={DATE_OPTS} onChange={setDatePeriod} ariaLabel="Filtrar por período" />
@@ -311,6 +340,7 @@ export default function MovimientosTab({
               {movementCurrency !== 'all' && <Pill label={movementCurrency} onClear={() => setMovementCurrency('all')} />}
               {selectedCompany !== 'all' && <Pill label={selectedCompany} onClear={() => setSelectedCompany('all')} />}
               {selectedCategory !== 'all' && <Pill label={selectedCategory} onClear={() => setSelectedCategory('all')} />}
+              {searchText.trim() !== '' && <Pill label={`"${searchText.trim()}"`} onClear={() => setSearchText('')} />}
               <button type="button" onClick={resetFilters} className="text-xs text-[var(--app-text-3)] underline underline-offset-2 hover:text-[var(--app-text-1)]">
                 Limpiar todo
               </button>

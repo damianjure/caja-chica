@@ -63,7 +63,8 @@ jobs:
           gcloud builds submit \
             --tag gcr.io/caja-chica-bot/caja-chica \
             --region us-west2 \
-            --project caja-chica-bot
+            --project caja-chica-bot \
+            --no-logstreaming
 
       - name: Deploy to Cloud Run
         run: |

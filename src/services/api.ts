@@ -725,6 +725,10 @@ export const api = {
     });
   },
 
+  async deletePersona(personaId: string): Promise<{ ok: boolean }> {
+    return fetchApi(`/api/personas/${personaId}`, { method: "DELETE" });
+  },
+
   async generateTelegramInviteToken(targetUserId: string): Promise<TelegramInviteTokenResponse> {
     return fetchApi("/api/telegram/invite-token", {
       method: "POST",

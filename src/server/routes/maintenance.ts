@@ -39,11 +39,15 @@ export function createMaintenanceRouter(deps: MaintenanceDeps) {
   router.post("/api/maintenance/activate", requireSession, requireSuperadmin, async (req, res) => {
     try {
       const graceEndsAt = new Date(Date.now() + 5 * 60_000).toISOString();
+      const estimatedEndAt =
+        typeof req.body?.estimatedEnd === "string" && !Number.isNaN(Date.parse(req.body.estimatedEnd))
+          ? req.body.estimatedEnd
+          : null;
       const state = await setMaintenanceStatus(supabase, {
         status: "grace",
         grace_ends_at: graceEndsAt,
         message: typeof req.body?.message === "string" ? req.body.message : null,
-        estimated_end_at: typeof req.body?.estimatedEnd === "string" ? req.body.estimatedEnd : null,
+        estimated_end_at: estimatedEndAt,
         notification_sent_30min: false,
       } as any);
       // Fire-and-forget notifications — failures must not block response
@@ -63,11 +67,15 @@ export function createMaintenanceRouter(deps: MaintenanceDeps) {
       if (!scheduledAt || typeof scheduledAt !== "string") {
         return res.status(400).json({ error: "scheduledAt is required (ISO string)" });
       }
+      const estimatedEndAt =
+        typeof estimatedEnd === "string" && !Number.isNaN(Date.parse(estimatedEnd))
+          ? estimatedEnd
+          : null;
       const state = await setMaintenanceStatus(supabase, {
         status: "scheduled",
         scheduled_at: scheduledAt,
         message: typeof message === "string" ? message : null,
-        estimated_end_at: typeof estimatedEnd === "string" ? estimatedEnd : null,
+        estimated_end_at: estimatedEndAt,
         notification_sent_30min: false,
       } as any);
       return res.json(state);

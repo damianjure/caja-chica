@@ -741,15 +741,15 @@ export function MiembrosSection({
   const confirmRef = useRef(confirm);
   confirmRef.current = confirm;
 
-  const loadPersonas = useCallback(async () => {
-    setPersonasLoading(true);
+  const loadPersonas = useCallback(async (silent = false) => {
+    if (!silent) setPersonasLoading(true);
     try {
       const data = await api.listPersonas({ scope: "dashboard" });
       setPersonas(data);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo cargar el equipo.");
     } finally {
-      setPersonasLoading(false);
+      if (!silent) setPersonasLoading(false);
     }
   }, []);
 
@@ -765,8 +765,12 @@ export function MiembrosSection({
   }, [loadPersonas, loadTelegramLinks]);
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([loadPersonas(), onRefresh()]);
+    // Silent: don't flip the list into a loading state on background refresh
+    // (avoids the flicker/"freeze" after a mutation). onRefresh runs in parallel
+    // but its latency must not block the personas list update.
+    void onRefresh();
     loadTelegramLinks();
+    await loadPersonas(true);
   }, [loadPersonas, onRefresh, loadTelegramLinks]);
 
   // Build owner card entry
@@ -803,11 +807,14 @@ export function MiembrosSection({
     }
   };
 
-  const handleRevokeMember = async (memberId: string) => {
+  const handleRevokeMember = async (memberId: string, email?: string) => {
     setError(null);
     try {
       await api.revokeMember(memberId);
       toast.success("Acceso revocado");
+      // Optimistic: move the persona to "revoked" immediately so it jumps to the
+      // Eliminados group without waiting for the refetch.
+      if (email) setPersonas((prev) => prev.map((p) => (p.email === email ? { ...p, status: "revoked" } : p)));
       await refreshAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo revocar el acceso.");
@@ -819,9 +826,22 @@ export function MiembrosSection({
     try {
       await api.revokeDashboardInvitation(personaId);
       toast.success("Invitación cancelada");
-      await loadPersonas();
+      setPersonas((prev) => prev.map((p) => (p.id === personaId ? { ...p, status: "revoked" } : p)));
+      await loadPersonas(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo cancelar la invitación.");
+    }
+  };
+
+  const handleDeletePersona = async (personaId: string) => {
+    setError(null);
+    setPersonas((prev) => prev.filter((p) => p.id !== personaId)); // optimistic
+    try {
+      await api.deletePersona(personaId);
+      toast.success("Eliminado del historial");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar.");
+      void loadPersonas(true); // re-sync on failure
     }
   };
 
@@ -983,6 +1003,36 @@ export function MiembrosSection({
                   />
                 );
               })}
+
+              {/* Eliminados — invitaciones/miembros revocados; se pueden borrar del historial */}
+              {personas.filter((p) => p.status === "revoked").length > 0 && (
+                <div className="mt-4 border-t border-[var(--app-border)] pt-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-[var(--app-surface-2)] px-2.5 py-0.5 text-xs font-semibold text-[var(--app-text-3)]">
+                      Eliminados
+                    </span>
+                    <span className="text-xs text-[var(--app-text-3)]">Ya no tienen acceso</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {personas.filter((p) => p.status === "revoked").map((persona) => (
+                      <div key={persona.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 opacity-80">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-[var(--app-text-2)]">{persona.display_name ?? persona.email}</p>
+                          <p className="truncate text-xs text-[var(--app-text-3)]">{persona.email}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePersona(persona.id)}
+                          className="shrink-0 rounded-md border border-[var(--app-border)] px-2.5 py-1 text-xs font-semibold text-[var(--app-text-3)] hover:border-[var(--chart-expense)] hover:text-[var(--chart-expense)] transition-colors"
+                          title="Borrar del historial"
+                        >
+                          Borrar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -999,7 +1049,7 @@ export function MiembrosSection({
           onConfirm={async () => {
             const c = confirmRef.current;
             setConfirm(null);
-            if (c?.kind === "revoke-member") await handleRevokeMember(c.memberId);
+            if (c?.kind === "revoke-member") await handleRevokeMember(c.memberId, c.email);
           }}
         />
       )}

@@ -9,6 +9,16 @@ interface MaintenanceSectionProps {
   setError: (msg: string | null) => void;
 }
 
+// Duration in minutes → computed into an ISO estimated-end timestamp on submit.
+const DURATION_OPTIONS = [
+  { value: "", label: "Sin estimación" },
+  { value: "30", label: "30 minutos" },
+  { value: "60", label: "1 hora" },
+  { value: "120", label: "2 horas" },
+  { value: "240", label: "4 horas" },
+  { value: "480", label: "8 horas" },
+];
+
 function StatusChip({ status }: { status: MaintenanceStatus["status"] }) {
   if (status === "none") {
     return (
@@ -77,9 +87,10 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
     setActivating(true);
     setError(null);
     try {
+      const min = Number(activateEstimated);
       await api.activateMaintenance({
         message: activateMessage.trim() || undefined,
-        estimatedEnd: activateEstimated.trim() || undefined,
+        estimatedEnd: min > 0 ? new Date(Date.now() + min * 60_000).toISOString() : undefined,
       });
       invalidate();
       showNotice("Mantenimiento activado");
@@ -98,10 +109,11 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
     setScheduling(true);
     setError(null);
     try {
+      const min = Number(scheduleEstimated);
       await api.scheduleMaintenance({
         scheduledAt: new Date(scheduleAt).toISOString(),
         message: scheduleMessage.trim() || undefined,
-        estimatedEnd: scheduleEstimated.trim() || undefined,
+        estimatedEnd: min > 0 ? new Date(new Date(scheduleAt).getTime() + min * 60_000).toISOString() : undefined,
       });
       invalidate();
       showNotice("Mantenimiento programado");
@@ -181,14 +193,16 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
-              <input
-                type="text"
+              <select
                 className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="Ej: 2 horas"
                 value={activateEstimated}
                 onChange={(e) => setActivateEstimated(e.target.value)}
                 disabled={isLive}
-              />
+              >
+                {DURATION_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -242,14 +256,16 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
-              <input
-                type="text"
+              <select
                 className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="Ej: 2 horas"
                 value={scheduleEstimated}
                 onChange={(e) => setScheduleEstimated(e.target.value)}
                 disabled={isLive}
-              />
+              >
+                {DURATION_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
           <button

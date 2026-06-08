@@ -315,7 +315,41 @@ export function createDashboardRouter(deps: DashboardDeps) {
     }
   });
 
-
+  // Permanently delete a persona record (a revoked/removed dashboard invitation).
+  // Used by the "Eliminados" group to clear the row for good.
+  router.delete("/api/personas/:id", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!scope.dashboardId || !canManageDashboardMembers(session, scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      const { data: rows, error: fetchError } = await supabase
+        .from("dashboard_invitations")
+        .select("id, dashboard_id, status")
+        .eq("id", req.params.id)
+        .limit(1);
+      if (fetchError) throw fetchError;
+      const invitation = rows?.[0];
+      if (!invitation || invitation.dashboard_id !== scope.dashboardId) {
+        return res.status(404).json({ error: "not_found" });
+      }
+      // Only allow deleting already-inactive rows (revoked/expired) — never an active member.
+      if (invitation.status !== "revoked" && invitation.status !== "expired") {
+        return res.status(400).json({ error: "not_inactive" });
+      }
+      const { error } = await supabase
+        .from("dashboard_invitations")
+        .delete()
+        .eq("id", req.params.id)
+        .eq("dashboard_id", scope.dashboardId);
+      if (error) throw error;
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("DELETE /api/personas/:id:", err);
+      res.status(500).json({ error: "failed_to_delete" });
+    }
+  });
 
   router.patch("/api/dashboard/members/:id/permissions", requireSession, async (req, res) => {
     try {

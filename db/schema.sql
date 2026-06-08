@@ -152,9 +152,14 @@ create table if not exists public.recurrentes (
     categoria text,
     empresa_nombre text default 'Personal',
     descripcion text,
-    frecuencia text not null check (frecuencia in ('diario', 'semanal', 'mensual')),
+    frecuencia text not null check (frecuencia in ('diario', 'semanal', 'quincenal', 'mensual', 'anual')),
     last_processed timestamptz,
-    chat_id bigint
+    chat_id bigint,
+    dashboard_id uuid,
+    created_by_user_id uuid,
+    is_active boolean,
+    deleted_at timestamptz,
+    day_of_month smallint check (day_of_month is null or (day_of_month >= 1 and day_of_month <= 31))
 );
 
 create table if not exists public.report_exports (

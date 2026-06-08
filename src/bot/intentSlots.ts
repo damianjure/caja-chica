@@ -114,6 +114,10 @@ export interface RecurrenteSlots {
   moneda: "ARS" | "USD";
   frecuencia: Frecuencia | null;
   descripcion: string | null;
+  /** Day of month (1-31) for monthly recurrences — optional. */
+  dia?: number | null;
+  /** Category — optional; falls back to a tipo-based default on create. */
+  categoria?: string | null;
 }
 
 function coerceMonto(v: unknown): number | null {
@@ -152,8 +156,11 @@ export function normalizeRecurrenteSlots(raw: Raw): { value: RecurrenteSlots; mi
   const moneda: "ARS" | "USD" = ["usd", "dolar", "dolares", "dólares", "us$", "u$s"].includes(monedaRaw) ? "USD" : "ARS";
   const frecuencia = mapFrecuencia(str(raw.frecuencia));
   const descripcion = str(raw.descripcion);
+  const diaNum = coerceMonto(raw.dia);
+  const dia = diaNum !== null && Number.isInteger(diaNum) && diaNum >= 1 && diaNum <= 31 ? diaNum : null;
+  const categoria = str(raw.categoria);
 
-  const value: RecurrenteSlots = { monto, tipo, moneda, frecuencia, descripcion };
+  const value: RecurrenteSlots = { monto, tipo, moneda, frecuencia, descripcion, dia, categoria };
 
   const missing: string[] = [];
   if (monto === null) missing.push("monto");
@@ -168,7 +175,9 @@ export function buildRecurrenteEcho(s: RecurrenteSlots): string {
   const tipo = s.tipo === "egreso" ? "gasto" : (s.tipo ?? "(ingreso/gasto?)");
   const frec = s.frecuencia ?? "(frecuencia?)";
   const desc = s.descripcion ?? "(descripción?)";
-  return `🔄 Recurrente: ${monto} ${s.moneda} (${tipo}) · ${frec} · ${desc}`;
+  const dia = s.dia ? ` · día ${s.dia}` : "";
+  const cat = s.categoria ? ` · ${s.categoria}` : "";
+  return `🔄 Recurrente: ${monto} ${s.moneda} (${tipo}) · ${frec}${dia}${cat} · ${desc}`;
 }
 
 // ---------------------------------------------------------------------------

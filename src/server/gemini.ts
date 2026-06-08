@@ -30,7 +30,7 @@ SLOTS por intención:
 - crear_empresa / crear_categoria: { "nombre": <string> }
 - buscar: { "query": <SOLO el término a buscar, ej "Carrefour" — sin "buscá" ni "movimientos de"> }
 - informe: { "periodo": "dia"|"semana"|"mes"|"anio"|"rango", "mes": <"YYYY-MM" si dijo un mes>, "anio": <número si dijo un año>, "desde": <"YYYY-MM-DD">, "hasta": <"YYYY-MM-DD">, "formato": "pdf"|"csv", "destino": "local"|"drive", "tipo": "ingresos"|"gastos"|"saldos"|"todos" }
-- recurrente_nuevo: { "monto": <número>, "tipo": "ingreso"|"egreso", "moneda": "ARS"|"USD", "frecuencia": "diario"|"semanal"|"quincenal"|"mensual"|"anual", "descripcion": <string> }
+- recurrente_nuevo: { "monto": <número>, "tipo": "ingreso"|"egreso", "moneda": "ARS"|"USD", "frecuencia": "diario"|"semanal"|"quincenal"|"mensual"|"anual", "dia": <1-31 SOLO si frecuencia es mensual y dijo un día del mes, ej "todos los 15 de cada mes" → 15>, "categoria": <string si nombró una categoría, ej "categoría Netflix" → "Netflix">, "descripcion": <string> }
 - editar_ultimo: { "campo": "monto"|"moneda"|"categoria"|"empresa"|"descripcion", "valor": <nuevo valor>, "valor_anterior": <valor viejo si lo dijo> }
 - recordatorio_config: { "accion": "activar"|"desactivar"|"hora", "hora": <0-23, solo si accion="hora"> }
 

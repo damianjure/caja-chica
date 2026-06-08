@@ -75,6 +75,20 @@ test("normalizeRecurrenteSlots: string monto with separators coerced", () => {
   assert.equal(normalizeRecurrenteSlots({ monto: "1500,50" }).value.monto, 1500.5);
 });
 
+test("normalizeRecurrenteSlots: captures dia + categoria, not required", () => {
+  const { value, missing } = normalizeRecurrenteSlots({ monto: 30000, tipo: "egreso", frecuencia: "mensual", dia: 15, categoria: "Netflix", descripcion: "Netflix" });
+  assert.equal(value.dia, 15);
+  assert.equal(value.categoria, "Netflix");
+  assert.ok(!missing.includes("dia"));
+  assert.ok(!missing.includes("categoria"));
+});
+
+test("normalizeRecurrenteSlots: invalid dia (out of 1-31) → null", () => {
+  assert.equal(normalizeRecurrenteSlots({ monto: 1, dia: 40 }).value.dia, null);
+  assert.equal(normalizeRecurrenteSlots({ monto: 1, dia: 0 }).value.dia, null);
+  assert.equal(normalizeRecurrenteSlots({ monto: 1 }).value.dia, null);
+});
+
 test("normalizeRecurrenteSlots: 'gasto' maps to egreso", () => {
   assert.equal(normalizeRecurrenteSlots({ tipo: "gasto" }).value.tipo, "egreso");
 });

@@ -49,6 +49,29 @@ export interface UpdateEmpresaRequest {
   nombre: string;
 }
 
+/** One persisted ticket line (child of a movimiento). */
+export interface TicketLineInput {
+  descripcion: string;
+  monto: number;
+  categoria: string;
+  cantidad?: number | null;
+}
+
+export interface TicketRequest {
+  /** Chosen empresa (default/Personal). The route never auto-creates it. */
+  empresa: string | null;
+  moneda: "ARS" | "USD";
+  /** Parent description (merchant name folded in here, never as empresa). */
+  descripcion: string;
+  lineas: TicketLineInput[];
+}
+
+export interface UpdateLineaRequest {
+  monto?: number;
+  categoria?: string;
+  descripcion?: string;
+}
+
 export type ReportExportFormat = "csv" | "pdf";
 export type ReportPeriod = "day" | "week" | "month" | "range";
 export type ReportMovementType = "all" | "ingreso" | "egreso";
@@ -162,6 +185,74 @@ export function parseSaveMovimientosRequest(
     items: payload.items,
     originalText: payload.originalText,
   };
+}
+
+const MAX_TICKET_LINES = 200;
+const MAX_LINE_AMOUNT = 100_000_000_000;
+const MAX_FIELD_LEN = 200;
+
+function parseTicketLine(value: unknown): TicketLineInput | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.monto !== "number" || !Number.isFinite(raw.monto) || raw.monto < 0 || raw.monto > MAX_LINE_AMOUNT) {
+    return null;
+  }
+  const descripcion = typeof raw.descripcion === "string" ? raw.descripcion.trim().slice(0, MAX_FIELD_LEN) : "";
+  const categoria = typeof raw.categoria === "string" && raw.categoria.trim() ? raw.categoria.trim().slice(0, MAX_FIELD_LEN) : "Varios";
+  let cantidad: number | null = null;
+  if (raw.cantidad !== undefined && raw.cantidad !== null) {
+    if (typeof raw.cantidad !== "number" || !Number.isFinite(raw.cantidad) || raw.cantidad <= 0) return null;
+    cantidad = raw.cantidad;
+  }
+  return { descripcion: descripcion || "Ítem", monto: raw.monto, categoria, cantidad };
+}
+
+export function parseTicketRequest(value: unknown): TicketRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+
+  if (payload.moneda !== "ARS" && payload.moneda !== "USD") return null;
+  if (!Array.isArray(payload.lineas) || payload.lineas.length === 0 || payload.lineas.length > MAX_TICKET_LINES) {
+    return null;
+  }
+
+  const lineas: TicketLineInput[] = [];
+  for (const raw of payload.lineas) {
+    const line = parseTicketLine(raw);
+    if (!line) return null;
+    lineas.push(line);
+  }
+
+  const empresa =
+    typeof payload.empresa === "string" && payload.empresa.trim() ? payload.empresa.trim().slice(0, MAX_FIELD_LEN) : null;
+  const descripcion =
+    typeof payload.descripcion === "string" && payload.descripcion.trim()
+      ? payload.descripcion.trim().slice(0, MAX_FIELD_LEN)
+      : "Ticket";
+
+  return { empresa, moneda: payload.moneda, descripcion, lineas };
+}
+
+export function parseUpdateLineaRequest(value: unknown): UpdateLineaRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+  const next: UpdateLineaRequest = {};
+
+  if (payload.monto !== undefined) {
+    if (typeof payload.monto !== "number" || !Number.isFinite(payload.monto) || payload.monto < 0 || payload.monto > MAX_LINE_AMOUNT) return null;
+    next.monto = payload.monto;
+  }
+  if (payload.categoria !== undefined) {
+    if (typeof payload.categoria !== "string" || payload.categoria.trim().length === 0) return null;
+    next.categoria = payload.categoria.trim().slice(0, MAX_FIELD_LEN);
+  }
+  if (payload.descripcion !== undefined) {
+    if (typeof payload.descripcion !== "string" || payload.descripcion.trim().length === 0) return null;
+    next.descripcion = payload.descripcion.trim().slice(0, MAX_FIELD_LEN);
+  }
+
+  if (next.monto === undefined && next.categoria === undefined && next.descripcion === undefined) return null;
+  return next;
 }
 
 export function parseEmpresaRequest(value: unknown): { nombre: string } | null {

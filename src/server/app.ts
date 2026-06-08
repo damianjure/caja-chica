@@ -21,7 +21,9 @@ import {
   parseRecurrenteRequest,
   parseReportExportRequest,
   parseSaveMovimientosRequest,
+  parseTicketRequest,
   parseUpdateEmpresaRequest,
+  parseUpdateLineaRequest,
   parseUpdateMovimientoRequest,
 } from "./validation.ts";
 
@@ -458,6 +460,8 @@ export function createApp({
     parseExtractRequest,
     parseSaveMovimientosRequest,
     parseUpdateMovimientoRequest,
+    parseTicketRequest,
+    parseUpdateLineaRequest,
     parseReconciliationRequest,
     parsePaginationQuery,
     parseRecurrenteRequest,

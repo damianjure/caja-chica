@@ -9,6 +9,8 @@ import type {
   PaginationQuery,
   ReconciliationRequest,
   UpdateMovimientoRequest,
+  TicketRequest,
+  UpdateLineaRequest,
 } from "../validation.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
@@ -43,6 +45,8 @@ export interface MovimientosDeps {
   parseExtractRequest: (body: unknown) => { text: string; categories: Array<{ nombre: string }> } | null;
   parseSaveMovimientosRequest: (body: unknown) => SaveMovimientosRequest | null;
   parseUpdateMovimientoRequest: (body: unknown) => UpdateMovimientoRequest | null;
+  parseTicketRequest: (body: unknown) => TicketRequest | null;
+  parseUpdateLineaRequest: (body: unknown) => UpdateLineaRequest | null;
   parseReconciliationRequest: (body: unknown) => ReconciliationRequest | null;
   parsePaginationQuery: (query: unknown) => PaginationQuery;
   parseRecurrenteRequest: (body: unknown) => { monto: number; tipo: string; moneda: string; frecuencia: string; categoria?: string; empresa_nombre?: string; descripcion?: string; day_of_month?: number } | null;
@@ -77,6 +81,8 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
     parseExtractRequest,
     parseSaveMovimientosRequest,
     parseUpdateMovimientoRequest,
+    parseTicketRequest,
+    parseUpdateLineaRequest,
     parseReconciliationRequest,
     parsePaginationQuery,
     parseRecurrenteRequest,
@@ -212,6 +218,219 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       res.json(saved);
     } catch (err) {
       console.error("Save error:", err);
+      res.status(500).json({ error: "failed_to_save" });
+    }
+  });
+
+  // Keep the parent movimiento.monto in sync with the sum of its active lines,
+  // and has_lineas truthy only while lines remain.
+  async function recomputeTicketTotal(
+    movimientoId: string,
+    session: AppSession,
+    scope: DataAccessScope,
+  ) {
+    const { data: lines, error } = await applyDataScope(
+      supabase.from("movimiento_lineas").select("monto").is("deleted_at", null),
+      session,
+      scope,
+    ).eq("movimiento_id", movimientoId);
+    if (error) throw error;
+    const rows = (lines ?? []) as Array<{ monto: number | string }>;
+    const total = rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+    const { error: updErr } = await applyDataScope(
+      supabase.from("movimientos").update({ monto: total, has_lineas: rows.length > 0 }).eq("id", movimientoId),
+      session,
+      scope,
+    );
+    if (updErr) throw updErr;
+  }
+
+  // Ticket = one parent movimiento (the total) + persisted child lines.
+  // Empresa is whatever the client chose (default/Personal); we never
+  // auto-create a company from the extracted merchant name here.
+  router.post("/api/movimientos/ticket", requireSession, async (req, res) => {
+    try {
+      const payload = parseTicketRequest(req.body);
+      if (!payload) return res.status(400).json({ error: "invalid_request" });
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!canWriteToScope(scope)) return res.status(403).json({ error: "forbidden" });
+
+      const empresa = normalizeEmpresaName(payload.empresa);
+      const total = payload.lineas.reduce((acc, l) => acc + Math.abs(l.monto), 0);
+
+      const { data: parentData, error: parentErr } = await supabase
+        .from("movimientos")
+        .insert([
+          {
+            ...buildWriteOwnership(session, scope),
+            tipo: "egreso",
+            moneda: payload.moneda,
+            monto: total,
+            categoria: payload.lineas[0]?.categoria || "Varios",
+            empresa_nombre: empresa,
+            descripcion: payload.descripcion,
+            original_text: payload.descripcion,
+            conciliado: true,
+            conciliado_notas: null,
+            has_lineas: true,
+          },
+        ])
+        .select();
+      if (parentErr) throw parentErr;
+      const parent = parentData?.[0];
+      if (!parent?.id) throw new Error("ticket_parent_insert_failed");
+
+      const lineOwnership = scope.dashboardId
+        ? { dashboard_id: scope.dashboardId, owner_user_id: session.userId }
+        : { owner_user_id: session.userId };
+      const lineRows = payload.lineas.map((l) => ({
+        ...lineOwnership,
+        movimiento_id: parent.id,
+        descripcion: l.descripcion,
+        monto: Math.abs(l.monto),
+        categoria: l.categoria || "Varios",
+        cantidad: l.cantidad ?? null,
+      }));
+      const { data: linesData, error: linesErr } = await supabase
+        .from("movimiento_lineas")
+        .insert(lineRows)
+        .select();
+      if (linesErr) {
+        // Not transactional: roll back the orphan parent so we don't leave a
+        // has_lineas=true movement with no lines.
+        await supabase.from("movimientos").delete().eq("id", parent.id);
+        throw linesErr;
+      }
+
+      await logEntityMutation({
+        session,
+        scope,
+        source: "web",
+        action: "create",
+        entityType: "movimiento",
+        entityId: parent.id,
+        afterData: parent,
+      });
+
+      res.json({ movimiento: parent, lineas: linesData ?? [] });
+    } catch (err) {
+      console.error("Ticket save error:", err);
+      res.status(500).json({ error: "failed_to_save" });
+    }
+  });
+
+  router.get("/api/movimientos/:id/lineas", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      const { data, error } = await applyDataScope(
+        supabase
+          .from("movimiento_lineas")
+          .select("*")
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true }),
+        session,
+        scope,
+      ).eq("movimiento_id", req.params.id);
+      if (error) throw error;
+      res.json({ items: data ?? [] });
+    } catch (_err) {
+      res.status(500).json({ error: "failed_to_fetch" });
+    }
+  });
+
+  router.patch("/api/movimientos/lineas/:id", requireSession, async (req, res) => {
+    try {
+      const payload = parseUpdateLineaRequest(req.body);
+      if (!payload) return res.status(400).json({ error: "invalid_request" });
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!canWriteToScope(scope)) return res.status(403).json({ error: "forbidden" });
+
+      const { data: rows, error: fetchErr } = await applyDataScope(
+        supabase.from("movimiento_lineas").select("*").is("deleted_at", null),
+        session,
+        scope,
+      ).eq("id", req.params.id).limit(1);
+      if (fetchErr) throw fetchErr;
+      const line = rows?.[0];
+      if (!line) return res.status(404).json({ error: "not_found" });
+      if (line.owner_user_id !== session.userId && !canEditOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const updatePayload: Record<string, unknown> = {};
+      if (payload.monto !== undefined) updatePayload.monto = payload.monto;
+      if (payload.categoria !== undefined) updatePayload.categoria = payload.categoria;
+      if (payload.descripcion !== undefined) updatePayload.descripcion = payload.descripcion;
+
+      const { error: updErr } = await applyDataScope(
+        supabase.from("movimiento_lineas").update(updatePayload).eq("id", req.params.id),
+        session,
+        scope,
+      );
+      if (updErr) throw updErr;
+
+      await recomputeTicketTotal(line.movimiento_id, session, scope);
+      await logEntityMutation({
+        session,
+        scope,
+        source: "web",
+        action: "update",
+        entityType: "movimiento",
+        entityId: line.movimiento_id,
+        beforeData: line,
+        afterData: { ...(line as any), ...updatePayload },
+      });
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Linea update error:", err);
+      res.status(500).json({ error: "failed_to_save" });
+    }
+  });
+
+  router.delete("/api/movimientos/lineas/:id", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const scope = await resolveDataAccessScope(session);
+      if (!canWriteToScope(scope)) return res.status(403).json({ error: "forbidden" });
+
+      const { data: rows, error: fetchErr } = await applyDataScope(
+        supabase.from("movimiento_lineas").select("*").is("deleted_at", null),
+        session,
+        scope,
+      ).eq("id", req.params.id).limit(1);
+      if (fetchErr) throw fetchErr;
+      const line = rows?.[0];
+      if (!line) return res.status(404).json({ error: "not_found" });
+      if (line.owner_user_id !== session.userId && !canDeleteOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      const { error: delErr } = await applyDataScope(
+        supabase.from("movimiento_lineas").update({ deleted_at: new Date().toISOString() }).eq("id", req.params.id),
+        session,
+        scope,
+      );
+      if (delErr) throw delErr;
+
+      await recomputeTicketTotal(line.movimiento_id, session, scope);
+      await logEntityMutation({
+        session,
+        scope,
+        source: "web",
+        action: "update",
+        entityType: "movimiento",
+        entityId: line.movimiento_id,
+        beforeData: line,
+        afterData: { ...(line as any), deleted_at: "now" },
+      });
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Linea delete error:", err);
       res.status(500).json({ error: "failed_to_save" });
     }
   });

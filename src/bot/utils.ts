@@ -180,19 +180,3 @@ export async function createBotEmpresaBackup(supabase: SupabaseClient, args: {
 export function formatMovementSummary(mov: any) {
   return `${mov.tipo === "ingreso" ? "🟢" : "🔴"} ${mov.monto} ${mov.moneda}\n🏢 ${escapeMd(mov.empresa_nombre || "Personal")}\n📁 ${escapeMd(mov.categoria || "Otros")}\n📝 ${escapeMd(mov.descripcion ?? "")}`;
 }
-
-// Uses index (0-7) instead of UUID — Telegram callback_data limit is 64 bytes
-export function buildEmpresaSelectorKeyboard(extractionId: string, empresas: Array<{ id: string; nombre: string }>) {
-  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-  for (let i = 0; i < empresas.length; i += 2) {
-    const row: Array<{ text: string; callback_data: string }> = [];
-    row.push({ text: empresas[i].nombre, callback_data: `er:co:${extractionId}:${i}` });
-    if (empresas[i + 1]) row.push({ text: empresas[i + 1].nombre, callback_data: `er:co:${extractionId}:${i + 1}` });
-    rows.push(row);
-  }
-  rows.push([
-    { text: "🔍 Buscar/Nueva", callback_data: `er:co:${extractionId}:search` },
-    { text: "❌ Sin empresa", callback_data: `er:co:${extractionId}:none` },
-  ]);
-  return { inline_keyboard: rows };
-}

@@ -1,7 +1,7 @@
 import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
-import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, buildEmpresaSelectorKeyboard, splitForTelegram } from "../utils.ts";
+import { requireTelegramCan, requireLinkedAccount, escapeMd, formatMovementSummary, insertBotAuditLog, splitForTelegram } from "../utils.ts";
 import {
   applyTelegramDataScope,
   buildTelegramWriteOwnership,

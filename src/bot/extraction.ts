@@ -27,31 +27,35 @@ import { buildUndoKeyboard } from "./quickActions.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
-async function showEmpresaSelector(supabase: BotDeps["supabase"], ctx: Context, linked: any, data: PendingExtractionData, processingMsgId: number) {
+// G — single confirmation card. Instead of asking for the empresa in a separate
+// step, go straight to the review card with every field editable inline. The
+// empresa defaults to the detected one (or "Personal"), so it never blocks; the
+// user adjusts it from the same card if needed.
+async function showReviewCard(supabase: BotDeps["supabase"], ctx: Context, linked: any, data: PendingExtractionData, processingMsgId: number) {
   try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
   const scope = { dashboardId: linked.dashboardId ?? null, ownerUserId: linked.ownerUserId ?? null };
   const [empresas, categorias] = await Promise.all([
     getTopEmpresasForDashboard(supabase, scope),
     getTopCategoriasForDashboard(supabase, scope),
   ]);
+  const normalized: PendingExtractionData = {
+    ...data,
+    empresa: data.empresa && data.empresa.trim() ? data.empresa : "Personal",
+  };
   const entry = createPendingExtraction({
     chatId: ctx.chat.id,
     dashboardId: linked.dashboardId ?? null,
     userId: linked.userId ?? null,
     ownerUserId: linked.ownerUserId ?? null,
-    data,
+    data: normalized,
     messageId: 0,
-    awaitingCompany: true,
-    empresaOptions: empresas,
+    awaitingCompany: false,
+    empresaOptions: empresas.length > 0 ? empresas : null,
     categoriaOptions: categorias.length > 0 ? categorias : null,
   });
-  if (empresas.length === 0) {
-    updatePendingExtraction(entry.id, { editingField: "empresa" });
-    await ctx.reply("🏢 ¿A qué empresa corresponde este ticket? (escribí el nombre o 'ninguna'):", { parse_mode: "Markdown" });
-    return;
-  }
-  await ctx.reply("🏢 ¿A qué empresa corresponde este ticket?", {
-    reply_markup: buildEmpresaSelectorKeyboard(entry.id, empresas),
+  await ctx.reply(buildReviewCardText(normalized), {
+    parse_mode: "Markdown",
+    reply_markup: buildReviewKeyboard(entry.id, categorias.length > 0 ? categorias : null),
   });
 }
 
@@ -93,7 +97,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                 filePath: files[0].filePath,
                 mimeType: files[0].mimeType,
               });
-              await showEmpresaSelector(supabase, firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
+              await showReviewCard(supabase, firstCtx, linked2, { ...result, sourceType }, processingMsg.message_id);
             } else {
               const results = await extractFromMultiplePhotos({ genAI, botToken, files });
               try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -155,7 +159,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         filePath: file.file_path,
         mimeType: "image/jpeg",
       });
-      await showEmpresaSelector(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showReviewCard(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {
@@ -201,7 +205,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         mimeType,
         displayName: doc.file_name ?? "document",
       });
-      await showEmpresaSelector(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
+      await showReviewCard(supabase, ctx, linked, { ...result, sourceType }, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {

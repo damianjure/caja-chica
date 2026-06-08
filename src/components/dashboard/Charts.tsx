@@ -89,36 +89,76 @@ export function AreaTrendChart({
   const visibles = [show.income && 'ingresos', show.expense && 'gastos', show.net && 'saldo'].filter(Boolean).join(', ');
   const summary = `Evolución mensual en ${currency}. Series visibles: ${visibles || 'ninguna'}.${show.net ? ` ${data.map((d) => `${d.label}: saldo ${formatCompact(d.net, currency)}`).join('; ')}.` : ''}`;
 
+  // Mobile: los meses recientes como tarjetas con números grandes (el SVG solo dibuja la tendencia).
+  const lastMonths = data.slice(-2);
+  const current = data[n - 1];
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
-      <line x1={padL} y1={base} x2={W - padR} y2={base} stroke="var(--chart-baseline)" strokeWidth={1} />
-      {show.income && <path d={closeArea(incLine)} fill="var(--chart-income)" fillOpacity={0.15} />}
-      {show.expense && <path d={closeArea(expLine)} fill="var(--chart-expense)" fillOpacity={0.12} />}
-      {show.income && <path d={incLine} fill="none" stroke="var(--chart-income)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
-      {show.expense && <path d={expLine} fill="none" stroke="var(--chart-expense)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
-      {show.net && <path d={netLine} fill="none" stroke="var(--chart-net)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
-      {data.map((d, i) => (
-        <g key={d.label}>
-          {show.net && <circle cx={x(i)} cy={yNet(nets[i])} r={4} fill="var(--app-surface-1)" stroke="var(--chart-net)" strokeWidth={2.5} />}
-          {show.net && (
-            <text
-              x={x(i)}
-              y={yNet(nets[i]) - 10}
-              textAnchor="middle"
-              fontSize={11}
-              fontWeight={700}
-              fill={nets[i] >= 0 ? 'var(--chart-net)' : 'var(--chart-expense)'}
-              style={{ fontVariantNumeric: 'tabular-nums' }}
-            >
-              {nets[i] >= 0 ? '↑ ' : '↓ '}{formatCompact(nets[i], currency)}
+    <>
+      {/* Desktop: gráfico con etiquetas de saldo sobre cada punto */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="hidden md:block w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
+        <line x1={padL} y1={base} x2={W - padR} y2={base} stroke="var(--chart-baseline)" strokeWidth={1} />
+        {show.income && <path d={closeArea(incLine)} fill="var(--chart-income)" fillOpacity={0.15} />}
+        {show.expense && <path d={closeArea(expLine)} fill="var(--chart-expense)" fillOpacity={0.12} />}
+        {show.income && <path d={incLine} fill="none" stroke="var(--chart-income)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
+        {show.expense && <path d={expLine} fill="none" stroke="var(--chart-expense)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
+        {show.net && <path d={netLine} fill="none" stroke="var(--chart-net)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
+        {data.map((d, i) => (
+          <g key={d.label}>
+            {show.net && <circle cx={x(i)} cy={yNet(nets[i])} r={4} fill="var(--app-surface-1)" stroke="var(--chart-net)" strokeWidth={2.5} />}
+            {show.net && (
+              <text
+                x={x(i)}
+                y={yNet(nets[i]) - 10}
+                textAnchor="middle"
+                fontSize={11}
+                fontWeight={700}
+                fill={nets[i] >= 0 ? 'var(--chart-net)' : 'var(--chart-expense)'}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {nets[i] >= 0 ? '↑ ' : '↓ '}{formatCompact(nets[i], currency)}
+              </text>
+            )}
+            <text x={x(i)} y={H - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--app-text-3)">
+              {d.label}
             </text>
+          </g>
+        ))}
+      </svg>
+
+      {/* Mobile: trazos limpios + tarjetas legibles con los números */}
+      <div className="md:hidden anim-fade-in" role="img" aria-label={summary}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible" aria-hidden="true">
+          <line x1={padL} y1={base} x2={W - padR} y2={base} stroke="var(--chart-baseline)" strokeWidth={1} />
+          {show.income && <path d={closeArea(incLine)} fill="var(--chart-income)" fillOpacity={0.15} />}
+          {show.expense && <path d={closeArea(expLine)} fill="var(--chart-expense)" fillOpacity={0.12} />}
+          {show.income && <path d={incLine} fill="none" stroke="var(--chart-income)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
+          {show.expense && <path d={expLine} fill="none" stroke="var(--chart-expense)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
+          {show.net && <path d={netLine} fill="none" stroke="var(--chart-net)" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />}
+          {show.net && <circle cx={x(n - 1)} cy={yNet(nets[n - 1])} r={5} fill="var(--app-surface-1)" stroke="var(--chart-net)" strokeWidth={3} />}
+          {data.map((d, i) => (
+            <text key={d.label} x={x(i)} y={H - 10} textAnchor="middle" fontSize={15} fontWeight={600} fill="var(--app-text-3)">
+              {d.label}
+            </text>
+          ))}
+        </svg>
+        <div className="mt-3 flex gap-2">
+          {lastMonths.map((d) => (
+            <div key={d.label} className="flex-1 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2.5 text-center">
+              <div className="text-xs text-[var(--app-text-3)] mb-1">{d.label}</div>
+              {show.income && <div className="text-sm font-bold tabular-nums text-[var(--chart-income)]">+{formatCompact(d.income, currency)}</div>}
+              {show.expense && <div className="text-sm font-bold tabular-nums text-[var(--chart-expense)]">−{formatCompact(d.expense, currency)}</div>}
+            </div>
+          ))}
+          {show.net && (
+            <div className="flex-1 rounded-xl border border-[var(--chart-net)] bg-[var(--app-surface-2)] px-3 py-2.5 text-center">
+              <div className="text-xs text-[var(--app-text-3)] mb-1">Saldo</div>
+              <div className="text-base font-extrabold tabular-nums text-[var(--chart-net)]">{formatCompact(current.net, currency)}</div>
+            </div>
           )}
-          <text x={x(i)} y={H - 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--app-text-3)">
-            {d.label}
-          </text>
-        </g>
-      ))}
-    </svg>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -152,26 +192,68 @@ export function WaterfallChart({
   const end = segments[n - 1];
   const summary = `Puente de caja en ${currency}: de ingresos ${formatCompact(segments[0].to, currency)} a saldo ${formatCompact(end.to, currency)}.`;
 
+  // Mobile: barras horizontales centradas en la línea base. Verde a la derecha (suma),
+  // rojo a la izquierda (resta). Escala por la magnitud mayor.
+  const magnitude = (s: typeof segments[number]) => (s.kind === 'down' ? s.value : Math.abs(s.to));
+  const maxMag = Math.max(...segments.map(magnitude), 1);
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
-      <line x1={padL} y1={y(0)} x2={W - padR} y2={y(0)} stroke="var(--chart-baseline)" strokeWidth={1} strokeDasharray="3 4" />
-      {segments.map((s, i) => {
-        const top = y(Math.max(s.from, s.to));
-        const h = Math.max(2, Math.abs(y(s.from) - y(s.to)));
-        return (
-          <g key={`${s.label}-${i}`}>
-            <rect x={cx(i) - barW / 2} y={top} width={barW} height={h} rx={5} fill={color(s)} fillOpacity={s.kind === 'down' ? 0.9 : 1} />
-            {i < n - 1 && (
-              <line x1={cx(i) + barW / 2} y1={y(s.to)} x2={cx(i + 1) - barW / 2} y2={y(s.to)} stroke="var(--app-border-strong)" strokeWidth={1.5} strokeDasharray="2 3" />
-            )}
-            <text x={cx(i)} y={top - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--app-text-2)" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {s.kind === 'down' ? '−' : ''}{formatCompact(s.kind === 'down' ? s.value : s.to, currency)}
-            </text>
-            <text x={cx(i)} y={H - 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--app-text-3)">{short(s.label)}</text>
-          </g>
-        );
-      })}
-    </svg>
+    <>
+      <svg viewBox={`0 0 ${W} ${H}`} className="hidden md:block w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
+        <line x1={padL} y1={y(0)} x2={W - padR} y2={y(0)} stroke="var(--chart-baseline)" strokeWidth={1} strokeDasharray="3 4" />
+        {segments.map((s, i) => {
+          const top = y(Math.max(s.from, s.to));
+          const h = Math.max(2, Math.abs(y(s.from) - y(s.to)));
+          return (
+            <g key={`${s.label}-${i}`}>
+              <rect x={cx(i) - barW / 2} y={top} width={barW} height={h} rx={5} fill={color(s)} fillOpacity={s.kind === 'down' ? 0.9 : 1} />
+              {i < n - 1 && (
+                <line x1={cx(i) + barW / 2} y1={y(s.to)} x2={cx(i + 1) - barW / 2} y2={y(s.to)} stroke="var(--app-border-strong)" strokeWidth={1.5} strokeDasharray="2 3" />
+              )}
+              <text x={cx(i)} y={top - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--app-text-2)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {s.kind === 'down' ? '−' : ''}{formatCompact(s.kind === 'down' ? s.value : s.to, currency)}
+              </text>
+              <text x={cx(i)} y={H - 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--app-text-3)">{short(s.label)}</text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Mobile: barras horizontales tipo lista */}
+      <div className="md:hidden anim-fade-in" role="img" aria-label={summary}>
+        {segments.map((s, i) => {
+          const isDown = s.kind === 'down';
+          const isNeg = isDown || s.to < 0;
+          const pct = (magnitude(s) / maxMag) * 50; // mitad del ancho como máximo por lado
+          const isEnd = s.kind === 'end';
+          return (
+            <div
+              key={`${s.label}-${i}`}
+              className={`grid grid-cols-[5.5rem_1fr_auto] items-center gap-2.5 py-1.5 ${isEnd ? 'mt-1 border-t border-[var(--app-border)] pt-2.5' : ''}`}
+            >
+              <span className={`truncate text-xs ${isEnd ? 'font-bold text-[var(--app-text-1)]' : 'text-[var(--app-text-2)]'}`}>{s.label}</span>
+              <div className="relative h-5 rounded-md bg-[var(--app-surface-2)]">
+                <div
+                  className="absolute bottom-0 top-0 rounded-md"
+                  style={{
+                    [isNeg ? 'right' : 'left']: '50%',
+                    width: `${pct}%`,
+                    backgroundColor: isNeg ? 'var(--chart-expense)' : 'var(--chart-income)',
+                    opacity: isEnd ? 0.5 : 1,
+                  }}
+                />
+              </div>
+              <span
+                className="text-right text-sm font-extrabold tabular-nums"
+                style={{ color: isEnd ? 'var(--chart-net)' : isNeg ? 'var(--chart-expense)' : 'var(--chart-income)' }}
+              >
+                {isNeg ? '−' : '+'}{formatCompact(isDown ? s.value : Math.abs(s.to), currency)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

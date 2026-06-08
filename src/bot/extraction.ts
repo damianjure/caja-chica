@@ -1,6 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
-import { requireTelegramCan, sendTyping, buildEmpresaSelectorKeyboard, escapeMd } from "./utils.ts";
+import { requireTelegramCan, sendTyping, escapeMd } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
 import {
   applyTelegramDataScope,
@@ -17,7 +17,9 @@ import {
   deletePendingExtraction,
   buildReviewCardText,
   buildReviewKeyboard,
+  LOW_CONFIDENCE_THRESHOLD,
   type ExtractionField,
+  type PendingExtraction,
 } from "../server/extractionReview.ts";
 import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
@@ -57,6 +59,73 @@ async function showReviewCard(supabase: BotDeps["supabase"], ctx: Context, linke
     parse_mode: "Markdown",
     reply_markup: buildReviewKeyboard(entry.id, categorias.length > 0 ? categorias : null),
   });
+}
+
+// --- Album batch (spec H): one summary + "Guardar todos" instead of asking the
+// empresa per ticket. Maps a batchId to its pending-extraction ids (in-memory,
+// single-instance invariant). ---
+const pendingBatches = new Map<string, string[]>();
+
+function fmtMonto(d: PendingExtraction["data"]): string {
+  return d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "❓";
+}
+
+function buildBatchSummaryText(ids: string[]): string {
+  const entries = ids.map((id) => getPendingExtraction(id)).filter((e): e is PendingExtraction => e !== null);
+  const total = entries.reduce((acc, e) => acc + Math.abs(e.data.monto ?? 0), 0);
+  const lines = entries.map((e, i) => {
+    const low = e.data.confidence < LOW_CONFIDENCE_THRESHOLD ? " ⚠️" : "";
+    return `${i + 1}. ${fmtMonto(e.data)} · ${escapeMd(e.data.empresa ?? "Personal")} · ${escapeMd(e.data.categoria)}${low}`;
+  });
+  return (
+    `🧾 *Detecté ${entries.length} ticket${entries.length !== 1 ? "s" : ""}* · Total $${total.toLocaleString("es-AR")}\n\n` +
+    lines.join("\n") +
+    `\n\n_Tocá "Guardar todos" o revisá los marcados con ⚠️._`
+  );
+}
+
+function buildBatchKeyboard(batchId: string, ids: string[]): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [
+    [{ text: "✅ Guardar todos", callback_data: `eb:save:${batchId}` }],
+  ];
+  const lowButtons: Array<{ text: string; callback_data: string }> = [];
+  ids.forEach((id, i) => {
+    const e = getPendingExtraction(id);
+    if (e && e.data.confidence < LOW_CONFIDENCE_THRESHOLD) {
+      lowButtons.push({ text: `✏️ Revisar #${i + 1}`, callback_data: `eb:rev:${id}` });
+    }
+  });
+  for (let i = 0; i < lowButtons.length; i += 2) rows.push(lowButtons.slice(i, i + 2));
+  rows.push([{ text: "❌ Cancelar", callback_data: `eb:cancel:${batchId}` }]);
+  return { inline_keyboard: rows };
+}
+
+async function insertExtractionMovement(supabase: BotDeps["supabase"], entry: PendingExtraction): Promise<{ id?: string; error?: unknown }> {
+  const d = entry.data;
+  const ownership = buildTelegramWriteOwnership({
+    userId: entry.userId,
+    dashboardId: entry.dashboardId,
+    ownerUserId: entry.ownerUserId,
+    role: null,
+    permissions: {},
+    username: null,
+    remindersEnabled: true,
+    linkTokenExpiresAt: null,
+  });
+  const { data, error } = await supabase.from("movimientos").insert([{
+    ...ownership,
+    monto: Math.abs(d.monto ?? 0),
+    tipo: d.tipo,
+    moneda: d.moneda,
+    categoria: d.categoria,
+    empresa_nombre: d.empresa,
+    descripcion: d.descripcion,
+    original_text: `[${d.sourceType}] ${d.descripcion}`,
+    conciliado: true,
+    conciliado_notas: null,
+  }]).select("id");
+  if (error) return { error };
+  return { id: (data?.[0]?.id as string | undefined) };
 }
 
 export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
@@ -106,8 +175,16 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                 getTopEmpresasForDashboard(supabase, multiScope),
                 getTopCategoriasForDashboard(supabase, multiScope),
               ]);
+              // H — no per-ticket empresa prompt: default empresa, collect into a
+              // batch, and show ONE summary with "Guardar todos" + review for the
+              // low-confidence ones.
+              const batchIds: string[] = [];
               for (const result of results) {
-                const data: PendingExtractionData = { ...result, sourceType: "multi" };
+                const data: PendingExtractionData = {
+                  ...result,
+                  sourceType: "multi",
+                  empresa: result.empresa && String(result.empresa).trim() ? result.empresa : "Personal",
+                };
                 const eEntry = createPendingExtraction({
                   chatId: firstCtx.chat.id,
                   dashboardId: linked2.dashboardId ?? null,
@@ -115,19 +192,18 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                   ownerUserId: linked2.ownerUserId ?? null,
                   data,
                   messageId: 0,
-                  awaitingCompany: true,
-                  empresaOptions: topEmpresas,
+                  awaitingCompany: false,
+                  empresaOptions: topEmpresas.length > 0 ? topEmpresas : null,
                   categoriaOptions: topCategorias.length > 0 ? topCategorias : null,
                 });
-                if (topEmpresas.length === 0) {
-                  updatePendingExtraction(eEntry.id, { editingField: "empresa" });
-                  await firstCtx.reply("🏢 ¿A qué empresa corresponde este ticket? (escribí el nombre o 'ninguna'):");
-                } else {
-                  await firstCtx.reply(`🏢 Ticket ${results.indexOf(result) + 1} — ¿A qué empresa?`, {
-                    reply_markup: buildEmpresaSelectorKeyboard(eEntry.id, topEmpresas),
-                  });
-                }
+                batchIds.push(eEntry.id);
               }
+              const batchId = `b_${firstCtx.chat.id}_${Date.now()}`;
+              pendingBatches.set(batchId, batchIds);
+              await firstCtx.reply(buildBatchSummaryText(batchIds), {
+                parse_mode: "Markdown",
+                reply_markup: buildBatchKeyboard(batchId, batchIds),
+              });
             }
           } catch (err) {
             try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -272,35 +348,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
     await ctx.answerCallbackQuery("✅ Guardando...");
     const d = entry.data;
-    const ownership = buildTelegramWriteOwnership({
-      userId: entry.userId,
-      dashboardId: entry.dashboardId,
-      ownerUserId: entry.ownerUserId,
-      role: null,
-      permissions: {},
-      username: null,
-      remindersEnabled: true,
-      linkTokenExpiresAt: null,
-    });
-    const { data: insertedRows, error } = await supabase.from("movimientos").insert([{
-      ...ownership,
-      monto: Math.abs(d.monto ?? 0),
-      tipo: d.tipo,
-      moneda: d.moneda,
-      categoria: d.categoria,
-      empresa_nombre: d.empresa,
-      descripcion: d.descripcion,
-      original_text: `[${d.sourceType}] ${d.descripcion}`,
-      conciliado: true,
-      conciliado_notas: null,
-    }]).select("id");
+    const { id: insertedId, error } = await insertExtractionMovement(supabase, entry);
     deletePendingExtraction(extractionId);
     if (error) {
       console.error("extractionReview confirm insert error:", error);
       await ctx.editMessageText("❌ Error al guardar. Intentá de nuevo.", { parse_mode: "Markdown" });
       return;
     }
-    const insertedId = insertedRows?.[0]?.id as string | undefined;
     const montoStr = d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "monto desconocido";
     await ctx.editMessageText(`✅ *Guardado:* ${montoStr} — ${escapeMd(d.descripcion ?? "")}`, {
       parse_mode: "Markdown",
@@ -313,6 +367,56 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     deletePendingExtraction(extractionId);
     await ctx.answerCallbackQuery("Cancelado");
     await ctx.editMessageText("❌ Registro cancelado.");
+  });
+
+  // --- Album batch (spec H) ---
+  bot.callbackQuery(/^eb:save:(.+)$/, async (ctx) => {
+    if (!await assertBotWritable(ctx)) return;
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const batchId = ctx.match[1];
+    const ids = pendingBatches.get(batchId);
+    if (!ids) { await ctx.answerCallbackQuery("Este lote ya venció o fue guardado."); return; }
+    await ctx.answerCallbackQuery("✅ Guardando...");
+    let saved = 0;
+    let total = 0;
+    for (const id of ids) {
+      const entry = getPendingExtraction(id);
+      if (!entry || entry.chatId !== ctx.chat.id) continue; // already saved/reviewed/expired
+      const { error } = await insertExtractionMovement(supabase, entry);
+      if (!error) {
+        saved += 1;
+        total += Math.abs(entry.data.monto ?? 0);
+        deletePendingExtraction(id);
+      }
+    }
+    pendingBatches.delete(batchId);
+    await ctx.editMessageText(
+      saved > 0
+        ? `✅ *Guardé ${saved} movimiento${saved !== 1 ? "s" : ""}* · Total $${total.toLocaleString("es-AR")}`
+        : "No quedaba nada para guardar.",
+      { parse_mode: "Markdown" },
+    );
+  });
+
+  bot.callbackQuery(/^eb:rev:(.+)$/, async (ctx) => {
+    const extractionId = ctx.match[1];
+    const entry = getPendingExtraction(extractionId);
+    if (!entry || entry.chatId !== ctx.chat.id) { await ctx.answerCallbackQuery("Este ticket ya venció."); return; }
+    await ctx.answerCallbackQuery();
+    await ctx.reply(buildReviewCardText(entry.data), {
+      parse_mode: "Markdown",
+      reply_markup: buildReviewKeyboard(extractionId, entry.categoriaOptions ?? undefined),
+    });
+  });
+
+  bot.callbackQuery(/^eb:cancel:(.+)$/, async (ctx) => {
+    const batchId = ctx.match[1];
+    const ids = pendingBatches.get(batchId) ?? [];
+    for (const id of ids) deletePendingExtraction(id);
+    pendingBatches.delete(batchId);
+    await ctx.answerCallbackQuery("Cancelado");
+    await ctx.editMessageText("❌ Lote cancelado.");
   });
 
   bot.callbackQuery(/^er:co:([^:]+):(.+)$/, async (ctx) => {

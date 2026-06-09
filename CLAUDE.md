@@ -17,6 +17,7 @@ En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa
 - **CLAUDE.md** (este archivo) — estado actual, arquitectura, reglas e invariantes. Atemporal.
 - **CHANGELOG.md** — historial cronológico de cambios. NO autocargado, consultar on-demand.
 - **RUNBOOK.md** — URLs, deploy, infra, env vars, rotación de secretos. NO autocargado.
+- **ROADMAP.md** — backlog y features pendientes/futuras. **Cuando el owner pregunte "¿qué queda pendiente?", "¿qué hay para hacer?" o "¿qué sumamos?" → leé y respondé desde ROADMAP.md** (fuente de verdad del backlog; espejado en engram `future-features/backlog`). Al guardar una idea nueva, agregala a ROADMAP.md Y a engram.
 
 > **Mapa de nombres:** producto/proyecto = **Caja Chica** · repo GitHub = `caja-chica` (renombrado desde `balancediario` el 2026-06-03; GitHub redirige las URLs viejas) · carpeta local = `Boteado` (histórico). OJO: `balancediario` también fue un **proyecto GCP** viejo (roto/sin uso) — cuando aparezca en docs de infra refiere a eso, no al repo.
 > **Familia de nombres alineada:** repo `caja-chica` · Firebase `caja-chica-bot` · Cloud Run `caja-chica`.

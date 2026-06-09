@@ -9,7 +9,7 @@ import {
   type TelegramLinkRecord,
 } from "../../server/telegramAccess.ts";
 import { resolveTelegramCompany, normalizeEmpresaName, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
-import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../../server/gemini.ts";
+import { SYSTEM_PROMPT, parseGeminiJsonResponse, type ReceiptItemsResult } from "../../server/gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
@@ -214,6 +214,93 @@ export async function persistTelegramMovement(supabase: BotDeps["supabase"], arg
     empresaNombre,
     icon: args.item.tipo === "ingreso" ? "🟢" : "🔴",
   };
+}
+
+/** Line-item ownership for movimiento_lineas (no created_by_user_id column). */
+function telegramLineOwnership(linked: TelegramLinkRecord) {
+  return linked.dashboardId && linked.userId
+    ? { dashboard_id: linked.dashboardId, owner_user_id: linked.userId }
+    : { owner_user_id: linked.ownerUserId };
+}
+
+/**
+ * Save-first ticket persist (Telegram). Inserts one parent movimiento (the
+ * total, empresa = Personal, merchant in the description — never auto-created
+ * as a company) plus the extracted line items. Mirrors the web POST /ticket.
+ * Returns null if there are no payable lines.
+ */
+export async function persistTelegramTicket(
+  supabase: BotDeps["supabase"],
+  args: { linked: TelegramLinkRecord; meta: ReceiptItemsResult; sourceType: string },
+): Promise<{ movId: string; total: number; lineCount: number; merchant: string } | null> {
+  const payable = args.meta.items.filter((it) => it.monto !== null);
+  if (payable.length === 0) return null;
+  const total = payable.reduce((acc, it) => acc + Math.abs(it.monto ?? 0), 0);
+  const merchant = args.meta.empresa?.trim() || "Ticket";
+
+  const { data: pData, error: pErr } = await supabase
+    .from("movimientos")
+    .insert([{
+      ...buildTelegramWriteOwnership(args.linked),
+      tipo: "egreso",
+      moneda: args.meta.moneda,
+      monto: total,
+      categoria: payable[0]?.categoria || "Varios",
+      empresa_nombre: "Personal",
+      descripcion: merchant,
+      original_text: `[${args.sourceType}] ${merchant}`,
+      conciliado: true,
+      conciliado_notas: null,
+      has_lineas: true,
+    }])
+    .select();
+  if (pErr) throw pErr;
+  const parent = pData?.[0];
+  if (!parent?.id) return null;
+
+  const lineRows = payable.map((it) => ({
+    ...telegramLineOwnership(args.linked),
+    movimiento_id: parent.id,
+    descripcion: it.descripcion,
+    monto: Math.abs(it.monto ?? 0),
+    categoria: it.categoria || "Varios",
+    cantidad: it.cantidad ?? null,
+  }));
+  const { error: lErr } = await supabase.from("movimiento_lineas").insert(lineRows);
+  if (lErr) {
+    await supabase.from("movimientos").delete().eq("id", parent.id);
+    throw lErr;
+  }
+
+  await insertBotAuditLog(supabase, {
+    linked: args.linked,
+    actorUserId: args.linked.userId,
+    action: "create",
+    entityType: "movimiento",
+    entityId: parent.id,
+    afterData: parent,
+  });
+
+  return { movId: parent.id, total, lineCount: lineRows.length, merchant };
+}
+
+/** Recompute a ticket parent's total from its active lines. Returns the total. */
+export async function recomputeTelegramTicketTotal(
+  supabase: BotDeps["supabase"],
+  movId: string,
+  linked: TelegramLinkRecord,
+): Promise<number> {
+  const { data: lines } = await applyTelegramDataScope(
+    supabase.from("movimiento_lineas").select("monto").is("deleted_at", null),
+    linked,
+  ).eq("movimiento_id", movId);
+  const rows = (lines ?? []) as Array<{ monto: number | string }>;
+  const total = rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+  await applyTelegramDataScope(
+    supabase.from("movimientos").update({ monto: total, has_lineas: rows.length > 0 }).eq("id", movId),
+    linked,
+  );
+  return total;
 }
 
 export async function getSaldosText(supabase: BotDeps["supabase"], linked: TelegramLinkRecord): Promise<string | null> {

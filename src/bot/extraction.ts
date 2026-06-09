@@ -40,6 +40,7 @@ import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/te
 import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
+import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
@@ -145,6 +146,36 @@ async function insertExtractionMovement(supabase: BotDeps["supabase"], entry: Pe
 // Branch after an item-aware extraction: if the receipt has ≥2 line items show
 // the interactive selection card; otherwise fall back to the single review card
 // (built from the receipt total / first item), keeping the existing UX intact.
+function truncateLabel(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function buildTicketCardText(merchant: string, total: number, moneda: string, lineCount: number): string {
+  return (
+    `🔴 *Gasto:* ${escapeMd(merchant)}\n` +
+    `💰 ${total.toLocaleString("es-AR")} ${moneda}\n` +
+    `🧾 ${lineCount} renglón${lineCount !== 1 ? "es" : ""} · 🏢 Personal`
+  );
+}
+
+function buildTicketCardKeyboard(movId: string): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✏️ Categoría", callback_data: `change_cat_${movId}` },
+        { text: "🏢 Empresa", callback_data: `change_emp_${movId}` },
+      ],
+      [{ text: "🧾 Modificar renglones", callback_data: `modlin:${movId}` }],
+      ...buildUndoKeyboard(movId).inline_keyboard,
+    ],
+  };
+}
+
+/**
+ * Save-first: the ticket is persisted immediately (parent total + lines), then
+ * the confirmation card with Categoría / Empresa / Deshacer / Modificar is
+ * shown. Editing happens AFTER saving. No upfront review or item selection.
+ */
 async function showReceiptReview(
   supabase: BotDeps["supabase"],
   ctx: Context,
@@ -153,39 +184,83 @@ async function showReceiptReview(
   sourceType: PendingExtractionData["sourceType"],
   processingMsgId: number,
 ) {
-  if (result.items.length >= 2) {
-    try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
-    const entry = createPendingLineItems({
-      chatId: ctx.chat.id,
-      dashboardId: linked.dashboardId ?? null,
-      userId: linked.userId ?? null,
-      ownerUserId: linked.ownerUserId ?? null,
-      meta: result,
-      sourceType,
-    });
-    await ctx.reply(buildLineItemsCardText(entry), {
-      parse_mode: "Markdown",
-      reply_markup: buildLineItemsKeyboard(entry),
-    });
+  try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+
+  const payable = result.items.filter((it) => it.monto !== null);
+  if (payable.length >= 1) {
+    const saved = await persistTelegramTicket(supabase, { linked, meta: result, sourceType });
+    if (saved) {
+      await ctx.reply(buildTicketCardText(saved.merchant, saved.total, result.moneda, saved.lineCount), {
+        parse_mode: "Markdown",
+        reply_markup: buildTicketCardKeyboard(saved.movId),
+      });
+      return;
+    }
+  }
+
+  // No payable lines (handwritten / total-only): save the total as a single
+  // movement. Empresa = Personal; the merchant only flavors the description.
+  const merchant = result.empresa?.trim() || null;
+  const { created, finalCategory, empresaNombre, icon } = await persistTelegramMovement(supabase, {
+    linked,
+    item: {
+      monto: result.total,
+      tipo: "egreso",
+      moneda: result.moneda,
+      categoria: "Varios",
+      empresa: null,
+      descripcion: merchant ?? "Gasto registrado desde foto",
+    },
+    originalText: `[${sourceType}] ${merchant ?? "ticket"}`,
+  });
+  const movId = created?.id as string | undefined;
+  const kb = movId
+    ? { inline_keyboard: [
+        [
+          { text: "✏️ Categoría", callback_data: `change_cat_${movId}` },
+          { text: "🏢 Empresa", callback_data: `change_emp_${movId}` },
+        ],
+        ...buildUndoKeyboard(movId).inline_keyboard,
+      ] }
+    : undefined;
+  await ctx.reply(
+    `${icon} *Gasto:* ${escapeMd(merchant ?? "Gasto")}\n💰 ${created?.monto ?? result.total ?? 0} ${result.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`,
+    { parse_mode: "Markdown", reply_markup: kb },
+  );
+}
+
+/** Renders the line editor (delete-per-line; amount edits live in the web dashboard). */
+async function renderLineEditor(
+  ctx: Context,
+  supabase: BotDeps["supabase"],
+  linked: any,
+  movId: string,
+  edit = false,
+) {
+  const { data: lines } = await applyTelegramDataScope(
+    supabase.from("movimiento_lineas").select("id, descripcion, monto").is("deleted_at", null).order("created_at", { ascending: true }),
+    linked,
+  ).eq("movimiento_id", movId);
+  const rows = (lines ?? []) as Array<{ id: string; descripcion: string; monto: number | string }>;
+
+  if (rows.length === 0) {
+    const text = "🧾 Sin renglones. Editá el movimiento con los botones de la tarjeta.";
+    if (edit) { try { await ctx.editMessageText(text); } catch (e) {} } else { await ctx.reply(text); }
     return;
   }
 
-  const firstItem = result.items[0];
-  const single: PendingExtractionData = {
-    monto: result.total ?? firstItem?.monto ?? null,
-    moneda: result.moneda,
-    tipo: "egreso",
-    empresa: result.empresa,
-    cuit: result.cuit,
-    categoria: firstItem?.categoria ?? "Varios",
-    descripcion:
-      firstItem?.descripcion ??
-      (result.empresa ? `Compra en ${result.empresa}` : "Gasto registrado desde foto"),
-    fecha: result.fecha,
-    confidence: result.confidence,
-    sourceType,
+  const total = rows.reduce((acc, l) => acc + Number(l.monto || 0), 0);
+  const text =
+    `🧾 *Renglones del ticket* · Total $${total.toLocaleString("es-AR")}\n` +
+    `Tocá 🗑️ para borrar un renglón. Para cambiar montos, editalo desde el dashboard web.`;
+  const kb = {
+    inline_keyboard: [
+      ...rows.map((l) => [{ text: `🗑️ ${truncateLabel(l.descripcion, 20)} · $${Number(l.monto).toLocaleString("es-AR")}`, callback_data: `mldel:${l.id}` }]),
+      [{ text: "✅ Listo", callback_data: `mldone:${movId}` }],
+    ],
   };
-  await showReviewCard(supabase, ctx, linked, single, processingMsgId);
+  if (edit) { try { await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }); } catch (e) {} }
+  else await ctx.reply(text, { parse_mode: "Markdown", reply_markup: kb });
 }
 
 // Insert the selected line items, either as one movement per item ("sep") or a
@@ -811,6 +886,40 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     deletePendingLineItems(id);
     await ctx.answerCallbackQuery("Cancelado");
     await ctx.editMessageText("❌ Cancelado.");
+  });
+
+  // --- Modificar: line editor for a saved ticket (delete-per-line) ---
+  bot.callbackQuery(/^modlin:(.+)$/, async (ctx) => {
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    await ctx.answerCallbackQuery();
+    await renderLineEditor(ctx, supabase, linked, ctx.match[1]);
+  });
+
+  // Only the lineId travels in callback_data (Telegram's 64-byte limit can't
+  // hold two UUIDs); the parent is looked up from the line.
+  bot.callbackQuery(/^mldel:(.+)$/, async (ctx) => {
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const lineId = ctx.match[1];
+    const { data: lrows } = await applyTelegramDataScope(
+      supabase.from("movimiento_lineas").select("id, movimiento_id").is("deleted_at", null),
+      linked,
+    ).eq("id", lineId).limit(1);
+    const line = lrows?.[0];
+    if (!line) { await ctx.answerCallbackQuery("Renglón no encontrado."); return; }
+    await applyTelegramDataScope(
+      supabase.from("movimiento_lineas").update({ deleted_at: new Date().toISOString() }).eq("id", lineId),
+      linked,
+    );
+    await recomputeTelegramTicketTotal(supabase, line.movimiento_id, linked);
+    await ctx.answerCallbackQuery("Renglón borrado.");
+    await renderLineEditor(ctx, supabase, linked, line.movimiento_id, true);
+  });
+
+  bot.callbackQuery(/^mldone:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery("Listo.");
+    try { await ctx.editMessageText("🧾 Renglones actualizados."); } catch (e) {}
   });
 
   return { mediaGroupBuffer };

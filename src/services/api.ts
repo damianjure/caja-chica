@@ -36,6 +36,8 @@ export interface Movimiento {
   conciliado?: boolean;
   conciliado_at?: string | null;
   conciliado_notas?: string | null;
+  /** True when this movement is a ticket with persisted child lines. */
+  has_lineas?: boolean;
 }
 
 export interface Empresa {

@@ -1,6 +1,7 @@
-import { memo, useRef } from 'react';
-import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { memo, useRef, useState } from 'react';
+import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ReceiptText } from 'lucide-react';
 import { type Movimiento } from '../../services/api';
+import { MovementLines } from './MovementLines';
 import { pageSlice, totalPages, pageList } from '../../dashboard/pagination';
 
 const PER_PAGE = 10;
@@ -18,13 +19,15 @@ interface MovementCardsProps {
   onCopy: (item: Movimiento) => void;
   onDelete: (id: string) => void;
   onLoadMore: () => void;
+  onLinesChanged?: (id: string, total: number, hasLines: boolean) => void;
 }
 
 function MovementCardsImpl({
   filteredHistory, selectedCompany, canWriteData, hasMore, loadingMore,
-  copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore,
+  copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore, onLinesChanged,
 }: MovementCardsProps) {
   const topRef = useRef<HTMLDivElement>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadedPages = totalPages(filteredHistory.length, PER_PAGE);
   const safePage = Math.min(Math.max(1, page), loadedPages);
@@ -112,6 +115,30 @@ function MovementCardsImpl({
                   )}
                   <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-[var(--app-surface-2)] text-[var(--app-text-2)] rounded-md"><Tag className="w-3 h-3" />{item.descripcion}</span>
                 </div>
+                {item.has_lineas && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                      aria-expanded={expandedId === item.id}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--app-text-2)] hover:text-[var(--app-text-1)]"
+                    >
+                      <ReceiptText className="h-3.5 w-3.5" />
+                      {expandedId === item.id ? 'Ocultar renglones' : 'Ver renglones del ticket'}
+                      {expandedId === item.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                    {expandedId === item.id && (
+                      <div className="mt-2">
+                        <MovementLines
+                          movimientoId={item.id}
+                          moneda={item.moneda || 'ARS'}
+                          canWrite={canWriteData}
+                          onChanged={(total, hasLines) => onLinesChanged?.(item.id, total, hasLines)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="pt-3 border-t border-[var(--app-border)]">
                   <span className="text-xs text-[var(--app-text-3)] font-mono">{new Date(item.created_at).toLocaleString('es-AR')}</span>
                 </div>

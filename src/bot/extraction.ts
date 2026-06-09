@@ -28,6 +28,7 @@ import { getTopCategoriasForDashboard } from "../server/telegramCategoryResoluti
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
+import { setPendingLineMontoEdit } from "./lineMontoEdit.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
@@ -207,10 +208,14 @@ async function renderLineEditor(
   const total = rows.reduce((acc, l) => acc + Number(l.monto || 0), 0);
   const text =
     `🧾 *Renglones del ticket* · Total $${total.toLocaleString("es-AR")}\n` +
-    `Tocá 🗑️ para borrar un renglón. Para cambiar montos, editalo desde el dashboard web.`;
+    `✏️ edita el monto · 🗑️ borra el renglón.`;
   const kb = {
     inline_keyboard: [
-      ...rows.map((l) => [{ text: `🗑️ ${truncateLabel(l.descripcion, 20)} · $${Number(l.monto).toLocaleString("es-AR")}`, callback_data: `mldel:${l.id}` }]),
+      ...rows.flatMap((l) => [[
+        { text: `${truncateLabel(l.descripcion, 18)} · $${Number(l.monto).toLocaleString("es-AR")}`, callback_data: `mledit:${l.id}` },
+        { text: "✏️", callback_data: `mledit:${l.id}` },
+        { text: "🗑️", callback_data: `mldel:${l.id}` },
+      ]]),
       [{ text: "✅ Listo", callback_data: `mldone:${movId}` }],
     ],
   };
@@ -692,6 +697,23 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     if (!linked) return;
     await ctx.answerCallbackQuery();
     await renderLineEditor(ctx, supabase, linked, ctx.match[1]);
+  });
+
+  // Edit a line's amount: remember which line awaits a new value, then the next
+  // text message (caught in the main text handler) is parsed as the new monto.
+  bot.callbackQuery(/^mledit:(.+)$/, async (ctx) => {
+    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+    if (!linked) return;
+    const lineId = ctx.match[1];
+    const { data: lrows } = await applyTelegramDataScope(
+      supabase.from("movimiento_lineas").select("id, movimiento_id, descripcion").is("deleted_at", null),
+      linked,
+    ).eq("id", lineId).limit(1);
+    const line = lrows?.[0];
+    if (!line) { await ctx.answerCallbackQuery("Renglón no encontrado."); return; }
+    setPendingLineMontoEdit(ctx.chat.id, line.id, line.movimiento_id, line.descripcion);
+    await ctx.answerCallbackQuery();
+    await ctx.reply(`✏️ Mandame el nuevo monto de *${escapeMd(line.descripcion)}*:`, { parse_mode: "Markdown" });
   });
 
   // Only the lineId travels in callback_data (Telegram's 64-byte limit can't

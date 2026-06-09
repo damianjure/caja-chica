@@ -27,6 +27,7 @@ import type { PendingExtractionData } from "../../server/validation.ts";
 import { transcribeTelegramAudioWithGemini } from "../../server/telegramAudio.ts";
 import { GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 import { getRecurrenceSession, pendingRecurrenceSessions } from "../sessions.ts";
+import { getPendingLineMontoEdit, clearPendingLineMontoEdit } from "../lineMontoEdit.ts";
 import {
   persistTelegramMovement,
   runMovementSearch,
@@ -454,6 +455,35 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
   bot.on("message:text", async (ctx) => {
     const text = ctx.message.text;
     if (text.startsWith("/")) return;
+
+    // Editing a ticket line's amount (from the Modificar flow): the next text
+    // is the new monto. Runs before everything else so it can't be mistaken
+    // for a movement to register.
+    const pendingLine = getPendingLineMontoEdit(ctx.chat.id);
+    if (pendingLine) {
+      if (!await assertBotWritable(ctx)) return;
+      const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
+      if (!linked) { clearPendingLineMontoEdit(ctx.chat.id); return; }
+      const n = parseFloat(text.trim().replace(",", "."));
+      if (isNaN(n) || n < 0) { await ctx.reply("❌ Monto inválido. Mandame un número positivo:"); return; }
+      await applyTelegramDataScope(
+        supabase.from("movimiento_lineas").update({ monto: Math.abs(n) }).eq("id", pendingLine.lineId),
+        linked,
+      );
+      // Recompute the parent total inline (avoids a cross-module import cycle).
+      const { data: ls } = await applyTelegramDataScope(
+        supabase.from("movimiento_lineas").select("monto").is("deleted_at", null),
+        linked,
+      ).eq("movimiento_id", pendingLine.movId);
+      const total = (ls ?? []).reduce((acc: number, l: any) => acc + Number(l.monto || 0), 0);
+      await applyTelegramDataScope(
+        supabase.from("movimientos").update({ monto: total, has_lineas: (ls ?? []).length > 0 }).eq("id", pendingLine.movId),
+        linked,
+      );
+      clearPendingLineMontoEdit(ctx.chat.id);
+      await ctx.reply(`✅ Renglón actualizado. Nuevo total del ticket: $${total.toLocaleString("es-AR")}.`);
+      return;
+    }
 
     const { getInputSession, pendingInputSessions } = await import("../sessions.ts");
     const inputSession = getInputSession(ctx.chat.id);

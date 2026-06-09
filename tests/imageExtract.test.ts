@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { AddressInfo } from "node:net";
 import { createApp, type AppDeps, type AppSession } from "../src/server/app.ts";
-import { extractFromBuffer, extractItemsFromBuffer } from "../src/server/imageExtract.ts";
+import { extractItemsFromBuffer } from "../src/server/imageExtract.ts";
 import { GeminiUnavailableError } from "../src/server/geminiWithFallback.ts";
 
 // ─────────────────────────────────────────────
@@ -323,130 +323,6 @@ test("POST /api/extract-image — png mime accepted", async () => {
       assert.equal(res.status, 200);
     },
   );
-});
-
-// ─────────────────────────────────────────────
-// extractFromBuffer unit tests
-// ─────────────────────────────────────────────
-
-test("extractFromBuffer — uploads blob, generates, cleans up on success", async () => {
-  const calls: string[] = [];
-
-  const fakeGenAI: any = {
-    files: {
-      async upload() {
-        calls.push("upload");
-        return { name: "files/buf-1", uri: "gs://gemini/buf-1", mimeType: "image/jpeg" };
-      },
-      async delete() { calls.push("delete"); },
-    },
-    models: {
-      async generateContent() {
-        calls.push("generateContent");
-        return {
-          text: JSON.stringify({
-            monto: 3200, moneda: "ARS", tipo: "egreso", empresa: "Disco",
-            cuit: null, categoria: "Supermercado", descripcion: "compra",
-            fecha: null, confidence: 0.88,
-          }),
-        };
-      },
-    },
-  };
-
-  const buf = Buffer.from(TINY_PNG_B64, "base64");
-  const { result, sourceType } = await extractFromBuffer({
-    genAI: fakeGenAI,
-    imageBuffer: buf,
-    mimeType: "image/jpeg",
-  });
-
-  assert.equal(result.monto, 3200);
-  assert.equal(result.empresa, "Disco");
-  assert.equal(result.confidence, 0.88);
-  assert.equal(sourceType, "photo");
-  assert.ok(calls.includes("upload"), "should upload");
-  assert.ok(calls.includes("generateContent"), "should generateContent");
-  assert.ok(calls.includes("delete"), "should delete (cleanup)");
-});
-
-test("extractFromBuffer — HANDWRITTEN fallback on confidence < 0.5", async () => {
-  let callCount = 0;
-  const fakeGenAI: any = {
-    files: {
-      async upload() {
-        return { name: `files/buf-${callCount}`, uri: `gs://gemini/buf-${callCount}`, mimeType: "image/jpeg" };
-      },
-      async delete() {},
-    },
-    models: {
-      async generateContent() {
-        callCount++;
-        if (callCount === 1) {
-          return { text: JSON.stringify({ monto: null, moneda: "ARS", tipo: "egreso", empresa: null, cuit: null, categoria: "Varios", descripcion: "ilegible", fecha: null, confidence: 0.3 }) };
-        }
-        return { text: JSON.stringify({ monto: 500, moneda: "ARS", tipo: "egreso", empresa: "Kiosco", cuit: null, categoria: "Varios", descripcion: "kiosco", fecha: null, confidence: 0.65 }) };
-      },
-    },
-  };
-
-  const buf = Buffer.from(TINY_PNG_B64, "base64");
-  const { result, sourceType } = await extractFromBuffer({
-    genAI: fakeGenAI,
-    imageBuffer: buf,
-    mimeType: "image/jpeg",
-  });
-
-  assert.equal(callCount, 2, "should call generateContent twice");
-  assert.equal(result.monto, 500);
-  assert.equal(sourceType, "handwritten");
-});
-
-test("extractFromBuffer — throws GeminiUnavailableError on 429", async () => {
-  const fakeGenAI: any = {
-    files: {
-      async upload() {
-        return { name: "files/buf-err", uri: "gs://gemini/buf-err", mimeType: "image/jpeg" };
-      },
-      async delete() {},
-    },
-    models: {
-      async generateContent() {
-        const err: any = new Error("RESOURCE_EXHAUSTED");
-        err.status = 429;
-        throw err;
-      },
-    },
-  };
-
-  const buf = Buffer.from(TINY_PNG_B64, "base64");
-  await assert.rejects(
-    () => extractFromBuffer({ genAI: fakeGenAI, imageBuffer: buf, mimeType: "image/jpeg" }),
-    (err: unknown) => {
-      assert.ok(err instanceof GeminiUnavailableError, `expected GeminiUnavailableError, got ${(err as Error).name}`);
-      return true;
-    },
-  );
-});
-
-test("extractFromBuffer — sourceType is photo for jpeg, webp, png", async () => {
-  const makeQuickGenAI = () => ({
-    files: {
-      async upload() { return { name: "f", uri: "gs://g/f", mimeType: "image/jpeg" }; },
-      async delete() {},
-    },
-    models: {
-      async generateContent() {
-        return { text: JSON.stringify({ monto: 100, moneda: "ARS", tipo: "egreso", empresa: null, cuit: null, categoria: "Varios", descripcion: "test", fecha: null, confidence: 0.9 }) };
-      },
-    },
-  });
-
-  const buf = Buffer.from(TINY_PNG_B64, "base64");
-  for (const mimeType of ["image/jpeg", "image/png", "image/webp"]) {
-    const { sourceType } = await extractFromBuffer({ genAI: makeQuickGenAI() as any, imageBuffer: buf, mimeType });
-    assert.equal(sourceType, "photo", `expected 'photo' for ${mimeType}`);
-  }
 });
 
 // ─────────────────────────────────────────────

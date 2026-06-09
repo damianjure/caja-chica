@@ -10,19 +10,6 @@ import {
 } from "../server/telegramAccess.ts";
 import { extractFromMultiplePhotos, extractReceiptWithItems, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
 import type { ReceiptItemsResult } from "../server/gemini.ts";
-import {
-  createPendingLineItems,
-  getPendingLineItems,
-  deletePendingLineItems,
-  toggleLineItem,
-  setAllLineItems,
-  selectedLineItems,
-  buildLineItemsCardText,
-  buildLineItemsKeyboard,
-  buildGroupingPromptText,
-  buildGroupingKeyboard,
-  type PendingLineItems,
-} from "../server/lineItemsReview.ts";
 import { MediaGroupBuffer } from "../server/mediaGroupBuffer.ts";
 import {
   createPendingExtraction,
@@ -43,38 +30,6 @@ import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
-
-// G — single confirmation card. Instead of asking for the empresa in a separate
-// step, go straight to the review card with every field editable inline. The
-// empresa defaults to the detected one (or "Personal"), so it never blocks; the
-// user adjusts it from the same card if needed.
-async function showReviewCard(supabase: BotDeps["supabase"], ctx: Context, linked: any, data: PendingExtractionData, processingMsgId: number) {
-  try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
-  const scope = { dashboardId: linked.dashboardId ?? null, ownerUserId: linked.ownerUserId ?? null };
-  const [empresas, categorias] = await Promise.all([
-    getTopEmpresasForDashboard(supabase, scope),
-    getTopCategoriasForDashboard(supabase, scope),
-  ]);
-  const normalized: PendingExtractionData = {
-    ...data,
-    empresa: data.empresa && data.empresa.trim() ? data.empresa : "Personal",
-  };
-  const entry = createPendingExtraction({
-    chatId: ctx.chat.id,
-    dashboardId: linked.dashboardId ?? null,
-    userId: linked.userId ?? null,
-    ownerUserId: linked.ownerUserId ?? null,
-    data: normalized,
-    messageId: 0,
-    awaitingCompany: false,
-    empresaOptions: empresas.length > 0 ? empresas : null,
-    categoriaOptions: categorias.length > 0 ? categorias : null,
-  });
-  await ctx.reply(buildReviewCardText(normalized), {
-    parse_mode: "Markdown",
-    reply_markup: buildReviewKeyboard(entry.id, categorias.length > 0 ? categorias : null),
-  });
-}
 
 // --- Album batch (spec H): one summary + "Guardar todos" instead of asking the
 // empresa per ticket. Maps a batchId to its pending-extraction ids (in-memory,
@@ -261,68 +216,6 @@ async function renderLineEditor(
   };
   if (edit) { try { await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }); } catch (e) {} }
   else await ctx.reply(text, { parse_mode: "Markdown", reply_markup: kb });
-}
-
-// Insert the selected line items, either as one movement per item ("sep") or a
-// single summed movement ("sum"). Merchant metadata applies to every item.
-// Items without a readable amount are skipped — they can't be a movement.
-async function insertLineItemMovements(
-  supabase: BotDeps["supabase"],
-  entry: PendingLineItems,
-  mode: "sep" | "sum",
-): Promise<{ saved: number; total: number; error?: unknown }> {
-  const payable = selectedLineItems(entry).filter((it) => it.monto !== null);
-  if (payable.length === 0) return { saved: 0, total: 0 };
-
-  const ownership = buildTelegramWriteOwnership({
-    userId: entry.userId,
-    dashboardId: entry.dashboardId,
-    ownerUserId: entry.ownerUserId,
-    role: null,
-    permissions: {},
-    username: null,
-    remindersEnabled: true,
-    linkTokenExpiresAt: null,
-  });
-  const total = payable.reduce((acc, it) => acc + Math.abs(it.monto ?? 0), 0);
-  const empresa = entry.empresa;
-
-  if (mode === "sum") {
-    const desc =
-      empresa && empresa !== "Personal"
-        ? `Compra en ${empresa} (${payable.length} ítems)`
-        : `Compra (${payable.length} ítems)`;
-    const { error } = await supabase.from("movimientos").insert([{
-      ...ownership,
-      monto: total,
-      tipo: "egreso",
-      moneda: entry.moneda,
-      categoria: "Varios",
-      empresa_nombre: empresa,
-      descripcion: desc,
-      original_text: `[${entry.sourceType}] ${desc}`,
-      conciliado: true,
-      conciliado_notas: null,
-    }]);
-    if (error) return { saved: 0, total: 0, error };
-    return { saved: 1, total };
-  }
-
-  const rows = payable.map((it) => ({
-    ...ownership,
-    monto: Math.abs(it.monto ?? 0),
-    tipo: "egreso" as const,
-    moneda: entry.moneda,
-    categoria: it.categoria,
-    empresa_nombre: empresa,
-    descripcion: it.descripcion,
-    original_text: `[${entry.sourceType}] ${it.descripcion}`,
-    conciliado: true,
-    conciliado_notas: null,
-  }));
-  const { error } = await supabase.from("movimientos").insert(rows);
-  if (error) return { saved: 0, total: 0, error };
-  return { saved: rows.length, total };
 }
 
 export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
@@ -791,101 +684,6 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       moneda: "✏️ ¿`ARS` o `USD`?",
     };
     await ctx.reply(prompts[field] ?? "✏️ Mandame el nuevo valor:", { parse_mode: "Markdown" });
-  });
-
-  // --- Line-item selection (interactive ticket items) ---
-  bot.callbackQuery(/^li:t:([^:]+):(\d+)$/, async (ctx) => {
-    const id = ctx.match[1];
-    const idx = parseInt(ctx.match[2], 10);
-    const entry = getPendingLineItems(id);
-    if (!entry || entry.chatId !== ctx.chat.id) {
-      await ctx.answerCallbackQuery("Esta selección ya venció.");
-      return;
-    }
-    toggleLineItem(id, idx);
-    await ctx.answerCallbackQuery();
-    const updated = getPendingLineItems(id);
-    if (!updated) return;
-    await ctx.editMessageText(buildLineItemsCardText(updated), {
-      parse_mode: "Markdown",
-      reply_markup: buildLineItemsKeyboard(updated),
-    });
-  });
-
-  bot.callbackQuery(/^li:all:(.+)$/, async (ctx) => {
-    const id = ctx.match[1];
-    const entry = getPendingLineItems(id);
-    if (!entry || entry.chatId !== ctx.chat.id) {
-      await ctx.answerCallbackQuery("Esta selección ya venció.");
-      return;
-    }
-    const allSelected = entry.items.every((it) => it.selected);
-    setAllLineItems(id, !allSelected);
-    await ctx.answerCallbackQuery();
-    const updated = getPendingLineItems(id);
-    if (!updated) return;
-    await ctx.editMessageText(buildLineItemsCardText(updated), {
-      parse_mode: "Markdown",
-      reply_markup: buildLineItemsKeyboard(updated),
-    });
-  });
-
-  bot.callbackQuery(/^li:save:(.+)$/, async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const id = ctx.match[1];
-    const entry = getPendingLineItems(id);
-    if (!entry || entry.chatId !== ctx.chat.id) {
-      await ctx.answerCallbackQuery("Esta selección ya venció.");
-      return;
-    }
-    const payableCount = selectedLineItems(entry).filter((it) => it.monto !== null).length;
-    if (payableCount === 0) {
-      await ctx.answerCallbackQuery("Tildá al menos un ítem con monto.");
-      return;
-    }
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText(buildGroupingPromptText(entry), {
-      parse_mode: "Markdown",
-      reply_markup: buildGroupingKeyboard(id),
-    });
-  });
-
-  bot.callbackQuery(/^li:g:([^:]+):([su])$/, async (ctx) => {
-    if (!await assertBotWritable(ctx)) return;
-    const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
-    if (!linked) return;
-    const id = ctx.match[1];
-    const mode: "sep" | "sum" = ctx.match[2] === "s" ? "sep" : "sum";
-    const entry = getPendingLineItems(id);
-    if (!entry || entry.chatId !== ctx.chat.id) {
-      await ctx.answerCallbackQuery("Esta selección ya venció.");
-      return;
-    }
-    await ctx.answerCallbackQuery("✅ Guardando...");
-    const { saved, total, error } = await insertLineItemMovements(supabase, entry, mode);
-    deletePendingLineItems(id);
-    if (error) {
-      console.error("lineItems insert error:", error);
-      await ctx.editMessageText("❌ Error al guardar. Intentá de nuevo.", { parse_mode: "Markdown" });
-      return;
-    }
-    if (saved === 0) {
-      await ctx.editMessageText("No quedaba nada para guardar.", { parse_mode: "Markdown" });
-      return;
-    }
-    const totalStr = `$${total.toLocaleString("es-AR")} ${entry.moneda}`;
-    const summary =
-      mode === "sum"
-        ? `✅ *Guardé 1 movimiento* · ${totalStr}`
-        : `✅ *Guardé ${saved} movimiento${saved !== 1 ? "s" : ""}* · Total ${totalStr}`;
-    await ctx.editMessageText(summary, { parse_mode: "Markdown" });
-  });
-
-  bot.callbackQuery(/^li:cancel:(.+)$/, async (ctx) => {
-    const id = ctx.match[1];
-    deletePendingLineItems(id);
-    await ctx.answerCallbackQuery("Cancelado");
-    await ctx.editMessageText("❌ Cancelado.");
   });
 
   // --- Modificar: line editor for a saved ticket (delete-per-line) ---

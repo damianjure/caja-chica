@@ -9,12 +9,10 @@
 
 import { createPartFromUri, createUserContent } from "@google/genai";
 import {
-  RECEIPT_SYSTEM_PROMPT,
   RECEIPT_ITEMS_SYSTEM_PROMPT,
   HANDWRITTEN_SYSTEM_PROMPT,
   parsePhotoExtractionResult,
   parseReceiptItemsResult,
-  type PhotoExtractionResult,
   type ReceiptItemsResult,
 } from "./gemini.ts";
 import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
@@ -77,47 +75,6 @@ async function generateAndCleanup(
       });
     }
   }
-}
-
-export async function extractFromBuffer({
-  genAI,
-  imageBuffer,
-  mimeType,
-  displayName = "web-upload",
-}: ExtractFromBufferArgs): Promise<{ result: PhotoExtractionResult; sourceType: PhotoSourceType }> {
-  // First attempt: RECEIPT prompt
-  const uploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
-  const rawText = await generateAndCleanup(
-    genAI,
-    uploaded,
-    RECEIPT_SYSTEM_PROMPT,
-    "Extraé los datos del ticket o factura.",
-  );
-
-  let parsed = parsePhotoExtractionResult(rawText);
-  let sourceType: PhotoSourceType = "photo";
-
-  // HANDWRITTEN fallback when confidence < 0.5
-  if (!parsed || parsed.confidence < 0.5) {
-    const retryUploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
-    const retryText = await generateAndCleanup(
-      genAI,
-      retryUploaded,
-      HANDWRITTEN_SYSTEM_PROMPT,
-      "Extraé la información financiera de esta imagen.",
-    );
-    const retryParsed = parsePhotoExtractionResult(retryText);
-    if (retryParsed) {
-      parsed = retryParsed;
-      sourceType = "handwritten";
-    }
-  }
-
-  if (!parsed) {
-    throw new Error("gemini_web_extraction_failed");
-  }
-
-  return { result: parsed, sourceType };
 }
 
 /**

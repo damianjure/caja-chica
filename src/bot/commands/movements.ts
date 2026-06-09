@@ -509,7 +509,8 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
               ] }
             : undefined;
 
-          await ctx.reply(`${icon} *Registrado:* ${escapeMd(item.descripcion ?? "")}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`, {
+          const tipoLabel = item.tipo === "ingreso" ? "Ingreso" : "Gasto";
+          await ctx.reply(`${icon} *${tipoLabel}:* ${escapeMd(item.descripcion ?? "")}\n💰 ${item.monto} ${item.moneda}\n📁 Categoría: ${escapeMd(finalCategory ?? "")}\n🏢 Empresa: ${escapeMd(empresaNombre ?? "")}`, {
             parse_mode: "Markdown",
             reply_markup: confirmKb,
           });

@@ -93,6 +93,32 @@ test("get_saldos: fallback empresa→categoría evita falso cero para rubros", (
   assert.equal(r.movimientos, 1);
 });
 
+// "caramelos" en producción vive en descripcion, no en categoria.
+const CARAMELO_MOVS: AskMovimiento[] = [
+  { created_at: "2026-06-08T00:30:07.000Z", tipo: "egreso", moneda: "ARS", monto: 5000, categoria: "golosinas", empresa_nombre: "Personal", descripcion: "caramelo" },
+  { created_at: "2026-06-08T00:29:16.000Z", tipo: "egreso", moneda: "ARS", monto: 5000, categoria: "Otros", empresa_nombre: "Personal", descripcion: "La tesis, en caramelos." },
+  { created_at: "2026-06-06T15:31:57.000Z", tipo: "egreso", moneda: "ARS", monto: 1000, categoria: "Otros", empresa_nombre: "hola", descripcion: "caramelos" },
+  { created_at: "2026-06-01T10:00:00.000Z", tipo: "egreso", moneda: "ARS", monto: 999, categoria: "Otros", empresa_nombre: "Personal", descripcion: "Nafta" },
+];
+
+test("get_saldos: buscar 'caramelos' matchea descripcion (singular y plural)", () => {
+  const r = executeAskTool("get_saldos", { buscar: "caramelos" }, CARAMELO_MOVS, TODAY) as any;
+  // 3 movimientos con caramelo/caramelos en descripcion, NO el de Nafta
+  assert.equal(r.movimientos, 3);
+  assert.equal(r.ars.gastos, 11000);
+});
+
+test("get_movimientos: buscar matchea descripcion además de categoria/empresa", () => {
+  const r = executeAskTool("get_movimientos", { buscar: "caramelo" }, CARAMELO_MOVS, TODAY) as any;
+  assert.equal(r.length, 3);
+  assert.ok(r.every((m: any) => /caramelo/i.test(m.descripcion)));
+});
+
+test("get_saldos: buscar sin coincidencias → cero real", () => {
+  const r = executeAskTool("get_saldos", { buscar: "helicoptero" }, CARAMELO_MOVS, TODAY) as any;
+  assert.equal(r.movimientos, 0);
+});
+
 test("get_saldos: filtro por empresa", () => {
   const r = executeAskTool("get_saldos", { empresa: "Carrefour" }, MOVS, TODAY) as any;
   assert.equal(r.ars.gastos, 5000);

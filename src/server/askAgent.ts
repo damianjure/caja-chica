@@ -32,11 +32,11 @@ NUNCA inventás números: SIEMPRE pedís los datos con una herramienta. Los cál
 
 HERRAMIENTAS DISPONIBLES:
 1. get_saldos — totales de ingresos, gastos y neto por moneda.
-   args: { "period"?: "hoy"|"semana"|"mes"|"anio", "from"?: "YYYY-MM-DD", "to"?: "YYYY-MM-DD", "empresa"?: <nombre>, "categoria"?: <nombre> }
+   args: { "period"?: "hoy"|"semana"|"mes"|"anio", "from"?: "YYYY-MM-DD", "to"?: "YYYY-MM-DD", "empresa"?: <nombre>, "categoria"?: <nombre>, "buscar"?: <texto libre> }
 2. get_top_categorias — categorías con más gasto (o ingreso).
-   args: { "period"?, "from"?, "to"?, "tipo"?: "egreso"|"ingreso", "empresa"?, "categoria"?, "limit"?: <número, máx 10> }
+   args: { "period"?, "from"?, "to"?, "tipo"?: "egreso"|"ingreso", "empresa"?, "categoria"?, "buscar"?, "limit"?: <número, máx 10> }
 3. get_movimientos — lista de movimientos individuales (máx 30).
-   args: { "period"?, "from"?, "to"?, "empresa"?, "categoria"?, "tipo"?: "ingreso"|"egreso", "moneda"?: "ARS"|"USD", "limit"? }
+   args: { "period"?, "from"?, "to"?, "empresa"?, "categoria"?, "buscar"?: <texto libre>, "tipo"?: "ingreso"|"egreso", "moneda"?: "ARS"|"USD", "limit"? }
 4. get_resumen_mensual — serie de los últimos 6 meses: ingresos/gastos/neto por moneda.
    args: {}
 
@@ -47,7 +47,7 @@ FORMATO DE RESPUESTA — SIEMPRE un único objeto JSON, sin markdown, sin texto 
 REGLAS:
 - "period" es relativo a HOY (te paso la fecha): "semana" = últimos 7 días, "mes" = mes calendario actual, "anio" = año actual.
 - Si la pregunta menciona un mes o fecha específica, usá "from"/"to".
-- Si el usuario pregunta "en X" y X parece rubro/etiqueta (ej: combustible, caramelos, supermercado), usá "categoria", no "empresa", salvo que sea claramente el nombre de una empresa.
+- Si el usuario pregunta por un concepto/ítem puntual que puede estar escrito en la descripción del gasto (ej: caramelos, nafta, un producto, una persona), usá "buscar" con ese texto — busca en descripción, categoría y empresa a la vez. Reservá "categoria" para rubros que sabés que son categorías y "empresa" para nombres de comercio.
 - Puede haber CONVERSACIÓN PREVIA: interpretá preguntas de seguimiento ("¿y comparado con mayo?", "¿y en dólares?") en ese contexto, pero los números SIEMPRE salen de herramientas nuevas, nunca de respuestas anteriores.
 - Llamá UNA herramienta por turno. Cuando tengas los datos, respondé con "answer".
 - Si la pregunta no es sobre las finanzas del usuario, respondé con "answer" aclarando que solo respondés sobre sus movimientos.
@@ -125,6 +125,20 @@ function valueMatches(actual: string | null | undefined, expected: string): bool
   return normalizeFilterValue(actual || "") === normalizeFilterValue(expected);
 }
 
+/** Light singular/plural fold so "caramelos" matches "caramelo". */
+function searchStem(value: string): string {
+  const v = normalizeFilterValue(value);
+  return v.endsWith("s") && v.length > 3 ? v.slice(0, -1) : v;
+}
+
+/** Free-text match across descripcion + categoria + empresa (substring, stemmed). */
+function textMatches(m: AskMovimiento, term: string): boolean {
+  const haystack = normalizeFilterValue(
+    `${m.descripcion || ""} ${m.categoria || ""} ${m.empresa_nombre || ""}`,
+  );
+  return haystack.includes(searchStem(term));
+}
+
 function filterMovs(
   movs: AskMovimiento[],
   args: Record<string, unknown>,
@@ -133,6 +147,7 @@ function filterMovs(
   const { from, to } = resolveRange(args, today);
   const empresa = typeof args.empresa === "string" && args.empresa.trim() ? args.empresa.trim() : null;
   const categoria = typeof args.categoria === "string" && args.categoria.trim() ? args.categoria.trim() : null;
+  const buscar = typeof args.buscar === "string" && args.buscar.trim() ? args.buscar.trim() : null;
   const tipo = args.tipo === "ingreso" || args.tipo === "egreso" ? args.tipo : null;
   const moneda = args.moneda === "ARS" || args.moneda === "USD" ? args.moneda : null;
 
@@ -142,6 +157,7 @@ function filterMovs(
     if (to && day > to) return false;
     if (tipo && m.tipo !== tipo) return false;
     if (moneda && m.moneda !== moneda) return false;
+    if (buscar && !textMatches(m, buscar)) return false;
     return true;
   });
 

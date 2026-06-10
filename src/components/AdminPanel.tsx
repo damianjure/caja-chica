@@ -169,6 +169,10 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   };
 
   const handleCopy = async (invitation: AppInvitation) => {
+    if (!invitation.invite_url) {
+      toast.error("Solo quien creó la invitación (o el superadmin) puede ver el link.");
+      return;
+    }
     await navigator.clipboard.writeText(invitation.invite_url);
     toast.success(`Link copiado para ${invitation.email}`);
   };
@@ -597,7 +601,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                               }
                             </button>
                           )}
-                          {invitation.status !== "accepted" && (
+                          {invitation.status !== "accepted" && invitation.invite_url && (
                             <button
                               type="button"
                               onClick={() => void handleCopy(invitation)}
@@ -632,7 +636,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                           )}
                         </div>
                       </div>
-                      {invitation.status !== "accepted" && (
+                      {invitation.status !== "accepted" && invitation.invite_url && (
                         <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
                           {invitation.invite_url}
                         </div>

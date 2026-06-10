@@ -8,14 +8,19 @@ export async function syncPendingDashboardInvitations(
   try {
     const { data, error } = await supabase
       .from("dashboard_invitations")
-      .select("id, dashboard_id, role, invited_by_user_id, telegram_invite_token_id")
+      .select("id, dashboard_id, role, invited_by_user_id, telegram_invite_token_id, expires_at")
       .eq("email", session.email.toLowerCase())
       .eq("status", "pending")
       .limit(50);
     if (error) throw error;
 
     const invitations = data ?? [];
+    const now = Date.now();
     for (const invitation of invitations) {
+      // Expired invitations stay status=pending in the DB (nothing flips them);
+      // honoring them here would auto-accept stale invites on login.
+      const expiresAt = (invitation as { expires_at?: string | null }).expires_at;
+      if (expiresAt && new Date(expiresAt).getTime() <= now) continue;
       await supabase
         .from("dashboard_members")
         .upsert(

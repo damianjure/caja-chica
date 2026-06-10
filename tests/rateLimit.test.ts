@@ -190,3 +190,23 @@ test("window resets after windowMs", async (t) => {
   assert.equal(result, "next");
   assert.equal(afterReset.statusCode, 200);
 });
+
+// ---------------------------------------------------------------------------
+// Review 2026-06-09: X-Forwarded-For — the FIRST hop is client-supplied and
+// spoofable; the LAST hop is appended by the trusted LB (Cloud Run GFE).
+// ---------------------------------------------------------------------------
+
+import { clientIp } from "../src/server/rateLimit.ts";
+
+test("clientIp: uses the LAST X-Forwarded-For hop, not the spoofable first one", () => {
+  const req = {
+    headers: { "x-forwarded-for": "6.6.6.6, 203.0.113.7" },
+    socket: { remoteAddress: "9.9.9.9" },
+  } as any;
+  assert.equal(clientIp(req), "203.0.113.7");
+});
+
+test("clientIp: falls back to socket remoteAddress without header", () => {
+  const req = { headers: {}, socket: { remoteAddress: "203.0.113.9" } } as any;
+  assert.equal(clientIp(req), "203.0.113.9");
+});

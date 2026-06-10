@@ -358,6 +358,10 @@ export function createApp({
     if (method === "GET" || method === "OPTIONS") return next();
     const path = req.path;
     if (path.startsWith("/api/maintenance/") || path === "/api/health") return next();
+    // Telegram webhook must pass: the bot gates writes itself (assertBotWritable)
+    // and replies "en mantenimiento". A 503 here would make Telegram queue the
+    // update and replay it (write included) after maintenance ends.
+    if (webhookPath && path === webhookPath) return next();
     if (isWriteBlocked()) {
       return res.status(503).json({
         code: "MAINTENANCE_ACTIVE",

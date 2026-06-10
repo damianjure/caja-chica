@@ -683,7 +683,11 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
     }).eq("id", last.id);
     if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
     else updateQuery = updateQuery.eq("owner_user_id", linked.ownerUserId as string);
-    await updateQuery;
+    const { error: updateError } = await updateQuery;
+    if (updateError) {
+      console.error("editar_ultimo_ingreso update error:", updateError);
+      return ctx.reply("❌ No pude actualizar el ingreso. Intentá de nuevo.");
+    }
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,
@@ -721,7 +725,11 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
     }).eq("id", last.id);
     if (linked.dashboardId) updateQuery = updateQuery.eq("dashboard_id", linked.dashboardId);
     else updateQuery = updateQuery.eq("owner_user_id", linked.ownerUserId as string);
-    await updateQuery;
+    const { error: updateError } = await updateQuery;
+    if (updateError) {
+      console.error("editar_ultimo_egreso update error:", updateError);
+      return ctx.reply("❌ No pude actualizar el gasto. Intentá de nuevo.");
+    }
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,

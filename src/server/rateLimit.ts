@@ -54,22 +54,25 @@ export function createRateLimiter(opts: RateLimitOptions): RequestHandler {
   };
 }
 
+// The FIRST X-Forwarded-For entry is client-supplied (spoofable). The LAST one
+// is appended by the trusted LB in front of Cloud Run, so that's the real client.
+export function clientIp(req: Request): string {
+  const raw = req.headers["x-forwarded-for"];
+  const chain = (Array.isArray(raw) ? raw.join(",") : raw ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return chain.at(-1) ?? req.socket.remoteAddress ?? "unknown";
+}
+
 function userOrIp(req: Request): string {
   const userId = req.session?.userId;
   if (userId) return `u:${userId}`;
-  const ip =
-    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ??
-    req.socket.remoteAddress ??
-    "unknown";
-  return `ip:${ip}`;
+  return `ip:${clientIp(req)}`;
 }
 
 function ipOnly(req: Request): string {
-  const ip =
-    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ??
-    req.socket.remoteAddress ??
-    "unknown";
-  return `ip:${ip}`;
+  return `ip:${clientIp(req)}`;
 }
 
 export const tierRead = createRateLimiter({ windowMs: 60_000, max: 300, keyFn: userOrIp });

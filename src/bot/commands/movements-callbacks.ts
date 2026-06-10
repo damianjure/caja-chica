@@ -318,7 +318,11 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!canEditMovementViaTelegram(target, linked)) {
       return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
     }
-    await supabase.from("movimientos").update({ categoria: category }).eq("id", movId);
+    const { error: catError } = await supabase.from("movimientos").update({ categoria: category }).eq("id", movId);
+    if (catError) {
+      console.error("set_cat update error:", catError);
+      return ctx.answerCallbackQuery("❌ No pude actualizar la categoría.");
+    }
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,
@@ -398,7 +402,11 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!canEditMovementViaTelegram(target, linked)) {
       return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
     }
-    await supabase.from("movimientos").update({ empresa_nombre: empresa }).eq("id", movId);
+    const { error: empError } = await supabase.from("movimientos").update({ empresa_nombre: empresa }).eq("id", movId);
+    if (empError) {
+      console.error("set_emp update error:", empError);
+      return ctx.answerCallbackQuery("❌ No pude actualizar la empresa.");
+    }
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,
@@ -434,7 +442,12 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     }).eq("id", movId);
     if (linked.dashboardId) delQuery = delQuery.eq("dashboard_id", linked.dashboardId);
     else delQuery = delQuery.eq("owner_user_id", linked.ownerUserId as string);
-    await delQuery;
+    const { error: delError } = await delQuery;
+    if (delError) {
+      console.error("confirm_delete_mov error:", delError);
+      await ctx.reply("❌ No pude borrar el movimiento. Intentá de nuevo.");
+      return;
+    }
     await insertBotAuditLog(supabase, {
       linked,
       actorUserId: linked.userId,

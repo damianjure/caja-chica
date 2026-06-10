@@ -2,7 +2,9 @@ import type { Movimiento } from '../services/api';
 
 /** CSV-escape: wrap in quotes if it contains comma/quote/newline; double internal quotes. */
 function csvCell(value: string | number | null | undefined): string {
-  const s = value == null ? '' : String(value);
+  let s = value == null ? '' : String(value);
+  // Excel formula injection guard — plain numbers (negative amounts) stay numeric.
+  if (/^[=+\-@\t\r]/.test(s) && Number.isNaN(Number(s))) s = `'${s}`;
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

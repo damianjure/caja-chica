@@ -48,3 +48,39 @@ test('buildMovimientosCsv: tipo ingreso/egreso legible', () => {
   assert.match(csv, /Ingreso/);
   assert.match(csv, /Gasto/);
 });
+
+// ---------------------------------------------------------------------------
+// Review 2026-06-09: CSV formula injection guard (frontend + server builders)
+// ---------------------------------------------------------------------------
+
+import { buildReportCsv } from '../src/server/reportExports';
+
+test('buildMovimientosCsv: neutraliza fórmulas Excel en celdas de texto', () => {
+  const csv = buildMovimientosCsv([mov({ descripcion: '=HYPERLINK("http://evil","x")' })]);
+  assert.match(csv, /'=HYPERLINK/);
+});
+
+test('buildMovimientosCsv: no toca números (montos) ni texto normal', () => {
+  const csv = buildMovimientosCsv([mov({ monto: 4500, descripcion: 'luz' })]);
+  assert.doesNotMatch(csv, /'4500/);
+  assert.match(csv, /luz/);
+});
+
+test('buildReportCsv (server): neutraliza fórmulas y respeta números negativos', () => {
+  const csv = buildReportCsv([
+    {
+      created_at: '2026-05-15T10:00:00.000Z',
+      tipo: 'egreso',
+      moneda: 'ARS',
+      monto: -4500,
+      categoria: '@SUM(A1)',
+      empresa_nombre: '+cmd|calc',
+      descripcion: '=1+1',
+    } as any,
+  ]).toString('utf8');
+  assert.match(csv, /'@SUM\(A1\)/);
+  assert.match(csv, /'\+cmd\|calc/);
+  assert.match(csv, /'=1\+1/);
+  assert.doesNotMatch(csv, /'-4500/, 'numeric cells must stay numeric');
+  assert.match(csv, /-4500/);
+});

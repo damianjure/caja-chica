@@ -9,7 +9,12 @@ interface SaldosRow {
 }
 
 function escapeCsvCell(value: unknown) {
-  const text = String(value ?? "");
+  let text = String(value ?? "");
+  // Excel formula injection guard: neutralize formula triggers, but leave plain
+  // numbers (e.g. negative amounts) untouched so they stay numeric in Excel.
+  if (/^[=+\-@\t\r]/.test(text) && Number.isNaN(Number(text))) {
+    text = `'${text}`;
+  }
   if (/[",\n]/.test(text)) {
     return `"${text.replaceAll('"', '""')}"`;
   }

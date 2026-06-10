@@ -178,8 +178,9 @@ export function createAdminRouter(deps: AdminDeps) {
     }
   });
 
-  router.get("/api/admin/invitations", requireSession, requireAdmin, async (_req, res) => {
+  router.get("/api/admin/invitations", requireSession, requireAdmin, async (req, res) => {
     try {
+      const session = getSession(req);
       const { data, error } = await supabase
         .from("user_invitations")
         .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, invited_by")
@@ -245,9 +246,14 @@ export function createAdminRouter(deps: AdminDeps) {
 
       const invitations = rows.map((r) => {
         const userId = emailToUserId.get(r.email);
+        // SECURITY: invite tokens are bearer secrets. Only the superadmin or the
+        // admin who created the invite may see the token/URL — same policy as
+        // dashboards-tree (which never returns tokens at all).
+        const canSeeToken = session.role === "superadmin" || r.invited_by === session.userId;
+        if (!canSeeToken) delete r.invite_token;
         return {
           ...r,
-          invite_url: `${publicAppUrl || ""}/?invite=${r.invite_token}`,
+          ...(canSeeToken ? { invite_url: `${publicAppUrl || ""}/?invite=${r.invite_token}` } : {}),
           invited_by_email: r.invited_by ? inviterEmailById.get(r.invited_by) ?? null : null,
           membership_of: userId ? membershipByUserId.get(userId) ?? [] : [],
           // Accepted invitation whose user account no longer exists → deleted user.

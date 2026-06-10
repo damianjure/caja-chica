@@ -374,6 +374,10 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
   };
 
   const handleCopyLink = async (persona: PersonaRecord) => {
+    if (!persona.invite_url) {
+      toast.error("Solo quien creó la invitación (o el superadmin) puede ver el link.");
+      return;
+    }
     await navigator.clipboard.writeText(persona.invite_url);
     toast.success("Link copiado");
   };
@@ -518,6 +522,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 </div>
 
                 {/* Copy icon shortcut */}
+                {persona.invite_url && (
                 <button
                   onClick={() => void handleCopyLink(persona)}
                   className="shrink-0 p-1.5 rounded-lg border border-[var(--app-border)] text-[var(--app-text-3)] hover:border-[var(--app-text-2)]"
@@ -526,6 +531,7 @@ export function PersonasPanel({ scope, showTelegramToggle = false }: PersonasPan
                 >
                   <Copy className="w-4 h-4" />
                 </button>
+                )}
 
                 {/* Actions dropdown */}
                 <ActionMenu

@@ -577,3 +577,57 @@ test("Fix D: resend without telegram_preauth does NOT insert telegram_invite_tok
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix E (review 2026-06-09): expired pending invitations must NOT auto-accept
+// ---------------------------------------------------------------------------
+
+test("Fix E: syncPendingDashboardInvitations skips expired pending invitations", async () => {
+  const updates: Array<{ table: string; payload: any; filters: Record<string, unknown> }> = [];
+
+  const supabase = makeInvitationsSupabase({
+    dashboardInvitations: [
+      {
+        id: "di-expired",
+        email: joinerSession.email,
+        status: "pending",
+        dashboard_id: "dash-1",
+        role: "editor",
+        invited_by_user_id: "owner-id",
+        telegram_invite_token_id: null,
+        expires_at: "2020-01-01T00:00:00.000Z",
+      },
+    ],
+    updateCapture: updates,
+  }) as any;
+
+  await syncPendingDashboardInvitations(supabase, joinerSession);
+
+  assert.equal(updates.length, 0, "expired invitation must not be accepted nor updated");
+});
+
+test("Fix E: syncPendingDashboardInvitations still accepts invitations without expires_at", async () => {
+  const updates: Array<{ table: string; payload: any; filters: Record<string, unknown> }> = [];
+
+  const supabase = makeInvitationsSupabase({
+    dashboardInvitations: [
+      {
+        id: "di-no-expiry",
+        email: joinerSession.email,
+        status: "pending",
+        dashboard_id: "dash-1",
+        role: "viewer",
+        invited_by_user_id: "owner-id",
+        telegram_invite_token_id: null,
+        expires_at: null,
+      },
+    ],
+    updateCapture: updates,
+  }) as any;
+
+  await syncPendingDashboardInvitations(supabase, joinerSession);
+
+  const acceptUpdate = updates.find((u) => u.table === "dashboard_invitations");
+  assert.ok(acceptUpdate, "invitation without expiry must still be accepted");
+  assert.equal(acceptUpdate.payload.status, "accepted");
+});

@@ -177,8 +177,9 @@ export interface AppInvitation {
   email: string;
   role: AppRole;
   status: InvitationStatus;
-  invite_token: string;
-  invite_url: string;
+  /** Bearer secrets — present only for the superadmin or the inviting admin. */
+  invite_token?: string;
+  invite_url?: string;
   expires_at: string | null;
   created_at: string;
   accepted_at: string | null;
@@ -337,7 +338,8 @@ export interface PersonaRecord {
   created_at: string;
   last_action_at: string;
   telegram_link_status: "active" | null;
-  invite_url: string;
+  /** Bearer link — present only when the caller may see the token. */
+  invite_url?: string;
 }
 
 export interface PersonaFilters {

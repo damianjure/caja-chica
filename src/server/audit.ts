@@ -6,7 +6,11 @@ export async function insertAuditLog(
   payload: Record<string, unknown>,
 ): Promise<void> {
   try {
-    await supabase.from("audit_logs").insert([payload]).select();
+    // supabase-js does not throw on insert errors — check the envelope.
+    const { error } = await supabase.from("audit_logs").insert([payload]).select();
+    if (error && !isMissingSchemaArtifactError(error)) {
+      console.error("[audit] insert failed:", error);
+    }
   } catch (error) {
     if (!isMissingSchemaArtifactError(error)) throw error;
   }
@@ -49,7 +53,7 @@ export async function createEmpresaDeleteBackup(
   },
 ): Promise<void> {
   try {
-    await supabase
+    const { error } = await supabase
       .from("empresa_delete_backups")
       .insert([
         {
@@ -63,6 +67,9 @@ export async function createEmpresaDeleteBackup(
         },
       ])
       .select();
+    if (error && !isMissingSchemaArtifactError(error)) {
+      console.error("[audit] empresa delete backup insert failed:", error);
+    }
   } catch (error) {
     if (!isMissingSchemaArtifactError(error)) throw error;
   }

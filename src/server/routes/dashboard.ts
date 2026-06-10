@@ -508,7 +508,8 @@ export function createDashboardRouter(deps: DashboardDeps) {
     created_at: string;
     last_action_at: string;
     telegram_link_status: "active" | null;
-    invite_url: string;
+    /** Bearer link — present only when the caller may see the token. */
+    invite_url?: string;
   }
 
   function derivePersonaStatus(row: {
@@ -554,7 +555,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if (isAdmin && (!scopeFilter || scopeFilter === "app")) {
         const { data: uiRows, error: uiErr } = await supabase
           .from("user_invitations")
-          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, accepted_user_id")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, last_reminder_at, accepted_user_id, invited_by")
           .order("created_at", { ascending: false })
           .limit(500);
         if (uiErr) throw uiErr;
@@ -576,6 +577,10 @@ export function createDashboardRouter(deps: DashboardDeps) {
           const status = derivePersonaStatus(row);
           const last_action_at = deriveLastActionAt(row);
           const profile = row.accepted_user_id ? uiProfiles.get(row.accepted_user_id) : null;
+          // SECURITY: app-level invite tokens are bearer secrets — only the
+          // superadmin or the inviting admin gets the URL (same policy as
+          // GET /api/admin/invitations).
+          const canSeeToken = session.role === "superadmin" || row.invited_by === session.userId;
           personas.push({
             id: row.id,
             email: row.email,
@@ -587,7 +592,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
             created_at: row.created_at,
             last_action_at,
             telegram_link_status: null,
-            invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}`,
+            ...(canSeeToken ? { invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}` } : {}),
           });
         }
       }
@@ -738,17 +743,25 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if (derived === "expired") {
         currentToken = randomBytes(24).toString("hex");
         const newExpiresAt = new Date(nowDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        await supabase
+        const { error: tokenErr } = await supabase
           .from(table)
           .update({ invite_token: currentToken, expires_at: newExpiresAt })
           .eq("id", row.id);
+        // If the regenerated token didn't persist, the emailed link would be dead.
+        if (tokenErr) {
+          console.error("POST /api/personas/:id/resend: token regeneration failed:", tokenErr);
+          return res.status(500).json({ error: "internal" });
+        }
       }
 
-      // Update last_reminder_at
-      await supabase
+      // Update last_reminder_at (best-effort — a failure only delays cadence)
+      const { error: reminderErr } = await supabase
         .from(table)
         .update({ last_reminder_at: nowIso })
         .eq("id", row.id);
+      if (reminderErr) {
+        console.error("POST /api/personas/:id/resend: last_reminder_at update failed:", reminderErr);
+      }
 
       // Dispatch email based on table type
       if (table === "user_invitations") {
@@ -861,10 +874,14 @@ export function createDashboardRouter(deps: DashboardDeps) {
           return res.status(409).json({ error: "already_accepted_use_user_management" });
         }
 
-        await supabase
+        const { error: roleErr } = await supabase
           .from("user_invitations")
           .update({ role: newRole })
           .eq("id", row.id);
+        if (roleErr) {
+          console.error("PATCH /api/personas/:id/role: user_invitations update failed:", roleErr);
+          return res.status(500).json({ error: "internal" });
+        }
 
         return res.json({ ok: true });
       }
@@ -883,25 +900,36 @@ export function createDashboardRouter(deps: DashboardDeps) {
 
       if (derived !== "active") {
         // Pending invite: update dashboard_invitations.role
-        await supabase
+        const { error: pendingErr } = await supabase
           .from("dashboard_invitations")
           .update({ role: newRole })
           .eq("id", row.id);
+        if (pendingErr) {
+          console.error("PATCH /api/personas/:id/role: dashboard_invitations update failed:", pendingErr);
+          return res.status(500).json({ error: "internal" });
+        }
       } else {
         // Accepted invite: update dashboard_members.role + reset permissions
         // (remove editor-only permissions if demoting to viewer)
         if (row.accepted_user_id) {
-          await supabase
+          const { error: memberErr } = await supabase
             .from("dashboard_members")
             .update({ role: newRole, permissions: {} })
             .eq("user_id", row.accepted_user_id)
             .eq("dashboard_id", row.dashboard_id);
+          if (memberErr) {
+            console.error("PATCH /api/personas/:id/role: dashboard_members update failed:", memberErr);
+            return res.status(500).json({ error: "internal" });
+          }
         }
-        // Also update the invitation record to keep in sync
-        await supabase
+        // Keep the invitation record in sync (best-effort — member role already changed)
+        const { error: syncErr } = await supabase
           .from("dashboard_invitations")
           .update({ role: newRole })
           .eq("id", row.id);
+        if (syncErr) {
+          console.error("PATCH /api/personas/:id/role: invitation sync failed:", syncErr);
+        }
       }
 
       return res.json({ ok: true });

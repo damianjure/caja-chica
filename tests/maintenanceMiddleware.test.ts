@@ -257,3 +257,28 @@ test("maintenanceWriteGuard: writes pass during scheduled state", async () => {
   );
   makeNoneCache();
 });
+
+// ---------------------------------------------------------------------------
+// Review 2026-06-09: telegram webhook must be exempt from the write guard so
+// the bot can answer "en mantenimiento" itself instead of Telegram queueing
+// retries that replay writes after maintenance ends.
+// ---------------------------------------------------------------------------
+
+test("maintenanceWriteGuard: telegram webhook path is exempt during active maintenance", async () => {
+  makeActiveCache();
+  await withServer(
+    {
+      webhookPath: "/webhook/telegram",
+      webhookHandler: (_req, res) => { res.status(200).json({ ok: true }); },
+    },
+    async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/webhook/telegram`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      assert.notEqual(res.status, 503, "webhook must not be blocked by maintenance guard");
+    },
+  );
+  makeNoneCache();
+});

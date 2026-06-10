@@ -15,7 +15,7 @@ import {
   parseReceiptItemsResult,
   type ReceiptItemsResult,
 } from "./gemini.ts";
-import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
+import { GeminiUnavailableError, isGeminiCapacityError, withMediaKeyFallback } from "./geminiWithFallback.ts";
 import type { TelegramMediaGenAI } from "./telegramMedia.ts";
 import type { PhotoSourceType } from "./validation.ts";
 
@@ -32,6 +32,8 @@ export const WEB_IMAGE_MAX_BYTES = 7 * 1024 * 1024;
 
 export interface ExtractFromBufferArgs {
   genAI: TelegramMediaGenAI;
+  /** Second API key client — the whole upload/extract is re-run with it on 429/503. */
+  genAI2?: TelegramMediaGenAI | null;
   imageBuffer: Buffer;
   mimeType: string;
   displayName?: string;
@@ -85,7 +87,13 @@ async function generateAndCleanup(
  * returning a single-movement shape (items: []) so the common case stays one
  * model call. PDFs are supported — Gemini Files API handles them like images.
  */
-export async function extractItemsFromBuffer({
+export async function extractItemsFromBuffer(args: ExtractFromBufferArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    extractItemsFromBufferImpl({ ...args, genAI: client }),
+  );
+}
+
+async function extractItemsFromBufferImpl({
   genAI,
   imageBuffer,
   mimeType,

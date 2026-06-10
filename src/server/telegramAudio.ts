@@ -1,5 +1,5 @@
 import { createPartFromUri, createUserContent } from '@google/genai';
-import { GeminiUnavailableError, isGeminiCapacityError } from './geminiWithFallback.ts';
+import { GeminiUnavailableError, isGeminiCapacityError, withMediaKeyFallback } from './geminiWithFallback.ts';
 
 export type TelegramAudioKind = 'voice' | 'audio';
 
@@ -30,6 +30,8 @@ export interface InferTelegramAudioMimeTypeArgs {
 
 export interface TranscribeTelegramAudioArgs extends InferTelegramAudioMimeTypeArgs {
   genAI: TelegramAudioLikeGenAI;
+  /** Second API key client — the whole download/upload/transcribe is re-run with it on 429/503. */
+  genAI2?: TelegramAudioLikeGenAI | null;
   botToken: string;
   filePath: string;
   fileName?: string | null;
@@ -64,7 +66,13 @@ export function inferTelegramAudioMimeType(args: InferTelegramAudioMimeTypeArgs)
   return 'audio/mpeg';
 }
 
-export async function transcribeTelegramAudioWithGemini({
+export async function transcribeTelegramAudioWithGemini(args: TranscribeTelegramAudioArgs) {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    transcribeTelegramAudioWithGeminiImpl({ ...args, genAI: client }),
+  );
+}
+
+async function transcribeTelegramAudioWithGeminiImpl({
   genAI,
   botToken,
   filePath,

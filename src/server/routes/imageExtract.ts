@@ -27,11 +27,12 @@ const IMAGE_BODY_LIMIT = "12mb";
 
 export interface ImageExtractRouterDeps {
   genAI: GenAILike;
+  genAI2?: GenAILike | null;
   requireSession: RequestHandler;
   tierStrict: RequestHandler;
 }
 
-export function createImageExtractRouter({ genAI, requireSession, tierStrict }: ImageExtractRouterDeps) {
+export function createImageExtractRouter({ genAI, genAI2 = null, requireSession, tierStrict }: ImageExtractRouterDeps) {
   const router = express.Router();
 
   // Order matters: auth + strict rate-limit run BEFORE body parsing, so an
@@ -72,6 +73,7 @@ export function createImageExtractRouter({ genAI, requireSession, tierStrict }: 
 
       const { result, sourceType } = await extractItemsFromBuffer({
         genAI: genAI as any,
+        genAI2: genAI2 as any,
         imageBuffer,
         mimeType,
       });

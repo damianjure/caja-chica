@@ -13,6 +13,7 @@ import {
   GeminiUnavailableError,
   isGeminiCapacityError,
   geminiGenerateText,
+  withMediaKeyFallback,
 } from "../src/server/geminiWithFallback.ts";
 import type { GenAILike } from "../src/server/app.ts";
 
@@ -163,4 +164,64 @@ test("geminiGenerateText — fallback non-capacity error rethrows that error", a
       ),
     (thrown: unknown) => thrown === fallbackErr,
   );
+});
+
+// ---------------------------------------------------------------------------
+// withMediaKeyFallback — media flows re-run download/upload with the 2nd key
+// ---------------------------------------------------------------------------
+
+test("withMediaKeyFallback — primary success: fallback never runs", async () => {
+  const used: string[] = [];
+  const out = await withMediaKeyFallback("primary", "fallback", async (client) => {
+    used.push(client as string);
+    return "ok";
+  });
+  assert.equal(out, "ok");
+  assert.deepEqual(used, ["primary"]);
+});
+
+test("withMediaKeyFallback — primary capacity error → re-runs whole op with fallback client", async () => {
+  const used: string[] = [];
+  const out = await withMediaKeyFallback("primary", "fallback", async (client) => {
+    used.push(client as string);
+    if (client === "primary") throw err(429, "RESOURCE_EXHAUSTED");
+    return "from-fallback";
+  });
+  assert.equal(out, "from-fallback");
+  assert.deepEqual(used, ["primary", "fallback"]);
+});
+
+test("withMediaKeyFallback — GeminiUnavailableError from primary also triggers fallback", async () => {
+  const out = await withMediaKeyFallback("primary", "fallback", async (client) => {
+    if (client === "primary") throw new GeminiUnavailableError();
+    return "from-fallback";
+  });
+  assert.equal(out, "from-fallback");
+});
+
+test("withMediaKeyFallback — no fallback configured → GeminiUnavailableError", async () => {
+  await assert.rejects(
+    () => withMediaKeyFallback("primary", null, async () => { throw err(429, "RESOURCE_EXHAUSTED"); }),
+    GeminiUnavailableError,
+  );
+});
+
+test("withMediaKeyFallback — both keys exhausted → GeminiUnavailableError", async () => {
+  await assert.rejects(
+    () => withMediaKeyFallback("primary", "fallback", async () => { throw err(429, "RESOURCE_EXHAUSTED"); }),
+    GeminiUnavailableError,
+  );
+});
+
+test("withMediaKeyFallback — non-capacity error rethrows original, no fallback attempt", async () => {
+  const original = err(400, "Invalid argument");
+  const used: string[] = [];
+  await assert.rejects(
+    () => withMediaKeyFallback("primary", "fallback", async (client) => {
+      used.push(client as string);
+      throw original;
+    }),
+    (thrown: unknown) => thrown === original,
+  );
+  assert.deepEqual(used, ["primary"]);
 });

@@ -777,6 +777,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       const audioMessage = ctx.message.voice;
       const transcript = await transcribeTelegramAudioWithGemini({
         genAI,
+        genAI2,
         botToken,
         filePath: file.file_path,
         fileName: `voice-${ctx.message.message_id}`,
@@ -814,6 +815,7 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       const audioMessage = ctx.message.audio;
       const transcript = await transcribeTelegramAudioWithGemini({
         genAI,
+        genAI2,
         botToken,
         filePath: file.file_path,
         fileName: audioMessage?.file_name ?? `audio-${ctx.message.message_id}`,

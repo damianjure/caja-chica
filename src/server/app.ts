@@ -596,6 +596,7 @@ export function createApp({
   }));
   app.use(createImageExtractRouter({
     genAI,
+    genAI2,
     requireSession,
     tierStrict,
   }));

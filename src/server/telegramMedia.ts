@@ -13,7 +13,7 @@ import {
   type ReceiptItemsResult,
   type CreditCardExtractionItem,
 } from "./gemini.ts";
-import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
+import { GeminiUnavailableError, isGeminiCapacityError, withMediaKeyFallback } from "./geminiWithFallback.ts";
 import type { PhotoSourceType } from "./validation.ts";
 
 export const SUPPORTED_IMAGE_MIME_TYPES = new Set([
@@ -54,6 +54,8 @@ export interface TelegramMediaGenAI {
 
 export interface ExtractFromPhotoArgs {
   genAI: TelegramMediaGenAI;
+  /** Second API key client — the whole download/upload/extract is re-run with it on 429/503. */
+  genAI2?: TelegramMediaGenAI | null;
   botToken: string;
   filePath: string;
   mimeType: string;
@@ -63,6 +65,7 @@ export interface ExtractFromPhotoArgs {
 
 export interface ExtractFromMultiplePhotosArgs {
   genAI: TelegramMediaGenAI;
+  genAI2?: TelegramMediaGenAI | null;
   botToken: string;
   files: Array<{ filePath: string; mimeType: string; displayName?: string }>;
   fetchImpl?: typeof fetch;
@@ -124,7 +127,13 @@ async function generateWithCleanup(
   }
 }
 
-export async function extractFromPhoto({
+export async function extractFromPhoto(args: ExtractFromPhotoArgs): Promise<{ result: PhotoExtractionResult; sourceType: PhotoSourceType }> {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    extractFromPhotoImpl({ ...args, genAI: client }),
+  );
+}
+
+async function extractFromPhotoImpl({
   genAI,
   botToken,
   filePath,
@@ -187,7 +196,13 @@ export async function extractFromPhoto({
  * returns a single-movement shape (items: []), mirroring extractFromPhoto's
  * robustness profile so the common case stays a single model call.
  */
-export async function extractReceiptWithItems({
+export async function extractReceiptWithItems(args: ExtractFromPhotoArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    extractReceiptWithItemsImpl({ ...args, genAI: client }),
+  );
+}
+
+async function extractReceiptWithItemsImpl({
   genAI,
   botToken,
   filePath,
@@ -247,7 +262,13 @@ export async function extractReceiptWithItems({
  * Called AFTER extractReceiptWithItems flags the document as a statement, so
  * it re-downloads/uploads the file (Files API uploads are single-use here).
  */
-export async function extractFromStatement({
+export async function extractFromStatement(args: ExtractFromPhotoArgs): Promise<CreditCardExtractionItem[]> {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    extractFromStatementImpl({ ...args, genAI: client }),
+  );
+}
+
+async function extractFromStatementImpl({
   genAI,
   botToken,
   filePath,
@@ -270,7 +291,13 @@ export async function extractFromStatement({
   return items;
 }
 
-export async function extractFromMultiplePhotos({
+export async function extractFromMultiplePhotos(args: ExtractFromMultiplePhotosArgs): Promise<PhotoExtractionResult[]> {
+  return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
+    extractFromMultiplePhotosImpl({ ...args, genAI: client }),
+  );
+}
+
+async function extractFromMultiplePhotosImpl({
   genAI,
   botToken,
   files,

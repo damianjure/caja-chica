@@ -241,6 +241,7 @@ const STATEMENT_NOUN = { singular: "transacción", plural: "transacciones" };
 async function processStatement(
   supabase: BotDeps["supabase"],
   genAI: BotDeps["genAI"],
+  genAI2: BotDeps["genAI2"],
   botToken: string,
   ctx: Context,
   linked: any,
@@ -251,7 +252,7 @@ async function processStatement(
     await ctx.api.editMessageText(ctx.chat.id, processingMsgId, "📄 Detecté un resumen de tarjeta/banco. Extrayendo transacciones...");
   } catch (e) {}
 
-  const items = await extractFromStatement({ genAI, botToken, ...file });
+  const items = await extractFromStatement({ genAI, genAI2, botToken, ...file });
   try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
 
   const usable = items.filter((it) => it.monto !== null);
@@ -341,7 +342,7 @@ async function renderLineEditor(
 }
 
 export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
-  const { supabase, genAI, botToken } = deps;
+  const { supabase, genAI, genAI2, botToken } = deps;
 
   bot.on("message:photo", async (ctx) => {
     if (!await assertBotWritable(ctx)) return;
@@ -374,17 +375,18 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
             if (files.length === 1) {
               const { result, sourceType } = await extractReceiptWithItems({
                 genAI,
+                genAI2,
                 botToken,
                 filePath: files[0].filePath,
                 mimeType: files[0].mimeType,
               });
               if (result.documentKind === "statement") {
-                await processStatement(supabase, genAI, botToken, firstCtx, linked2, files[0], processingMsg.message_id);
+                await processStatement(supabase, genAI, genAI2, botToken, firstCtx, linked2, files[0], processingMsg.message_id);
                 return;
               }
               await showReceiptReview(supabase, firstCtx, linked2, result, sourceType, processingMsg.message_id);
             } else {
-              const results = await extractFromMultiplePhotos({ genAI, botToken, files });
+              const results = await extractFromMultiplePhotos({ genAI, genAI2, botToken, files });
               try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
               const multiScope = { dashboardId: linked2.dashboardId ?? null, ownerUserId: linked2.ownerUserId ?? null };
               const [topEmpresas, topCategorias] = await Promise.all([
@@ -447,12 +449,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       }
       const { result, sourceType } = await extractReceiptWithItems({
         genAI,
+        genAI2,
         botToken,
         filePath: file.file_path,
         mimeType: "image/jpeg",
       });
       if (result.documentKind === "statement") {
-        await processStatement(supabase, genAI, botToken, ctx, linked, { filePath: file.file_path, mimeType: "image/jpeg" }, processingMsg.message_id);
+        await processStatement(supabase, genAI, genAI2, botToken, ctx, linked, { filePath: file.file_path, mimeType: "image/jpeg" }, processingMsg.message_id);
         return;
       }
       await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);
@@ -496,13 +499,14 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       }
       const { result, sourceType } = await extractReceiptWithItems({
         genAI,
+        genAI2,
         botToken,
         filePath: file.file_path,
         mimeType,
         displayName: doc.file_name ?? "document",
       });
       if (result.documentKind === "statement") {
-        await processStatement(supabase, genAI, botToken, ctx, linked, { filePath: file.file_path, mimeType, displayName: doc.file_name ?? "document" }, processingMsg.message_id);
+        await processStatement(supabase, genAI, genAI2, botToken, ctx, linked, { filePath: file.file_path, mimeType, displayName: doc.file_name ?? "document" }, processingMsg.message_id);
         return;
       }
       await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);

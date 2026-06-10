@@ -226,7 +226,7 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   ├── extractionReview.ts    ← inline keyboard confirm/edit flow para fotos; TTL 10min
 │   │   ├── askAgent.ts            ← agente LLM de consultas: loop tool-calling JSON sobre movimientos scopeados
 │   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT + items + CREDIT_CARD (statements)
-│   │   ├── geminiWithFallback.ts  ← fallback a GEMINI_API_KEY_2 en 429/503
+│   │   ├── geminiWithFallback.ts  ← fallback a GEMINI_API_KEY_2 en 429/503 (texto + media; media re-descarga/re-sube el archivo con la key 2 vía withMediaKeyFallback)
 │   │   ├── imageExtract.ts        ← extracción de imagen para la web (/api/extract-image)
 │   │   ├── inviteReminders.ts / maintenance.ts / maintenanceNotify.ts
 │   │   ├── mediaGroupBuffer.ts    ← debounce genérico para álbumes Telegram (1500ms)
@@ -517,6 +517,7 @@ Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y lla
 - MIME permitidos: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `application/pdf`
 - tamaño máximo: 20MB
 - retry automático con HANDWRITTEN prompt si confidence < 0.5
+- fallback a `GEMINI_API_KEY_2` en 429/503 (`withMediaKeyFallback`): re-descarga y re-sube el archivo con la key 2 porque los uploads a Files API son por key. Cubre fotos, PDFs, statements, álbumes, audio y `/api/extract-image` web. Alerta operativa al superadmin al caer al fallback.
 - sessions `pendingExtractionByChat` con TTL 10 min + sweep cada 5 min
 - campos editables via inline keyboard: monto, empresa, categoría, descripción, tipo, moneda
 

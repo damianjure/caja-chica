@@ -24,9 +24,50 @@ export function isGeminiCapacityError(err: unknown): boolean {
 }
 
 /**
+ * Wraps a media extraction (photo/PDF/audio) with fallback to a second API
+ * key. Files API uploads are key-scoped, so `run` must perform the WHOLE
+ * operation (download + upload + generateContent) with the client it
+ * receives — on capacity failure it is re-run from scratch with the
+ * fallback client.
+ */
+export async function withMediaKeyFallback<C, T>(
+  primary: C,
+  fallback: C | null | undefined,
+  run: (client: C) => Promise<T>,
+): Promise<T> {
+  try {
+    return await run(primary);
+  } catch (err) {
+    const capacity = err instanceof GeminiUnavailableError || isGeminiCapacityError(err);
+    if (!capacity) throw err;
+    if (!fallback) {
+      throw err instanceof GeminiUnavailableError ? err : new GeminiUnavailableError();
+    }
+    console.warn("[gemini] Primary key exhausted on media call — retrying with fallback key");
+    alertSuperadmin({
+      code: "gemini:media-primary-quota-exhausted",
+      title: "Gemini: cuota agotada en extracción de media",
+      problem: "La key primaria devolvió 429/503 procesando una foto, PDF o audio. Se reintenta la operación completa con la key de fallback.",
+      impact: "Servicio degradado: las extracciones de media dependen de la key de fallback hasta que se restablezca la cuota primaria.",
+      context: { hasFallback: "sí" },
+      steps: [
+        "Revisar el uso/cuota en Google AI Studio para la key primaria (GEMINI_API_KEY).",
+        "Si es recurrente, subir el límite de cuota o rotar las keys en Cloud Run.",
+      ],
+    });
+    try {
+      return await run(fallback);
+    } catch (err2) {
+      if (err2 instanceof GeminiUnavailableError || isGeminiCapacityError(err2)) {
+        throw new GeminiUnavailableError();
+      }
+      throw err2;
+    }
+  }
+}
+
+/**
  * Wraps a text-only generateContent call with fallback to a second API key.
- * For media calls (photos/audio) pass null as fallback — those can't reuse
- * uploaded files across keys.
  */
 export async function geminiGenerateText(
   primary: GenAILike,

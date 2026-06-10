@@ -222,6 +222,12 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
     }
   });
 
+  // A recurrente is "owned" by whoever created it. Bot-created rows use
+  // created_by_user_id (dashboard) or owner_user_id (legacy).
+  function ownsRecurrente(row: { owner_user_id?: string | null; created_by_user_id?: string | null }, session: AppSession): boolean {
+    return row.created_by_user_id === session.userId || row.owner_user_id === session.userId;
+  }
+
   // Keep the parent movimiento.monto in sync with the sum of its active lines,
   // and has_lineas truthy only while lines remain.
   async function recomputeTicketTotal(
@@ -814,6 +820,9 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+      if (!ownsRecurrente(row, session) && !canEditOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
 
       const { data, error } = await applyDataScope(
         supabase
@@ -846,6 +855,9 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+      if (!ownsRecurrente(row, session) && !canEditOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
 
       const p = req.body as Record<string, unknown>;
       const updates: Record<string, unknown> = {};
@@ -930,6 +942,9 @@ export function createMovimientosRouter(deps: MovimientosDeps) {
       const row = await getScopeEntityById("recurrentes", session, scope, req.params.id) as any;
       if (!row) return res.status(404).json({ error: "not_found" });
       if (row.deleted_at) return res.status(404).json({ error: "not_found" });
+      if (!ownsRecurrente(row, session) && !canDeleteOthers(scope)) {
+        return res.status(403).json({ error: "forbidden" });
+      }
 
       const { error } = await applyDataScope(
         supabase

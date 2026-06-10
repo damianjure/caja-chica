@@ -126,9 +126,29 @@ async function withServer(
 
 // ─── Grupo 1: encryptToken / decryptToken ────────────────────────────────────
 
-test("encryptToken devuelve formato ivHex:encryptedHex", () => {
+test("encryptToken devuelve formato GCM ivHex:tagHex:encryptedHex", () => {
   const result = encryptToken("my-refresh-token", TEST_KEY);
-  assert.match(result, /^[0-9a-f]{32}:[0-9a-f]+$/);
+  // IV 12 bytes (24 hex) + auth tag 16 bytes (32 hex) + ciphertext
+  assert.match(result, /^[0-9a-f]{24}:[0-9a-f]{32}:[0-9a-f]+$/);
+});
+
+test("decryptToken sigue leyendo tokens legacy AES-CBC (2 partes)", async () => {
+  // Tokens guardados en prod antes de la migración a GCM.
+  const { createCipheriv, randomBytes } = await import("node:crypto");
+  const key = Buffer.from(TEST_KEY, "base64");
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-cbc", key, iv);
+  const encrypted = Buffer.concat([cipher.update("legacy-token", "utf8"), cipher.final()]);
+  const legacy = `${iv.toString("hex")}:${encrypted.toString("hex")}`;
+  assert.equal(decryptToken(legacy, TEST_KEY), "legacy-token");
+});
+
+test("decryptToken GCM rechaza ciphertext adulterado (auth tag)", () => {
+  const encrypted = encryptToken("tamper-me", TEST_KEY);
+  const parts = encrypted.split(":");
+  const data = parts[2];
+  const flipped = (data[0] === "0" ? "1" : "0") + data.slice(1);
+  assert.throws(() => decryptToken(`${parts[0]}:${parts[1]}:${flipped}`, TEST_KEY));
 });
 
 test("decryptToken recupera el token original (round-trip)", () => {

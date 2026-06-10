@@ -3,7 +3,9 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# Runtime only needs prod deps (tsx lives in dependencies) — smaller image,
+# smaller attack surface. Frontend build happens in CI, not in this image.
+RUN npm ci --omit=dev
 
 COPY server.ts ./
 COPY src ./src

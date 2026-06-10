@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 import { buildWelcomeMessage, fetchUserDashboards } from "../../bot/welcome.ts";
@@ -329,7 +330,9 @@ export function createTelegramRouter(deps: TelegramDeps) {
     router.post(webhookPath, (req, res, next) => {
       if (webhookSecret) {
         const incoming = req.headers["x-telegram-bot-api-secret-token"];
-        if (incoming !== webhookSecret) {
+        const got = Buffer.from(typeof incoming === "string" ? incoming : "", "utf8");
+        const expected = Buffer.from(webhookSecret, "utf8");
+        if (got.length !== expected.length || !crypto.timingSafeEqual(got, expected)) {
           res.sendStatus(403);
           return;
         }

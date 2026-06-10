@@ -86,6 +86,14 @@ export interface InputSession {
 
 export const pendingInputSessions = new Map<number, InputSession>();
 
+const inputSessionSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [chatId, s] of pendingInputSessions) {
+    if (now > s.expiresAt) pendingInputSessions.delete(chatId);
+  }
+}, 5 * 60_000);
+unrefInterval(inputSessionSweep);
+
 export function setInputSession(chatId: number, kind: InputSession["kind"], linked: TelegramLinkRecord) {
   pendingInputSessions.set(chatId, { kind, linked, expiresAt: Date.now() + 5 * 60_000 });
 }

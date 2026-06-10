@@ -277,12 +277,42 @@ export function createMeRouter(deps: MeDeps) {
       res.status(403).json({ error: "Un superadmin no puede eliminar su propia cuenta." });
       return;
     }
-    // Remove from non-owned dashboard memberships
+    // An owner with other active members would leave an ownerless dashboard
+    // (nobody could manage permissions/invites). Block until they revoke
+    // members or transfer ownership.
+    const { data: ownerships, error: ownErr } = await supabase
+      .from("dashboard_members")
+      .select("dashboard_id")
+      .eq("user_id", session.userId)
+      .eq("role", "owner")
+      .eq("status", "active");
+    if (ownErr) {
+      res.status(500).json({ error: ownErr.message });
+      return;
+    }
+    for (const ownership of ownerships ?? []) {
+      const { count, error: countErr } = await supabase
+        .from("dashboard_members")
+        .select("id", { count: "exact", head: true })
+        .eq("dashboard_id", ownership.dashboard_id)
+        .eq("status", "active")
+        .neq("user_id", session.userId);
+      if (countErr) {
+        res.status(500).json({ error: countErr.message });
+        return;
+      }
+      if ((count ?? 0) > 0) {
+        res.status(409).json({
+          error: "Tu dashboard tiene otros miembros activos. Revocá sus accesos antes de eliminar tu cuenta.",
+        });
+        return;
+      }
+    }
+    // Remove ALL memberships (incl. sole-owner rows — the dashboard ends up empty, not ownerless)
     await supabase
       .from("dashboard_members")
       .delete()
-      .eq("user_id", session.userId)
-      .neq("role", "owner");
+      .eq("user_id", session.userId);
     // Hard delete auth user — cascades auth.sessions automatically
     const { error } = await supabase.auth.admin.deleteUser(session.userId);
     if (error) {

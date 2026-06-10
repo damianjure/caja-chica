@@ -69,7 +69,10 @@ if (bot) {
 }
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://caja-chica-bot.web.app").split(",");
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://caja-chica-bot.web.app")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 const webhookPath = bot ? "/webhook/telegram" : undefined;
 const app = createApp({
   supabase,

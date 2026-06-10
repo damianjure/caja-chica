@@ -577,7 +577,11 @@ test("admin puede crear invitaciones", async () => {
       const body = await res.json();
       assert.equal(body.email, "nuevo@empresa.com");
       assert.equal(body.role, "member");
-      assert.equal(body.invite_url, "https://app.example.com/?invite=token-123");
+      // Token is minted fresh server-side on every (re)invite — the URL must
+      // carry the returned token, never a resurrected old one.
+      assert.ok(typeof body.invite_token === "string" && body.invite_token.length >= 32);
+      assert.equal(body.invite_url, `https://app.example.com/?invite=${body.invite_token}`);
+      assert.notEqual(body.invite_token, "token-123");
     },
   );
 });

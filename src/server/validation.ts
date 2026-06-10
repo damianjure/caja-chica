@@ -145,7 +145,7 @@ function isMovimientoInput(value: unknown): value is MovimientoInput {
   const validMoneda = item.moneda === "ARS" || item.moneda === "USD";
   const validMonto =
     item.monto === null ||
-    (typeof item.monto === "number" && Number.isFinite(item.monto));
+    (typeof item.monto === "number" && Number.isFinite(item.monto) && Math.abs(item.monto) <= MAX_LINE_AMOUNT);
   const validDescripcion =
     typeof item.descripcion === "string" && item.descripcion.trim().length > 0;
   const validCategoria =
@@ -165,6 +165,13 @@ function isMovimientoInput(value: unknown): value is MovimientoInput {
   );
 }
 
+const MAX_TICKET_LINES = 200;
+const MAX_LINE_AMOUNT = 100_000_000_000;
+const MAX_FIELD_LEN = 200;
+const MAX_SAVE_ITEMS = 50;
+const MAX_DESCRIPTION_LEN = 500;
+const MAX_ORIGINAL_TEXT_LEN = 4000;
+
 export function parseSaveMovimientosRequest(
   value: unknown,
 ): SaveMovimientosRequest | null {
@@ -176,20 +183,22 @@ export function parseSaveMovimientosRequest(
     payload.originalText.trim().length === 0 ||
     !Array.isArray(payload.items) ||
     payload.items.length === 0 ||
+    payload.items.length > MAX_SAVE_ITEMS ||
     !payload.items.every(isMovimientoInput)
   ) {
     return null;
   }
 
   return {
-    items: payload.items,
-    originalText: payload.originalText,
+    items: payload.items.map((item) => ({
+      ...item,
+      descripcion: item.descripcion.slice(0, MAX_DESCRIPTION_LEN),
+      categoria: typeof item.categoria === "string" ? item.categoria.slice(0, MAX_FIELD_LEN) : item.categoria,
+      empresa: typeof item.empresa === "string" ? item.empresa.slice(0, MAX_FIELD_LEN) : item.empresa,
+    })),
+    originalText: payload.originalText.slice(0, MAX_ORIGINAL_TEXT_LEN),
   };
 }
-
-const MAX_TICKET_LINES = 200;
-const MAX_LINE_AMOUNT = 100_000_000_000;
-const MAX_FIELD_LEN = 200;
 
 function parseTicketLine(value: unknown): TicketLineInput | null {
   if (!value || typeof value !== "object") return null;
@@ -402,7 +411,7 @@ export function parseUpdateMovimientoRequest(
   const next: UpdateMovimientoRequest = {};
 
   if (payload.monto !== undefined) {
-    if (typeof payload.monto !== "number" || !Number.isFinite(payload.monto)) return null;
+    if (typeof payload.monto !== "number" || !Number.isFinite(payload.monto) || Math.abs(payload.monto) > MAX_LINE_AMOUNT) return null;
     next.monto = Math.abs(payload.monto);
   }
 

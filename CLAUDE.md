@@ -169,89 +169,80 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 ```text
 .
 ├── CLAUDE.md
-├── server.ts
+├── server.ts                      ← SOLO wiring (~150 líneas): env, Supabase, Gemini, bot + createApp + listen
 ├── src/
 │   ├── App.tsx
 │   ├── DashboardApp.tsx
 │   ├── authRedirect.ts
 │   ├── index.css                  ← dark mode CSS vars + overrides completos
+│   ├── theme/palettes.ts
+│   ├── types/dashboard.ts
+│   ├── lib/biometricLock.ts       ← lock biométrico PWA
+│   ├── bot/                       ← TODO el bot grammY vive acá (modularizado, ~28 archivos)
+│   │   ├── index.ts               ← registerBotHandlers(bot, deps) — orquesta el resto
+│   │   ├── deps.ts                ← BotDeps (supabase, bot, genAI, genAI2, dashboardUrl, botToken)
+│   │   ├── sessions.ts            ← Maps en memoria (report/recurrence/input/intent) + sweeps
+│   │   ├── extraction.ts          ← fotos/PDF/álbumes: save-first ticket + batch + line editor
+│   │   ├── lineMontoEdit.ts       ← store "próximo texto = nuevo monto de renglón"
+│   │   ├── inlineMode.ts          ← modo inline
+│   │   ├── voiceIntent.ts + intentSlots.ts ← router de intents voz/texto + normalización de slots
+│   │   ├── menu.ts / keyboards.ts / quickActions.ts / welcome.ts / utils.ts
+│   │   ├── maintenance-gate.ts    ← assertBotWritable(ctx) — gate de escritura en mantenimiento
+│   │   ├── recurrentesMgmt.ts / reminderPrefs.ts / reminderText.ts
+│   │   └── commands/              ← movements, movements-callbacks, entities, reports, recurring, reminder, help, cancel
 │   ├── components/
-│   │   ├── AdminPanel.tsx
-│   │   ├── AppLoadingScreen.tsx
-│   │   ├── BotConnectionPanel.tsx
+│   │   ├── AdminPanel.tsx         ← gestión usuarios/invitaciones + email settings (superadmin)
+│   │   ├── PersonasPanel.tsx      ← vista unificada de invitaciones/miembros
 │   │   ├── CollaborationPanel.tsx ← toggles permisos + invitación Telegram + vínculos
-│   │   ├── LoginScreen.tsx
-│   │   ├── ThemeToggle.tsx
-│   │   ├── WelcomeWizard.tsx      ← wizard 3 pasos onboarding (bienvenida, tour demo, Telegram opcional)
+│   │   ├── CommandPalette.tsx / CargaModal.tsx / HelpModal.tsx / TourModal.tsx
+│   │   ├── BiometricGate.tsx / PwaInstall.tsx / MaintenanceBanner.tsx
+│   │   ├── BotConnectionPanel.tsx / LoginScreen.tsx / ThemeToggle.tsx / BrandMark.tsx
+│   │   ├── WelcomeWizard.tsx / WelcomeJoined.tsx / AppLoadingScreen.tsx / ScrollToTop.tsx
 │   │   └── dashboard/
-│   │       ├── Charts.tsx
-│   │       ├── LoadingStates.tsx
-│   │       ├── primitives.tsx
-│   │       └── tabs/
-│   │           ├── EmpresasTab.tsx
-│   │           ├── GastosTab.tsx
-│   │           ├── InformesTab.tsx  ← Drive UI + historial con links
-│   │           ├── IngresosTab.tsx
-│   │           ├── MovimientosTab.tsx
-│   │           └── ResumenTab.tsx
+│   │       ├── Charts.tsx / LoadingStates.tsx / primitives.tsx
+│   │       └── tabs/              ← Resumen, Empresas, Gastos, Ingresos, Informes, Movimientos, Recurrentes, Configuración
 │   ├── dashboard/
-│   │   ├── companyAssignment.ts
-│   │   └── summary.ts
-│   ├── reports/
-│   │   └── shared.ts
+│   │   ├── companyAssignment.ts / summary.ts
+│   │   └── exportCsv.ts           ← CSV client-side (share/download) con guard formula injection
+│   ├── reports/shared.ts
 │   ├── server/
-│   │   ├── app.ts                 ← createApp + monta routers (incluye crons)
-│   │   ├── cronJobs/              ← lógica pura de crons (sin HTTP)
-│   │   │   ├── reminders.ts       ← runDailyReminders({supabase, bot}) → {sent}
-│   │   │   └── recurrentes.ts     ← runRecurrentes({supabase, bot}) → {processed}
-│   │   ├── routes/
-│   │   │   ├── crons.ts           ← createCronsRouter + requireCronSecret middleware
-│   │   │   └── ...                ← otros routers (admin, dashboard, drive, empresas, informes, maintenance, me, movimientos, presupuestos, telegram)
-│   │   ├── demoSeed.ts            ← ensurePersonalDashboard() + seedDemoData() + purgeDemoData()
-│   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-CBC encrypt/decrypt
-│   │   ├── email.ts               ← sendAppInvitationEmail() + sendDashboardInvitationEmail() via Brevo
-│   │   ├── env.ts
-│   │   ├── errors.ts
+│   │   ├── app.ts                 ← createApp + middlewares (CORS, rate limit, maintenance guard) + monta routers
+│   │   ├── contracts.ts           ← tipos compartidos (AppSession, DataAccessScope, SupabaseLike…)
+│   │   ├── dataScope.ts           ← resolveDataAccessScope + applyDataScope + buildWriteOwnership
+│   │   ├── scopePermissions.ts    ← canConnectDrive/canExportDrive/canDeleteOthers/… (HTTP)
+│   │   ├── permissions.ts         ← can(member, action) (Telegram)
+│   │   ├── audit.ts               ← logEntityMutation + empresa delete backup + report exports
+│   │   ├── invitations.ts         ← syncPendingDashboardInvitations (chequea expires_at) + listDashboardMembers
+│   │   ├── rateLimit.ts           ← createRateLimiter + tiers + clientIp() (último hop XFF)
+│   │   ├── cronJobs/              ← reminders.ts + recurrentes.ts (lógica pura, sin HTTP)
+│   │   ├── routes/                ← admin, categorias, crons, dashboard, drive, empresas, imageExtract,
+│   │   │                            informes, maintenance, me, movimientos, presupuestos, telegram
+│   │   ├── demoSeed.ts / backup.ts / zip.ts / listCap.ts
+│   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-GCM (lee legacy CBC)
+│   │   ├── email.ts / emailLog.ts / emailSettings.ts / brevoSenders.ts
+│   │   ├── alertSuperadmin.ts     ← alertas operativas throttled al superadmin
+│   │   ├── env.ts / errors.ts
 │   │   ├── extractionReview.ts    ← inline keyboard confirm/edit flow para fotos; TTL 10min
-│   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT para fotos
-│   │   ├── inviteReminders.ts     ← processInviteReminders (Cloud Scheduler 10h UTC)
-│   │   ├── maintenance.ts         ← reconcileTransitions + cache + hydrate
-│   │   ├── maintenanceNotify.ts   ← fan-out Brevo + Telegram
+│   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT + items
+│   │   ├── geminiWithFallback.ts  ← fallback a GEMINI_API_KEY_2 en 429/503
+│   │   ├── imageExtract.ts        ← extracción de imagen para la web (/api/extract-image)
+│   │   ├── inviteReminders.ts / maintenance.ts / maintenanceNotify.ts
 │   │   ├── mediaGroupBuffer.ts    ← debounce genérico para álbumes Telegram (1500ms)
-│   │   ├── permissions.ts         ← can(member, action) helper
-│   │   ├── reportExports.ts
-│   │   ├── telegramAccess.ts      ← resolveViaNewLinks() + fallback legacy
-│   │   ├── telegramAudio.ts       ← extracción desde audio/voz
-│   │   ├── telegramCompanyResolution.ts ← resolución de empresa por nombre + CUIT
-│   │   ├── telegramMedia.ts       ← extractFromPhoto() + extractFromMultiplePhotos() + inferMediaMimeType()
-│   │   └── validation.ts          ← PendingExtractionData + isPendingExtractionData + parseReportExportRequest
+│   │   ├── recurrentes.ts         ← computeNextRun + frecuencias
+│   │   ├── reportExports.ts / reportBotHelpers.ts
+│   │   ├── telegramAccess.ts      ← resolveViaNewLinks() + fallback legacy + can*ViaTelegram
+│   │   ├── telegramAudio.ts / telegramMedia.ts
+│   │   ├── telegramCompanyResolution.ts / telegramCategoryResolution.ts
+│   │   ├── botConnection.ts
+│   │   └── validation.ts          ← parsers de request + caps de input
 │   └── services/
-│       ├── api.ts
-│       └── supabase.ts
-├── tests/
-│   ├── api.test.ts
-│   ├── auth-redirect.test.ts
-│   ├── company-assignment.test.ts
-│   ├── crons.test.ts              ← endpoints HTTP /api/crons/* (auth + dispatch)
-│   ├── cronJobs/
-│   │   ├── reminders.test.ts      ← runDailyReminders unit tests (bot null, hour match, errors)
-│   │   └── recurrentes.test.ts    ← runRecurrentes unit tests (frecuencias, bot null, idempotencia)
-│   ├── dashboardSummary.test.ts
-│   ├── env.test.ts
-│   ├── mediaGroupBuffer.test.ts   ← 5 tests del debounce buffer
-│   ├── permissions.test.ts        ← 11 tests de can()
-│   ├── summary.test.ts
-│   ├── telegramAccess.test.ts     ← incluye tests multiusuario
-│   ├── telegramAudio.test.ts
-│   └── telegramMedia.test.ts      ← 14 tests: inferMediaMimeType, parse functions, extractFromPhoto mock
-├── db/                                   ← SQL fuera del root (housekeeping 2026-06-05)
-│   ├── schema.sql                        ← snapshot completo del schema (antes supabase_schema.sql)
-│   └── patches/                          ← patches históricos aplicados a prod a mano
-│       └── *.sql                         (ver tabla "Base de datos y SQL" + db/patches/README.md)
-├── supabase/migrations/                  ← migraciones gestionadas por el Supabase CLI
-├── firebase.json
-├── .firebaserc
-├── Dockerfile
+│       ├── api.ts / supabase.ts / extractIntent.ts / labels.ts
+├── tests/                         ← ~45 archivos, runner nativo de Node (conteo en vivo, no acá)
+├── e2e/                           ← Playwright (smoke login)
+├── db/                            ← schema.sql + patches/ históricos (NO re-aplicar)
+├── supabase/migrations/           ← migraciones gestionadas por el Supabase CLI
+├── firebase.json / .firebaserc
+├── Dockerfile                     ← npm ci --omit=dev (tsx vive en dependencies)
 ├── package.json
 └── .env.example
 ```
@@ -262,11 +253,15 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 ## Arquitectura lógica actual
 
 ### 6.1 Separación principal
-- `server.ts` → runtime wiring, bot, cron, integración real
-- `src/server/app.ts` → app Express testeable
-- `src/server/permissions.ts` → `can(member, action)` — permisos granulares editor/viewer
-- `src/server/drive.ts` → Drive OAuth helpers + AES-256-CBC encrypt/decrypt
-- `src/server/email.ts` → notificaciones de invitación vía Resend
+- `server.ts` → SOLO wiring: env, clientes (Supabase/Gemini), construye `BotDeps`, llama `registerBotHandlers` y `createApp`, listen + graceful shutdown
+- `src/bot/` → TODO el bot grammY (handlers, sesiones, extracción, intents de voz) — entrada: `src/bot/index.ts`
+- `src/server/app.ts` → app Express testeable (middlewares + monta routers de `src/server/routes/`)
+- `src/server/dataScope.ts` → scope resolver multi-tenant (`resolveDataAccessScope`, `applyDataScope`, `buildWriteOwnership`)
+- `src/server/scopePermissions.ts` → permisos granulares HTTP (`canDeleteOthers`, `canExportDrive`, …)
+- `src/server/permissions.ts` → `can(member, action)` — permisos granulares editor/viewer (Telegram)
+- `src/server/audit.ts` → `logEntityMutation` + backups de borrado de empresa (best-effort, loguea fallos)
+- `src/server/drive.ts` → Drive OAuth helpers + AES-256-GCM encrypt/decrypt (lee tokens legacy CBC)
+- `src/server/email.ts` → notificaciones de invitación vía Brevo
 - `src/server/errors.ts` → helper compartido para errores de schema Supabase
 - `src/server/extractionReview.ts` → store en memoria + tarjeta revisión + inline keyboard para fotos
 - `src/server/gemini.ts` → prompts texto (whitelist intents) + prompts foto (RECEIPT/HANDWRITTEN/MULTI_RECEIPT)
@@ -302,7 +297,7 @@ Roles de dashboard:
 - `canConnectDrive(scope)`: sync — solo `membershipRole === null` (legacy) o `membershipRole === 'owner'`
 - `canExportDrive(session, scope)`: async — `canConnectDrive` OR editor con `export_drive: true`
 - `resolveDriveOwnerUserId(session, scope)`: editor usa el token del owner (lookup en `dashboard_members`)
-- tokens OAuth cifrados con AES-256-CBC usando `TOKEN_ENCRYPTION_KEY` (env)
+- tokens OAuth cifrados con AES-256-GCM usando `TOKEN_ENCRYPTION_KEY` (env); tokens pre-migración en AES-256-CBC se siguen leyendo (formato 2 partes vs 3)
 - `pendingDriveOAuthStates`: Map en memoria con sweep cada 5 min
 - callback `/api/drive/callback` no requiere sesión (redirect desde Google)
 
@@ -490,7 +485,7 @@ Auth: header `X-Cron-Secret` con comparación timing-safe (`crypto.timingSafeEqu
 
 ## Bot de Telegram — estado real
 
-Runtime: `server.ts`
+Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y llama `registerBotHandlers`). Entrada: `src/bot/index.ts`; el catch-all `message:text` vive en `src/bot/commands/movements-callbacks.ts` y se registra ÚLTIMO.
 
 ### Capacidades principales
 - `/start` — vinculación con token (owner: one-shot; editor/viewer: doble-factor)
@@ -628,6 +623,26 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | Audit log bulk delete: UUID sentinel + entityType `movimientos_bulk` | `src/server/app.ts` |
 | `DASHBOARD_URL` ausente: warning al arrancar si Drive habilitado | `src/server/app.ts` |
 
+### Hardening post-review 2026-06-09/10 (commits a4b9249 + siguiente)
+| Fix | Ubicación |
+|-----|-----------|
+| Invitaciones pending vencidas NO se auto-aceptan al loguear (`expires_at` chequeado) | `src/server/invitations.ts` |
+| Webhook Telegram exento del maintenance write guard (el bot responde "en mantenimiento" él mismo) | `src/server/app.ts` |
+| Audit log + empresa backup chequean envelope `{error}` de supabase-js (no tira throw en inserts) | `src/server/audit.ts` |
+| Bot y rutas personas: chequeo de error antes de reportar "✅" | `src/bot/*`, `routes/dashboard.ts` |
+| `invite_token`/`invite_url` solo visibles para superadmin o el admin creador | `routes/admin.ts`, `routes/dashboard.ts` |
+| Rate limit keyea por el ÚLTIMO hop de `X-Forwarded-For` (el primero es spoofable) | `src/server/rateLimit.ts` (`clientIp()`) |
+| CSV (server + web): guard de formula injection (prefijo `'`), números intactos | `reportExports.ts`, `src/dashboard/exportCsv.ts` |
+| Tokens Drive: AES-256-GCM (autenticado); legacy CBC se sigue leyendo | `src/server/drive.ts` |
+| Webhook secret con `crypto.timingSafeEqual` | `routes/telegram.ts` |
+| Recurrentes PATCH/toggle/DELETE: ownership check (`canEditOthers`/`canDeleteOthers`) | `routes/movimientos.ts` |
+| Renglones de ticket (bot): ownership check del movimiento padre en mledit/mldel/monto | `src/bot/extraction.ts`, `movements-callbacks.ts` |
+| `er:cancel` valida `chatId` como el resto de los handlers `er:*` | `src/bot/extraction.ts` |
+| POST /api/admin/invitations regenera `invite_token` (el upsert no revive tokens revocados) | `routes/admin.ts` |
+| DELETE /api/me: owner con otros miembros activos → 409 (no deja dashboards sin owner) | `routes/me.ts` |
+| Caps de input en save/update de movimientos (50 items, monto máx, longitudes) | `src/server/validation.ts` |
+| Dockerfile `npm ci --omit=dev` (tsx movido a dependencies) | `Dockerfile`, `package.json` |
+
 ### Deuda de seguridad restante (baja prioridad)
 - (ninguna pendiente)
 
@@ -653,7 +668,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 6. soft delete de empresas Y movimientos — nunca hard delete en rutas normales
 7. Drive usa `drive.file` scope (no `drive` completo)
 8. solo `owner` puede *conectar* Drive; editor con permiso puede *exportar*
-9. tokens OAuth cifrados con AES-256-CBC stdlib, sin deps externos
+9. tokens OAuth cifrados con AES-256-GCM stdlib (autenticado), sin deps externos — tokens legacy CBC se siguen leyendo (2026-06-10)
 10. año en informes = rango `YYYY-01-01 / YYYY-12-31` (no type nativo)
 11. presupuesto: UI oculta con `{false && ...}`, datos y API intactos
 12. **no existe fallback legacy en `getScopeEntityById`** — eliminado 2026-05-03
@@ -674,25 +689,17 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 ## Archivos clave para abrir primero
 
 - `CLAUDE.md`
-- `src/DashboardApp.tsx`
-- `src/server/app.ts`
-- `src/server/permissions.ts`
-- `src/server/telegramAccess.ts`
-- `src/server/telegramMedia.ts`
-- `src/server/extractionReview.ts`
-- `src/server/mediaGroupBuffer.ts`
-- `src/server/drive.ts`
-- `src/server/gemini.ts`
-- `src/server/email.ts`
-- `src/server/reportExports.ts`
-- `src/server/routes/crons.ts` ← endpoints `/api/crons/*` + auth middleware
-- `src/server/cronJobs/reminders.ts`
-- `src/server/cronJobs/recurrentes.ts`
-- `src/reports/shared.ts`
-- `src/services/api.ts`
-- `server.ts`
-- `tests/api.test.ts`
-- `tests/crons.test.ts`
+- `server.ts` ← wiring (corto, leer primero para entender el armado)
+- `src/server/app.ts` ← middlewares + montaje de routers
+- `src/server/dataScope.ts` + `src/server/scopePermissions.ts` ← scoping y permisos HTTP
+- `src/server/permissions.ts` + `src/server/telegramAccess.ts` ← permisos Telegram
+- `src/bot/index.ts` ← entrada del bot; de ahí a `commands/movements.ts` y `extraction.ts`
+- `src/server/routes/movimientos.ts` ← rutas principales de negocio
+- `src/server/gemini.ts` + `src/server/geminiWithFallback.ts`
+- `src/server/drive.ts` / `src/server/email.ts` / `src/server/reportExports.ts`
+- `src/server/routes/crons.ts` + `src/server/cronJobs/*`
+- `src/DashboardApp.tsx` + `src/services/api.ts`
+- `tests/api.test.ts` + `tests/crons.test.ts`
 
 ---
 

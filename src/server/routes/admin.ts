@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import express, { type RequestHandler } from "express";
 import type { AppSession, AppUserStatus, SupabaseLike } from "../contracts.ts";
 import type { ActiveSender } from "../emailSettings.ts";
@@ -306,6 +307,9 @@ export function createAdminRouter(deps: AdminDeps) {
         status: "pending",
         invited_by: session.userId,
         expires_at: expiresAt,
+        // Always mint a fresh token: the upsert (onConflict email) would
+        // otherwise resurrect the token of a previously revoked/expired invite.
+        invite_token: randomBytes(24).toString("hex"),
       };
 
       const { data, error } = await supabase

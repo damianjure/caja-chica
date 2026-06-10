@@ -6,6 +6,7 @@ import {
   applyTelegramDataScope,
   buildTelegramWriteOwnership,
   canEditMovementViaTelegram,
+  canDeleteMovementViaTelegram,
   type TelegramLinkRecord,
 } from "../server/telegramAccess.ts";
 import { extractFromMultiplePhotos, extractReceiptWithItems, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
@@ -34,8 +35,39 @@ const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: stri
 
 // --- Album batch (spec H): one summary + "Guardar todos" instead of asking the
 // empresa per ticket. Maps a batchId to its pending-extraction ids (in-memory,
-// single-instance invariant). ---
-const pendingBatches = new Map<string, string[]>();
+// single-instance invariant). TTL'd + swept like the other bot Maps so
+// abandoned batches don't accumulate. ---
+const BATCH_TTL_MS = 10 * 60_000;
+const pendingBatches = new Map<string, { ids: string[]; expiresAt: number }>();
+
+const pendingBatchesSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of pendingBatches) {
+    if (now > entry.expiresAt) pendingBatches.delete(key);
+  }
+}, 5 * 60_000);
+const maybeUnrefBatches = (pendingBatchesSweep as { unref?: () => void }).unref;
+if (typeof maybeUnrefBatches === "function") maybeUnrefBatches.call(pendingBatchesSweep);
+
+function getPendingBatchIds(batchId: string): string[] | null {
+  const entry = pendingBatches.get(batchId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { pendingBatches.delete(batchId); return null; }
+  return entry.ids;
+}
+
+/** Fetch the parent movement of a ticket line within the caller's scope. */
+async function getLineParentMovement(
+  supabase: BotDeps["supabase"],
+  linked: TelegramLinkRecord,
+  movimientoId: string,
+): Promise<{ owner_user_id?: string | null; created_by_user_id?: string | null } | null> {
+  const { data } = await applyTelegramDataScope(
+    supabase.from("movimientos").select("id, owner_user_id, created_by_user_id").is("deleted_at", null),
+    linked,
+  ).eq("id", movimientoId).limit(1);
+  return data?.[0] ?? null;
+}
 
 function fmtMonto(d: PendingExtraction["data"]): string {
   return d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "❓";
@@ -294,7 +326,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                 batchIds.push(eEntry.id);
               }
               const batchId = `b_${firstCtx.chat.id}_${Date.now()}`;
-              pendingBatches.set(batchId, batchIds);
+              pendingBatches.set(batchId, { ids: batchIds, expiresAt: Date.now() + BATCH_TTL_MS });
               await firstCtx.reply(buildBatchSummaryText(batchIds), {
                 parse_mode: "Markdown",
                 reply_markup: buildBatchKeyboard(batchId, batchIds),
@@ -459,6 +491,13 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^er:cancel:(.+)$/, async (ctx) => {
     const extractionId = ctx.match[1];
+    const entry = getPendingExtraction(extractionId);
+    // Same chat-ownership check as every other er:* handler — a forged
+    // callback from another chat must not cancel someone else's session.
+    if (entry && entry.chatId !== ctx.chat?.id) {
+      await ctx.answerCallbackQuery("Esta sesión ya venció.");
+      return;
+    }
     deletePendingExtraction(extractionId);
     await ctx.answerCallbackQuery("Cancelado");
     await ctx.editMessageText("❌ Registro cancelado.");
@@ -470,7 +509,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     const linked = await requireTelegramCan(supabase, ctx, "write_movimiento");
     if (!linked) return;
     const batchId = ctx.match[1];
-    const ids = pendingBatches.get(batchId);
+    const ids = getPendingBatchIds(batchId);
     if (!ids) { await ctx.answerCallbackQuery("Este lote ya venció o fue guardado."); return; }
     await ctx.answerCallbackQuery("✅ Guardando...");
     let saved = 0;
@@ -507,7 +546,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
 
   bot.callbackQuery(/^eb:cancel:(.+)$/, async (ctx) => {
     const batchId = ctx.match[1];
-    const ids = pendingBatches.get(batchId) ?? [];
+    const ids = getPendingBatchIds(batchId) ?? [];
     for (const id of ids) deletePendingExtraction(id);
     pendingBatches.delete(batchId);
     await ctx.answerCallbackQuery("Cancelado");
@@ -711,6 +750,11 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     ).eq("id", lineId).limit(1);
     const line = lrows?.[0];
     if (!line) { await ctx.answerCallbackQuery("Renglón no encontrado."); return; }
+    const parent = await getLineParentMovement(supabase, linked, line.movimiento_id);
+    if (!parent || !canEditMovementViaTelegram(parent, linked)) {
+      await ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
+      return;
+    }
     setPendingLineMontoEdit(ctx.chat.id, line.id, line.movimiento_id, line.descripcion);
     await ctx.answerCallbackQuery();
     await ctx.reply(`✏️ Mandame el nuevo monto de *${escapeMd(line.descripcion)}*:`, { parse_mode: "Markdown" });
@@ -728,10 +772,20 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     ).eq("id", lineId).limit(1);
     const line = lrows?.[0];
     if (!line) { await ctx.answerCallbackQuery("Renglón no encontrado."); return; }
-    await applyTelegramDataScope(
+    const parent = await getLineParentMovement(supabase, linked, line.movimiento_id);
+    if (!parent || !canDeleteMovementViaTelegram(parent, linked)) {
+      await ctx.answerCallbackQuery("Sin permiso para borrar movimientos de otros.");
+      return;
+    }
+    const { error: lineDelErr } = await applyTelegramDataScope(
       supabase.from("movimiento_lineas").update({ deleted_at: new Date().toISOString() }).eq("id", lineId),
       linked,
     );
+    if (lineDelErr) {
+      console.error("mldel update error:", lineDelErr);
+      await ctx.answerCallbackQuery("❌ No pude borrar el renglón.");
+      return;
+    }
     await recomputeTelegramTicketTotal(supabase, line.movimiento_id, linked);
     await ctx.answerCallbackQuery("Renglón borrado.");
     await renderLineEditor(ctx, supabase, linked, line.movimiento_id, true);

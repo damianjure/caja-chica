@@ -318,7 +318,10 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!canEditMovementViaTelegram(target, linked)) {
       return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
     }
-    const { error: catError } = await supabase.from("movimientos").update({ categoria: category }).eq("id", movId);
+    const { error: catError } = await applyTelegramDataScope(
+      supabase.from("movimientos").update({ categoria: category }).eq("id", movId),
+      linked,
+    );
     if (catError) {
       console.error("set_cat update error:", catError);
       return ctx.answerCallbackQuery("❌ No pude actualizar la categoría.");
@@ -402,7 +405,10 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
     if (!canEditMovementViaTelegram(target, linked)) {
       return ctx.answerCallbackQuery("Sin permiso para editar movimientos de otros.");
     }
-    const { error: empError } = await supabase.from("movimientos").update({ empresa_nombre: empresa }).eq("id", movId);
+    const { error: empError } = await applyTelegramDataScope(
+      supabase.from("movimientos").update({ empresa_nombre: empresa }).eq("id", movId),
+      linked,
+    );
     if (empError) {
       console.error("set_emp update error:", empError);
       return ctx.answerCallbackQuery("❌ No pude actualizar la empresa.");
@@ -479,10 +485,26 @@ export function registerMovementCallbacks(bot: Bot, deps: BotDeps) {
       if (!linked) { clearPendingLineMontoEdit(ctx.chat.id); return; }
       const n = parseFloat(text.trim().replace(",", "."));
       if (isNaN(n) || n < 0) { await ctx.reply("❌ Monto inválido. Mandame un número positivo:"); return; }
-      await applyTelegramDataScope(
+      // Ownership gate on the parent movement — mirrors the web PATCH lineas check.
+      const { data: parentRows } = await applyTelegramDataScope(
+        supabase.from("movimientos").select("id, owner_user_id, created_by_user_id").is("deleted_at", null),
+        linked,
+      ).eq("id", pendingLine.movId).limit(1);
+      const parentMov = parentRows?.[0];
+      if (!parentMov || !canEditMovementViaTelegram(parentMov, linked)) {
+        clearPendingLineMontoEdit(ctx.chat.id);
+        await ctx.reply("🚫 Sin permiso para editar movimientos de otros.");
+        return;
+      }
+      const { error: lineUpdErr } = await applyTelegramDataScope(
         supabase.from("movimiento_lineas").update({ monto: Math.abs(n) }).eq("id", pendingLine.lineId),
         linked,
       );
+      if (lineUpdErr) {
+        console.error("pendingLine monto update error:", lineUpdErr);
+        await ctx.reply("❌ No pude actualizar el renglón. Intentá de nuevo.");
+        return;
+      }
       // Recompute the parent total inline (avoids a cross-module import cycle).
       const { data: ls } = await applyTelegramDataScope(
         supabase.from("movimiento_lineas").select("monto").is("deleted_at", null),

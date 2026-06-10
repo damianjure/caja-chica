@@ -1,6 +1,6 @@
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike, GenAILike } from "../contracts.ts";
-import { answerQuestion, fetchMovimientosForAsk } from "../askAgent.ts";
+import { answerQuestion, fetchMovimientosForAsk, fetchRecurrentesForAsk } from "../askAgent.ts";
 import { GeminiUnavailableError } from "../geminiWithFallback.ts";
 
 export interface AskDeps {
@@ -36,14 +36,17 @@ export function createAskRouter(deps: AskDeps) {
 
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      const movimientos = await fetchMovimientosForAsk(supabase, (query) =>
-        applyDataScope(query, session, scope),
-      );
+      const applyScope = (query: any) => applyDataScope(query, session, scope);
+      const [movimientos, recurrentes] = await Promise.all([
+        fetchMovimientosForAsk(supabase, applyScope),
+        fetchRecurrentesForAsk(supabase, applyScope),
+      ]);
 
       const answer = await answerQuestion({
         genAI,
         genAI2,
         movimientos,
+        recurrentes,
         question: payload.question,
         history: payload.history,
       });

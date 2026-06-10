@@ -6,9 +6,11 @@ import {
   executeAskTool,
   answerQuestion,
   fetchMovimientosForAsk,
+  fetchRecurrentesForAsk,
   ASK_MAX_TURNS,
   ASK_FALLBACK_ANSWER,
   type AskMovimiento,
+  type AskRecurrente,
 } from "../src/server/askAgent.ts";
 
 const TODAY = new Date("2026-06-10T12:00:00.000Z");
@@ -161,6 +163,119 @@ test("get_resumen_mensual: agrupa por mes", () => {
 test("tool desconocida → error", () => {
   const r = executeAskTool("drop_table", {}, MOVS, TODAY) as any;
   assert.equal(r.error, "unknown_tool");
+});
+
+// --- calcular (A) ---
+
+test("calcular: porcentaje sobre un total", () => {
+  const r = executeAskTool("calcular", { op: "porcentaje", base: 11000, pct: 21 }, MOVS, TODAY) as any;
+  assert.equal(r.resultado, 2310);
+});
+
+test("calcular: diferencia con relativo en %", () => {
+  const r = executeAskTool("calcular", { op: "diferencia", a: 8000, b: 10000 }, MOVS, TODAY) as any;
+  assert.equal(r.resultado, -2000);
+  assert.equal(r.relativo_pct, -20);
+});
+
+test("calcular: ratio con guard de división por cero", () => {
+  const r = executeAskTool("calcular", { op: "ratio", a: 5, b: 0 }, MOVS, TODAY) as any;
+  assert.equal(r.resultado, null);
+});
+
+test("calcular: promedio", () => {
+  const r = executeAskTool("calcular", { op: "promedio", valores: [10, 20, 30] }, MOVS, TODAY) as any;
+  assert.equal(r.resultado, 20);
+});
+
+test("calcular: promedio sobre lista vacía → 0", () => {
+  const r = executeAskTool("calcular", { op: "promedio", valores: [] }, MOVS, TODAY) as any;
+  assert.equal(r.resultado, 0);
+});
+
+test("calcular: operación desconocida → error", () => {
+  const r = executeAskTool("calcular", { op: "raiz" }, MOVS, TODAY) as any;
+  assert.equal(r.error, "unknown_op");
+});
+
+// --- get_recurrentes (B) ---
+
+const RECURRENTES: AskRecurrente[] = [
+  { descripcion: "Netflix", monto: 5000, moneda: "ARS", frecuencia: "semanal", categoria: "Suscripciones", empresa_nombre: "Personal", last_processed: "2026-06-08T00:00:00.000Z", day_of_month: null, tipo: "egreso" },
+  { descripcion: "Dominio web", monto: 12000, moneda: "ARS", frecuencia: "anual", categoria: "Servicios", empresa_nombre: "Personal", last_processed: "2026-03-01T00:00:00.000Z", day_of_month: null, tipo: "egreso" },
+];
+
+test("get_recurrentes: mapea próximo pago y ordena por más cercano", () => {
+  const r = executeAskTool("get_recurrentes", {}, MOVS, TODAY, RECURRENTES) as any;
+  assert.equal(r.length, 2);
+  assert.equal(r[0].descripcion, "Netflix");
+  assert.equal(r[0].proximo_pago, "2026-06-15");
+  assert.equal(r[0].monto, 5000);
+  assert.equal(r[1].descripcion, "Dominio web");
+  assert.equal(r[1].proximo_pago, "2027-03-01");
+});
+
+test("get_recurrentes: ventana 'dias' filtra los que vencen pronto", () => {
+  const r = executeAskTool("get_recurrentes", { dias: 7 }, MOVS, TODAY, RECURRENTES) as any;
+  assert.equal(r.length, 1);
+  assert.equal(r[0].descripcion, "Netflix");
+});
+
+test("get_recurrentes: last_processed null → se activa esta noche, entra en la ventana", () => {
+  const recs: AskRecurrente[] = [
+    { descripcion: "Luz", monto: 3000, moneda: "ARS", frecuencia: "mensual", last_processed: null, day_of_month: null, tipo: "egreso" },
+  ];
+  const r = executeAskTool("get_recurrentes", { dias: 7 }, MOVS, TODAY, recs) as any;
+  assert.equal(r.length, 1);
+  assert.equal(r[0].proximo_pago, null);
+  assert.equal(r[0].cuando, "se activa esta noche");
+});
+
+test("get_recurrentes: sin recurrentes → lista vacía", () => {
+  const r = executeAskTool("get_recurrentes", {}, MOVS, TODAY, []) as any;
+  assert.deepEqual(r, []);
+});
+
+test("answerQuestion: get_recurrentes usa los recurrentes pasados", async () => {
+  const genAI = fakeGenAI([
+    '{"tool": "get_recurrentes", "args": {}}',
+    '{"answer": "Tu próximo pago es Netflix el 2026-06-15."}',
+  ]);
+  const answer = await answerQuestion({
+    genAI: genAI as any,
+    movimientos: MOVS,
+    recurrentes: RECURRENTES,
+    question: "¿próximo pago?",
+    today: TODAY,
+  });
+  assert.equal(answer, "Tu próximo pago es Netflix el 2026-06-15.");
+  assert.ok(genAI.calls[1].contents.includes("Netflix"));
+  assert.ok(genAI.calls[1].contents.includes("2026-06-15"));
+});
+
+test("fetchRecurrentesForAsk: filtra is_active + deleted_at y aplica scope", async () => {
+  const seen: Array<[string, string, unknown]> = [];
+  const builder: any = {
+    select: () => builder,
+    eq: (c: string, v: unknown) => { seen.push(["eq", c, v]); return builder; },
+    is: (c: string, v: unknown) => { seen.push(["is", c, v]); return builder; },
+  };
+  const supabase: any = { from: () => builder };
+  const rows = await fetchRecurrentesForAsk(supabase, (q: any) => {
+    assert.equal(q, builder);
+    return Promise.resolve({ data: [{ descripcion: "X", monto: 1, moneda: "ARS", frecuencia: "mensual" }], error: null });
+  });
+  assert.equal(rows.length, 1);
+  assert.ok(seen.some((s) => s[1] === "is_active" && s[2] === true));
+  assert.ok(seen.some((s) => s[1] === "deleted_at" && s[2] === null));
+});
+
+test("fetchRecurrentesForAsk: propaga error de Supabase", async () => {
+  const builder: any = { select: () => builder, eq: () => builder, is: () => builder };
+  const supabase: any = { from: () => builder };
+  await assert.rejects(() =>
+    fetchRecurrentesForAsk(supabase, () => Promise.resolve({ data: null, error: { message: "boom" } })),
+  );
 });
 
 // --- answerQuestion (loop) ---

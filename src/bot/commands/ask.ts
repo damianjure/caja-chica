@@ -2,7 +2,7 @@ import type { Bot, Context } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import { requireTelegramCan, sendTyping, splitForTelegram } from "../utils.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
-import { answerQuestion, fetchMovimientosForAsk } from "../../server/askAgent.ts";
+import { answerQuestion, fetchMovimientosForAsk, fetchRecurrentesForAsk } from "../../server/askAgent.ts";
 import { GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
 
 /**
@@ -18,13 +18,16 @@ export async function runAskQuestion(
 ) {
   sendTyping(ctx);
   try {
-    const movimientos = await fetchMovimientosForAsk(deps.supabase, (query) =>
-      applyTelegramDataScope(query, linked),
-    );
+    const applyScope = (query: any) => applyTelegramDataScope(query, linked);
+    const [movimientos, recurrentes] = await Promise.all([
+      fetchMovimientosForAsk(deps.supabase, applyScope),
+      fetchRecurrentesForAsk(deps.supabase, applyScope),
+    ]);
     const answer = await answerQuestion({
       genAI: deps.genAI,
       genAI2: deps.genAI2,
       movimientos,
+      recurrentes,
       question,
     });
     for (const chunk of splitForTelegram(answer)) {

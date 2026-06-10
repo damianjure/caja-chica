@@ -1,5 +1,6 @@
 import type { GenAILike, SupabaseLike } from "./contracts.ts";
 import { geminiGenerateText } from "./geminiWithFallback.ts";
+import { computeNextRun, relativeRunLabel, type Frecuencia } from "./recurrentes.ts";
 
 /**
  * LLM agent that answers natural-language questions about the user's
@@ -22,6 +23,18 @@ export interface AskMovimiento {
   descripcion?: string | null;
 }
 
+export interface AskRecurrente {
+  descripcion?: string | null;
+  monto: number | string;
+  moneda: string;
+  tipo?: string | null;
+  frecuencia: string;
+  categoria?: string | null;
+  empresa_nombre?: string | null;
+  last_processed?: string | null;
+  day_of_month?: number | null;
+}
+
 export const ASK_MAX_TURNS = 4;
 
 export const ASK_FALLBACK_ANSWER =
@@ -39,6 +52,11 @@ HERRAMIENTAS DISPONIBLES:
    args: { "period"?, "from"?, "to"?, "empresa"?, "categoria"?, "buscar"?: <texto libre>, "tipo"?: "ingreso"|"egreso", "moneda"?: "ARS"|"USD", "limit"? }
 4. get_resumen_mensual — serie de los últimos 6 meses: ingresos/gastos/neto por moneda.
    args: {}
+5. get_recurrentes — pagos recurrentes activos con su próximo pago (fecha + cuándo).
+   args: { "dias"?: <número: solo los que vencen dentro de N días> }
+6. calcular — aritmética determinística sobre números que YA obtuviste de otra herramienta. NO calcules vos.
+   args: { "op": "porcentaje"|"diferencia"|"ratio"|"promedio", "base"?, "pct"?, "a"?, "b"?, "valores"?: [<números>] }
+   ej: 21% de 11000 → {"op":"porcentaje","base":11000,"pct":21}; diferencia → {"op":"diferencia","a":8000,"b":10000}
 
 FORMATO DE RESPUESTA — SIEMPRE un único objeto JSON, sin markdown, sin texto extra:
 - Para llamar una herramienta: {"tool": "<nombre>", "args": { ... }}
@@ -48,6 +66,8 @@ REGLAS:
 - "period" es relativo a HOY (te paso la fecha): "semana" = últimos 7 días, "mes" = mes calendario actual, "anio" = año actual.
 - Si la pregunta menciona un mes o fecha específica, usá "from"/"to".
 - Si el usuario pregunta por un concepto/ítem puntual que puede estar escrito en la descripción del gasto (ej: caramelos, nafta, un producto, una persona), usá "buscar" con ese texto — busca en descripción, categoría y empresa a la vez. Reservá "categoria" para rubros que sabés que son categorías y "empresa" para nombres de comercio.
+- Para porcentajes, diferencias, ratios o promedios NUNCA hagas la cuenta de cabeza: primero obtené el número con una herramienta (ej: get_saldos) y DESPUÉS llamá a "calcular" con esos números. Las monedas no se mezclan: ARS con ARS, USD con USD.
+- Para "próximo pago", "qué se vence", "recurrentes" o "servicios que pago seguido", usá get_recurrentes. Para "esta semana"/"este mes" pasá "dias" (7/30).
 - Puede haber CONVERSACIÓN PREVIA: interpretá preguntas de seguimiento ("¿y comparado con mayo?", "¿y en dólares?") en ese contexto, pero los números SIEMPRE salen de herramientas nuevas, nunca de respuestas anteriores.
 - Llamá UNA herramienta por turno. Cuando tengas los datos, respondé con "answer".
 - Si la pregunta no es sobre las finanzas del usuario, respondé con "answer" aclarando que solo respondés sobre sus movimientos.
@@ -182,8 +202,22 @@ function filterMovs(
   return applyEntityFilters(true);
 }
 
-function amountOf(m: AskMovimiento): number {
+function amountOf(m: { monto: number | string }): number {
   return typeof m.monto === "number" ? m.monto : parseFloat(String(m.monto)) || 0;
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+/** Round to 2 decimals, dropping float noise (e.g. 2310.0000001 → 2310). */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 // --- tools ---
@@ -263,13 +297,93 @@ function toolResumenMensual(movs: AskMovimiento[]): unknown {
   return [...map.values()].sort((a, b) => b.mes.localeCompare(a.mes)).slice(0, 6);
 }
 
+/**
+ * Deterministic arithmetic over numbers the model already pulled from other
+ * tools. The model copies values in; the math happens here, never in the LLM.
+ */
+function toolCalcular(args: Record<string, unknown>): unknown {
+  const op = typeof args.op === "string" ? args.op : "";
+  switch (op) {
+    case "porcentaje": {
+      const base = toNumber(args.base);
+      const pct = toNumber(args.pct);
+      return { op, base, pct, resultado: round2((base * pct) / 100) };
+    }
+    case "diferencia": {
+      const a = toNumber(args.a);
+      const b = toNumber(args.b);
+      return {
+        op,
+        resultado: round2(a - b),
+        relativo_pct: b !== 0 ? round2(((a - b) / Math.abs(b)) * 100) : null,
+      };
+    }
+    case "ratio": {
+      const a = toNumber(args.a);
+      const b = toNumber(args.b);
+      return { op, resultado: b !== 0 ? round2(a / b) : null };
+    }
+    case "promedio": {
+      const valores = Array.isArray(args.valores) ? args.valores.map(toNumber) : [];
+      const resultado = valores.length ? round2(valores.reduce((s, n) => s + n, 0) / valores.length) : 0;
+      return { op, resultado, n: valores.length };
+    }
+    default:
+      return { error: "unknown_op" };
+  }
+}
+
+const FRECUENCIAS = new Set<Frecuencia>(["diario", "semanal", "quincenal", "mensual", "anual"]);
+
+/**
+ * Active recurring payments with their next run date. `dias` narrows to the
+ * ones due within N days (null last_processed = "activates tonight", treated
+ * as imminent so it always shows in a window). Sorted soonest-first.
+ */
+function toolRecurrentes(recs: AskRecurrente[], args: Record<string, unknown>, today: Date): unknown {
+  const dias = typeof args.dias === "number" && args.dias > 0 ? Math.floor(args.dias) : null;
+  const windowEnd = dias !== null ? new Date(today.getTime() + dias * 24 * 3600 * 1000) : null;
+
+  const rows = recs.map((r) => {
+    const last = r.last_processed ? new Date(r.last_processed) : null;
+    const freq = FRECUENCIAS.has(r.frecuencia as Frecuencia) ? (r.frecuencia as Frecuencia) : "mensual";
+    const dom = typeof r.day_of_month === "number" ? r.day_of_month : null;
+    const nextRun = computeNextRun(freq, last, dom, today);
+    return {
+      nextRun,
+      out: {
+        descripcion: r.descripcion || "(sin descripción)",
+        monto: amountOf(r),
+        moneda: r.moneda,
+        tipo: r.tipo || "egreso",
+        frecuencia: r.frecuencia,
+        categoria: r.categoria || "Otros",
+        empresa: r.empresa_nombre || "Personal",
+        proximo_pago: nextRun ? isoDay(nextRun) : null,
+        cuando: relativeRunLabel(nextRun, today),
+      },
+    };
+  });
+
+  const filtered = windowEnd
+    ? rows.filter((x) => x.nextRun === null || x.nextRun.getTime() <= windowEnd.getTime())
+    : rows;
+
+  // null nextRun = activates tonight → sort first.
+  filtered.sort((a, b) => (a.nextRun?.getTime() ?? -Infinity) - (b.nextRun?.getTime() ?? -Infinity));
+  return filtered.map((x) => x.out);
+}
+
 export function executeAskTool(
   tool: string,
   args: Record<string, unknown>,
   movimientos: AskMovimiento[],
   today: Date = new Date(),
+  recurrentes: AskRecurrente[] = [],
 ): unknown {
   if (tool === "get_resumen_mensual") return toolResumenMensual(movimientos);
+  if (tool === "get_recurrentes") return toolRecurrentes(recurrentes, args, today);
+  if (tool === "calcular") return toolCalcular(args);
   const scoped = filterMovs(movimientos, args, today);
   if (tool === "get_saldos") return toolSaldos(scoped);
   if (tool === "get_top_categorias") return toolTopCategorias(scoped, args);
@@ -288,6 +402,8 @@ export interface AnswerQuestionArgs {
   genAI: GenAILike;
   genAI2?: GenAILike | null;
   movimientos: AskMovimiento[];
+  /** Active recurring payments for get_recurrentes (caller scopes them). */
+  recurrentes?: AskRecurrente[];
   question: string;
   /** Previous turns (already capped by the caller's parser) for follow-up questions. */
   history?: AskHistoryTurn[];
@@ -298,6 +414,7 @@ export async function answerQuestion({
   genAI,
   genAI2 = null,
   movimientos,
+  recurrentes = [],
   question,
   history = [],
   today = new Date(),
@@ -323,7 +440,7 @@ export async function answerQuestion({
     if (!step) return ASK_FALLBACK_ANSWER;
     if (step.kind === "answer") return step.answer;
 
-    const toolResult = executeAskTool(step.tool, step.args, movimientos, today);
+    const toolResult = executeAskTool(step.tool, step.args, movimientos, today, recurrentes);
     transcript +=
       `\n\nLLAMASTE: ${step.tool}(${JSON.stringify(step.args)})` +
       `\nRESULTADO: ${JSON.stringify(toolResult)}`;
@@ -355,4 +472,24 @@ export async function fetchMovimientosForAsk(
     if (page.length < FETCH_PAGE_SIZE) break;
   }
   return all;
+}
+
+/**
+ * Active, non-deleted recurring payments for the ask agent's get_recurrentes
+ * tool. Like fetchMovimientosForAsk, the caller provides the scope filter.
+ * No pagination: recurrentes count per dashboard is small.
+ */
+export async function fetchRecurrentesForAsk(
+  supabase: SupabaseLike,
+  applyScope: (query: any) => any,
+): Promise<AskRecurrente[]> {
+  const { data, error } = await applyScope(
+    supabase
+      .from("recurrentes")
+      .select("descripcion, monto, moneda, tipo, frecuencia, categoria, empresa_nombre, last_processed, day_of_month")
+      .eq("is_active", true)
+      .is("deleted_at", null),
+  );
+  if (error) throw error;
+  return (data ?? []) as AskRecurrente[];
 }

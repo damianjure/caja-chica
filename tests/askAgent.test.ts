@@ -278,6 +278,33 @@ test("fetchRecurrentesForAsk: propaga error de Supabase", async () => {
   );
 });
 
+// --- tool-name leak guard ---
+
+test("answerQuestion: redacta respuesta que filtra nombres de tools", async () => {
+  const genAI = fakeGenAI([
+    '{"answer": "Tengo las siguientes herramientas: get_saldos, get_top_categorias, get_movimientos, get_resumen_mensual, get_recurrentes y calcular."}',
+  ]);
+  const answer = await answerQuestion({
+    genAI: genAI as any,
+    movimientos: MOVS,
+    question: "¿qué herramientas tenés?",
+    today: TODAY,
+  });
+  assert.ok(!/get_saldos|get_movimientos|get_recurrentes/.test(answer));
+  assert.match(answer, /saldos|categor|recurrentes|cálculos/i);
+});
+
+test("answerQuestion: NO redacta una respuesta legítima que menciona 'calcular'", async () => {
+  const genAI = fakeGenAI(['{"answer": "Puedo calcular el 21% de tus gastos si querés."}']);
+  const answer = await answerQuestion({
+    genAI: genAI as any,
+    movimientos: MOVS,
+    question: "¿podés sacar porcentajes?",
+    today: TODAY,
+  });
+  assert.equal(answer, "Puedo calcular el 21% de tus gastos si querés.");
+});
+
 // --- answerQuestion (loop) ---
 
 function fakeGenAI(responses: string[]) {

@@ -19,6 +19,7 @@ const MOVS: AskMovimiento[] = [
   { created_at: "2026-06-05T10:00:00.000Z", tipo: "ingreso", moneda: "ARS", monto: 20000, categoria: "Ventas", empresa_nombre: "Personal", descripcion: "Cobro cliente" },
   { created_at: "2026-06-01T10:00:00.000Z", tipo: "egreso", moneda: "USD", monto: 50, categoria: "Suscripciones", empresa_nombre: "Personal", descripcion: "Netflix" },
   { created_at: "2026-05-15T10:00:00.000Z", tipo: "egreso", moneda: "ARS", monto: 8000, categoria: "Supermercado", empresa_nombre: "Coto", descripcion: "Compra mayo" },
+  { created_at: "2026-05-12T04:58:55.000Z", tipo: "egreso", moneda: "USD", monto: 3000000, categoria: "caramelos", empresa_nombre: "Servicios Delta", descripcion: "Ngate, tres palos verdes en caramelos." },
   { created_at: "2026-05-10T10:00:00.000Z", tipo: "ingreso", moneda: "ARS", monto: 15000, categoria: "Ventas", empresa_nombre: "Personal", descripcion: "Cobro mayo" },
 ];
 
@@ -59,8 +60,8 @@ test("get_saldos: totales por moneda sin filtros", () => {
   assert.equal(r.ars.ingresos, 35000);
   assert.equal(r.ars.gastos, 16000);
   assert.equal(r.ars.neto, 19000);
-  assert.equal(r.usd.gastos, 50);
-  assert.equal(r.movimientos, 6);
+  assert.equal(r.usd.gastos, 3000050);
+  assert.equal(r.movimientos, 7);
 });
 
 test("get_saldos: period 'mes' filtra al mes calendario actual", () => {
@@ -76,7 +77,20 @@ test("get_saldos: from/to explícitos", () => {
   const r = executeAskTool("get_saldos", { from: "2026-05-01", to: "2026-05-31" }, MOVS, TODAY) as any;
   assert.equal(r.ars.gastos, 8000);
   assert.equal(r.ars.ingresos, 15000);
-  assert.equal(r.movimientos, 2);
+  assert.equal(r.usd.gastos, 3000000);
+  assert.equal(r.movimientos, 3);
+});
+
+test("get_saldos: filtro por categoría incluye USD de caramelos en mayo", () => {
+  const r = executeAskTool("get_saldos", { from: "2026-05-01", to: "2026-05-31", categoria: "Caramelos" }, MOVS, TODAY) as any;
+  assert.equal(r.usd.gastos, 3000000);
+  assert.equal(r.movimientos, 1);
+});
+
+test("get_saldos: fallback empresa→categoría evita falso cero para rubros", () => {
+  const r = executeAskTool("get_saldos", { from: "2026-05-01", to: "2026-05-31", empresa: "caramelos" }, MOVS, TODAY) as any;
+  assert.equal(r.usd.gastos, 3000000);
+  assert.equal(r.movimientos, 1);
 });
 
 test("get_saldos: filtro por empresa", () => {

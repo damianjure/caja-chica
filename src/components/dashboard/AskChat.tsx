@@ -8,21 +8,91 @@ interface ChatMessage {
   isError?: boolean;
 }
 
+type HistoryMode = 'session' | 'local';
+
 const SUGGESTIONS = [
   '¿Cuánto gasté este mes?',
   '¿En qué categoría gasto más?',
   '¿Cómo vienen los ingresos vs el mes pasado?',
 ];
 
+const HISTORY_MODE_KEY = 'caja-chica:ask-history-mode';
+const SESSION_HISTORY_KEY = 'caja-chica:ask-history-session';
+const LOCAL_HISTORY_KEY = 'caja-chica:ask-history-local';
+const MAX_STORED_MESSAGES = 30;
+
+function storageFor(mode: HistoryMode): Storage {
+  return mode === 'local' ? window.localStorage : window.sessionStorage;
+}
+
+function keyFor(mode: HistoryMode): string {
+  return mode === 'local' ? LOCAL_HISTORY_KEY : SESSION_HISTORY_KEY;
+}
+
+function readHistoryMode(): HistoryMode {
+  try {
+    return window.localStorage.getItem(HISTORY_MODE_KEY) === 'local' ? 'local' : 'session';
+  } catch {
+    return 'session';
+  }
+}
+
+function isChatMessage(value: unknown): value is ChatMessage {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const msg = value as Record<string, unknown>;
+  return (msg.role === 'user' || msg.role === 'assistant') && typeof msg.content === 'string';
+}
+
+function readStoredMessages(mode: HistoryMode): ChatMessage[] {
+  try {
+    const raw = storageFor(mode).getItem(keyFor(mode));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isChatMessage).slice(-MAX_STORED_MESSAGES).map((m) => ({
+      role: m.role,
+      content: m.content.slice(0, 1000),
+      ...(m.isError ? { isError: true } : {}),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredMessages(mode: HistoryMode, messages: ChatMessage[]) {
+  try {
+    const safe = messages
+      .filter((m) => !m.isError)
+      .slice(-MAX_STORED_MESSAGES)
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
+    storageFor(mode).setItem(keyFor(mode), JSON.stringify(safe));
+  } catch {
+    // If storage is unavailable/full, the chat still works for the current render.
+  }
+}
+
+function clearStoredMessages(mode: HistoryMode) {
+  try {
+    storageFor(mode).removeItem(keyFor(mode));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /**
  * Floating Q&A chat backed by POST /api/ask. Mounted once in DashboardApp so
  * it is available from every tab. Multi-turn: previous messages travel as
  * `history` (server caps turns/length); errors stay out of the history sent.
+ *
+ * Privacy invariant: conversation history is client-owned only. The user can
+ * keep it for this browser session (sessionStorage) or persist it on this
+ * device (localStorage). No transcript is stored server-side.
  */
 export default function AskChat() {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [historyMode, setHistoryMode] = useState<HistoryMode>(() => readHistoryMode());
+  const [messages, setMessages] = useState<ChatMessage[]>(() => readStoredMessages(readHistoryMode()));
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +104,26 @@ export default function AskChat() {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(HISTORY_MODE_KEY, historyMode); } catch {}
+    writeStoredMessages(historyMode, messages);
+  }, [historyMode, messages]);
+
+  const changeHistoryMode = (mode: HistoryMode) => {
+    if (mode === historyMode) return;
+
+    const current = messages.filter((m) => !m.isError);
+    writeStoredMessages(mode, current);
+    if (historyMode === 'local') clearStoredMessages('local');
+    setHistoryMode(mode);
+    setMessages(readStoredMessages(mode));
+  };
+
+  const clearConversation = () => {
+    clearStoredMessages(historyMode);
+    setMessages([]);
+  };
 
   const submit = async (q: string) => {
     const trimmed = q.trim().slice(0, 500);
@@ -75,31 +165,48 @@ export default function AskChat() {
 
   return (
     <div className="fixed z-40 inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[360px] flex flex-col rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-1)] shadow-[0_16px_48px_rgba(0,0,0,0.3)] overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--app-border)] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[var(--app-text-3)]" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-[var(--app-text-1)]">Preguntale a tus números</h2>
-        </div>
-        <div className="flex items-center gap-1">
-          {messages.length > 0 && (
+      <div className="border-b border-[var(--app-border)] px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-[var(--app-text-3)]" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-[var(--app-text-1)]">Preguntale a tus números</h2>
+          </div>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={clearConversation}
+                aria-label="Limpiar conversación"
+                className="rounded-lg p-1.5 text-[var(--app-text-3)] transition hover:text-[var(--app-text-1)]"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setMessages([])}
-              aria-label="Limpiar conversación"
+              onClick={() => setOpen(false)}
+              aria-label="Cerrar asistente"
               className="rounded-lg p-1.5 text-[var(--app-text-3)] transition hover:text-[var(--app-text-1)]"
             >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Cerrar asistente"
-            className="rounded-lg p-1.5 text-[var(--app-text-3)] transition hover:text-[var(--app-text-1)]"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
+          </div>
         </div>
+        <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--app-text-3)]">
+          <span className="shrink-0">Historial</span>
+          <select
+            value={historyMode}
+            onChange={(e) => changeHistoryMode(e.target.value === 'local' ? 'local' : 'session')}
+            aria-label="Dónde guardar el historial del asistente"
+            className="min-w-0 flex-1 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2 py-1 text-[11px] text-[var(--app-text-2)]"
+          >
+            <option value="session">Solo esta sesión</option>
+            <option value="local">Este dispositivo</option>
+          </select>
+        </label>
+        <p className="mt-1 text-[10px] leading-snug text-[var(--app-text-4)]">
+          El historial queda en tu navegador; no se guarda en el servidor.
+        </p>
       </div>
 
       <div ref={listRef} role="log" aria-live="polite" className="flex max-h-[50vh] sm:max-h-[380px] min-h-[160px] flex-col gap-2.5 overflow-y-auto px-4 py-3">

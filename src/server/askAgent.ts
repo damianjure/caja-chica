@@ -32,9 +32,9 @@ NUNCA inventás números: SIEMPRE pedís los datos con una herramienta. Los cál
 
 HERRAMIENTAS DISPONIBLES:
 1. get_saldos — totales de ingresos, gastos y neto por moneda.
-   args: { "period"?: "hoy"|"semana"|"mes"|"anio", "from"?: "YYYY-MM-DD", "to"?: "YYYY-MM-DD", "empresa"?: <nombre exacto> }
+   args: { "period"?: "hoy"|"semana"|"mes"|"anio", "from"?: "YYYY-MM-DD", "to"?: "YYYY-MM-DD", "empresa"?: <nombre>, "categoria"?: <nombre> }
 2. get_top_categorias — categorías con más gasto (o ingreso).
-   args: { "period"?, "from"?, "to"?, "tipo"?: "egreso"|"ingreso", "empresa"?, "limit"?: <número, máx 10> }
+   args: { "period"?, "from"?, "to"?, "tipo"?: "egreso"|"ingreso", "empresa"?, "categoria"?, "limit"?: <número, máx 10> }
 3. get_movimientos — lista de movimientos individuales (máx 30).
    args: { "period"?, "from"?, "to"?, "empresa"?, "categoria"?, "tipo"?: "ingreso"|"egreso", "moneda"?: "ARS"|"USD", "limit"? }
 4. get_resumen_mensual — serie de los últimos 6 meses: ingresos/gastos/neto por moneda.
@@ -47,6 +47,7 @@ FORMATO DE RESPUESTA — SIEMPRE un único objeto JSON, sin markdown, sin texto 
 REGLAS:
 - "period" es relativo a HOY (te paso la fecha): "semana" = últimos 7 días, "mes" = mes calendario actual, "anio" = año actual.
 - Si la pregunta menciona un mes o fecha específica, usá "from"/"to".
+- Si el usuario pregunta "en X" y X parece rubro/etiqueta (ej: combustible, caramelos, supermercado), usá "categoria", no "empresa", salvo que sea claramente el nombre de una empresa.
 - Puede haber CONVERSACIÓN PREVIA: interpretá preguntas de seguimiento ("¿y comparado con mayo?", "¿y en dólares?") en ese contexto, pero los números SIEMPRE salen de herramientas nuevas, nunca de respuestas anteriores.
 - Llamá UNA herramienta por turno. Cuando tengas los datos, respondé con "answer".
 - Si la pregunta no es sobre las finanzas del usuario, respondé con "answer" aclarando que solo respondés sobre sus movimientos.
@@ -116,6 +117,14 @@ function resolveRange(
   return {};
 }
 
+function normalizeFilterValue(value: string): string {
+  return value.trim().toLocaleLowerCase("es-AR");
+}
+
+function valueMatches(actual: string | null | undefined, expected: string): boolean {
+  return normalizeFilterValue(actual || "") === normalizeFilterValue(expected);
+}
+
 function filterMovs(
   movs: AskMovimiento[],
   args: Record<string, unknown>,
@@ -127,16 +136,34 @@ function filterMovs(
   const tipo = args.tipo === "ingreso" || args.tipo === "egreso" ? args.tipo : null;
   const moneda = args.moneda === "ARS" || args.moneda === "USD" ? args.moneda : null;
 
-  return movs.filter((m) => {
+  const base = movs.filter((m) => {
     const day = (m.created_at ?? "").slice(0, 10);
     if (from && day < from) return false;
     if (to && day > to) return false;
-    if (empresa && (m.empresa_nombre || "Personal") !== empresa) return false;
-    if (categoria && (m.categoria || "Otros") !== categoria) return false;
     if (tipo && m.tipo !== tipo) return false;
     if (moneda && m.moneda !== moneda) return false;
     return true;
   });
+
+  const applyEntityFilters = (allowEmpresaCategoryFallback: boolean) => base.filter((m) => {
+    const empresaName = m.empresa_nombre || "Personal";
+    const categoriaName = m.categoria || "Otros";
+    if (empresa) {
+      const empresaOk = valueMatches(empresaName, empresa);
+      const categoryFallbackOk = allowEmpresaCategoryFallback && !categoria && valueMatches(categoriaName, empresa);
+      if (!empresaOk && !categoryFallbackOk) return false;
+    }
+    if (categoria && !valueMatches(categoriaName, categoria)) return false;
+    return true;
+  });
+
+  const strict = applyEntityFilters(false);
+  if (strict.length > 0 || !empresa || categoria) return strict;
+
+  // Defensive fallback: users often say "en <rubro>" and the model may pass it
+  // as empresa. If no company matched, try the same value as category before
+  // concluding there are no movements.
+  return applyEntityFilters(true);
 }
 
 function amountOf(m: AskMovimiento): number {

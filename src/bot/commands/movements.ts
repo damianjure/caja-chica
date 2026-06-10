@@ -26,6 +26,7 @@ import {
   buildReportEcho, buildRecurrenteEcho, buildEditEcho, type EditSlots,
 } from "../intentSlots.ts";
 import { setIntentConfirmSession } from "../sessions.ts";
+import { runAskQuestion } from "./ask.ts";
 
 export async function getLastMovementByType(
   supabase: BotDeps["supabase"],
@@ -473,6 +474,13 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
       case "buscar": {
         const fromSlot = typeof intentResult.slots.query === "string" ? intentResult.slots.query.trim() : "";
         await runMovementSearch(supabase, ctx, linked, fromSlot || args.text.trim());
+        return;
+      }
+      case "consultar": {
+        const pregunta = typeof intentResult.slots.pregunta === "string" && intentResult.slots.pregunta.trim()
+          ? intentResult.slots.pregunta.trim()
+          : args.text.trim();
+        await runAskQuestion({ supabase, genAI, genAI2 }, ctx, linked, pregunta.slice(0, 500));
         return;
       }
       case "saldos": {

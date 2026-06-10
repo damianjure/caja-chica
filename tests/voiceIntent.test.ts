@@ -77,6 +77,14 @@ test("KNOWN_INTENTS excludes borrar_empresa and includes borrar_ultimo", () => {
   assert.ok(KNOWN_INTENTS.includes("borrar_ultimo"));
 });
 
+test("KNOWN_INTENTS includes consultar; parseIntentResult routes it", () => {
+  assert.ok(KNOWN_INTENTS.includes("consultar"));
+  const r = parseIntentResult({ intent: "consultar", confidence: 0.9, slots: { pregunta: "¿cuánto gasté?" } }, "x");
+  assert.equal(r.intent, "consultar");
+  const d = resolveIntentAction(r);
+  assert.equal(d.action, "execute");
+});
+
 // ===== resolveIntentAction — pure 3-way decision =====
 
 test("resolveIntentAction: known intent, high confidence → execute", () => {

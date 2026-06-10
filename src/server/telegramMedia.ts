@@ -4,11 +4,14 @@ import {
   RECEIPT_ITEMS_SYSTEM_PROMPT,
   HANDWRITTEN_SYSTEM_PROMPT,
   MULTI_RECEIPT_SYSTEM_PROMPT,
+  CREDIT_CARD_SUMMARY_SYSTEM_PROMPT,
   parsePhotoExtractionResult,
   parseMultiPhotoExtractionResult,
   parseReceiptItemsResult,
+  parseCreditCardSummaryResult,
   type PhotoExtractionResult,
   type ReceiptItemsResult,
+  type CreditCardExtractionItem,
 } from "./gemini.ts";
 import { GeminiUnavailableError, isGeminiCapacityError } from "./geminiWithFallback.ts";
 import type { PhotoSourceType } from "./validation.ts";
@@ -221,6 +224,7 @@ export async function extractReceiptWithItems({
   if (retryParsed) {
     return {
       result: {
+        documentKind: "receipt",
         empresa: retryParsed.empresa,
         cuit: retryParsed.cuit,
         moneda: retryParsed.moneda,
@@ -235,6 +239,35 @@ export async function extractReceiptWithItems({
 
   if (parsed) return { result: parsed, sourceType };
   throw new Error("gemini_photo_extraction_failed");
+}
+
+/**
+ * Statement (credit card / bank summary) extraction: one Gemini call with the
+ * specialized CREDIT_CARD prompt that pulls every individual transaction.
+ * Called AFTER extractReceiptWithItems flags the document as a statement, so
+ * it re-downloads/uploads the file (Files API uploads are single-use here).
+ */
+export async function extractFromStatement({
+  genAI,
+  botToken,
+  filePath,
+  mimeType,
+  displayName,
+  fetchImpl = fetch,
+}: ExtractFromPhotoArgs): Promise<CreditCardExtractionItem[]> {
+  const name = displayName ?? filePath.split("/").pop() ?? "telegram-media";
+  const uploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
+
+  const rawText = await generateWithCleanup(
+    genAI,
+    [uploaded],
+    () => createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), "Extraé cada transacción individual de este resumen."]),
+    CREDIT_CARD_SUMMARY_SYSTEM_PROMPT,
+  );
+
+  const items = parseCreditCardSummaryResult(rawText);
+  if (!items) throw new Error("gemini_statement_extraction_failed");
+  return items;
 }
 
 export async function extractFromMultiplePhotos({

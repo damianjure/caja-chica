@@ -182,7 +182,8 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   ├── index.ts               ← registerBotHandlers(bot, deps) — orquesta el resto
 │   │   ├── deps.ts                ← BotDeps (supabase, bot, genAI, genAI2, dashboardUrl, botToken)
 │   │   ├── sessions.ts            ← Maps en memoria (report/recurrence/input/intent) + sweeps
-│   │   ├── extraction.ts          ← fotos/PDF/álbumes: save-first ticket + batch + line editor
+│   │   ├── extraction.ts          ← fotos/PDF/álbumes: save-first ticket + batch + line editor + routing de statements
+│   │   ├── commands/ask.ts        ← /preguntar + runAskQuestion (agente LLM de consultas)
 │   │   ├── lineMontoEdit.ts       ← store "próximo texto = nuevo monto de renglón"
 │   │   ├── inlineMode.ts          ← modo inline
 │   │   ├── voiceIntent.ts + intentSlots.ts ← router de intents voz/texto + normalización de slots
@@ -215,7 +216,7 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   ├── invitations.ts         ← syncPendingDashboardInvitations (chequea expires_at) + listDashboardMembers
 │   │   ├── rateLimit.ts           ← createRateLimiter + tiers + clientIp() (último hop XFF)
 │   │   ├── cronJobs/              ← reminders.ts + recurrentes.ts (lógica pura, sin HTTP)
-│   │   ├── routes/                ← admin, categorias, crons, dashboard, drive, empresas, imageExtract,
+│   │   ├── routes/                ← admin, ask, categorias, crons, dashboard, drive, empresas, imageExtract,
 │   │   │                            informes, maintenance, me, movimientos, presupuestos, telegram
 │   │   ├── demoSeed.ts / backup.ts / zip.ts / listCap.ts
 │   │   ├── drive.ts               ← Drive OAuth + upload + AES-256-GCM (lee legacy CBC)
@@ -223,7 +224,8 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   ├── alertSuperadmin.ts     ← alertas operativas throttled al superadmin
 │   │   ├── env.ts / errors.ts
 │   │   ├── extractionReview.ts    ← inline keyboard confirm/edit flow para fotos; TTL 10min
-│   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT + items
+│   │   ├── askAgent.ts            ← agente LLM de consultas: loop tool-calling JSON sobre movimientos scopeados
+│   │   ├── gemini.ts              ← prompts texto + RECEIPT/HANDWRITTEN/MULTI_RECEIPT + items + CREDIT_CARD (statements)
 │   │   ├── geminiWithFallback.ts  ← fallback a GEMINI_API_KEY_2 en 429/503
 │   │   ├── imageExtract.ts        ← extracción de imagen para la web (/api/extract-image)
 │   │   ├── inviteReminders.ts / maintenance.ts / maintenanceNotify.ts
@@ -405,6 +407,7 @@ Archivo principal: `src/server/app.ts`
 
 ### Extracción IA
 - `POST /api/extract` — rate limit 30 req/min por usuario, input max 2000 chars
+- `POST /api/ask` — agente LLM de consultas sobre movimientos. Body `{question}` (max 500 chars), rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`) sobre los movimientos del scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM. UI: `AskBox` en tab Resumen.
 
 ### Movimientos
 - `POST /api/movimientos`
@@ -499,12 +502,14 @@ Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y lla
 - `/buscar` — filtra `deleted_at` correctamente
 - `/saldos` — filtra `deleted_at` en movimientos y empresas
 - `/recurrente` → flujo guiado conversacional
+- `/preguntar <consulta>` — agente LLM de consultas (read-only, viewers incluidos). También vía voz/texto libre con el intent `consultar` (slot `pregunta`). Comparte `answerQuestion()` de `src/server/askAgent.ts` con la web; scope vía `applyTelegramDataScope`.
 - edición del último ingreso/egreso (scopeada a `dashboard_id`)
 - borrado/soft delete de movimiento con confirmación
 - borrado/soft delete de empresa con confirmación (filtra `deleted_at`)
 - **fotos/tickets**: imagen → Gemini Vision → tarjeta revisión → inline keyboard → guardar
 - **selección de ítems de ticket** (Fase 0+1, 2026-06-08): si el ticket tiene ≥2 renglones, el bot muestra una tarjeta con checkboxes (`li:*`) para elegir qué ítems guardar; al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (uno solo con el total). Extracción ítem-level en `extractReceiptWithItems()` (`telegramMedia.ts`) + `RECEIPT_ITEMS_SYSTEM_PROMPT`/`parseReceiptItemsResult` (`gemini.ts`); estado en memoria en `src/server/lineItemsReview.ts` (Map + sweep, single-instance invariant). La metadata del comercio (empresa/fecha) se aplica a todos los ítems. Si hay <2 renglones cae al flujo de revisión de movimiento único. Pendiente Fase 2: misma UI en dashboard web.
 - **PDFs**: documento → Gemini Files API → extracción → confirmar → guardar
+- **resúmenes de tarjeta/banco (statements)** (2026-06-10): `RECEIPT_ITEMS_SYSTEM_PROMPT` clasifica `document_kind` (`receipt`|`statement`); si es statement → segundo call con `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` (`extractFromStatement()` en `telegramMedia.ts`) → cada transacción entra al flujo batch existente (`eb:*`: "Guardar todos" + revisar low-confidence). Maneja cuotas (no multiplica), impuestos, devoluciones=ingreso. La tarjeta resume máx 15 líneas + "… y N más" y capea botones de revisión a 6. Los movimientos guardados desde statement conservan su **fecha real** (`created_at` = fecha extraída) para no ensuciar informes mensuales; tickets/fotos mantienen `created_at = now` (comportamiento legacy).
 - **álbumes (media groups)**: múltiples fotos → debounce 1500ms → MULTI_RECEIPT → revisar cada uno
 - **audio**: voz → transcripción → extracción texto (implementado en `telegramAudio.ts`)
 

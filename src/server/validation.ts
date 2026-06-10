@@ -298,6 +298,17 @@ export function parseExtractRequest(
   return { text: trimmed, categories };
 }
 
+export const ASK_QUESTION_MAX_LENGTH = 500;
+
+export function parseAskRequest(value: unknown): { question: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as Record<string, unknown>;
+  if (typeof payload.question !== "string") return null;
+  const trimmed = payload.question.trim();
+  if (trimmed.length === 0 || trimmed.length > ASK_QUESTION_MAX_LENGTH) return null;
+  return { question: trimmed };
+}
+
 export function parsePaginationQuery(query: unknown): PaginationQuery {
   const source = (query ?? {}) as Record<string, unknown>;
   const rawLimit = typeof source.limit === "string" ? Number.parseInt(source.limit, 10) : 50;
@@ -553,7 +564,7 @@ export function parseRecurrenteRequest(body: unknown): RecurrenteRequest | null 
   return result;
 }
 
-export type PhotoSourceType = "photo" | "pdf" | "handwritten" | "multi";
+export type PhotoSourceType = "photo" | "pdf" | "handwritten" | "multi" | "statement";
 
 export interface PendingExtractionData {
   monto: number | null;
@@ -581,7 +592,7 @@ export function isPendingExtractionData(value: unknown): value is PendingExtract
     typeof obj.descripcion === "string" &&
     (obj.fecha === null || typeof obj.fecha === "string") &&
     typeof obj.confidence === "number" &&
-    (obj.sourceType === "photo" || obj.sourceType === "pdf" || obj.sourceType === "handwritten" || obj.sourceType === "multi")
+    (obj.sourceType === "photo" || obj.sourceType === "pdf" || obj.sourceType === "handwritten" || obj.sourceType === "multi" || obj.sourceType === "statement")
   );
 }
 

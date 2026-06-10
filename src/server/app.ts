@@ -11,6 +11,7 @@ import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "./gemini.ts";
 import { isMissingSchemaArtifactError } from "./errors.ts";
 import { ensurePersonalDashboard, seedDemoData, purgeDemoData } from "./demoSeed.ts";
 import {
+  parseAskRequest,
   parseBudgetRequest,
   parseDashboardInvitationRequest,
   parseEmpresaRequest,
@@ -84,6 +85,7 @@ import { createMeRouter } from "./routes/me.ts";
 import { createTelegramRouter } from "./routes/telegram.ts";
 import { createAdminRouter, type AdminEmailDeps } from "./routes/admin.ts";
 import { createMovimientosRouter } from "./routes/movimientos.ts";
+import { createAskRouter } from "./routes/ask.ts";
 import { createEmpresasRouter } from "./routes/empresas.ts";
 import { createCategoriasRouter } from "./routes/categorias.ts";
 import { createPresupuestosRouter } from "./routes/presupuestos.ts";
@@ -474,6 +476,17 @@ export function createApp({
     computeNextRun,
     relativeRunLabel,
     hasValidAdminToken,
+    tierStrict,
+  }));
+  app.use(createAskRouter({
+    supabase,
+    genAI,
+    genAI2,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    applyDataScope,
+    parseAskRequest,
     tierStrict,
   }));
   app.use(createEmpresasRouter({

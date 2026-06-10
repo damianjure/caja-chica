@@ -9,7 +9,7 @@ import {
   canDeleteMovementViaTelegram,
   type TelegramLinkRecord,
 } from "../server/telegramAccess.ts";
-import { extractFromMultiplePhotos, extractReceiptWithItems, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
+import { extractFromMultiplePhotos, extractFromStatement, extractReceiptWithItems, inferMediaMimeType, SUPPORTED_DOCUMENT_MIME_TYPES } from "../server/telegramMedia.ts";
 import type { ReceiptItemsResult } from "../server/gemini.ts";
 import { MediaGroupBuffer } from "../server/mediaGroupBuffer.ts";
 import {
@@ -73,28 +73,39 @@ function fmtMonto(d: PendingExtraction["data"]): string {
   return d.monto !== null ? `$${d.monto.toLocaleString("es-AR")} ${d.moneda}` : "❓";
 }
 
-function buildBatchSummaryText(ids: string[]): string {
+// Statements can carry 100+ transactions: cap the detail lines (Telegram's
+// 4096-char message limit) and the per-item review buttons.
+const MAX_BATCH_SUMMARY_LINES = 15;
+const MAX_BATCH_REVIEW_BUTTONS = 6;
+
+export function buildBatchSummaryText(
+  ids: string[],
+  noun: { singular: string; plural: string } = { singular: "ticket", plural: "tickets" },
+): string {
   const entries = ids.map((id) => getPendingExtraction(id)).filter((e): e is PendingExtraction => e !== null);
   const total = entries.reduce((acc, e) => acc + Math.abs(e.data.monto ?? 0), 0);
-  const lines = entries.map((e, i) => {
+  const shown = entries.slice(0, MAX_BATCH_SUMMARY_LINES);
+  const lines = shown.map((e, i) => {
     const low = e.data.confidence < LOW_CONFIDENCE_THRESHOLD ? " ⚠️" : "";
     return `${i + 1}. ${fmtMonto(e.data)} · ${escapeMd(e.data.empresa ?? "Personal")} · ${escapeMd(e.data.categoria)}${low}`;
   });
+  const hidden = entries.length - shown.length;
   return (
-    `🧾 *Detecté ${entries.length} ticket${entries.length !== 1 ? "s" : ""}* · Total $${total.toLocaleString("es-AR")}\n\n` +
+    `🧾 *Detecté ${entries.length} ${entries.length !== 1 ? noun.plural : noun.singular}* · Total $${total.toLocaleString("es-AR")}\n\n` +
     lines.join("\n") +
+    (hidden > 0 ? `\n… y ${hidden} más` : "") +
     `\n\n_Tocá "Guardar todos" o revisá los marcados con ⚠️._`
   );
 }
 
-function buildBatchKeyboard(batchId: string, ids: string[]): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
+export function buildBatchKeyboard(batchId: string, ids: string[]): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [
     [{ text: "✅ Guardar todos", callback_data: `eb:save:${batchId}` }],
   ];
   const lowButtons: Array<{ text: string; callback_data: string }> = [];
   ids.forEach((id, i) => {
     const e = getPendingExtraction(id);
-    if (e && e.data.confidence < LOW_CONFIDENCE_THRESHOLD) {
+    if (e && e.data.confidence < LOW_CONFIDENCE_THRESHOLD && lowButtons.length < MAX_BATCH_REVIEW_BUTTONS) {
       lowButtons.push({ text: `✏️ Revisar #${i + 1}`, callback_data: `eb:rev:${id}` });
     }
   });
@@ -126,6 +137,9 @@ async function insertExtractionMovement(supabase: BotDeps["supabase"], entry: Pe
     original_text: `[${d.sourceType}] ${d.descripcion}`,
     conciliado: true,
     conciliado_notas: null,
+    // Statement transactions keep their real date so monthly reports stay
+    // honest; receipts keep the legacy behavior (created_at = now).
+    ...(d.sourceType === "statement" && d.fecha ? { created_at: `${d.fecha}T12:00:00.000Z` } : {}),
   }]).select("id");
   if (error) return { error };
   return { id: (data?.[0]?.id as string | undefined) };
@@ -217,6 +231,77 @@ async function showReceiptReview(
   );
 }
 
+const STATEMENT_NOUN = { singular: "transacción", plural: "transacciones" };
+
+/**
+ * Statement flow: the document was flagged as a credit-card/bank summary, so
+ * re-extract it with the specialized prompt and reuse the album batch card
+ * (one summary + "Guardar todos" + review for low-confidence items).
+ */
+async function processStatement(
+  supabase: BotDeps["supabase"],
+  genAI: BotDeps["genAI"],
+  botToken: string,
+  ctx: Context,
+  linked: any,
+  file: { filePath: string; mimeType: string; displayName?: string },
+  processingMsgId: number,
+) {
+  try {
+    await ctx.api.editMessageText(ctx.chat.id, processingMsgId, "📄 Detecté un resumen de tarjeta/banco. Extrayendo transacciones...");
+  } catch (e) {}
+
+  const items = await extractFromStatement({ genAI, botToken, ...file });
+  try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+
+  const usable = items.filter((it) => it.monto !== null);
+  if (usable.length === 0) {
+    await ctx.reply("❌ No encontré transacciones legibles en el resumen. Probá con un PDF o una foto más nítida.");
+    return;
+  }
+
+  const scope = { dashboardId: linked.dashboardId ?? null, ownerUserId: linked.ownerUserId ?? null };
+  const [topEmpresas, topCategorias] = await Promise.all([
+    getTopEmpresasForDashboard(supabase, scope),
+    getTopCategoriasForDashboard(supabase, scope),
+  ]);
+
+  const batchIds: string[] = [];
+  for (const item of usable) {
+    const data: PendingExtractionData = {
+      monto: item.monto,
+      moneda: item.moneda,
+      tipo: item.tipo,
+      empresa: item.empresa && item.empresa.trim() ? item.empresa : "Personal",
+      cuit: null,
+      categoria: item.categoria,
+      descripcion: item.descripcion,
+      fecha: item.fecha,
+      confidence: item.confidence,
+      sourceType: "statement",
+    };
+    const entry = createPendingExtraction({
+      chatId: ctx.chat.id,
+      dashboardId: linked.dashboardId ?? null,
+      userId: linked.userId ?? null,
+      ownerUserId: linked.ownerUserId ?? null,
+      data,
+      messageId: 0,
+      awaitingCompany: false,
+      empresaOptions: topEmpresas.length > 0 ? topEmpresas : null,
+      categoriaOptions: topCategorias.length > 0 ? topCategorias : null,
+    });
+    batchIds.push(entry.id);
+  }
+
+  const batchId = `b_${ctx.chat.id}_${Date.now()}`;
+  pendingBatches.set(batchId, { ids: batchIds, expiresAt: Date.now() + BATCH_TTL_MS });
+  await ctx.reply(buildBatchSummaryText(batchIds, STATEMENT_NOUN), {
+    parse_mode: "Markdown",
+    reply_markup: buildBatchKeyboard(batchId, batchIds),
+  });
+}
+
 /** Renders the line editor (delete-per-line; amount edits live in the web dashboard). */
 async function renderLineEditor(
   ctx: Context,
@@ -293,6 +378,10 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
                 filePath: files[0].filePath,
                 mimeType: files[0].mimeType,
               });
+              if (result.documentKind === "statement") {
+                await processStatement(supabase, genAI, botToken, firstCtx, linked2, files[0], processingMsg.message_id);
+                return;
+              }
               await showReceiptReview(supabase, firstCtx, linked2, result, sourceType, processingMsg.message_id);
             } else {
               const results = await extractFromMultiplePhotos({ genAI, botToken, files });
@@ -362,6 +451,10 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         filePath: file.file_path,
         mimeType: "image/jpeg",
       });
+      if (result.documentKind === "statement") {
+        await processStatement(supabase, genAI, botToken, ctx, linked, { filePath: file.file_path, mimeType: "image/jpeg" }, processingMsg.message_id);
+        return;
+      }
       await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
@@ -408,6 +501,10 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         mimeType,
         displayName: doc.file_name ?? "document",
       });
+      if (result.documentKind === "statement") {
+        await processStatement(supabase, genAI, botToken, ctx, linked, { filePath: file.file_path, mimeType, displayName: doc.file_name ?? "document" }, processingMsg.message_id);
+        return;
+      }
       await showReceiptReview(supabase, ctx, linked, result, sourceType, processingMsg.message_id);
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}

@@ -77,6 +77,7 @@ function makeStore() {
 }
 
 const meta: ReceiptItemsResult = {
+  documentKind: "receipt",
   empresa: "Carrefour",
   cuit: null,
   moneda: "ARS",

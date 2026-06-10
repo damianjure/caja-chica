@@ -118,6 +118,7 @@ export async function extractItemsFromBuffer({
   if (retryParsed) {
     return {
       result: {
+        documentKind: "receipt",
         empresa: retryParsed.empresa,
         cuit: retryParsed.cuit,
         moneda: retryParsed.moneda,

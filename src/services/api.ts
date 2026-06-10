@@ -559,6 +559,13 @@ export const api = {
     });
   },
 
+  async ask(question: string): Promise<{ answer: string }> {
+    return fetchApi("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ question }),
+    });
+  },
+
   async saveMovimientos(items: ExtractedItem[], originalText: string): Promise<Movimiento[]> {
     return fetchApi("/api/movimientos", {
       method: "POST",

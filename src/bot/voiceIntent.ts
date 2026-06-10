@@ -17,6 +17,7 @@ export type BotIntent =
   | "informe"
   | "saldos"
   | "buscar"
+  | "consultar"
   | "listar_empresas"
   | "listar_categorias"
   | "recurrente_nuevo"
@@ -41,6 +42,7 @@ export const KNOWN_INTENTS: BotIntent[] = [
   "informe",
   "saldos",
   "buscar",
+  "consultar",
   "listar_empresas",
   "listar_categorias",
   "recurrente_nuevo",

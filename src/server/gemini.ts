@@ -8,6 +8,7 @@ INTENCIONES posibles (campo "intent"):
 - "informe": pedir un informe/exportar (ej: "pasame el informe de mayo").
 - "saldos": consultar saldo/cuánto hay (ej: "cuánto tengo", "cómo venimos", "saldo de la semana").
 - "buscar": buscar movimientos (ej: "buscá movimientos de Carrefour").
+- "consultar": pregunta analítica sobre los gastos/ingresos que requiere comparar, agrupar o filtrar (ej: "¿cuánto gasté en mayo?", "¿en qué categoría gasto más?", "¿cuánto le pagué a Carrefour este año?"). NO es "saldos" (estado general) ni "buscar" (búsqueda por texto).
 - "listar_empresas": pedir la lista de empresas (ej: "qué empresas tengo").
 - "listar_categorias": pedir la lista de categorías (ej: "listame las categorías").
 - "recurrente_nuevo": crear un gasto/ingreso recurrente (ej: "meté un recurrente de alquiler").
@@ -29,6 +30,7 @@ Retorná SIEMPRE un objeto JSON con esta forma:
 SLOTS por intención:
 - crear_empresa / crear_categoria: { "nombre": <string> }
 - buscar: { "query": <SOLO el término a buscar, ej "Carrefour" — sin "buscá" ni "movimientos de"> }
+- consultar: { "pregunta": <la pregunta completa del usuario, tal cual> }
 - informe: { "periodo": "dia"|"semana"|"mes"|"anio"|"rango", "mes": <"YYYY-MM" si dijo un mes>, "anio": <número si dijo un año>, "desde": <"YYYY-MM-DD">, "hasta": <"YYYY-MM-DD">, "formato": "pdf"|"csv", "destino": "local"|"drive", "tipo": "ingresos"|"gastos"|"saldos"|"todos" }
 - recurrente_nuevo: { "monto": <número>, "tipo": "ingreso"|"egreso", "moneda": "ARS"|"USD", "frecuencia": "diario"|"semanal"|"quincenal"|"mensual"|"anual", "dia": <1-31 SOLO si frecuencia es mensual y dijo un día del mes, ej "todos los 15 de cada mes" → 15>, "categoria": <string si nombró una categoría, ej "categoría Netflix" → "Netflix">, "descripcion": <string> }
 - editar_ultimo: { "campo": "monto"|"moneda"|"categoria"|"empresa"|"descripcion", "valor": <nuevo valor>, "valor_anterior": <valor viejo si lo dijo> }
@@ -306,6 +308,12 @@ export function parseCreditCardSummaryResult(
 export const RECEIPT_ITEMS_SYSTEM_PROMPT = `Sos un extractor de datos de tickets y facturas para el mercado argentino.
 Analizá la imagen y extraé los DATOS DEL COMERCIO más CADA RENGLÓN (ítem) comprado por separado.
 
+═══ TIPO DE DOCUMENTO ═══
+Primero clasificá el documento en "document_kind":
+- "receipt": ticket, factura o comprobante de UNA compra en UN comercio.
+- "statement": resumen/extracto de TARJETA DE CRÉDITO o CUENTA BANCARIA — muchas transacciones de fechas y comercios distintos, con saldos, pago mínimo, fecha de cierre/vencimiento.
+Si es "statement", devolvé igual los campos que puedas (total, fecha) con "items": [] — el detalle lo extrae otro proceso.
+
 ═══ FORMATO NUMÉRICO ARGENTINO — CRÍTICO ═══
 El separador de MILES es el PUNTO y el separador DECIMAL es la COMA.
 Ejemplos: "1.234" = 1234 / "15.430,50" = 15430.50 / "1.000.000" = 1000000
@@ -326,6 +334,7 @@ Cada línea de producto/servicio del ticket con su precio. Por ítem:
 
 Retorná SIEMPRE un objeto JSON con esta estructura exacta:
 {
+  "document_kind": "receipt" | "statement",
   "empresa": <nombre del comercio o null>,
   "cuit": <CUIT del emisor sin guiones o null>,
   "moneda": "ARS" | "USD",
@@ -350,6 +359,8 @@ export interface ReceiptLineItem {
 }
 
 export interface ReceiptItemsResult {
+  /** "statement" = credit card / bank summary — route to the statement extractor. */
+  documentKind: "receipt" | "statement";
   empresa: string | null;
   cuit: string | null;
   moneda: "ARS" | "USD";
@@ -401,6 +412,7 @@ export function parseReceiptItemsResult(value: string): ReceiptItemsResult | nul
   }
 
   return {
+    documentKind: obj.document_kind === "statement" ? "statement" : "receipt",
     empresa: clampStr(obj.empresa, "") || null,
     cuit: typeof obj.cuit === "string" && obj.cuit.trim() ? obj.cuit.trim().slice(0, 20) : null,
     moneda,

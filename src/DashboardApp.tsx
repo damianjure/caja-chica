@@ -422,41 +422,45 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer.id]);
 
-  const companiesList = ['all', ...Array.from(new Set([...customCompanies.map((c) => c.nombre), ...history.map((i) => i.empresa_nombre).filter(Boolean)])) as string[]];
+  // ⚡ Bolt Performance Optimization:
+  // Memoize these complex aggregations (totals, summaries, and lists) to prevent
+  // them from recalculating on every render (e.g., when typing in search or opening modals).
+  // Impact: Reduces blocking render time on the main thread significantly as the movement history grows.
+  const companiesList = useMemo(() => ['all', ...Array.from(new Set([...customCompanies.map((c) => c.nombre), ...history.map((i) => i.empresa_nombre).filter(Boolean)])) as string[]], [customCompanies, history]);
 
-  const arsTotals = getCurrencyTotals(history, 'ARS');
-  const usdTotals = getCurrencyTotals(history, 'USD');
-  const companySummaries = getCompanySummaries(history, customCompanies.map((c) => c.nombre));
-  const categorySummaries = getCategorySummaries(history);
-  const incomeTagSummaries = getIncomeTagSummaries(history);
-  const monthlySummaries = getMonthlySummaries(history);
-  const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const arsTotals = useMemo(() => getCurrencyTotals(history, 'ARS'), [history]);
+  const usdTotals = useMemo(() => getCurrencyTotals(history, 'USD'), [history]);
+  const companySummaries = useMemo(() => getCompanySummaries(history, customCompanies.map((c) => c.nombre)), [history, customCompanies]);
+  const categorySummaries = useMemo(() => getCategorySummaries(history), [history]);
+  const incomeTagSummaries = useMemo(() => getIncomeTagSummaries(history), [history]);
+  const monthlySummaries = useMemo(() => getMonthlySummaries(history), [history]);
+  const activeTabMeta = useMemo(() => tabs.find((t) => t.id === activeTab) ?? tabs[0], [tabs, activeTab]);
 
-  const topExpenseCategories = categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` }));
-  const topIncomeTags = incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` }));
-  const topCompanies = companySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.ingresosArs + c.gastosArs, valueLabel: formatCurrency(c.ingresosArs, 'ARS'), secondary: `${c.movimientos} movimientos`, supportingValue: `Saldo ${formatCurrency(c.saldoArs, 'ARS')}`, segments: [{ value: c.ingresosArs, colorClass: 'bg-[var(--app-green-surface)]0', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: c.gastosArs, colorClass: 'bg-[var(--app-red-surface)]0', label: 'Gastos ARS', currency: 'ARS' as const }] }));
-  const visibleIncomeCount = filteredHistory.filter((i) => i.tipo === 'ingreso').length;
-  const visibleExpenseCount = filteredHistory.filter((i) => i.tipo === 'egreso').length;
+  const topExpenseCategories = useMemo(() => categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` })), [categorySummaries]);
+  const topIncomeTags = useMemo(() => incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` })), [incomeTagSummaries]);
+  const topCompanies = useMemo(() => companySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.ingresosArs + c.gastosArs, valueLabel: formatCurrency(c.ingresosArs, 'ARS'), secondary: `${c.movimientos} movimientos`, supportingValue: `Saldo ${formatCurrency(c.saldoArs, 'ARS')}`, segments: [{ value: c.ingresosArs, colorClass: 'bg-[var(--app-green-surface)]0', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: c.gastosArs, colorClass: 'bg-[var(--app-red-surface)]0', label: 'Gastos ARS', currency: 'ARS' as const }] })), [companySummaries]);
+  const visibleIncomeCount = useMemo(() => filteredHistory.filter((i) => i.tipo === 'ingreso').length, [filteredHistory]);
+  const visibleExpenseCount = useMemo(() => filteredHistory.filter((i) => i.tipo === 'egreso').length, [filteredHistory]);
 
-  const forecastResult = projectBalance(
+  const forecastResult = useMemo(() => projectBalance(
     { saldoArs: arsTotals.neto, saldoUsd: usdTotals.neto, recurrentes },
     new Date(),
-  );
+  ), [arsTotals.neto, usdTotals.neto, recurrentes]);
   const currentPeriod = monthlySummaries[0]?.period ?? '';
-  const prevCategorySummaries = monthlySummaries.length >= 2
+  const prevCategorySummaries = useMemo(() => monthlySummaries.length >= 2
     ? getCategorySummaries(
         history.filter((m) => {
           const period = m.created_at.slice(0, 7);
           return period === monthlySummaries[1]!.period;
         }),
       )
-    : [];
-  const dashboardInsights = generateInsights({
+    : [], [monthlySummaries, history]);
+  const dashboardInsights = useMemo(() => generateInsights({
     monthlySummaries,
     categorySummaries,
     prevCategorySummaries,
     currentPeriod,
-  });
+  }), [monthlySummaries, categorySummaries, prevCategorySummaries, currentPeriod]);
 
   const driveConnected = canUseDrive && driveStatus.enabled && driveStatus.connected;
   const exportFilters = { datePeriod, customFrom, customTo, selectedCompany, movementType, movementCurrency, selectedCategory };

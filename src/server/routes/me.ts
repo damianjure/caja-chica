@@ -189,7 +189,7 @@ export function createMeRouter(deps: MeDeps) {
       .eq("user_id", session.userId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "internal_error" });
       return;
     }
     res.json({ ok: true });
@@ -244,7 +244,7 @@ export function createMeRouter(deps: MeDeps) {
     const session = getSession(req);
     const { data, error } = await supabase.rpc("get_my_sessions", { target_user_id: session.userId });
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "internal_error" });
       return;
     }
     res.json({ sessions: data ?? [], currentSessionId: session.sessionId ?? null });
@@ -262,7 +262,7 @@ export function createMeRouter(deps: MeDeps) {
       target_user_id: session.userId,
     });
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "internal_error" });
       return;
     }
     res.json({ ok: true });
@@ -287,7 +287,7 @@ export function createMeRouter(deps: MeDeps) {
       .eq("role", "owner")
       .eq("status", "active");
     if (ownErr) {
-      res.status(500).json({ error: ownErr.message });
+      res.status(500).json({ error: "internal_error" });
       return;
     }
     for (const ownership of ownerships ?? []) {
@@ -298,7 +298,7 @@ export function createMeRouter(deps: MeDeps) {
         .eq("status", "active")
         .neq("user_id", session.userId);
       if (countErr) {
-        res.status(500).json({ error: countErr.message });
+        res.status(500).json({ error: "internal_error" });
         return;
       }
       if ((count ?? 0) > 0) {
@@ -316,7 +316,7 @@ export function createMeRouter(deps: MeDeps) {
     // Hard delete auth user — cascades auth.sessions automatically
     const { error } = await supabase.auth.admin.deleteUser(session.userId);
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: "internal_error" });
       return;
     }
     res.json({ ok: true });

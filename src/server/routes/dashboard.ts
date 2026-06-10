@@ -426,7 +426,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
         .eq("id", memberId)
         .eq("dashboard_id", dashboardId)
         .limit(1);
-      if (targetError) return res.status(500).json({ error: targetError.message });
+      if (targetError) return res.status(500).json({ error: "internal_error" });
       if (!target?.[0]) return res.status(404).json({ error: "Member not found" });
       if (target[0].user_id === session.userId) return res.status(400).json({ error: "Cannot revoke yourself" });
       if (target[0].role === "owner") return res.status(400).json({ error: "Cannot revoke owner" });
@@ -435,7 +435,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
         .update({ status: "revoked" })
         .eq("id", memberId)
         .eq("dashboard_id", dashboardId);
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ error: "internal_error" });
 
       // Revocar también la invitación asociada para que salga de la lista de Equipo
       // (la vista de personas se arma desde dashboard_invitations, no desde members).
@@ -482,7 +482,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
         .eq("user_id", session.userId)
         .eq("dashboard_id", scope.dashboardId)
         .eq("status", "active");
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ error: "internal_error" });
       return res.json({ left: true });
     } catch (err) {
       console.error("POST /api/dashboard/leave:", err);

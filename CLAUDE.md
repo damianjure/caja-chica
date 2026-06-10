@@ -59,7 +59,7 @@ Integraciones principales:
   - historial persistido en `report_exports`
   - **Google Drive** — integración completa:
     - OAuth2 con `drive.file` scope
-    - tokens guardados cifrados en `drive_connections` (AES-256-CBC)
+    - tokens guardados cifrados en `drive_connections` (AES-256-GCM; tokens legacy CBC se siguen leyendo)
     - `owner` puede conectar/usar Drive; `editor` con permiso `export_drive` también puede exportar
     - `viewer` no puede subir
     - destino `local` o `drive` al exportar
@@ -81,7 +81,7 @@ Integraciones principales:
   - `dashboard_members.permissions` JSONB con 3 toggles: `delete_any`, `export_drive`, `invite_telegram`
   - helper `can(member, action)` en `src/server/permissions.ts`
   - `resolveViaNewLinks()` + fallback a `usuarios` para owners legacy
-  - UI: `CollaborationPanel.tsx` con toggles, invitación Telegram, sección de vínculos
+  - UI: `PersonasPanel.tsx` con toggles de permisos, invitación Telegram y sección de vínculos
 - **Bot foto/tickets** — ✔ deployado (2026-05-07):
   - fotos: extracción con Gemini Vision (RECEIPT prompt → HANDWRITTEN fallback si confidence < 0.5)
   - PDFs: descarga → Gemini Files API → extracción → cleanup
@@ -160,7 +160,7 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 ### Importante
 - **no hay librería externa de PDF** — generador mínimo propio en `src/server/reportExports.ts`
 - **no hay librería externa de rate limiting** — Map en memoria
-- **no hay librería de cifrado** — AES-256-CBC vía `node:crypto` stdlib
+- **no hay librería de cifrado** — AES-256-GCM vía `node:crypto` stdlib (tokens legacy en CBC se siguen leyendo)
 
 ---
 
@@ -193,8 +193,7 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   └── commands/              ← movements, movements-callbacks, entities, reports, recurring, reminder, help, cancel
 │   ├── components/
 │   │   ├── AdminPanel.tsx         ← gestión usuarios/invitaciones + email settings (superadmin)
-│   │   ├── PersonasPanel.tsx      ← vista unificada de invitaciones/miembros
-│   │   ├── CollaborationPanel.tsx ← toggles permisos + invitación Telegram + vínculos
+│   │   ├── PersonasPanel.tsx      ← invitaciones/miembros + toggles de permisos + invitación Telegram + vínculos
 │   │   ├── CommandPalette.tsx / CargaModal.tsx / HelpModal.tsx / TourModal.tsx
 │   │   ├── BiometricGate.tsx / PwaInstall.tsx / MaintenanceBanner.tsx
 │   │   ├── BotConnectionPanel.tsx / LoginScreen.tsx / ThemeToggle.tsx / BrandMark.tsx
@@ -407,7 +406,7 @@ Archivo principal: `src/server/app.ts`
 
 ### Extracción IA
 - `POST /api/extract` — rate limit 30 req/min por usuario, input max 2000 chars
-- `POST /api/ask` — agente LLM de consultas sobre movimientos + recurrentes. Body `{question, history?}` (question max 500 chars; history max 10 turnos `{role: user|assistant, content}` de 1000 chars c/u — habilita preguntas de seguimiento). Rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`/`get_recurrentes`/`calcular`) sobre el scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM (el historial es solo contexto conversacional). Detalles: las tools de filtro aceptan `buscar` (texto libre sobre descripción+categoría+empresa con stemming singular/plural, p/ ítems que viven en la descripción tipo "caramelos") además de `categoria`/`empresa` exactos; `calcular` hace porcentaje/diferencia/ratio/promedio determinístico (el modelo copia los números obtenidos por otra tool, no calcula de cabeza); `get_recurrentes` lista pagos recurrentes activos con próximo pago vía `computeNextRun` (arg `dias` = ventana de vencimiento). UI: `AskChat` — chat flotante (FAB + panel) montado en `DashboardApp`, disponible en todos los tabs; historial en memoria del cliente, se manda como `history`. Telegram (`/preguntar`) sigue single-turn.
+- `POST /api/ask` — agente LLM de consultas sobre movimientos + recurrentes. Body `{question, history?}` (question max 500 chars; history max 10 turnos `{role: user|assistant, content}` de 1000 chars c/u — habilita preguntas de seguimiento). Rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`/`get_recurrentes`/`calcular`) sobre el scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM (el historial es solo contexto conversacional). Detalles: las tools de filtro aceptan `buscar` (texto libre sobre descripción+categoría+empresa con stemming singular/plural, p/ ítems que viven en la descripción tipo "caramelos") además de `categoria`/`empresa` exactos; `calcular` hace porcentaje/diferencia/ratio/promedio determinístico (el modelo copia los números obtenidos por otra tool, no calcula de cabeza); `get_recurrentes` lista pagos recurrentes activos con próximo pago vía `computeNextRun` (arg `dias` = ventana de vencimiento). El prompt instruye al modelo a reintentar con sinónimos rioplatenses si una búsqueda da 0 (combustible↔nafta…) y a NO revelar sus tools; como `gemini-2.5-flash-lite` a veces ignora esa regla, `redactInternalDetails()` borra determinísticamente cualquier respuesta final que filtre nombres `get_*` y la reemplaza por una descripción de capacidades. UI: `AskChat` — chat flotante (FAB + panel) montado en `DashboardApp`, disponible en todos los tabs; historial en memoria del cliente, se manda como `history`. Telegram (`/preguntar`) sigue single-turn.
 
 ### Movimientos
 - `POST /api/movimientos`
@@ -507,7 +506,7 @@ Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y lla
 - borrado/soft delete de movimiento con confirmación
 - borrado/soft delete de empresa con confirmación (filtra `deleted_at`)
 - **fotos/tickets**: imagen → Gemini Vision → tarjeta revisión → inline keyboard → guardar
-- **selección de ítems de ticket** (Fase 0+1, 2026-06-08): si el ticket tiene ≥2 renglones, el bot muestra una tarjeta con checkboxes (`li:*`) para elegir qué ítems guardar; al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (uno solo con el total). Extracción ítem-level en `extractReceiptWithItems()` (`telegramMedia.ts`) + `RECEIPT_ITEMS_SYSTEM_PROMPT`/`parseReceiptItemsResult` (`gemini.ts`); estado en memoria en `src/server/lineItemsReview.ts` (Map + sweep, single-instance invariant). La metadata del comercio (empresa/fecha) se aplica a todos los ítems. Si hay <2 renglones cae al flujo de revisión de movimiento único. Pendiente Fase 2: misma UI en dashboard web.
+- **selección de ítems de ticket**: si el ticket tiene ≥2 renglones, el bot muestra una tarjeta para elegir qué ítems guardar (callbacks `modlin:` — "Modificar renglones") y al confirmar pregunta **Separados** (un movimiento por ítem) o **Sumados** (uno solo con el total). Extracción ítem-level en `extractReceiptWithItems()` (`telegramMedia.ts`) + `RECEIPT_ITEMS_SYSTEM_PROMPT`/`parseReceiptItemsResult` (`gemini.ts`); la lógica de renglones vive en `src/bot/extraction.ts`, el store de revisión en `src/server/extractionReview.ts` (Map + sweep, single-instance invariant). La metadata del comercio (empresa/fecha) se aplica a todos los ítems. Si hay <2 renglones cae al flujo de revisión de movimiento único. **Fase 2 web** ✔ live: misma selección en el dashboard vía `POST /api/extract-image` + `ImageTicketModal.tsx`.
 - **PDFs**: documento → Gemini Files API → extracción → confirmar → guardar
 - **resúmenes de tarjeta/banco (statements)** (2026-06-10): `RECEIPT_ITEMS_SYSTEM_PROMPT` clasifica `document_kind` (`receipt`|`statement`); si es statement → segundo call con `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` (`extractFromStatement()` en `telegramMedia.ts`) → cada transacción entra al flujo batch existente (`eb:*`: "Guardar todos" + revisar low-confidence). Maneja cuotas (no multiplica), impuestos, devoluciones=ingreso. La tarjeta resume máx 15 líneas + "… y N más" y capea botones de revisión a 6. Los movimientos guardados desde statement conservan su **fecha real** (`created_at` = fecha extraída) para no ensuciar informes mensuales; tickets/fotos mantienen `created_at = now` (comportamiento legacy).
 - **álbumes (media groups)**: múltiples fotos → debounce 1500ms → MULTI_RECEIPT → revisar cada uno
@@ -650,7 +649,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | Dockerfile `npm ci --omit=dev` (tsx movido a dependencies) | `Dockerfile`, `package.json` |
 
 ### Deuda de seguridad restante (baja prioridad)
-- (ninguna pendiente)
+- Rotar la anon key de Supabase (quedó expuesta en una sesión de CI/CD). Pendiente — ver ROADMAP.
 
 ---
 

@@ -1,7 +1,36 @@
-# CHANGELOG — Caja Chica (balancediario)
+# CHANGELOG — Caja Chica
 
 > Registro histórico de cambios. NO se autocarga en sesiones de Claude — consultar on-demand.
 > Para el estado actual y reglas operativas ver `CLAUDE.md`. Para deploy/infra ver `RUNBOOK.md`.
+
+---
+
+### Cambios 2026-06-10 (Agente LLM de consultas, resúmenes de tarjeta, hardening y deuda técnica)
+
+**Agente LLM de consultas (`/api/ask` web + `/preguntar` Telegram).** Loop tool-calling JSON sobre los movimientos + recurrentes del scope del caller — los números los calculan tools en memoria, nunca el LLM (`src/server/askAgent.ts`).
+- Tools: `get_saldos`, `get_top_categorias`, `get_movimientos`, `get_resumen_mensual`, `get_recurrentes`, `calcular`.
+- `buscar`: filtro de texto libre sobre descripción+categoría+empresa con stemming singular/plural. Arregla el falso cero cuando el ítem vive en la descripción (ej "caramelos" cuya categoría real es "golosinas").
+- `calcular`: porcentaje/diferencia/ratio/promedio determinístico (guard división por cero); el modelo copia los números obtenidos por otra tool, no calcula de cabeza.
+- `get_recurrentes`: pagos recurrentes activos con próximo pago vía `computeNextRun`; arg `dias` = ventana de vencimiento.
+- Sinónimos: el prompt reintenta `buscar` con sinónimos rioplatenses (combustible↔nafta…) antes de afirmar que no hay nada.
+- Privacidad: `redactInternalDetails()` borra determinísticamente cualquier respuesta que filtre nombres de tools (`get_*`) — flash-lite a veces ignora la regla del prompt.
+- Web: `AskChat` — chat flotante (FAB + panel) en `DashboardApp`, multi-turno (history en el cliente). Contraste: variante sutil en desktop, overlay + borde mint + header diferenciado en mobile.
+- Telegram: `/preguntar` + intent `consultar` por voz/texto (single-turn).
+
+**Resúmenes de tarjeta/banco (statements).** `RECEIPT_ITEMS_SYSTEM_PROMPT` clasifica `document_kind` (`receipt`|`statement`); si es statement → `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` → cada transacción entra al flujo batch del bot. Maneja cuotas/impuestos/devoluciones; conserva la fecha real en `created_at`. Discoverability: copy del modal web ("PDF, ticket o resumen de tarjeta") + welcome/menu de Telegram.
+
+**Fallback `GEMINI_API_KEY_2` en flujos media.** `withMediaKeyFallback` re-descarga y re-sube el archivo con la key 2 en 429/503 (fotos, PDF, statements, álbumes, audio, `/api/extract-image`) — antes solo el texto tenía fallback.
+
+**PRs cerrados.**
+- #40 (Sentinel): respuestas 500 sanitizadas (`internal_error` en vez de `error.message` crudo de Supabase) en `me.ts`/`dashboard.ts`.
+- #41 (Bolt): agregaciones de `DashboardApp` memoizadas con `useMemo`.
+- #38: cerrado sin mergear (plan obsoleto — la Fase 2 web ya se shippeó con otro diseño).
+
+**Deuda técnica.**
+- Deps de frontend (vite, react, react-dom, lucide-react, sonner, @tanstack/react-query, @vitejs/plugin-react, @tailwindcss/vite) movidas a `devDependencies` → imagen Cloud Run más chica (el backend no las importa en runtime, verificado con `npm ci --omit=dev`).
+- Workflow `deploy.yml` a Node 24.
+
+**Limpieza de datos.** Soft delete de registros de prueba (movimiento USD $3M "caramelos", recurrente de $1).
 
 ---
 

@@ -11,7 +11,7 @@ export interface AskDeps {
   getSession: (req: express.Request) => AppSession;
   resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
   applyDataScope: (query: any, session: AppSession, scope: DataAccessScope) => any;
-  parseAskRequest: (body: unknown) => { question: string } | null;
+  parseAskRequest: (body: unknown) => { question: string; history: Array<{ role: "user" | "assistant"; content: string }> } | null;
   tierStrict: RequestHandler;
 }
 
@@ -45,6 +45,7 @@ export function createAskRouter(deps: AskDeps) {
         genAI2,
         movimientos,
         question: payload.question,
+        history: payload.history,
       });
       res.json({ answer });
     } catch (err) {

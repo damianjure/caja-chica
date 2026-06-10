@@ -299,14 +299,35 @@ export function parseExtractRequest(
 }
 
 export const ASK_QUESTION_MAX_LENGTH = 500;
+export const ASK_HISTORY_MAX_TURNS = 10;
+export const ASK_HISTORY_TURN_MAX_LENGTH = 1000;
 
-export function parseAskRequest(value: unknown): { question: string } | null {
+export interface AskHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export function parseAskRequest(value: unknown): { question: string; history: AskHistoryTurn[] } | null {
   if (!value || typeof value !== "object") return null;
   const payload = value as Record<string, unknown>;
   if (typeof payload.question !== "string") return null;
   const trimmed = payload.question.trim();
   if (trimmed.length === 0 || trimmed.length > ASK_QUESTION_MAX_LENGTH) return null;
-  return { question: trimmed };
+
+  const history: AskHistoryTurn[] = [];
+  if (Array.isArray(payload.history)) {
+    for (const raw of payload.history) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const turn = raw as Record<string, unknown>;
+      if (turn.role !== "user" && turn.role !== "assistant") continue;
+      if (typeof turn.content !== "string") continue;
+      const content = turn.content.trim().slice(0, ASK_HISTORY_TURN_MAX_LENGTH);
+      if (!content) continue;
+      history.push({ role: turn.role, content });
+    }
+  }
+
+  return { question: trimmed, history: history.slice(-ASK_HISTORY_MAX_TURNS) };
 }
 
 export function parsePaginationQuery(query: unknown): PaginationQuery {

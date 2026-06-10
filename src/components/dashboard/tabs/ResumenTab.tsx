@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, LineChart } from 'lucide-react';
 import { ChartCard, HorizontalBarList, AreaTrendChart, WaterfallChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
-import AskBox from '../AskBox';
 import type { ForecastResult } from '../../../dashboard/forecast';
 import { buildMonthlyChartData, buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
@@ -113,8 +112,6 @@ export default function ResumenTab(props: ResumenTabProps) {
         <MetricCard label="Caja USD" value={props.usdNeto} tone="neutral" icon={Wallet} />
         <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} />
       </div>
-
-      <AskBox />
 
       {!props.netPositive && (
         <div role="status" className="rounded-xl border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3 text-sm text-[var(--app-amber-text)]">

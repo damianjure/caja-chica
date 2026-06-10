@@ -161,6 +161,26 @@ test("answerQuestion: tool call → resultado en contexto → answer", async () 
   assert.ok(genAI.calls[1].contents.includes("cuánto gasté"));
 });
 
+test("answerQuestion: history previo entra al transcript", async () => {
+  const genAI = fakeGenAI(['{"answer": "Un 12% menos que mayo."}']);
+  const answer = await answerQuestion({
+    genAI: genAI as any,
+    movimientos: MOVS,
+    question: "¿y comparado con mayo?",
+    history: [
+      { role: "user", content: "¿cuánto gasté este mes?" },
+      { role: "assistant", content: "Gastaste $8.000." },
+    ],
+    today: TODAY,
+  });
+  assert.equal(answer, "Un 12% menos que mayo.");
+  const contents = genAI.calls[0].contents;
+  assert.ok(contents.includes("¿cuánto gasté este mes?"));
+  assert.ok(contents.includes("Gastaste $8.000."));
+  // la pregunta nueva va después del historial
+  assert.ok(contents.indexOf("¿y comparado con mayo?") > contents.indexOf("Gastaste $8.000."));
+});
+
 test("answerQuestion: corta en ASK_MAX_TURNS si nunca responde", async () => {
   const genAI = fakeGenAI(['{"tool": "get_saldos", "args": {}}']);
   const answer = await answerQuestion({

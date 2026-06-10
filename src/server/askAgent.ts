@@ -47,6 +47,7 @@ FORMATO DE RESPUESTA — SIEMPRE un único objeto JSON, sin markdown, sin texto 
 REGLAS:
 - "period" es relativo a HOY (te paso la fecha): "semana" = últimos 7 días, "mes" = mes calendario actual, "anio" = año actual.
 - Si la pregunta menciona un mes o fecha específica, usá "from"/"to".
+- Puede haber CONVERSACIÓN PREVIA: interpretá preguntas de seguimiento ("¿y comparado con mayo?", "¿y en dólares?") en ese contexto, pero los números SIEMPRE salen de herramientas nuevas, nunca de respuestas anteriores.
 - Llamá UNA herramienta por turno. Cuando tengas los datos, respondé con "answer".
 - Si la pregunta no es sobre las finanzas del usuario, respondé con "answer" aclarando que solo respondés sobre sus movimientos.
 - Montos en formato argentino legible (ej: $15.430). Aclará la moneda cuando haya USD.
@@ -235,11 +236,18 @@ export function executeAskTool(
 
 // --- agent loop ---
 
+export interface AskHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface AnswerQuestionArgs {
   genAI: GenAILike;
   genAI2?: GenAILike | null;
   movimientos: AskMovimiento[];
   question: string;
+  /** Previous turns (already capped by the caller's parser) for follow-up questions. */
+  history?: AskHistoryTurn[];
   today?: Date;
 }
 
@@ -248,10 +256,17 @@ export async function answerQuestion({
   genAI2 = null,
   movimientos,
   question,
+  history = [],
   today = new Date(),
 }: AnswerQuestionArgs): Promise<string> {
+  const previous = history.length
+    ? "CONVERSACIÓN PREVIA:\n" +
+      history.map((t) => `${t.role === "user" ? "Usuario" : "Vos"}: ${t.content}`).join("\n") +
+      "\n\n"
+    : "";
   let transcript =
     `HOY: ${isoDay(today)}\n` +
+    previous +
     `PREGUNTA DEL USUARIO: ${question}`;
 
   for (let turn = 0; turn < ASK_MAX_TURNS; turn += 1) {

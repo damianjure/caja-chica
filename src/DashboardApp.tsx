@@ -6,6 +6,7 @@ import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovim
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
 import { ScrollToTop } from './components/ScrollToTop';
+import AskChat from './components/dashboard/AskChat';
 import { HelpModal } from './components/HelpModal';
 import { TourModal } from './components/TourModal';
 import { usePwaInstall, PwaInstallBanner } from './components/PwaInstall';
@@ -693,6 +694,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         />
 
         <ScrollToTop />
+        <AskChat />
         <HelpModal open={isHelpOpen} onClose={() => setIsHelpOpen(false)} section={activeTab} />
         <TourModal open={isTourOpen} onClose={closeTour} />
         <PwaInstallBanner pwa={pwa} />

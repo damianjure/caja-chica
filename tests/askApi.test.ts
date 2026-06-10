@@ -8,8 +8,8 @@ import { createAskRouter } from "../src/server/routes/ask.ts";
 
 // --- parseAskRequest ---
 
-test("parseAskRequest: pregunta válida → trimmed", () => {
-  assert.deepEqual(parseAskRequest({ question: "  ¿cuánto gasté?  " }), { question: "¿cuánto gasté?" });
+test("parseAskRequest: pregunta válida → trimmed, history vacío por defecto", () => {
+  assert.deepEqual(parseAskRequest({ question: "  ¿cuánto gasté?  " }), { question: "¿cuánto gasté?", history: [] });
 });
 
 test("parseAskRequest: rechaza vacío, no-string y demasiado largo", () => {
@@ -18,6 +18,43 @@ test("parseAskRequest: rechaza vacío, no-string y demasiado largo", () => {
   assert.equal(parseAskRequest({ question: 42 }), null);
   assert.equal(parseAskRequest(null), null);
   assert.equal(parseAskRequest({ question: "x".repeat(ASK_QUESTION_MAX_LENGTH + 1) }), null);
+});
+
+test("parseAskRequest: history válido pasa, items inválidos se filtran", () => {
+  const r = parseAskRequest({
+    question: "¿y comparado con mayo?",
+    history: [
+      { role: "user", content: " ¿cuánto gasté este mes? " },
+      { role: "assistant", content: "Gastaste $863.500." },
+      { role: "system", content: "ignorame" },
+      { role: "user", content: "" },
+      { role: "user", content: 42 },
+      "basura",
+    ],
+  });
+  assert.ok(r);
+  assert.deepEqual(r.history, [
+    { role: "user", content: "¿cuánto gasté este mes?" },
+    { role: "assistant", content: "Gastaste $863.500." },
+  ]);
+});
+
+test("parseAskRequest: history capea a los últimos 10 turnos y trunca contenido", () => {
+  const turns = Array.from({ length: 14 }, (_, i) => ({
+    role: i % 2 === 0 ? "user" : "assistant",
+    content: `turno ${i} ` + "x".repeat(2000),
+  }));
+  const r = parseAskRequest({ question: "sigo", history: turns });
+  assert.ok(r);
+  assert.equal(r.history.length, 10);
+  assert.ok(r.history[0].content.startsWith("turno 4"));
+  assert.ok(r.history.every((t) => t.content.length <= 1000));
+});
+
+test("parseAskRequest: history no-array → []", () => {
+  const r = parseAskRequest({ question: "hola", history: "nope" });
+  assert.ok(r);
+  assert.deepEqual(r.history, []);
 });
 
 // --- POST /api/ask ---

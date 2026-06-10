@@ -407,7 +407,7 @@ Archivo principal: `src/server/app.ts`
 
 ### Extracción IA
 - `POST /api/extract` — rate limit 30 req/min por usuario, input max 2000 chars
-- `POST /api/ask` — agente LLM de consultas sobre movimientos. Body `{question}` (max 500 chars), rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`) sobre los movimientos del scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM. UI: `AskBox` en tab Resumen.
+- `POST /api/ask` — agente LLM de consultas sobre movimientos. Body `{question, history?}` (question max 500 chars; history max 10 turnos `{role: user|assistant, content}` de 1000 chars c/u — habilita preguntas de seguimiento). Rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`) sobre los movimientos del scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM (el historial es solo contexto conversacional). UI: `AskChat` — chat flotante (FAB + panel) montado en `DashboardApp`, disponible en todos los tabs; historial en memoria del cliente, se manda como `history`. Telegram (`/preguntar`) sigue single-turn.
 
 ### Movimientos
 - `POST /api/movimientos`

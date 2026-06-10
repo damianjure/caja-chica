@@ -9,7 +9,7 @@
 - Persistir líneas de ticket (movimiento padre + líneas hijas editables): web modal-first + Telegram save-first + editar/borrar líneas + recompute del total. Fases A–E + diferido. End-to-end verificado en prod por el owner.
 - Selección de ítems de ticket en web + PDF + discoverability.
 - Pills de empresa en el gráfico de flujo de caja.
-- **Agente LLM para preguntas sobre gastos** (2026-06-10): `answerQuestion()` con loop tool-calling JSON sobre tools scopeadas en memoria (`src/server/askAgent.ts`). Web: `POST /api/ask` + `AskBox` en tab Resumen. Telegram: `/preguntar` + intent `consultar` por voz/texto. ⏳ pendiente verificación del owner en prod.
+- **Agente LLM para preguntas sobre gastos** (2026-06-10): `answerQuestion()` con loop tool-calling JSON sobre tools scopeadas en memoria (`src/server/askAgent.ts`). Web: `POST /api/ask` (con `history` multi-turno) + `AskChat` flotante disponible en todos los tabs. Telegram: `/preguntar` + intent `consultar` por voz/texto (single-turn). ⏳ pendiente verificación del owner en prod.
 - **Resúmenes de tarjeta/banco** (2026-06-10): `document_kind` en el prompt de tickets → routing a `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` → transacciones al flujo batch del bot con fecha real. ⏳ pendiente verificación del owner en prod (mandar un PDF de resumen real).
 
 ---

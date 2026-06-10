@@ -559,10 +559,10 @@ export const api = {
     });
   },
 
-  async ask(question: string): Promise<{ answer: string }> {
+  async ask(question: string, history: Array<{ role: "user" | "assistant"; content: string }> = []): Promise<{ answer: string }> {
     return fetchApi("/api/ask", {
       method: "POST",
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, history }),
     });
   },
 

@@ -72,16 +72,16 @@ export function CargaModal({
               {isExtracting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
             </span>
             <span className="text-sm font-bold text-[var(--app-text-1)]">
-              {isExtracting ? 'Leyendo el ticket…' : 'Subí una foto o PDF del ticket'}
+              {isExtracting ? 'Leyendo el documento…' : 'Subí un PDF, ticket o resumen de tarjeta'}
             </span>
-            <span className="text-xs text-[var(--app-text-3)]">Detecto cada renglón y elegís cuáles guardar · JPG · PNG · PDF</span>
+            <span className="text-xs text-[var(--app-text-3)]">Leo tickets, facturas y resúmenes de tarjeta · detecto cada renglón y elegís cuáles guardar · JPG · PNG · PDF</span>
           </button>
           <input
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
             className="sr-only"
-            aria-label="Seleccionar foto o PDF del ticket"
+            aria-label="Seleccionar PDF, ticket o resumen de tarjeta"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageFile(f); e.target.value = ''; }}
           />
 

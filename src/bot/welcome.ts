@@ -31,7 +31,7 @@ export function buildHelpMessage(firstName?: string | null): string {
     `• "cobré 30.000 de un laburo, anotalo en personal"\n` +
     `• "me entraron 200 dólares"\n` +
     `• "saqué 5000 de nafta para la empresa Norte"\n\n` +
-    `📸 *Foto del ticket*: mandá la foto y yo leo monto, fecha y comercio. Después confirmás.\n\n` +
+    `📸 *Foto, PDF o resumen de tarjeta*: mandá la foto/PDF de un ticket, factura o resumen de tarjeta y yo leo cada renglón. Después elegís cuáles guardar.\n\n` +
     `🎙️ *Audio*: mandá un audio diciendo el gasto igual que arriba.\n\n` +
     `📊 */informes*: te armo el resumen.\n` +
     `• "informe de este mes"\n• "gastos de la semana"\n• "saldos"\n\n` +

@@ -245,7 +245,7 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
   bot.callbackQuery("cargar_ticket", async (ctx) => {
     await ctx.answerCallbackQuery();
     return ctx.reply(
-      "📸 *Mandame la foto o el PDF del ticket ahora* 👇\n\nDetecto los renglones y elegís cuáles guardar. También podés mandar varias fotos juntas.",
+      "📸 *Mandame la foto o el PDF ahora* 👇\n\nTicket, factura o resumen de tarjeta: detecto cada renglón y elegís cuáles guardar. También podés mandar varias fotos juntas.",
       { parse_mode: "Markdown" },
     );
   });

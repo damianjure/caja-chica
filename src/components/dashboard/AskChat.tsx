@@ -164,8 +164,16 @@ export default function AskChat() {
   }
 
   return (
-    <div className="fixed z-40 inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[360px] flex flex-col rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-1)] shadow-[0_16px_48px_rgba(0,0,0,0.3)] overflow-hidden">
-      <div className="border-b border-[var(--app-border)] px-4 py-3">
+    <>
+      {/* Mobile-only dim backdrop (variant B): lifts the panel off the dashboard.
+          Desktop (variant A) keeps the dashboard visible — no overlay. */}
+      <div
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+        className="fixed inset-0 z-30 bg-black/45 sm:hidden"
+      />
+      <div className="fixed z-40 inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[360px] flex flex-col rounded-2xl border border-[var(--app-strong-surface)] sm:border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-[0_20px_56px_rgba(0,0,0,0.55)] sm:shadow-[0_16px_48px_rgba(0,0,0,0.4)] overflow-hidden">
+      <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-3)] sm:bg-transparent px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[var(--app-text-3)]" aria-hidden="true" />
@@ -198,7 +206,7 @@ export default function AskChat() {
             value={historyMode}
             onChange={(e) => changeHistoryMode(e.target.value === 'local' ? 'local' : 'session')}
             aria-label="Dónde guardar el historial del asistente"
-            className="min-w-0 flex-1 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] px-2 py-1 text-[11px] text-[var(--app-text-2)]"
+            className="min-w-0 flex-1 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-3)] px-2 py-1 text-[11px] text-[var(--app-text-2)]"
           >
             <option value="session">Solo esta sesión</option>
             <option value="local">Este dispositivo</option>
@@ -235,14 +243,14 @@ export default function AskChat() {
                 ? 'self-end max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--app-strong-surface)] px-3.5 py-2 text-sm text-[var(--app-strong-text)]'
                 : m.isError
                   ? 'self-start max-w-[90%] rounded-2xl rounded-bl-sm border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-3.5 py-2 text-sm text-[var(--app-amber-text)]'
-                  : 'self-start max-w-[90%] rounded-2xl rounded-bl-sm bg-[var(--app-surface-2)] px-3.5 py-2 text-sm text-[var(--app-text-1)] whitespace-pre-wrap leading-relaxed'
+                  : 'self-start max-w-[90%] rounded-2xl rounded-bl-sm bg-[var(--app-surface-3)] px-3.5 py-2 text-sm text-[var(--app-text-1)] whitespace-pre-wrap leading-relaxed'
             }
           >
             {m.content}
           </div>
         ))}
         {loading && (
-          <div className="self-start flex items-center gap-2 rounded-2xl rounded-bl-sm bg-[var(--app-surface-2)] px-3.5 py-2 text-sm text-[var(--app-text-3)]">
+          <div className="self-start flex items-center gap-2 rounded-2xl rounded-bl-sm bg-[var(--app-surface-3)] px-3.5 py-2 text-sm text-[var(--app-text-3)]">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
             Analizando tus movimientos…
           </div>
@@ -264,17 +272,18 @@ export default function AskChat() {
           maxLength={500}
           placeholder="Escribí tu consulta…"
           aria-label="Pregunta sobre tus movimientos"
-          className="flex-1 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 text-sm text-[var(--app-text-1)] placeholder:text-[var(--app-text-4)] focus:outline-none focus:ring-2 focus:ring-[var(--app-border-strong)]"
+          className="flex-1 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-3)] px-3 py-2 text-sm text-[var(--app-text-1)] placeholder:text-[var(--app-text-4)] focus:outline-none focus:ring-2 focus:ring-[var(--app-border-strong)]"
         />
         <button
           type="submit"
           disabled={loading || !question.trim()}
           aria-label="Enviar pregunta"
-          className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 text-[var(--app-text-2)] transition hover:text-[var(--app-text-1)] disabled:opacity-50"
+          className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-3)] px-3 py-2 text-[var(--app-text-2)] transition hover:text-[var(--app-text-1)] disabled:opacity-50"
         >
           <SendHorizontal className="h-4 w-4" aria-hidden="true" />
         </button>
       </form>
-    </div>
+      </div>
+    </>
   );
 }

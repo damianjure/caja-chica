@@ -16,6 +16,7 @@
  */
 
 import { InputFile } from "grammy";
+import { splitForTelegram } from "../../bot/utils.ts";
 import type {
   ChannelButton,
   ChannelContext,
@@ -128,7 +129,10 @@ export class TelegramChannel implements ChannelContext {
   }
 
   async reply(text: string): Promise<void> {
-    await this.ctx.reply(text);
+    // Telegram caps messages at 4096 chars — chunk long answers like the bot does.
+    for (const chunk of splitForTelegram(text)) {
+      await this.ctx.reply(chunk);
+    }
   }
 
   async replyWithButtons(text: string, buttons: ChannelButton[]): Promise<void> {

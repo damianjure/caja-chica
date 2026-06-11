@@ -1,22 +1,14 @@
 /**
- * imageExtract.ts — shared image extraction pipeline for web upload.
+ * imageExtract.ts — web upload adapter for media extraction.
  *
- * extractFromBuffer works like the bot's extractFromPhoto but accepts a
- * Buffer directly (no Telegram download step). Same RECEIPT→HANDWRITTEN
- * fallback logic. Media does NOT retry with a fallback key — Files API
- * uploads are scoped to the primary key.
+ * The web hands a Buffer straight to the channel-agnostic item-level extractor
+ * in mediaExtract.ts (no download step). The key2 quota fallback wraps here:
+ * the Buffer is in memory, so a fallback only re-uploads with the second client.
  */
 
-import { createPartFromUri, createUserContent } from "@google/genai";
-import {
-  RECEIPT_ITEMS_SYSTEM_PROMPT,
-  HANDWRITTEN_SYSTEM_PROMPT,
-  parsePhotoExtractionResult,
-  parseReceiptItemsResult,
-  type ReceiptItemsResult,
-} from "./gemini.ts";
-import { GeminiUnavailableError, isGeminiCapacityError, withMediaKeyFallback } from "./geminiWithFallback.ts";
-import type { TelegramMediaGenAI } from "./telegramMedia.ts";
+import { extractReceiptItemsFromBytes, type MediaGenAI } from "./mediaExtract.ts";
+import { withMediaKeyFallback } from "./geminiWithFallback.ts";
+import type { ReceiptItemsResult } from "./gemini.ts";
 import type { PhotoSourceType } from "./validation.ts";
 
 export const WEB_IMAGE_MIME_ALLOWLIST = new Set([
@@ -31,114 +23,25 @@ export const WEB_IMAGE_MIME_ALLOWLIST = new Set([
 export const WEB_IMAGE_MAX_BYTES = 7 * 1024 * 1024;
 
 export interface ExtractFromBufferArgs {
-  genAI: TelegramMediaGenAI;
-  /** Second API key client — the whole upload/extract is re-run with it on 429/503. */
-  genAI2?: TelegramMediaGenAI | null;
+  genAI: MediaGenAI;
+  /** Second API key client — the Buffer is re-uploaded with it on 429/503. */
+  genAI2?: MediaGenAI | null;
   imageBuffer: Buffer;
   mimeType: string;
   displayName?: string;
 }
 
-async function uploadBufferToGemini(
-  genAI: TelegramMediaGenAI,
-  imageBuffer: Buffer,
-  mimeType: string,
-  displayName: string,
-): Promise<{ name?: string; uri: string; mimeType: string }> {
-  const blob = new Blob([imageBuffer], { type: mimeType });
-  const uploaded = await genAI.files.upload({
-    file: blob,
-    config: { mimeType, displayName },
-  });
-  if (!uploaded.uri) throw new Error("gemini_web_upload_missing_uri");
-  return { name: uploaded.name, uri: uploaded.uri, mimeType: uploaded.mimeType ?? mimeType };
-}
-
-async function generateAndCleanup(
-  genAI: TelegramMediaGenAI,
-  uploaded: { name?: string; uri: string; mimeType: string },
-  systemInstruction: string,
-  promptText: string,
-): Promise<string> {
-  try {
-    const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), promptText]),
-      config: { systemInstruction },
-    });
-    return (result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
-  } catch (err) {
-    if (isGeminiCapacityError(err)) throw new GeminiUnavailableError();
-    throw err;
-  } finally {
-    if (uploaded.name) {
-      genAI.files.delete({ name: uploaded.name }).catch((e) => {
-        console.warn("Gemini web image cleanup error:", e);
-      });
-    }
-  }
-}
-
 /**
- * Item-level web extraction: pulls merchant metadata plus every line item in a
- * single Gemini call. Mirror of the bot's extractReceiptWithItems but from a
- * Buffer (no Telegram download). Falls back to the permissive HANDWRITTEN
- * prompt when the receipt is unreadable (parse failure or confidence < 0.5),
- * returning a single-movement shape (items: []) so the common case stays one
- * model call. PDFs are supported — Gemini Files API handles them like images.
+ * Item-level web extraction: merchant metadata plus every line item, with the
+ * permissive HANDWRITTEN fallback. Shared with the bot via mediaExtract — same
+ * prompts, same fallback profile. PDFs supported (Gemini Files API handles them
+ * like images).
  */
-export async function extractItemsFromBuffer(args: ExtractFromBufferArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+export async function extractItemsFromBuffer(
+  args: ExtractFromBufferArgs,
+): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  const name = args.displayName ?? "web-upload";
   return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
-    extractItemsFromBufferImpl({ ...args, genAI: client }),
+    extractReceiptItemsFromBytes(client, args.imageBuffer, args.mimeType, name),
   );
-}
-
-async function extractItemsFromBufferImpl({
-  genAI,
-  imageBuffer,
-  mimeType,
-  displayName = "web-upload",
-}: ExtractFromBufferArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
-  const uploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
-  const rawText = await generateAndCleanup(
-    genAI,
-    uploaded,
-    RECEIPT_ITEMS_SYSTEM_PROMPT,
-    "Extraé los datos del comercio y cada renglón del ticket.",
-  );
-
-  const parsed = parseReceiptItemsResult(rawText);
-  const sourceType: PhotoSourceType = mimeType === "application/pdf" ? "pdf" : "photo";
-
-  if (parsed && parsed.confidence >= 0.5 && (parsed.items.length > 0 || parsed.total !== null)) {
-    return { result: parsed, sourceType };
-  }
-
-  // Fallback: permissive handwritten single-movement extraction.
-  const retryUploaded = await uploadBufferToGemini(genAI, imageBuffer, mimeType, displayName);
-  const retryText = await generateAndCleanup(
-    genAI,
-    retryUploaded,
-    HANDWRITTEN_SYSTEM_PROMPT,
-    "Extraé la información financiera de esta imagen.",
-  );
-  const retryParsed = parsePhotoExtractionResult(retryText);
-  if (retryParsed) {
-    return {
-      result: {
-        documentKind: "receipt",
-        empresa: retryParsed.empresa,
-        cuit: retryParsed.cuit,
-        moneda: retryParsed.moneda,
-        fecha: retryParsed.fecha,
-        total: retryParsed.monto,
-        confidence: retryParsed.confidence,
-        items: [],
-      },
-      sourceType: "handwritten",
-    };
-  }
-
-  if (parsed) return { result: parsed, sourceType };
-  throw new Error("gemini_web_extraction_failed");
 }

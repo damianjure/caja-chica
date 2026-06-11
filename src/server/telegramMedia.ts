@@ -1,20 +1,26 @@
-import { createPartFromUri, createUserContent } from "@google/genai";
+/**
+ * telegramMedia.ts — Telegram channel adapter for media extraction.
+ *
+ * Responsibility is now narrow: download bytes from the Telegram file API, then
+ * hand them to the channel-agnostic extractors in mediaExtract.ts. The key2
+ * quota fallback wraps here (the bytes are downloaded once; a fallback only
+ * re-uploads with the second client). All extraction logic lives in
+ * mediaExtract.ts so WhatsApp/web can reuse it.
+ */
+
 import {
-  RECEIPT_SYSTEM_PROMPT,
-  RECEIPT_ITEMS_SYSTEM_PROMPT,
-  HANDWRITTEN_SYSTEM_PROMPT,
-  MULTI_RECEIPT_SYSTEM_PROMPT,
-  CREDIT_CARD_SUMMARY_SYSTEM_PROMPT,
-  parsePhotoExtractionResult,
-  parseMultiPhotoExtractionResult,
-  parseReceiptItemsResult,
-  parseCreditCardSummaryResult,
-  type PhotoExtractionResult,
-  type ReceiptItemsResult,
-  type CreditCardExtractionItem,
-} from "./gemini.ts";
-import { GeminiUnavailableError, isGeminiCapacityError, withMediaKeyFallback } from "./geminiWithFallback.ts";
+  extractPhotoFromBytes,
+  extractReceiptItemsFromBytes,
+  extractStatementFromBytes,
+  extractMultipleFromBytes,
+  type MediaGenAI,
+} from "./mediaExtract.ts";
+import { withMediaKeyFallback } from "./geminiWithFallback.ts";
+import type { PhotoExtractionResult, ReceiptItemsResult, CreditCardExtractionItem } from "./gemini.ts";
 import type { PhotoSourceType } from "./validation.ts";
+
+/** Re-exported so existing imports keep working; this is the generic media client shape. */
+export type TelegramMediaGenAI = MediaGenAI;
 
 export const SUPPORTED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
@@ -32,29 +38,9 @@ export const SUPPORTED_DOCUMENT_MIME_TYPES = new Set([
 
 export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
-export interface TelegramMediaGenAI {
-  files: {
-    upload(params: {
-      file: Blob;
-      config?: { mimeType?: string; displayName?: string };
-    }): Promise<{ name?: string; uri?: string; mimeType?: string }>;
-    delete(params: { name: string }): Promise<unknown>;
-  };
-  models: {
-    generateContent(params: {
-      model: string;
-      contents: unknown;
-      config?: { systemInstruction?: string };
-    }): Promise<{
-      text?: string;
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    }>;
-  };
-}
-
 export interface ExtractFromPhotoArgs {
   genAI: TelegramMediaGenAI;
-  /** Second API key client — the whole download/upload/extract is re-run with it on 429/503. */
+  /** Second API key client — on 429/503 the already-downloaded bytes are re-uploaded with it. */
   genAI2?: TelegramMediaGenAI | null;
   botToken: string;
   filePath: string;
@@ -75,14 +61,16 @@ function buildTelegramFileUrl(botToken: string, filePath: string): string {
   return `https://api.telegram.org/file/bot${botToken}/${filePath}`;
 }
 
-async function downloadAndUpload(
-  genAI: TelegramMediaGenAI,
+function displayNameFor(filePath: string, displayName?: string): string {
+  return displayName ?? filePath.split("/").pop() ?? "telegram-media";
+}
+
+/** Download raw bytes from the Telegram file API (channel-specific step). */
+async function downloadTelegramBytes(
   botToken: string,
   filePath: string,
-  mimeType: string,
-  displayName: string,
   fetchImpl: typeof fetch,
-): Promise<{ name?: string; uri: string; mimeType: string }> {
+): Promise<ArrayBuffer> {
   const response = await fetchImpl(buildTelegramFileUrl(botToken, filePath));
   if (!response.ok) {
     throw new Error(`telegram_media_download_failed:${response.status}`);
@@ -91,260 +79,53 @@ async function downloadAndUpload(
   if (arrayBuffer.byteLength > MAX_FILE_SIZE_BYTES) {
     throw new Error(`telegram_media_too_large:${arrayBuffer.byteLength}`);
   }
-  const blob = new Blob([arrayBuffer], { type: mimeType });
-  const uploaded = await genAI.files.upload({
-    file: blob,
-    config: { mimeType, displayName },
-  });
-  if (!uploaded.uri) throw new Error("gemini_media_upload_missing_uri");
-  return { name: uploaded.name, uri: uploaded.uri, mimeType: uploaded.mimeType ?? mimeType };
+  return arrayBuffer;
 }
 
-async function generateWithCleanup(
-  genAI: TelegramMediaGenAI,
-  uploadedFiles: Array<{ name?: string }>,
-  contentsBuilder: () => unknown,
-  systemInstruction: string,
-): Promise<string> {
-  try {
-    const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: contentsBuilder(),
-      config: { systemInstruction },
-    });
-    return (result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
-  } catch (err) {
-    if (isGeminiCapacityError(err)) throw new GeminiUnavailableError();
-    throw err;
-  } finally {
-    for (const f of uploadedFiles) {
-      if (f.name) {
-        genAI.files.delete({ name: f.name }).catch((err) => {
-          console.warn("Gemini media file cleanup error:", err);
-        });
-      }
-    }
-  }
-}
-
-export async function extractFromPhoto(args: ExtractFromPhotoArgs): Promise<{ result: PhotoExtractionResult; sourceType: PhotoSourceType }> {
+export async function extractFromPhoto(
+  args: ExtractFromPhotoArgs,
+): Promise<{ result: PhotoExtractionResult; sourceType: PhotoSourceType }> {
+  const bytes = await downloadTelegramBytes(args.botToken, args.filePath, args.fetchImpl ?? fetch);
+  const name = displayNameFor(args.filePath, args.displayName);
   return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
-    extractFromPhotoImpl({ ...args, genAI: client }),
+    extractPhotoFromBytes(client, bytes, args.mimeType, name),
   );
 }
 
-async function extractFromPhotoImpl({
-  genAI,
-  botToken,
-  filePath,
-  mimeType,
-  displayName,
-  fetchImpl = fetch,
-}: ExtractFromPhotoArgs): Promise<{ result: PhotoExtractionResult; sourceType: PhotoSourceType }> {
-  const uploaded = await downloadAndUpload(
-    genAI,
-    botToken,
-    filePath,
-    mimeType,
-    displayName ?? filePath.split("/").pop() ?? "telegram-media",
-    fetchImpl,
-  );
-
-  const rawText = await generateWithCleanup(
-    genAI,
-    [uploaded],
-    () => createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), "Extraé los datos del ticket o factura."]),
-    RECEIPT_SYSTEM_PROMPT,
-  );
-
-  let parsed = parsePhotoExtractionResult(rawText);
-  let sourceType: PhotoSourceType = mimeType === "application/pdf" ? "pdf" : "photo";
-
-  if (!parsed || parsed.confidence < 0.5) {
-    const retryUploaded = await downloadAndUpload(
-      genAI,
-      botToken,
-      filePath,
-      mimeType,
-      displayName ?? filePath.split("/").pop() ?? "telegram-media",
-      fetchImpl,
-    );
-    const retryText = await generateWithCleanup(
-      genAI,
-      [retryUploaded],
-      () => createUserContent([createPartFromUri(retryUploaded.uri, retryUploaded.mimeType), "Extraé la información financiera de esta imagen."]),
-      HANDWRITTEN_SYSTEM_PROMPT,
-    );
-    const retryParsed = parsePhotoExtractionResult(retryText);
-    if (retryParsed) {
-      parsed = retryParsed;
-      sourceType = "handwritten";
-    }
-  }
-
-  if (!parsed) {
-    throw new Error("gemini_photo_extraction_failed");
-  }
-
-  return { result: parsed, sourceType };
-}
-
-/**
- * Item-level receipt extraction: pulls the merchant metadata plus every line
- * item in a single Gemini call. When the receipt is unreadable (parse failure
- * or confidence < 0.5) it falls back to the permissive HANDWRITTEN prompt and
- * returns a single-movement shape (items: []), mirroring extractFromPhoto's
- * robustness profile so the common case stays a single model call.
- */
-export async function extractReceiptWithItems(args: ExtractFromPhotoArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+export async function extractReceiptWithItems(
+  args: ExtractFromPhotoArgs,
+): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
+  const bytes = await downloadTelegramBytes(args.botToken, args.filePath, args.fetchImpl ?? fetch);
+  const name = displayNameFor(args.filePath, args.displayName);
   return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
-    extractReceiptWithItemsImpl({ ...args, genAI: client }),
+    extractReceiptItemsFromBytes(client, bytes, args.mimeType, name),
   );
 }
 
-async function extractReceiptWithItemsImpl({
-  genAI,
-  botToken,
-  filePath,
-  mimeType,
-  displayName,
-  fetchImpl = fetch,
-}: ExtractFromPhotoArgs): Promise<{ result: ReceiptItemsResult; sourceType: PhotoSourceType }> {
-  const name = displayName ?? filePath.split("/").pop() ?? "telegram-media";
-  const uploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
-
-  const rawText = await generateWithCleanup(
-    genAI,
-    [uploaded],
-    () => createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), "Extraé los datos del comercio y cada renglón del ticket."]),
-    RECEIPT_ITEMS_SYSTEM_PROMPT,
-  );
-
-  const parsed = parseReceiptItemsResult(rawText);
-  const sourceType: PhotoSourceType = mimeType === "application/pdf" ? "pdf" : "photo";
-
-  if (parsed && parsed.confidence >= 0.5 && (parsed.items.length > 0 || parsed.total !== null)) {
-    return { result: parsed, sourceType };
-  }
-
-  // Fallback: permissive handwritten single-movement extraction.
-  const retryUploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
-  const retryText = await generateWithCleanup(
-    genAI,
-    [retryUploaded],
-    () => createUserContent([createPartFromUri(retryUploaded.uri, retryUploaded.mimeType), "Extraé la información financiera de esta imagen."]),
-    HANDWRITTEN_SYSTEM_PROMPT,
-  );
-  const retryParsed = parsePhotoExtractionResult(retryText);
-  if (retryParsed) {
-    return {
-      result: {
-        documentKind: "receipt",
-        empresa: retryParsed.empresa,
-        cuit: retryParsed.cuit,
-        moneda: retryParsed.moneda,
-        fecha: retryParsed.fecha,
-        total: retryParsed.monto,
-        confidence: retryParsed.confidence,
-        items: [],
-      },
-      sourceType: "handwritten",
-    };
-  }
-
-  if (parsed) return { result: parsed, sourceType };
-  throw new Error("gemini_photo_extraction_failed");
-}
-
-/**
- * Statement (credit card / bank summary) extraction: one Gemini call with the
- * specialized CREDIT_CARD prompt that pulls every individual transaction.
- * Called AFTER extractReceiptWithItems flags the document as a statement, so
- * it re-downloads/uploads the file (Files API uploads are single-use here).
- */
-export async function extractFromStatement(args: ExtractFromPhotoArgs): Promise<CreditCardExtractionItem[]> {
+export async function extractFromStatement(
+  args: ExtractFromPhotoArgs,
+): Promise<CreditCardExtractionItem[]> {
+  const bytes = await downloadTelegramBytes(args.botToken, args.filePath, args.fetchImpl ?? fetch);
+  const name = displayNameFor(args.filePath, args.displayName);
   return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
-    extractFromStatementImpl({ ...args, genAI: client }),
+    extractStatementFromBytes(client, bytes, args.mimeType, name),
   );
 }
 
-async function extractFromStatementImpl({
-  genAI,
-  botToken,
-  filePath,
-  mimeType,
-  displayName,
-  fetchImpl = fetch,
-}: ExtractFromPhotoArgs): Promise<CreditCardExtractionItem[]> {
-  const name = displayName ?? filePath.split("/").pop() ?? "telegram-media";
-  const uploaded = await downloadAndUpload(genAI, botToken, filePath, mimeType, name, fetchImpl);
-
-  const rawText = await generateWithCleanup(
-    genAI,
-    [uploaded],
-    () => createUserContent([createPartFromUri(uploaded.uri, uploaded.mimeType), "Extraé cada transacción individual de este resumen."]),
-    CREDIT_CARD_SUMMARY_SYSTEM_PROMPT,
+export async function extractFromMultiplePhotos(
+  args: ExtractFromMultiplePhotosArgs,
+): Promise<PhotoExtractionResult[]> {
+  const fetchImpl = args.fetchImpl ?? fetch;
+  const downloaded = await Promise.all(
+    args.files.map(async (file) => ({
+      bytes: await downloadTelegramBytes(args.botToken, file.filePath, fetchImpl),
+      mimeType: file.mimeType,
+      displayName: displayNameFor(file.filePath, file.displayName),
+    })),
   );
-
-  const items = parseCreditCardSummaryResult(rawText);
-  if (!items) throw new Error("gemini_statement_extraction_failed");
-  return items;
-}
-
-export async function extractFromMultiplePhotos(args: ExtractFromMultiplePhotosArgs): Promise<PhotoExtractionResult[]> {
   return withMediaKeyFallback(args.genAI, args.genAI2, (client) =>
-    extractFromMultiplePhotosImpl({ ...args, genAI: client }),
+    extractMultipleFromBytes(client, downloaded),
   );
-}
-
-async function extractFromMultiplePhotosImpl({
-  genAI,
-  botToken,
-  files,
-  fetchImpl = fetch,
-}: ExtractFromMultiplePhotosArgs): Promise<PhotoExtractionResult[]> {
-  const uploadedFiles: Array<{ name?: string; uri: string; mimeType: string }> = [];
-
-  try {
-    for (const file of files) {
-      const uploaded = await downloadAndUpload(
-        genAI,
-        botToken,
-        file.filePath,
-        file.mimeType,
-        file.displayName ?? file.filePath.split("/").pop() ?? "telegram-media",
-        fetchImpl,
-      );
-      uploadedFiles.push(uploaded);
-    }
-  } catch (err) {
-    // Clean up any files already uploaded before re-throwing
-    for (const f of uploadedFiles) {
-      if (f.name) {
-        genAI.files.delete({ name: f.name }).catch((e) => {
-          console.warn("Gemini media file cleanup error (partial upload):", e);
-        });
-      }
-    }
-    throw err;
-  }
-
-  const parts = uploadedFiles.flatMap((u) => [
-    createPartFromUri(u.uri, u.mimeType),
-  ]);
-
-  const rawText = await generateWithCleanup(
-    genAI,
-    uploadedFiles,
-    () => createUserContent([...parts, `Extraé los datos de los ${files.length} tickets o facturas.`]),
-    MULTI_RECEIPT_SYSTEM_PROMPT,
-  );
-
-  const results = parseMultiPhotoExtractionResult(rawText);
-  if (!results || results.length === 0) {
-    throw new Error("gemini_multi_photo_extraction_failed");
-  }
-  return results;
 }
 
 export function inferMediaMimeType(args: {

@@ -45,6 +45,13 @@
 - `InformesTab.tsx`: botón "📊 Exportar para Contador".
 - `src/config/afip_deadlines.ts`: vencimientos fijos en código (Monotributo ~día 5-20, IIBB día 20). Notificación automática vía el **Recordatorio Diario de Telegram** existente. Botón "Avanzar vencimiento" para el caso particular (ARCA cambió la fecha); si no se toca, asume estándar.
 
+### WhatsApp como canal de entrada (esquema 2026-06-10, mediano plazo)
+Mismas funciones que el bot de Telegram, vía **WhatsApp Business Cloud API oficial** (descartado Baileys/no-oficial: riesgo de ban). Análisis de acoplamiento hecho: el "cerebro" ya es puro (`askAgent`, prompts/parsers de `gemini`, `reportExports`, `recurrentes`, `voiceIntent`/`intentSlots` — cero grammY) y `extractItemsFromBuffer()` ya extrae desde Buffer; lo acoplado son los 18 archivos de `src/bot/` (grammY Context + inline keyboards) y la descarga de media.
+
+Arquitectura objetivo: **ports & adapters** — `src/channels/contract.ts` (`ChannelContext`: reply/sendMenu/sendFile/downloadMedia→Buffer/identity) + adapters `telegram/` y `whatsapp/`; la lógica conversacional migra a `src/flows/` sin canal. UI: inline keyboards → reply buttons (máx 3) / list messages (máx 10) / numerado. Identidad: tabla `whatsapp_links` espejo de `telegram_links` (phone en vez de chat_id), mismo doble factor. Sesiones: Maps actuales con key prefijada `tg:`/`wa:` (single-instance invariant se mantiene). Costo: conversaciones iniciadas por usuario gratis (ventana 24h); recordatorios salientes requieren template aprobado pago → decidir si quedan solo en Telegram.
+
+Fases shippeables: **0)** refactor media Buffer-first + keys de sesión prefijadas (sin comportamiento nuevo, sirve a Telegram ya) → **1)** `ChannelContext` + adapter Telegram idéntico (riesgo principal: refactor de 18 archivos; mitigación: un comando por PR, suite de tests como contrato) → **2)** plomería WA (Meta Business, webhook verify, `whatsapp_links`) → **3)** texto/audio + `/preguntar` (casi gratis, intents y askAgent ya puros) → **4)** fotos/PDF/statements vía `extractItemsFromBuffer` + list messages → **5)** informes/recurrentes/recordatorios (decisión de templates pagos).
+
 ---
 
 ## 🧹 Deuda técnica / operativa (chica)

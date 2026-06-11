@@ -83,6 +83,7 @@ import { notifyMaintenance } from "./maintenanceNotify.ts";
 import { createMaintenanceRouter } from "./routes/maintenance.ts";
 import { createMeRouter } from "./routes/me.ts";
 import { createTelegramRouter } from "./routes/telegram.ts";
+import { createWhatsAppRouter } from "./routes/whatsapp.ts";
 import { createAdminRouter, type AdminEmailDeps } from "./routes/admin.ts";
 import { createMovimientosRouter } from "./routes/movimientos.ts";
 import { createAskRouter } from "./routes/ask.ts";
@@ -432,6 +433,13 @@ export function createApp({
     webhookHandler,
     webhookSecret,
     bot: bot ?? null,
+  }));
+  app.use(createWhatsAppRouter({
+    supabase,
+    requireSession,
+    getSession,
+    resolveDataAccessScope,
+    randomBytes,
   }));
   app.use(createAdminRouter({
     supabase,

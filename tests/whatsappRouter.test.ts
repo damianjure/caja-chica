@@ -10,7 +10,11 @@ function fakeSupabase(tables: Record<string, unknown[]>) {
   function builder(rows: unknown[]) {
     const b: any = {
       select: () => b,
+      insert: () => b,
+      update: () => b,
       eq: () => b,
+      neq: () => b,
+      gt: () => b,
       is: () => b,
       order: () => b,
       limit: () => Promise.resolve({ data: rows, error: null }),
@@ -84,6 +88,23 @@ test("handleWhatsAppMessage: /preguntar sin texto → pide la consulta", async (
   const ch = new FakeChannel(waIncoming({ command: "preguntar", text: "" }));
   await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}") });
   assert.match(ch.ofKind("text")[0].text, /Escribí tu consulta/);
+});
+
+test("handleWhatsAppMessage: /vincular <token> redime el invite (sin estar vinculado)", async () => {
+  // No whatsapp_links yet; token is valid; anti-pivot select returns empty.
+  const supabase = fakeSupabase({
+    whatsapp_invite_tokens: [{ id: "t1", dashboard_id: "d1", target_user_id: "u1", expires_at: "2999-01-01T00:00:00.000Z", status: "pending" }],
+    whatsapp_links: [],
+  });
+  const ch = new FakeChannel(waIncoming({ command: "vincular", text: "abc123" }));
+  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}") });
+  assert.match(ch.ofKind("text")[0].text, /confirme/i);
+});
+
+test("handleWhatsAppMessage: /vincular sin código → pide el código", async () => {
+  const ch = new FakeChannel(waIncoming({ command: "vincular", text: "" }));
+  await handleWhatsAppMessage(ch, { supabase: fakeSupabase({}), genAI: fakeGenAI("{}") });
+  assert.match(ch.ofKind("text")[0].text, /código/i);
 });
 
 test("handleWhatsAppMessage: comando desconocido / texto libre → ayuda", async () => {

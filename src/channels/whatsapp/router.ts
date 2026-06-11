@@ -17,6 +17,7 @@ import {
   canWhatsAppDo,
 } from "../../server/whatsappAccess.ts";
 import { runAskFlow } from "../../flows/ask.ts";
+import { acceptWhatsAppInvite } from "../../server/whatsappInvite.ts";
 
 export interface WhatsAppRouterDeps {
   supabase: SupabaseLike;
@@ -31,13 +32,24 @@ export const WHATSAPP_HELP =
   "Caja Chica por WhatsApp.\n\nYa podés:\n• /preguntar <consulta> — saldos, gastos por categoría, comparaciones, recurrentes.\n\nProximamente: cargar gastos por texto/foto, informes y recurrentes.";
 
 export async function handleWhatsAppMessage(ch: ChannelContext, deps: WhatsAppRouterDeps): Promise<void> {
+  const { command, text } = ch.incoming;
+
+  // Link redemption must work BEFORE the identity gate (the number isn't linked yet).
+  if (command === "start" || command === "vincular") {
+    const token = (text ?? "").trim();
+    if (!token) {
+      await ch.reply("🔗 Para vincular este número, mandá el código que te dio el dashboard.\nEj: /vincular <código>");
+      return;
+    }
+    await redeemInvite(ch, deps, token);
+    return;
+  }
+
   const linked = await resolveWhatsAppIdentityByPhone(deps.supabase as any, ch.identity.userKey);
   if (!linked) {
     await ch.reply(WHATSAPP_NOT_LINKED);
     return;
   }
-
-  const { command, text } = ch.incoming;
 
   if (command === "preguntar" || command === "pregunta") {
     if (!canWhatsAppDo(linked, "read")) {
@@ -53,6 +65,30 @@ export async function handleWhatsAppMessage(ch: ChannelContext, deps: WhatsAppRo
     return;
   }
 
-  // /start, /ayuda, /menu, free text, button taps, media → help for now.
+  // /ayuda, /menu, free text, button taps, media → help for now.
   await ch.reply(WHATSAPP_HELP);
+}
+
+async function redeemInvite(ch: ChannelContext, deps: WhatsAppRouterDeps, token: string): Promise<void> {
+  const result = await acceptWhatsAppInvite(deps.supabase as any, {
+    token,
+    phone: ch.identity.userKey,
+    name: ch.identity.displayName ?? null,
+  });
+  switch (result.status) {
+    case "linked":
+      await ch.reply("✅ Listo, recibí tu solicitud. Pedile al dueño del dashboard que la confirme y ya vas a poder usar Caja Chica por acá.");
+      return;
+    case "invalid_token":
+      await ch.reply("❌ Ese código no es válido. Pedí uno nuevo desde el dashboard.");
+      return;
+    case "expired":
+      await ch.reply("⌛ El código venció. Generá uno nuevo desde el dashboard (duran 30 minutos).");
+      return;
+    case "pivot_blocked":
+      await ch.reply("⚠️ Este número ya está vinculado a un dashboard. Desvinculalo primero para cambiarlo.");
+      return;
+    default:
+      await ch.reply("❌ No pude procesar la vinculación. Probá de nuevo en un rato.");
+  }
 }

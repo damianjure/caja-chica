@@ -111,7 +111,7 @@ export interface ChannelContext {
   /** Acknowledge a button tap (Telegram callback query). No-op where N/A. */
   ackButton(text?: string): Promise<void>;
 
-  /** Typing / chat-action indicator. */
+  /** Typing / chat-action indicator. May be a no-op where the channel makes it impractical. */
   typing(): Promise<void>;
 
   /** Resolve an incoming media ref to raw bytes (the channel downloads). */

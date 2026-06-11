@@ -22,6 +22,7 @@ import {
   type MemberPermissions,
   type PersonaRecord,
   type TelegramLink,
+  type WhatsAppLink,
 } from "../../../../services/api";
 import { DASHBOARD_ROLE_LABELS } from "../../../../services/labels";
 import { ConfirmModal } from "../../../ui/ConfirmModal";
@@ -413,6 +414,161 @@ function TelegramCardSection({
 }
 
 // ---------------------------------------------------------------------------
+// WhatsApp section inside each card body (mirror of TelegramCardSection)
+// ---------------------------------------------------------------------------
+
+interface WhatsAppCardProps {
+  userId: string;
+  whatsappLinks: WhatsAppLink[];
+  onRefreshLinks: () => void;
+  showNotice: (msg: string) => void;
+  setError: (msg: string | null) => void;
+}
+
+function WhatsAppCardSection({
+  userId,
+  whatsappLinks,
+  onRefreshLinks,
+  showNotice,
+  setError,
+}: WhatsAppCardProps) {
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [freshToken, setFreshToken] = useState<{ token: string; expiresAt: string } | null>(null);
+
+  const memberLinks = whatsappLinks.filter((l) => l.app_user_id === userId && l.status !== "revoked");
+  const activeLink = memberLinks.find((l) => l.status === "active") ?? null;
+  const pendingLink = memberLinks.find((l) => l.status === "pending_owner_confirm") ?? null;
+
+  const handleGenerateToken = async () => {
+    setGeneratingToken(true);
+    setError(null);
+    try {
+      const result = await api.generateWhatsAppInviteToken(userId);
+      setFreshToken({ token: result.token, expiresAt: result.expires_at });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el código.");
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  const handleCopyToken = async (token: string) => {
+    await navigator.clipboard.writeText(`/vincular ${token}`);
+    showNotice("Comando copiado");
+  };
+
+  const handleConfirmLink = async (linkId: string) => {
+    setError(null);
+    try {
+      await api.confirmWhatsAppLink(linkId);
+      onRefreshLinks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo confirmar el vínculo.");
+    }
+  };
+
+  const handleRevokeLink = async (linkId: string) => {
+    setError(null);
+    try {
+      await api.revokeWhatsAppLink(linkId);
+      onRefreshLinks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo revocar el vínculo.");
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-4 border-t border-[var(--app-border)] dark:border-[var(--app-border)]">
+      <p className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">WhatsApp</p>
+
+      {freshToken ? (
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
+            Enviá este comando. Lo pega en el chat de WhatsApp con el bot. Válido 30 minutos.
+          </p>
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2">
+            <code className="flex-1 text-xs font-mono text-[var(--app-text-1)] dark:text-[var(--app-text-1)] break-all">
+              /vincular {freshToken.token}
+            </code>
+            <button
+              onClick={() => void handleCopyToken(freshToken.token)}
+              className="shrink-0 p-1.5 rounded-lg border border-transparent hover:border-[var(--app-text-2)]"
+              aria-label="Copiar comando"
+            >
+              <Copy className="w-3.5 h-3.5 text-[var(--app-text-2)] dark:text-[var(--app-text-2)]" />
+            </button>
+          </div>
+        </div>
+      ) : activeLink ? (
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
+          Conectado como{" "}
+          <span className="font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)]">
+            {activeLink.whatsapp_name ? activeLink.whatsapp_name : `+${activeLink.whatsapp_phone}`}
+          </span>
+          .
+        </p>
+      ) : pendingLink ? (
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
+          {pendingLink.whatsapp_name ? pendingLink.whatsapp_name : `+${pendingLink.whatsapp_phone}`}{" "}
+          ya escribió al bot. Confirmá el vínculo para darle acceso.
+        </p>
+      ) : (
+        <p className="text-xs text-[var(--app-text-3)] dark:text-[var(--app-text-3)]">
+          Generá un código para que esta persona conecte su WhatsApp al bot.
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {activeLink && (
+          <>
+            <button
+              disabled={generatingToken}
+              onClick={() => void handleGenerateToken()}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border)] bg-white dark:bg-[var(--app-surface-2)] dark:border-[var(--app-border)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-2)] dark:text-[var(--app-text-2)] hover:border-[var(--app-text-2)] disabled:opacity-50"
+            >
+              {generatingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
+              Regenerar vínculo
+            </button>
+            <button
+              onClick={() => void handleRevokeLink(activeLink.id)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+            >
+              <X className="w-3 h-3" /> Desvincular
+            </button>
+          </>
+        )}
+        {pendingLink && (
+          <>
+            <button
+              onClick={() => void handleConfirmLink(pendingLink.id)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-green-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-income)] hover:border-green-400"
+            >
+              <Check className="w-3 h-3" /> Confirmar vínculo
+            </button>
+            <button
+              onClick={() => void handleRevokeLink(pendingLink.id)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-red-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--chart-expense)] hover:border-red-400"
+            >
+              <X className="w-3 h-3" /> Rechazar
+            </button>
+          </>
+        )}
+        {!activeLink && !pendingLink && (
+          <button
+            disabled={generatingToken}
+            onClick={() => void handleGenerateToken()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-medium text-[var(--app-strong-text)] hover:border-[var(--app-text-2)] disabled:opacity-50"
+          >
+            {generatingToken ? <Loader2 className="w-3 h-3 animate-spin" /> : <Smartphone className="w-3 h-3" />}
+            {freshToken ? "Regenerar" : "Generar vínculo de WhatsApp"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Person card
 // ---------------------------------------------------------------------------
 
@@ -438,6 +594,9 @@ interface PersonCardProps {
   /** Telegram link data for expanded body */
   telegramLinks: TelegramLink[];
   onRefreshLinks: () => void;
+  /** WhatsApp link data for expanded body */
+  whatsappLinks: WhatsAppLink[];
+  onRefreshWhatsAppLinks: () => void;
   permLoading: boolean;
   onTogglePerm: (key: keyof MemberPermissions, current: boolean) => Promise<void>;
   onRevoke: () => void;
@@ -467,6 +626,8 @@ function PersonCard({
   userId,
   telegramLinks,
   onRefreshLinks,
+  whatsappLinks,
+  onRefreshWhatsAppLinks,
   permLoading,
   onTogglePerm,
   onRevoke,
@@ -621,6 +782,17 @@ function PersonCard({
             />
           )}
 
+          {/* WhatsApp section for active members */}
+          {canManageTelegram && userId && (
+            <WhatsAppCardSection
+              userId={userId}
+              whatsappLinks={whatsappLinks}
+              onRefreshLinks={onRefreshWhatsAppLinks}
+              showNotice={showNotice}
+              setError={setError}
+            />
+          )}
+
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--app-border)] dark:border-[var(--app-border)]">
             {/* Pending / expired invitations */}
@@ -725,6 +897,7 @@ export function MiembrosSection({
   const [personasLoading, setPersonasLoading] = useState(true);
 
   const [telegramLinks, setTelegramLinks] = useState<TelegramLink[]>([]);
+  const [whatsappLinks, setWhatsappLinks] = useState<WhatsAppLink[]>([]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [permLoading, setPermLoading] = useState<string | null>(null);
@@ -759,10 +932,17 @@ export function MiembrosSection({
       .catch(console.error);
   }, []);
 
+  const loadWhatsAppLinks = useCallback(() => {
+    api.getWhatsAppLinks()
+      .then((r) => setWhatsappLinks(r.links))
+      .catch(console.error);
+  }, []);
+
   useEffect(() => {
     void loadPersonas();
     loadTelegramLinks();
-  }, [loadPersonas, loadTelegramLinks]);
+    loadWhatsAppLinks();
+  }, [loadPersonas, loadTelegramLinks, loadWhatsAppLinks]);
 
   const refreshAll = useCallback(async () => {
     // Silent: don't flip the list into a loading state on background refresh
@@ -770,8 +950,9 @@ export function MiembrosSection({
     // but its latency must not block the personas list update.
     void onRefresh();
     loadTelegramLinks();
+    loadWhatsAppLinks();
     await loadPersonas(true);
-  }, [loadPersonas, onRefresh, loadTelegramLinks]);
+  }, [loadPersonas, onRefresh, loadTelegramLinks, loadWhatsAppLinks]);
 
   // Build owner card entry
   const ownerMember = data?.members.find((m) => m.role === "owner") ?? null;
@@ -930,6 +1111,8 @@ export function MiembrosSection({
                   userId={ownerMember.user_id}
                   telegramLinks={telegramLinks}
                   onRefreshLinks={loadTelegramLinks}
+                  whatsappLinks={whatsappLinks}
+                  onRefreshWhatsAppLinks={loadWhatsAppLinks}
                   permLoading={false}
                   onTogglePerm={async () => {}}
                   onRevoke={() => {}}
@@ -974,6 +1157,8 @@ export function MiembrosSection({
                     userId={member?.user_id}
                     telegramLinks={telegramLinks}
                     onRefreshLinks={loadTelegramLinks}
+                    whatsappLinks={whatsappLinks}
+                    onRefreshWhatsAppLinks={loadWhatsAppLinks}
                     permLoading={!!member && permLoading === member.id}
                     onTogglePerm={async (key, current) => {
                       if (!member) return;

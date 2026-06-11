@@ -324,6 +324,22 @@ export interface TelegramInviteTokenResponse {
   expires_at: string;
 }
 
+export interface WhatsAppLink {
+  id: string;
+  whatsapp_phone: string;
+  whatsapp_name: string | null;
+  app_user_id: string;
+  status: "pending_owner_confirm" | "active" | "revoked";
+  linked_at: string | null;
+  created_at: string;
+}
+
+export interface WhatsAppInviteTokenResponse {
+  token: string;
+  expires_at: string;
+  manualLinkCode: string;
+}
+
 export type PersonaStatus = "pending" | "active" | "expired" | "revoked";
 export type PersonaScope = "app" | "dashboard";
 
@@ -830,6 +846,25 @@ export const api = {
 
   async revokeTelegramLink(linkId: string): Promise<void> {
     return fetchApi(`/api/telegram/links/${linkId}`, { method: "DELETE" });
+  },
+
+  async generateWhatsAppInviteToken(targetUserId: string): Promise<WhatsAppInviteTokenResponse> {
+    return fetchApi("/api/whatsapp/invite-token", {
+      method: "POST",
+      body: JSON.stringify({ target_user_id: targetUserId }),
+    });
+  },
+
+  async getWhatsAppLinks(): Promise<{ links: WhatsAppLink[] }> {
+    return fetchApi("/api/whatsapp/links");
+  },
+
+  async confirmWhatsAppLink(linkId: string): Promise<void> {
+    return fetchApi(`/api/whatsapp/links/${linkId}/confirm`, { method: "POST" });
+  },
+
+  async revokeWhatsAppLink(linkId: string): Promise<void> {
+    return fetchApi(`/api/whatsapp/links/${linkId}`, { method: "DELETE" });
   },
 
   async updateMemberPermissions(

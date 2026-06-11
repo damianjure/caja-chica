@@ -4,7 +4,6 @@ import { requireTelegramCan, sendTyping, escapeMd } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
 import {
   applyTelegramDataScope,
-  buildTelegramWriteOwnership,
   canEditMovementViaTelegram,
   canDeleteMovementViaTelegram,
   type TelegramLinkRecord,
@@ -30,6 +29,7 @@ import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 import { setPendingLineMontoEdit } from "./lineMontoEdit.ts";
+import { insertExtractionMovement, saveExtractionBatch, statementItemsToPending } from "../flows/extraction.ts";
 
 const mediaGroupBuffer = new MediaGroupBuffer<{ filePath: string; mimeType: string; chatCtx: any }>({ debounceMs: 1500 });
 
@@ -112,37 +112,6 @@ export function buildBatchKeyboard(batchId: string, ids: string[]): { inline_key
   for (let i = 0; i < lowButtons.length; i += 2) rows.push(lowButtons.slice(i, i + 2));
   rows.push([{ text: "❌ Cancelar", callback_data: `eb:cancel:${batchId}` }]);
   return { inline_keyboard: rows };
-}
-
-async function insertExtractionMovement(supabase: BotDeps["supabase"], entry: PendingExtraction): Promise<{ id?: string; error?: unknown }> {
-  const d = entry.data;
-  const ownership = buildTelegramWriteOwnership({
-    userId: entry.userId,
-    dashboardId: entry.dashboardId,
-    ownerUserId: entry.ownerUserId,
-    role: null,
-    permissions: {},
-    username: null,
-    remindersEnabled: true,
-    linkTokenExpiresAt: null,
-  });
-  const { data, error } = await supabase.from("movimientos").insert([{
-    ...ownership,
-    monto: Math.abs(d.monto ?? 0),
-    tipo: d.tipo,
-    moneda: d.moneda,
-    categoria: d.categoria,
-    empresa_nombre: d.empresa,
-    descripcion: d.descripcion,
-    original_text: `[${d.sourceType}] ${d.descripcion}`,
-    conciliado: true,
-    conciliado_notas: null,
-    // Statement transactions keep their real date so monthly reports stay
-    // honest; receipts keep the legacy behavior (created_at = now).
-    ...(d.sourceType === "statement" && d.fecha ? { created_at: `${d.fecha}T12:00:00.000Z` } : {}),
-  }]).select("id");
-  if (error) return { error };
-  return { id: (data?.[0]?.id as string | undefined) };
 }
 
 // Branch after an item-aware extraction: if the receipt has ≥2 line items show
@@ -255,8 +224,8 @@ async function processStatement(
   const items = await extractFromStatement({ genAI, genAI2, botToken, ...file });
   try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
 
-  const usable = items.filter((it) => it.monto !== null);
-  if (usable.length === 0) {
+  const pendingData = statementItemsToPending(items);
+  if (pendingData.length === 0) {
     await ctx.reply("❌ No encontré transacciones legibles en el resumen. Probá con un PDF o una foto más nítida.");
     return;
   }
@@ -268,19 +237,7 @@ async function processStatement(
   ]);
 
   const batchIds: string[] = [];
-  for (const item of usable) {
-    const data: PendingExtractionData = {
-      monto: item.monto,
-      moneda: item.moneda,
-      tipo: item.tipo,
-      empresa: item.empresa && item.empresa.trim() ? item.empresa : "Personal",
-      cuit: null,
-      categoria: item.categoria,
-      descripcion: item.descripcion,
-      fecha: item.fecha,
-      confidence: item.confidence,
-      sourceType: "statement",
-    };
+  for (const data of pendingData) {
     const entry = createPendingExtraction({
       chatId: ctx.chat.id,
       dashboardId: linked.dashboardId ?? null,
@@ -613,18 +570,12 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     const ids = getPendingBatchIds(batchId);
     if (!ids) { await ctx.answerCallbackQuery("Este lote ya venció o fue guardado."); return; }
     await ctx.answerCallbackQuery("✅ Guardando...");
-    let saved = 0;
-    let total = 0;
-    for (const id of ids) {
-      const entry = getPendingExtraction(id);
-      if (!entry || entry.chatId !== ctx.chat.id) continue; // already saved/reviewed/expired
-      const { error } = await insertExtractionMovement(supabase, entry);
-      if (!error) {
-        saved += 1;
-        total += Math.abs(entry.data.monto ?? 0);
-        deletePendingExtraction(id);
-      }
-    }
+    // Chat-ownership filter stays here (channel session concern); the core saves.
+    const entries = ids
+      .map((id) => getPendingExtraction(id))
+      .filter((e): e is PendingExtraction => e !== null && e.chatId === ctx.chat.id);
+    const { saved, total, savedIds } = await saveExtractionBatch(supabase, entries);
+    for (const id of savedIds) deletePendingExtraction(id);
     pendingBatches.delete(batchId);
     await ctx.editMessageText(
       saved > 0

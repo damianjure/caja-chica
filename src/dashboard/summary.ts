@@ -440,7 +440,11 @@ export function getRecentExpenses(history: Movimiento[], companyName?: string, l
   return history
     .filter((item) => item.tipo === 'egreso')
     .filter((item) => !companyName || item.empresa_nombre === companyName)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // ⚡ Bolt: Performance optimization
+    // Avoid instantiating new Date objects during sorting which is O(N log N).
+    // ISO strings returned from Supabase are in UTC (Z) and are lexically sortable,
+    // so a direct ternary string comparison is significantly faster and behavior-equivalent.
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
     .slice(0, limit)
     .map((item) => ({
       id: item.id,
@@ -456,7 +460,11 @@ export function getRecentExpenses(history: Movimiento[], companyName?: string, l
 export function getRecentIncomes(history: Movimiento[], limit = 5): RecentIncomeItem[] {
   return history
     .filter((item) => item.tipo === 'ingreso')
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // ⚡ Bolt: Performance optimization
+    // Avoid instantiating new Date objects during sorting which is O(N log N).
+    // ISO strings returned from Supabase are in UTC (Z) and are lexically sortable,
+    // so a direct ternary string comparison is significantly faster and behavior-equivalent.
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
     .slice(0, limit)
     .map((item) => ({
       id: item.id,

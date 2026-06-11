@@ -1,4 +1,4 @@
-import { InlineKeyboard, InputFile, type Context } from "grammy";
+import { InlineKeyboard, type Context } from "grammy";
 import type { Bot } from "grammy";
 import type { BotDeps } from "../deps.ts";
 import {
@@ -9,11 +9,11 @@ import {
 } from "../sessions.ts";
 import { requireLinkedAccount, replyExpiredSession } from "../utils.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
-import { buildReportFile, buildSaldosReport } from "../../server/reportExports.ts";
-import { filterMovementsForReport, resolveReportDateRange, buildReportSummaryText, type ReportExportRequest } from "../../reports/shared.ts";
-import { buildToggleCallbackData, resolveSelectedCompanies, buildAlcanceKeyboard } from "../../server/reportBotHelpers.ts";
-import { uploadFileToDrive, decryptToken } from "../../server/drive.ts";
+import { buildReportSummaryText } from "../../reports/shared.ts";
+import { resolveSelectedCompanies, buildAlcanceKeyboard } from "../../server/reportBotHelpers.ts";
 import { can } from "../../server/permissions.ts";
+import { TelegramChannel } from "../../channels/telegram/adapter.ts";
+import { loadReportData, generateAndDeliverReport, type ReportParams } from "../../flows/reports.ts";
 import {
   buildTemporalidadKeyboard,
   buildDownloadKeyboard,
@@ -51,33 +51,26 @@ async function canUseDriveViaTelegram(supabase: BotDeps["supabase"], linked: Tel
   return (data?.length ?? 0) > 0;
 }
 
-// Fetch + filter the movements for the session's period/scope/tipo. Shared by
-// the chat summary (showReportSummary) and the file generation (generateAndSendReport).
-async function loadReportData(supabase: BotDeps["supabase"], session: ReportSession) {
-  const periodRequest: Pick<ReportExportRequest, "period" | "anchorDate" | "month" | "from" | "to"> = {
+// Map the Telegram guided-flow session to the channel-agnostic report params.
+function sessionToParams(session: ReportSession): ReportParams {
+  return {
     period: session.period,
     anchorDate: session.anchorDate,
     month: session.month,
     from: session.from,
     to: session.to,
+    tipo: session.tipo,
+    companies: resolveSelectedCompanies(session.selectedCompanyIdx, session.companyChoices ?? []),
   };
-  const range = resolveReportDateRange(periodRequest);
-  if (!range) return null;
-
-  const { data: movs } = await applyTelegramDataScope(
-    supabase.from("movimientos").select("*").is("deleted_at", null),
-    session.linked,
-  );
-  const companies = resolveSelectedCompanies(session.selectedCompanyIdx, session.companyChoices ?? []);
-  const tipoFilter = (session.tipo && session.tipo !== "saldos") ? session.tipo : "all";
-  const filters = { companies, tipo: tipoFilter as "all" | "ingreso" | "egreso", moneda: "all" as const };
-  const filtered = filterMovementsForReport(movs ?? [], filters, range);
-  return { range, filtered, filters };
 }
 
 // Show the report numbers in chat, then offer download (export-after-report flow).
 async function showReportSummary(supabase: BotDeps["supabase"], ctx: Context, session: ReportSession) {
-  const loaded = await loadReportData(supabase, session);
+  const loaded = await loadReportData(
+    supabase,
+    (q) => applyTelegramDataScope(q, session.linked),
+    sessionToParams(session),
+  );
   if (!loaded) return ctx.reply("❌ Período inválido. Intentá de nuevo con /informes.");
   const driveAvailable = await canUseDriveViaTelegram(supabase, session.linked);
   await ctx.reply(buildReportSummaryText(loaded.filtered as any[], loaded.range.label), {
@@ -94,52 +87,18 @@ async function generateAndSendReport(
   destination: "local" | "drive",
 ) {
   const linked = session.linked;
-  const today = new Date().toISOString().slice(0, 10);
-
-  const loaded = await loadReportData(supabase, session);
-  if (!loaded) return ctx.reply("❌ Período inválido. Intentá de nuevo con /informes.");
-  const { range, filtered, filters } = loaded;
-  const dateSlug = session.from ? `${session.from}_${session.to}` : (session.month ?? session.anchorDate ?? today);
-  const tipoSlug = session.tipo ?? "todos";
-  const fileName = `informe_${tipoSlug}_${session.period}_${dateSlug}.${format}`;
-
-  const file = session.tipo === "saldos"
-    ? buildSaldosReport({ format, fileName, periodLabel: range.label, filters, movements: filtered as any[] })
-    : buildReportFile({ format, fileName, periodLabel: range.label, filters, movements: filtered as any[] });
-
-  if (destination === "drive") {
-    const ownerUserId = await resolveTelegramDriveOwnerUserId(supabase, linked);
-    if (!ownerUserId) return ctx.reply("❌ No pude resolver el dueño del dashboard para usar Drive.");
-    const { data: connData } = await supabase
-      .from("drive_connections")
-      .select("refresh_token_enc")
-      .eq("owner_user_id", ownerUserId)
-      .limit(1);
-    const conn = connData?.[0];
-    if (!conn) return ctx.reply("❌ Drive no conectado. Conectalo desde el dashboard web.");
-    const tokenEncKey = process.env.TOKEN_ENCRYPTION_KEY;
-    if (!tokenEncKey) return ctx.reply("❌ Error de configuración del servidor.");
-    const refreshToken = decryptToken(conn.refresh_token_enc, tokenEncKey);
-    const uploaded = await uploadFileToDrive({
-      refreshToken,
-      clientId: process.env.GOOGLE_DRIVE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET!,
-      redirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI!,
-      fileName,
-      mimeType: file.mimeType,
-      buffer: file.buffer,
-    });
-    const movCount = session.tipo === "saldos" ? `${filtered.length} mov.` : `${filtered.length} movimientos`;
-    await ctx.reply(
-      `✅ *Informe guardado en Drive*\n\n📂 ${range.label}\n${movCount}\n\n[Ver en Drive](${uploaded.webViewLink})`,
-      { parse_mode: "Markdown" },
-    );
-  } else {
-    const caption = session.tipo === "saldos"
-      ? `📊 Saldos — ${range.label}`
-      : `📊 ${range.label} — ${filtered.length} movimientos`;
-    await ctx.replyWithDocument(new InputFile(file.buffer, fileName), { caption });
-  }
+  const ch = new TelegramChannel(ctx as any, { botToken: "" });
+  await generateAndDeliverReport(
+    ch,
+    supabase,
+    (q) => applyTelegramDataScope(q, linked),
+    sessionToParams(session),
+    {
+      format,
+      destination,
+      resolveDriveOwnerUserId: () => resolveTelegramDriveOwnerUserId(supabase, linked),
+    },
+  );
 }
 
 /**

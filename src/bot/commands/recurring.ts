@@ -5,9 +5,8 @@ import { requireTelegramCan, replyExpiredSession, sendTyping, splitForTelegram }
 import { pendingRecurrenceSessions, getRecurrenceSession } from "../sessions.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { applyTelegramDataScope, type TelegramLinkRecord } from "../../server/telegramAccess.ts";
-import { computeNextRun, relativeRunLabel } from "../../server/recurrentes.ts";
-import type { Frecuencia } from "../../server/recurrentes.ts";
 import type { RecurrenteSlots } from "../intentSlots.ts";
+import { listRecurrentesWithNextRun, createRecurrente, toggleRecurrente } from "../../flows/recurring.ts";
 import {
   buildRecurrentesListText,
   buildRecurrenteActionKeyboard,
@@ -36,29 +35,14 @@ export async function handleListRecurrentes(supabase: BotDeps["supabase"], ctx: 
 
   sendTyping(ctx);
 
-  const query = applyTelegramDataScope(
-    supabase.from("recurrentes").select("*"),
-    linked,
-  ).is("deleted_at", null).order("created_at", { ascending: true });
-
-  const { data, error } = await query;
-  if (error) {
+  let recs;
+  try {
+    recs = await listRecurrentesWithNextRun(supabase, (q) => applyTelegramDataScope(q, linked));
+  } catch (error) {
     console.error("[/recurrentes] fetch error:", error);
     await ctx.reply("❌ No pude cargar los recurrentes. Intentá de nuevo.");
     return;
   }
-
-  const now = new Date();
-  const recs = (data ?? []).map((r: any) => {
-    const lastProcessed = r.last_processed ? new Date(r.last_processed) : null;
-    const dayOfMonth = typeof r.day_of_month === "number" ? r.day_of_month : null;
-    const nextRun = computeNextRun(r.frecuencia as Frecuencia, lastProcessed, dayOfMonth, now);
-    return {
-      ...r,
-      next_run_at: nextRun ? nextRun.toISOString() : null,
-      next_run_label: relativeRunLabel(nextRun, now),
-    };
-  });
 
   const listText = buildRecurrentesListText(recs);
 
@@ -97,26 +81,19 @@ export async function createRecurrenteFromBot(
   s: RecurrenteSlots,
 ): Promise<boolean> {
   if (s.monto === null || s.tipo === null || s.frecuencia === null || !s.descripcion) return false;
-  const { error } = await supabase.from("recurrentes").insert([{
-    ...(linked.dashboardId && linked.userId
+  return createRecurrente(supabase, {
+    ownership: linked.dashboardId && linked.userId
       ? { dashboard_id: linked.dashboardId, created_by_user_id: linked.userId }
-      : { owner_user_id: linked.ownerUserId }),
+      : { owner_user_id: linked.ownerUserId },
     monto: s.monto,
     tipo: s.tipo,
     moneda: s.moneda,
     frecuencia: s.frecuencia,
     descripcion: s.descripcion,
-    categoria: s.categoria?.trim() || (s.tipo === "ingreso" ? "Ingresos" : "Varios"),
-    day_of_month: s.frecuencia === "mensual" ? (s.dia ?? null) : null,
-    empresa_nombre: null,
-    chat_id: ctx.chat?.id ?? null,
-    last_processed: null,
-  }]);
-  if (error) {
-    console.error("createRecurrenteFromBot error:", error);
-    return false;
-  }
-  return true;
+    categoria: s.categoria,
+    dayOfMonth: s.dia ?? null,
+    notifyChatId: ctx.chat?.id ?? null,
+  });
 }
 
 export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
@@ -205,47 +182,24 @@ export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
 
     const recId = ctx.match[1];
 
-    // Fetch the record first — scope-guarded on the SELECT too
-    const { data: rows, error: fetchErr } = await applyTelegramDataScope(
-      supabase.from("recurrentes").select("id, dashboard_id, owner_user_id, deleted_at, is_active, descripcion, monto, moneda").eq("id", recId),
-      linked,
+    const result = await toggleRecurrente(
+      supabase,
+      (q) => applyTelegramDataScope(q, linked),
+      recId,
+      false,
+      (rec) => canToggleRecurrente(rec, linked),
     );
-    if (fetchErr) {
-      console.error("[rec_pause] fetch error:", fetchErr);
-      await ctx.reply("❌ Error al buscar el recurrente.");
-      return;
-    }
-
-    const rec = rows?.[0];
-    if (!rec || !canToggleRecurrente(rec, linked)) {
-      await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
-      return;
-    }
-
-    if (!rec.is_active) {
-      await ctx.editMessageReplyMarkup({
-        reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: false }).inline_keyboard },
-      }).catch(() => {});
-      await ctx.reply("ℹ️ Ese recurrente ya estaba pausado.");
-      return;
-    }
-
-    // UPDATE scoped — only updates within caller's scope (defense-in-depth)
-    const { error: updateErr } = await applyTelegramDataScope(
-      supabase.from("recurrentes").update({ is_active: false }).eq("id", recId),
-      linked,
-    );
-    if (updateErr) {
-      console.error("[rec_pause] update error:", updateErr);
-      await ctx.reply("❌ No pude pausar el recurrente.");
-      return;
-    }
+    if (result.status === "fetch_error") return void await ctx.reply("❌ Error al buscar el recurrente.");
+    if (result.status === "not_found") return void await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
+    if (result.status === "update_error") return void await ctx.reply("❌ No pude pausar el recurrente.");
 
     await ctx.editMessageReplyMarkup({
       reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: false }).inline_keyboard },
     }).catch(() => {});
 
-    const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+    if (result.status === "already") return void await ctx.reply("ℹ️ Ese recurrente ya estaba pausado.");
+
+    const label = result.rec.descripcion ?? `${result.rec.monto} ${result.rec.moneda}`;
     await ctx.reply(`⏸ *${label.replace(/[_*`\[]/g, "\\$&")}* pausado.`, { parse_mode: "Markdown" });
   });
 
@@ -262,45 +216,24 @@ export function registerRecurringHandlers(bot: Bot, deps: BotDeps) {
 
     const recId = ctx.match[1];
 
-    const { data: rows, error: fetchErr } = await applyTelegramDataScope(
-      supabase.from("recurrentes").select("id, dashboard_id, owner_user_id, deleted_at, is_active, descripcion, monto, moneda").eq("id", recId),
-      linked,
+    const result = await toggleRecurrente(
+      supabase,
+      (q) => applyTelegramDataScope(q, linked),
+      recId,
+      true,
+      (rec) => canToggleRecurrente(rec, linked),
     );
-    if (fetchErr) {
-      console.error("[rec_on] fetch error:", fetchErr);
-      await ctx.reply("❌ Error al buscar el recurrente.");
-      return;
-    }
-
-    const rec = rows?.[0];
-    if (!rec || !canToggleRecurrente(rec, linked)) {
-      await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
-      return;
-    }
-
-    if (rec.is_active) {
-      await ctx.editMessageReplyMarkup({
-        reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: true }).inline_keyboard },
-      }).catch(() => {});
-      await ctx.reply("ℹ️ Ese recurrente ya estaba activo.");
-      return;
-    }
-
-    const { error: updateErr } = await applyTelegramDataScope(
-      supabase.from("recurrentes").update({ is_active: true }).eq("id", recId),
-      linked,
-    );
-    if (updateErr) {
-      console.error("[rec_on] update error:", updateErr);
-      await ctx.reply("❌ No pude reactivar el recurrente.");
-      return;
-    }
+    if (result.status === "fetch_error") return void await ctx.reply("❌ Error al buscar el recurrente.");
+    if (result.status === "not_found") return void await ctx.reply("❌ No encontré ese recurrente o no tenés permiso.");
+    if (result.status === "update_error") return void await ctx.reply("❌ No pude reactivar el recurrente.");
 
     await ctx.editMessageReplyMarkup({
       reply_markup: { inline_keyboard: buildRecurrenteActionKeyboard({ id: recId, is_active: true }).inline_keyboard },
     }).catch(() => {});
 
-    const label = rec.descripcion ?? `${rec.monto} ${rec.moneda}`;
+    if (result.status === "already") return void await ctx.reply("ℹ️ Ese recurrente ya estaba activo.");
+
+    const label = result.rec.descripcion ?? `${result.rec.monto} ${result.rec.moneda}`;
     await ctx.reply(`▶️ *${label.replace(/[_*`\[]/g, "\\$&")}* reactivado.`, { parse_mode: "Markdown" });
   });
 }

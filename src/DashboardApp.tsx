@@ -29,6 +29,7 @@ import { ModalShell } from './components/ui/ModalShell';
 import { MovementCards } from './components/dashboard/MovementCards';
 import { HeaderUserMenu } from './components/dashboard/HeaderUserMenu';
 import { BrandMark } from './components/BrandMark';
+import { DashboardSwitcher } from './components/DashboardSwitcher';
 import { DashboardModals } from './components/dashboard/DashboardModals';
 import { useDashboardData } from './hooks/dashboard/useDashboardData';
 import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
@@ -618,6 +619,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <span aria-hidden="true">＋</span><span>Nueva operación</span>
               </button>
             )}
+            <div className="hidden sm:block">
+              <DashboardSwitcher />
+            </div>
             <HeaderUserMenu
               email={viewer.email}
               identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}

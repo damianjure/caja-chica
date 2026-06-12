@@ -340,6 +340,13 @@ export interface WhatsAppInviteTokenResponse {
   manualLinkCode: string;
 }
 
+export interface UserDashboard {
+  id: string;
+  name: string;
+  type: "personal" | "pyme";
+  role: string;
+}
+
 export type PersonaStatus = "pending" | "active" | "expired" | "revoked";
 export type PersonaScope = "app" | "dashboard";
 
@@ -865,6 +872,24 @@ export const api = {
 
   async revokeWhatsAppLink(linkId: string): Promise<void> {
     return fetchApi(`/api/whatsapp/links/${linkId}`, { method: "DELETE" });
+  },
+
+  async getDashboards(): Promise<{ dashboards: UserDashboard[] }> {
+    return fetchApi("/api/dashboards");
+  },
+
+  async createPymeDashboard(name: string, cuit: string, cuil?: string): Promise<{ dashboardId: string }> {
+    return fetchApi("/api/dashboards", {
+      method: "POST",
+      body: JSON.stringify({ name, cuit, cuil }),
+    });
+  },
+
+  async setActiveDashboard(dashboardId: string): Promise<{ ok: boolean }> {
+    return fetchApi("/api/me/active-dashboard", {
+      method: "PATCH",
+      body: JSON.stringify({ dashboard_id: dashboardId }),
+    });
   },
 
   async updateMemberPermissions(

@@ -5,6 +5,21 @@
 
 ---
 
+### Cambios 2026-06-11 (Canal WhatsApp — ports & adapters, todo sin Meta)
+
+**Segundo canal de entrada (WhatsApp Business Cloud API) construido y testeado SIN tocar Meta.** Arquitectura ports & adapters: la lógica conversacional vive en núcleos channel-agnostic; cada canal es un adapter del contrato. INERTE en prod (tablas sin aplicar, sin webhook) — ver `CLAUDE.md` "Canal WhatsApp".
+
+- **Núcleos channel-agnostic** (`src/flows/`): `ask`, `reports`, `recurring`, `extraction` (save). Los comandos del bot de Telegram pasaron a ser cableado: el `Context` arma el adapter + scope y delega. Comportamiento preservado.
+- **Fase 0 — media Buffer-first** (`src/server/mediaExtract.ts`): separa descarga (por canal) de extracción (genérica, desde Buffer). `telegramMedia`/`imageExtract` delegan; mata duplicación. Descarga una sola vez (el fallback key2 re-sube el buffer).
+- **`ChannelContext`** (`src/channels/contract.ts`) + `FakeChannel`. Adapter **Telegram** (`channels/telegram/adapter.ts`, en prod para `/preguntar`) y **WhatsApp** (`channels/whatsapp/adapter.ts`): builders de payload Cloud API (botones ≤3, lista ≤10 filas, numerado fallback) + `whatsappIncoming` (webhook→IncomingMessage). **Spec-reviewed** contra docs vivos de Meta (review adversarial 5 reviewers): body interactive cap 1024 (no 4096), reply.id ≤256, recipient_type, filename ≤240.
+- **Identidad + write-path**: `whatsappAccess.ts` (identidad por teléfono, reusa scope/permisos), `whatsappInvite.ts` (doble-factor: invite → pending_owner_confirm → confirm, anti-pivot), `routes/whatsapp.ts` (invite/links/confirm/revoke, montado en app.ts), `db/patches/whatsapp_links_phase.sql` (**NO aplicado**).
+- **UI dashboard**: `WhatsAppCardSection` por miembro en `MiembrosSection` (generar `/vincular`, confirmar/revocar). (`TelegramSection.tsx` standalone es dead code pre-existente.)
+- **Flows guiadas WhatsApp**: `whatsappReports.ts` (período→tipo→formato→documento) + `whatsappRecurring.ts` (monto→tipo→moneda→frecuencia→descripción→insert), con `WaSessionStore` por chatKey.
+- **Harness offline** (`tests/helpers/waSim.ts`): alimenta webhooks falsos → asserta payloads salientes turno a turno. Verifica los flows end-to-end sin Meta. Suite 972 pass / 2 skip.
+- **Pendiente** (no plomería): texto libre + foto en WhatsApp (requiere extraer el núcleo de guardado de movimientos). **Plomería de Meta** (último): cuenta Business, transport real, webhook, token, aplicar el SQL.
+
+---
+
 ### Cambios 2026-06-10 (Agente LLM de consultas, resúmenes de tarjeta, hardening y deuda técnica)
 
 **Agente LLM de consultas (`/api/ask` web + `/preguntar` Telegram).** Loop tool-calling JSON sobre los movimientos + recurrentes del scope del caller — los números los calculan tools en memoria, nunca el LLM (`src/server/askAgent.ts`).

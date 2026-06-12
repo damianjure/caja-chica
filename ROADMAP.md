@@ -52,6 +52,10 @@ Arquitectura objetivo: **ports & adapters** — `src/channels/contract.ts` (`Cha
 
 Fases shippeables: **0)** refactor media Buffer-first + keys de sesión prefijadas (sin comportamiento nuevo, sirve a Telegram ya) → **1)** `ChannelContext` + adapter Telegram idéntico (riesgo principal: refactor de 18 archivos; mitigación: un comando por PR, suite de tests como contrato) → **2)** plomería WA (Meta Business, webhook verify, `whatsapp_links`) → **3)** texto/audio + `/preguntar` (casi gratis, intents y askAgent ya puros) → **4)** fotos/PDF/statements vía `extractItemsFromBuffer` + list messages → **5)** informes/recurrentes/recordatorios (decisión de templates pagos).
 
+**Estado (2026-06-11): TODO lo que no es plomería de Meta está construido y testeado SIN Meta** (ver CLAUDE.md "Canal WhatsApp"). Hecho ✔: Fase 0 (media Buffer-first), `ChannelContext`+`FakeChannel`, adapter Telegram (en prod para `/preguntar`), núcleos channel-agnostic en `src/flows/` (ask/reports/recurring/extraction), adapter WhatsApp (spec-reviewed vs docs vivos de Meta), identidad por teléfono + router + write-path doble-factor + rutas HTTP + UI dashboard, flows guiadas WhatsApp informes/recurrentes, harness offline (`tests/helpers/waSim.ts`).
+- ⏳ **Pendiente NO-plomería**: carga de gasto por texto libre + foto/ticket en WhatsApp → requiere extraer `persistTelegramMovement`/`persistTelegramTicket` (en `bot/commands/movements.ts`, acoplado a Telegram) a un flow channel-agnostic. Refactor grande.
+- ⏳ **Plomería de Meta (último)**: cuenta Business + número, transport real a `/PHONE_NUMBER_ID/messages`, webhook GET verify + POST → `handleWhatsAppMessage`, token, **aplicar `db/patches/whatsapp_links_phase.sql`**. Hasta entonces las rutas `/api/whatsapp/*` y la UI están INERTES (tablas no existen, sin webhook).
+
 ---
 
 ## 🧹 Deuda técnica / operativa (chica)

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { handleWhatsAppMessage, WHATSAPP_NOT_LINKED, WHATSAPP_HELP } from "../src/channels/whatsapp/router.ts";
 import { resolveWhatsAppIdentityByPhone, canWhatsAppDo } from "../src/server/whatsappAccess.ts";
 import { FakeChannel, fakeIncoming } from "../src/channels/fake.ts";
+import { WaSessionStore } from "../src/channels/whatsapp/session.ts";
 
 // Supabase fake that answers per-table queries by a tiny script.
 function fakeSupabase(tables: Record<string, unknown[]>) {
@@ -62,7 +63,7 @@ test("canWhatsAppDo: viewer puede read, no write", () => {
 
 test("handleWhatsAppMessage: número no vinculado → mensaje de vinculación", async () => {
   const ch = new FakeChannel(waIncoming({ text: "hola" }));
-  await handleWhatsAppMessage(ch, { supabase: fakeSupabase({ whatsapp_links: [] }), genAI: fakeGenAI("{}") });
+  await handleWhatsAppMessage(ch, { supabase: fakeSupabase({ whatsapp_links: [] }), genAI: fakeGenAI("{}"), sessions: new WaSessionStore() });
   assert.equal(ch.ofKind("text")[0].text, WHATSAPP_NOT_LINKED);
 });
 
@@ -74,7 +75,7 @@ test("handleWhatsAppMessage: /preguntar vinculado → corre el ask flow", async 
     recurrentes: [],
   });
   const ch = new FakeChannel(waIncoming({ command: "preguntar", text: "cuánto gasté" }));
-  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI('{"answer": "Gastaste $8.000."}') });
+  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI('{"answer": "Gastaste $8.000."}'), sessions: new WaSessionStore() });
   assert.ok(ch.outbound.some((o) => o.kind === "typing"));
   const last = ch.last();
   assert.equal(last && last.kind === "text" ? last.text : "", "Gastaste $8.000.");
@@ -86,7 +87,7 @@ test("handleWhatsAppMessage: /preguntar sin texto → pide la consulta", async (
     dashboard_members: [{ role: "owner", status: "active", permissions: {} }],
   });
   const ch = new FakeChannel(waIncoming({ command: "preguntar", text: "" }));
-  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}") });
+  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}"), sessions: new WaSessionStore() });
   assert.match(ch.ofKind("text")[0].text, /Escribí tu consulta/);
 });
 
@@ -97,13 +98,13 @@ test("handleWhatsAppMessage: /vincular <token> redime el invite (sin estar vincu
     whatsapp_links: [],
   });
   const ch = new FakeChannel(waIncoming({ command: "vincular", text: "abc123" }));
-  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}") });
+  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}"), sessions: new WaSessionStore() });
   assert.match(ch.ofKind("text")[0].text, /confirme/i);
 });
 
 test("handleWhatsAppMessage: /vincular sin código → pide el código", async () => {
   const ch = new FakeChannel(waIncoming({ command: "vincular", text: "" }));
-  await handleWhatsAppMessage(ch, { supabase: fakeSupabase({}), genAI: fakeGenAI("{}") });
+  await handleWhatsAppMessage(ch, { supabase: fakeSupabase({}), genAI: fakeGenAI("{}"), sessions: new WaSessionStore() });
   assert.match(ch.ofKind("text")[0].text, /código/i);
 });
 
@@ -113,6 +114,6 @@ test("handleWhatsAppMessage: comando desconocido / texto libre → ayuda", async
     dashboard_members: [{ role: "owner", status: "active", permissions: {} }],
   });
   const ch = new FakeChannel(waIncoming({ text: "pagué 4500 de luz" }));
-  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}") });
+  await handleWhatsAppMessage(ch, { supabase, genAI: fakeGenAI("{}"), sessions: new WaSessionStore() });
   assert.equal(ch.ofKind("text")[0].text, WHATSAPP_HELP);
 });

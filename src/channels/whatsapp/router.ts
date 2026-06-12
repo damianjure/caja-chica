@@ -14,22 +14,27 @@ import type { SupabaseLike, GenAILike } from "../../server/contracts.ts";
 import {
   resolveWhatsAppIdentityByPhone,
   applyWhatsAppDataScope,
+  buildWhatsAppWriteOwnership,
   canWhatsAppDo,
 } from "../../server/whatsappAccess.ts";
 import { runAskFlow } from "../../flows/ask.ts";
 import { acceptWhatsAppInvite } from "../../server/whatsappInvite.ts";
+import type { WaSessionStore } from "./session.ts";
+import { REPORT_FLOW, startReportFlow, advanceReportFlow } from "../../flows/whatsappReports.ts";
+import { RECURRING_FLOW, startRecurringFlow, advanceRecurringFlow } from "../../flows/whatsappRecurring.ts";
 
 export interface WhatsAppRouterDeps {
   supabase: SupabaseLike;
   genAI: GenAILike;
   genAI2?: GenAILike | null;
+  sessions: WaSessionStore;
 }
 
 export const WHATSAPP_NOT_LINKED =
   "👋 Para usar Caja Chica por WhatsApp, vinculá este número desde el dashboard web (Personas → Invitar WhatsApp).";
 
 export const WHATSAPP_HELP =
-  "Caja Chica por WhatsApp.\n\nYa podés:\n• /preguntar <consulta> — saldos, gastos por categoría, comparaciones, recurrentes.\n\nProximamente: cargar gastos por texto/foto, informes y recurrentes.";
+  "Caja Chica por WhatsApp.\n\nComandos:\n• /preguntar <consulta> — saldos, gastos por categoría, comparaciones.\n• /informes — generar un informe (CSV o PDF).\n• /recurrente — cargar un pago recurrente.\n\nProximamente: cargar gastos por texto y foto.";
 
 export async function handleWhatsAppMessage(ch: ChannelContext, deps: WhatsAppRouterDeps): Promise<void> {
   const { command, text } = ch.incoming;
@@ -51,6 +56,25 @@ export async function handleWhatsAppMessage(ch: ChannelContext, deps: WhatsAppRo
     return;
   }
 
+  // Mid-flow: an active session intercepts everything except an explicit cancel.
+  const session = deps.sessions.get(ch.identity.chatKey);
+  if (session) {
+    if (command === "cancelar" || command === "cancel") {
+      deps.sessions.clear(ch.identity.chatKey);
+      await ch.reply("Listo, cancelé lo que estábamos haciendo.");
+      return;
+    }
+    if (session.flow === REPORT_FLOW) {
+      await advanceReportFlow(ch, deps, (q) => applyWhatsAppDataScope(q, linked), session, deps.sessions, ch.incoming.buttonData);
+    } else if (session.flow === RECURRING_FLOW) {
+      await advanceRecurringFlow(ch, deps, buildWhatsAppWriteOwnership(linked), session, deps.sessions, { text, buttonData: ch.incoming.buttonData });
+    } else {
+      deps.sessions.clear(ch.identity.chatKey);
+      await ch.reply(WHATSAPP_HELP);
+    }
+    return;
+  }
+
   if (command === "preguntar" || command === "pregunta") {
     if (!canWhatsAppDo(linked, "read")) {
       await ch.reply("🚫 No tenés permiso para consultar.");
@@ -62,6 +86,24 @@ export async function handleWhatsAppMessage(ch: ChannelContext, deps: WhatsAppRo
       return;
     }
     await runAskFlow(ch, deps, (q) => applyWhatsAppDataScope(q, linked), question);
+    return;
+  }
+
+  if (command === "informes" || command === "informe" || command === "exportar") {
+    if (!canWhatsAppDo(linked, "read")) {
+      await ch.reply("🚫 No tenés permiso.");
+      return;
+    }
+    await startReportFlow(ch, deps.sessions);
+    return;
+  }
+
+  if (command === "recurrente") {
+    if (!canWhatsAppDo(linked, "write_movimiento")) {
+      await ch.reply("🚫 No tenés permiso para cargar recurrentes.");
+      return;
+    }
+    await startRecurringFlow(ch, deps.sessions);
     return;
   }
 

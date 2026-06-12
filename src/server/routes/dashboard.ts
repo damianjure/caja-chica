@@ -1,6 +1,7 @@
 import express, { type Request, type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike, DashboardMemberSummary } from "../contracts.ts";
 import { warnIfListCapped } from "../listCap.ts";
+import { listUserDashboards, createPymeDashboard, setActiveDashboard } from "../dashboards.ts";
 
 export interface DashboardDeps {
   supabase: SupabaseLike;
@@ -71,6 +72,49 @@ export function createDashboardRouter(deps: DashboardDeps) {
       return null;
     }
   }
+
+  // --- Multi-dashboard (personal/pyme) switcher ---
+
+  router.get("/api/dashboards", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const dashboards = await listUserDashboards(supabase, session.userId);
+      res.json({ dashboards });
+    } catch (err) {
+      console.error("GET /api/dashboards:", err);
+      res.status(500).json({ error: "internal" });
+    }
+  });
+
+  router.post("/api/dashboards", requireSession, tierWrite, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const { name, cuit, cuil } = req.body as { name?: string; cuit?: string; cuil?: string };
+      const result = await createPymeDashboard(supabase, { userId: session.userId, name: name ?? "", cuit: cuit ?? "", cuil });
+      if (result.status === "invalid_cuit") return res.status(400).json({ error: "cuit_invalido" });
+      if (result.status === "invalid_name") return res.status(400).json({ error: "nombre_requerido" });
+      if (result.status === "error") return res.status(500).json({ error: "internal" });
+      res.status(201).json({ dashboardId: result.dashboardId });
+    } catch (err) {
+      console.error("POST /api/dashboards:", err);
+      res.status(500).json({ error: "internal" });
+    }
+  });
+
+  router.patch("/api/me/active-dashboard", requireSession, async (req, res) => {
+    try {
+      const session = getSession(req);
+      const { dashboard_id } = req.body as { dashboard_id?: string };
+      if (!dashboard_id) return res.status(400).json({ error: "dashboard_id requerido" });
+      const result = await setActiveDashboard(supabase, { userId: session.userId, dashboardId: dashboard_id });
+      if (result.status === "forbidden") return res.status(403).json({ error: "no sos miembro de ese dashboard" });
+      if (result.status === "error") return res.status(500).json({ error: "internal" });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("PATCH /api/me/active-dashboard:", err);
+      res.status(500).json({ error: "internal" });
+    }
+  });
 
   router.get("/api/dashboard/members", requireSession, async (req, res) => {
     try {

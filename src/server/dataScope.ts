@@ -17,6 +17,30 @@ function selectPrimaryMembership(rows: any[]): any | null {
   return sorted[0] ?? null;
 }
 
+/** The user's chosen active dashboard, or null. Best-effort and NON-CRITICAL:
+ * swallows ANY error (missing column before the migration, transient failure)
+ * and falls back to null → primary membership. Must never break scope
+ * resolution, which runs on every authenticated request. */
+async function fetchActiveDashboardId(supabase: SupabaseLike, userId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("app_users")
+      .select("active_dashboard_id")
+      .eq("user_id", userId)
+      .limit(1);
+    if (error) {
+      if (!isMissingSchemaArtifactError(error)) {
+        console.warn("[resolveDataAccessScope] active_dashboard_id lookup failed, using primary:", error);
+      }
+      return null;
+    }
+    return (data?.[0]?.active_dashboard_id as string | null) ?? null;
+  } catch (error) {
+    console.warn("[resolveDataAccessScope] active_dashboard_id lookup threw, using primary:", error);
+    return null;
+  }
+}
+
 export async function resolveDataAccessScope(
   supabase: SupabaseLike,
   session: AppSession,
@@ -30,7 +54,12 @@ export async function resolveDataAccessScope(
       .limit(50);
 
     if (error) throw error;
-    const membership = selectPrimaryMembership(data ?? []);
+    const memberships = (data ?? []) as any[];
+    // Honor the user's chosen active dashboard if they're an active member of it;
+    // otherwise fall back to the deterministic primary membership.
+    const activeId = await fetchActiveDashboardId(supabase, session.userId);
+    const active = activeId ? memberships.find((m) => m?.dashboard_id === activeId) : null;
+    const membership = active ?? selectPrimaryMembership(memberships);
 
     if (membership?.dashboard_id) {
       return {

@@ -111,6 +111,26 @@ test("resolveDataAccessScope elige membresía primaria de forma determinística"
   });
 });
 
+test("resolveDataAccessScope respeta el dashboard activo elegido por el usuario", async () => {
+  const rows = [
+    { dashboard_id: "owner-dashboard", user_id: "user-1", status: "active", role: "owner", permissions: {}, created_at: "2026-02-01T00:00:00.000Z" },
+    { dashboard_id: "pyme-dashboard", user_id: "user-1", status: "active", role: "owner", permissions: {}, created_at: "2026-03-01T00:00:00.000Z" },
+  ];
+  const supabase = {
+    from(table: string) {
+      let filtered: any[] = table === "dashboard_members" ? [...rows] : table === "app_users" ? [{ active_dashboard_id: "pyme-dashboard" }] : [];
+      const api: any = {
+        select() { return api; },
+        eq(column: string, value: unknown) { filtered = filtered.filter((row: any) => column in row ? row[column] === value : true); return api; },
+        limit(n: number) { return Promise.resolve({ data: filtered.slice(0, n), error: null }); },
+      };
+      return api;
+    },
+  };
+  const scope = await resolveDataAccessScope(supabase as any, session);
+  assert.equal(scope.dashboardId, "pyme-dashboard");
+});
+
 test("resolveDataAccessScope excluye membresías revocadas aunque tengan rol superior", async () => {
   const rows = [
     {

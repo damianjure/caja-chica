@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { MaintenanceSection } from "./dashboard/tabs/configuracion/MaintenanceSection";
 import { EmailSection } from "./dashboard/tabs/configuracion/EmailSection";
+import { AiHealthCard } from "./AiHealthCard";
 import { EmailLogView } from "./dashboard/tabs/configuracion/EmailLogView";
 import {
   Ban,
@@ -704,6 +705,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
         {isSuperadmin && (
           <>
+            <AiHealthCard />
             <EmailSection />
             <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
               <header className="mb-6">

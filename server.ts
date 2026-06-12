@@ -12,6 +12,7 @@ import type { BotDeps } from "./src/bot/deps.ts";
 import { hydrateCache } from "./src/server/maintenance.ts";
 import { configureEmail, sendViaBrevo } from "./src/server/email.ts";
 import { configureAlerts } from "./src/server/alertSuperadmin.ts";
+import { configureAiEvents } from "./src/server/aiEvents.ts";
 import { hydrateSenderCache, getActiveSender, setEmailSettings } from "./src/server/emailSettings.ts";
 import { listVerifiedSenders } from "./src/server/brevoSenders.ts";
 import { listEmailLog } from "./src/server/emailLog.ts";
@@ -31,6 +32,7 @@ const supabase = createClient(supabaseUrl, supabaseServerKey);
 // Configure operational alerting early (before createApp) so startup-time
 // misconfig warnings (e.g. DASHBOARD_URL) can also reach the superadmin.
 configureAlerts({ supabase: supabase as any });
+configureAiEvents({ supabase: supabase as any });
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 const genAI2 = process.env.GEMINI_API_KEY_2
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_2 })

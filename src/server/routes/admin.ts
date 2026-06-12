@@ -5,6 +5,7 @@ import type { ActiveSender } from "../emailSettings.ts";
 import type { EmailLogRow, EmailLogFilters } from "../emailLog.ts";
 import type { BrevoSender } from "../brevoSenders.ts";
 import { warnIfListCapped } from "../listCap.ts";
+import { getAiHealth } from "../aiEvents.ts";
 
 export interface AdminEmailDeps {
   brevoApiKey?: string;
@@ -92,6 +93,16 @@ export function createAdminRouter(deps: AdminDeps) {
   // SECURITY: superadmin-only because the response cross-cuts every tenant dashboard.
   // Invite tokens are NOT included in the response (bearer links must not be enumerable
   // even by superadmin) — UI uses dedicated revoke/resend endpoints if needed.
+  router.get("/api/admin/ai-health", requireSession, requireSuperadmin, async (_req, res) => {
+    try {
+      const health = await getAiHealth(supabase);
+      res.json(health);
+    } catch (err) {
+      console.error("GET /api/admin/ai-health:", err);
+      res.status(500).json({ error: "internal" });
+    }
+  });
+
   router.get("/api/admin/dashboards-tree", requireSession, requireSuperadmin, async (_req, res) => {
     try {
       const [dashboardsRes, membersRes, dashInvitesRes, usersRes, appInvitesRes] = await Promise.all([

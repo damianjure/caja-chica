@@ -347,6 +347,12 @@ export interface UserDashboard {
   role: string;
 }
 
+export interface AiHealth {
+  status: "ok" | "warn" | "critical";
+  last24h: { fallback_used: number; both_exhausted: number };
+  last7d: { fallback_used: number; both_exhausted: number };
+}
+
 export type PersonaStatus = "pending" | "active" | "expired" | "revoked";
 export type PersonaScope = "app" | "dashboard";
 
@@ -890,6 +896,10 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ dashboard_id: dashboardId }),
     });
+  },
+
+  async getAiHealth(): Promise<AiHealth> {
+    return fetchApi("/api/admin/ai-health");
   },
 
   async updateMemberPermissions(

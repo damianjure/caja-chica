@@ -457,6 +457,13 @@ Archivo principal: `src/server/app.ts`
 - `GET /api/admin/invitations`
 - `POST /api/admin/invitations`
 - `POST /api/admin/invitations/:id/revoke`
+- `GET /api/admin/ai-health` — superadmin. Insight de salud IA: conteos 24h/7d de `fallback_used` (key primaria agotada → entró el fallback) y `both_exhausted` (cayeron las dos → "IA no disponible") + status `ok`/`warn`/`critical`. Eventos persistidos en `ai_events` por `recordAiEvent` (fire-and-forget) en `geminiWithFallback.ts`. Card `AiHealthCard` en AdminPanel → tab Sistema.
+
+### Dashboards (personal/pyme + switcher) — backend listo, migración pendiente
+- `GET /api/dashboards` — lista los dashboards del user (personal + pymes) con tipo + rol.
+- `POST /api/dashboards` — crea un dashboard pyme (CUIT obligatorio) + membership owner.
+- `PATCH /api/me/active-dashboard` — setea el dashboard activo (gated por membresía). `resolveDataAccessScope` lo respeta; `fetchActiveDashboardId` es best-effort (cualquier error → primario, nunca rompe el scope).
+- Lógica en `src/server/dashboards.ts`; UI `DashboardSwitcher` en el header. **INERTE hasta aplicar `dashboard_types_phase.sql`** (columnas `dashboards.type`/`cuit`/`cuil`, `app_users.active_dashboard_id`).
 
 ### Dashboard compartido
 - `GET /api/dashboard/members`
@@ -600,6 +607,9 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | `onboarding_demo_phase.sql` | ✔ prod 2026-05-20 |
 | `maintenance_mode_phase.sql` | ✔ prod 2026-05-26 |
 | `email_management_phase.sql` | ✔ prod 2026-05-29 |
+| `ai_events_phase.sql` | ✔ prod 2026-06-12 (insight de salud IA) |
+| `dashboard_types_phase.sql` | ⏳ **NO aplicado** — esperando revisar el flujo del switcher personal/pyme |
+| `whatsapp_links_phase.sql` | ⏳ **NO aplicado** — va con la plomería de Meta |
 
 ### `drive_oauth_phase.sql` — qué hizo
 - Creó tabla `drive_connections` (`owner_user_id`, `dashboard_id`, `refresh_token_enc`)

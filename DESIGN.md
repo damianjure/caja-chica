@@ -212,9 +212,10 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **sm** (`0 1px 2px rgba(40,30,10,0.06)`): elevación mínima. Tarjetas de métrica, tarjetas de pestaña en reposo.
 - **md** (`0 4px 12px -2px rgba(40,30,10,0.10), 0 1px 3px rgba(40,30,10,0.06)`): acción primaria, pestaña activa.
 - **panel** (`0 8px 24px -6px rgba(40,30,10,0.14), 0 2px 6px rgba(40,30,10,0.06)`): el panel header elevado, modales.
+- **flotante** (`0 14px 40px rgba(0,0,0,0.28)` aprox): chrome que debe despegarse fuerte del canvas oscuro — barra de pestañas y panel del chat de IA. Borde `border-strong` + esquinas `rounded-2xl`.
 
 ### Named Rules
-**La Regla de la Tarjeta que Levita.** El contenedor de la navegación por pestañas es plano (`surface-2`, sin sombra). Las tarjetas individuales dentro de él levitan: `surface-1` más claro, más `shadow-sm`. El contraste de capa, no el brillo, es lo que las despega.
+**La Regla del Chrome que Flota** (2026-06-12, antes "Tarjeta que Levita"). La barra de navegación por pestañas y el panel del chat de IA **flotan**: borde `border-strong`, esquinas `rounded-2xl` y sombra **flotante** marcada, para despegarse del canvas oscuro (antes la barra era plana y se veía chata). Las tarjetas de datos dentro del contenido siguen levitando por contraste de capa (`surface-1` más claro + `shadow-sm`), no por brillo. Regla: el **chrome** flota con sombra; las **tarjetas de datos** levitan con capa tonal.
 
 **La Regla del Borde en Hover.** Ningún elemento cliqueable se ilumina (cambia su fondo) en hover. El feedback de hover es siempre el resalte del borde a `border-strong`. La iluminación de fondo está prohibida en elementos tipo botón, tarjeta o chip. (Excepción: los ítems apilados de un menú desplegable usan un fondo sutil `surface-2`, porque el borde no aplica a una lista apilada.)
 

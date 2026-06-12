@@ -25,7 +25,7 @@ export function ScrollToTop() {
       onClick={toTop}
       aria-label="Volver arriba"
       title="Volver arriba"
-      className="anim-fade-in fixed bottom-4 right-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] shadow-[var(--app-shadow-md)] active:scale-[0.94] transition sm:bottom-6 sm:right-6"
+      className="anim-fade-in fixed bottom-4 right-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--app-border-strong)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] shadow-[var(--app-shadow-md)] active:scale-[0.94] transition sm:bottom-[5.5rem] sm:right-6"
     >
       <ArrowUp className="h-5 w-5" />
     </button>

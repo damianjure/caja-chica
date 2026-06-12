@@ -534,6 +534,28 @@ Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y lla
 
 ---
 
+## Canal WhatsApp — EN CONSTRUCCIÓN (inerte, sin Meta todavía)
+
+Segundo canal de entrada con paridad de funciones con Telegram, vía **WhatsApp Business Cloud API oficial**. Arquitectura **ports & adapters**: la lógica conversacional vive en núcleos channel-agnostic (`src/flows/`), cada canal es un adapter del contrato `ChannelContext`. **Todo construido y testeado SIN Meta** (transport inyectable + harness offline). La única parte pendiente es la **plomería de Meta** (cuenta Business, transport real a `/PHONE_NUMBER_ID/messages`, webhook verify+POST, token, aplicar el SQL).
+
+> **Estado: INERTE en prod.** Las rutas `/api/whatsapp/*` deployan pero las tablas no existen (patch sin aplicar) y nada llama al router (sin webhook). Cero tráfico, cero impacto. La UI del dashboard (invitar WhatsApp) está montada en `MiembrosSection` pero las llamadas fallan hasta aplicar el SQL.
+
+### Piezas
+- `src/channels/contract.ts` — `ChannelContext` (reply/replyWithButtons/replyWithMenu/sendFile/editMessage/ackButton/typing/downloadMedia) + `IncomingMessage` normalizado. `src/channels/fake.ts` — `FakeChannel` para tests/harness.
+- `src/channels/telegram/adapter.ts` — `TelegramChannel` (grammY). **En producción** para `/preguntar` (el resto del bot sigue usando grammY directo).
+- `src/channels/whatsapp/adapter.ts` — `WhatsAppChannel` + builders de payload (botones ≤3, lista ≤10, numerado fallback) + `whatsappIncoming` (webhook→IncomingMessage). Spec-reviewed contra docs vivos de Meta (body interactive cap 1024, reply.id ≤256, recipient_type, etc.).
+- `src/channels/whatsapp/session.ts` — `WaSessionStore` (multi-step por chatKey, single-instance invariant).
+- `src/channels/whatsapp/router.ts` — `handleWhatsAppMessage`: `/vincular` (antes del gate), identidad, dispatch de sesión, comandos `/preguntar`·`/informes`·`/recurrente`.
+- `src/flows/` — núcleos channel-agnostic: `ask.ts`, `reports.ts`, `recurring.ts`, `extraction.ts` (save), + UI guiada WhatsApp `whatsappReports.ts`/`whatsappRecurring.ts`.
+- `src/server/whatsappAccess.ts` — identidad por teléfono (reusa scope/permisos de telegramAccess). `src/server/whatsappInvite.ts` — write-path doble-factor. `src/server/routes/whatsapp.ts` — invite/links/confirm/revoke (montado en app.ts).
+- `db/patches/whatsapp_links_phase.sql` — `whatsapp_links` + `whatsapp_invite_tokens`. **NO aplicado.**
+- `tests/helpers/waSim.ts` — harness offline: alimenta webhooks falsos → asserta payloads salientes turno a turno.
+
+### Pendiente (no plomería)
+- Carga de gasto por **texto libre** + **foto/ticket** en WhatsApp → requiere extraer el núcleo de guardado de movimientos (`persistTelegramMovement`/`persistTelegramTicket`, hoy en `bot/commands/movements.ts`) a un flow channel-agnostic. Refactor grande.
+
+---
+
 ## Cron jobs
 
 Los crons ya NO corren in-process con `node-cron`. Cloud Scheduler dispara los endpoints HTTP `/api/crons/*` en el schedule definido. Los cuerpos lógicos están en `src/server/cronJobs/reminders.ts` y `src/server/cronJobs/recurrentes.ts`.

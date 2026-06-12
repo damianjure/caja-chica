@@ -5,6 +5,17 @@
 
 ---
 
+### Cambios 2026-06-11 (Dashboards personal/pyme + switcher)
+
+**Separar finanzas personales de pyme en la misma app, con switcher.** El modelo multi-dashboard (`dashboards` + `dashboard_members`, datos scopeados por `dashboard_id`) ya existía; esto agrega el eje personal/pyme y el "dashboard activo" elegible. INERTE hasta aplicar el SQL.
+- `db/patches/dashboard_types_phase.sql` (**NO aplicado**): `dashboards.type` (personal|pyme) + `cuit`/`cuil`, `app_users.active_dashboard_id`.
+- `src/server/dashboards.ts`: `normalizeCuit` (11 dígitos), `listUserDashboards`, `createPymeDashboard` (CUIT obligatorio → dashboard + membership owner), `setActiveDashboard` (gated por membresía).
+- `resolveDataAccessScope` respeta el `active_dashboard_id` elegido si el user es miembro activo; si no, el primario. `fetchActiveDashboardId` es best-effort: traga cualquier error → null → primario (nunca rompe la resolución de scope, que corre en cada request).
+- Rutas: `GET /api/dashboards`, `POST /api/dashboards` (pyme), `PATCH /api/me/active-dashboard`. UI: `DashboardSwitcher` en el header (lista + crear pyme inline; al cambiar persiste y recarga).
+- Pendiente (nice-to-have, atado a Monotributo): tracking detallado de IIBB/Ganancias.
+
+---
+
 ### Cambios 2026-06-11 (Canal WhatsApp — ports & adapters, todo sin Meta)
 
 **Segundo canal de entrada (WhatsApp Business Cloud API) construido y testeado SIN tocar Meta.** Arquitectura ports & adapters: la lógica conversacional vive en núcleos channel-agnostic; cada canal es un adapter del contrato. INERTE en prod (tablas sin aplicar, sin webhook) — ver `CLAUDE.md` "Canal WhatsApp".

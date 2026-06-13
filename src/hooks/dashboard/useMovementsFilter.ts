@@ -1,4 +1,4 @@
-import { useState, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useState, useMemo, useDeferredValue, type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento } from '../../services/api';
 import { filterMovements, periodToRange, type DatePeriod } from '../../dashboard/summary';
 
@@ -34,6 +34,12 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
   const [customTo, setCustomTo] = useState<string>('');
   const [searchText, setSearchText] = useState<string>('');
 
+  // ⚡ Bolt Performance Optimization:
+  // Use useDeferredValue for the search text so that rapid typing doesn't
+  // block the main thread by synchronously filtering the large history array.
+  // Impact: Keeps the text input responsive even with 10k+ movements.
+  const deferredSearchText = useDeferredValue(searchText);
+
   const dateRange = useMemo(() => {
     if (datePeriod === 'rango') return { from: customFrom || undefined, to: customTo || undefined };
     return periodToRange(datePeriod, new Date()) ?? { from: undefined, to: undefined };
@@ -48,12 +54,12 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
       from: dateRange.from,
       to: dateRange.to,
     });
-    const q = searchText.trim().toLowerCase();
+    const q = deferredSearchText.trim().toLowerCase();
     if (!q) return base;
     return base.filter((m) =>
       `${m.descripcion ?? ''} ${m.empresa_nombre ?? ''} ${m.categoria ?? ''}`.toLowerCase().includes(q),
     );
-  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, searchText]);
+  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, deferredSearchText]);
 
   const hasActiveFilters =
     selectedCompany !== 'all' ||

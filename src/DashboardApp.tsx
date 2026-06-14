@@ -1,7 +1,7 @@
-import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
-import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2 } from 'lucide-react';
+import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
 import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
@@ -372,6 +372,39 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     if (!allowedIds.includes(activeTab)) setActiveTab(tabs[0].id);
   }, [viewer.id, viewer.role, activeTab, tabs]);
 
+  // Tab bar scroll affordance: fade the edges when there are more tabs to scroll,
+  // and keep the active tab in view when it changes.
+  const tablistRef = useRef<HTMLDivElement>(null);
+  const [tabEdges, setTabEdges] = useState({ left: false, right: false });
+  const updateTabEdges = useCallback(() => {
+    const el = tablistRef.current;
+    if (!el) return;
+    setTabEdges({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  }, []);
+  useEffect(() => {
+    updateTabEdges();
+    const el = tablistRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateTabEdges, { passive: true });
+    window.addEventListener('resize', updateTabEdges);
+    return () => {
+      el.removeEventListener('scroll', updateTabEdges);
+      window.removeEventListener('resize', updateTabEdges);
+    };
+  }, [updateTabEdges, tabs.length]);
+  useEffect(() => {
+    tablistRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [activeTab]);
+  const tabMask = `linear-gradient(to right, ${tabEdges.left ? 'transparent, #000 24px' : '#000, #000'}, ${tabEdges.right ? '#000 calc(100% - 24px), transparent' : '#000, #000'})`;
+
+  // Frescura: stamp the last data change (manual reload or realtime push) so the
+  // user can trust the dashboard reflects what was loaded from Telegram.
+  const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
+  useEffect(() => { setLastRefreshed(Date.now()); }, [history]);
+
   // ── Command palette actions + handler (depend on tabs/canWriteData) ──────────
   const paletteQuickActions = useMemo((): QuickAction[] => {
     const actions: QuickAction[] = tabs
@@ -597,6 +630,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             <div className="flex-1" />
             <button
               type="button"
+              onClick={() => loadData(false)}
+              disabled={isLoading}
+              aria-label="Actualizar datos"
+              title={lastRefreshed ? `Actualizado ${new Date(lastRefreshed).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Actualizar datos'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors duration-150 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              {lastRefreshed && <span className="hidden sm:inline tabular-nums">{new Date(lastRefreshed).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>}
+            </button>
+            <button
+              type="button"
               onClick={() => setIsPaletteOpen(true)}
               aria-label="Búsqueda global (⌘K)"
               title="Búsqueda global"
@@ -639,7 +683,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <section className="sticky top-3 z-20">
           <div className="glass-chrome border border-[var(--app-border-strong)] rounded-2xl p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
-            <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-2 overflow-x-auto md:flex-wrap">
+            <div ref={tablistRef} role="tablist" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
               {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}

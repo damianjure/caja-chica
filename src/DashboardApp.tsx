@@ -619,9 +619,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
                 <span aria-hidden="true">＋</span><span>Nueva operación</span>
               </button>
             )}
-            <div className="hidden sm:block">
-              <DashboardSwitcher />
-            </div>
+            {/* Personal/PyME switcher hidden until dashboard_types_phase.sql is applied
+                and the flow is reviewed. Flip to render when the feature is live. */}
+            {false && (
+              <div className="hidden sm:block">
+                <DashboardSwitcher />
+              </div>
+            )}
             <HeaderUserMenu
               email={viewer.email}
               identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}

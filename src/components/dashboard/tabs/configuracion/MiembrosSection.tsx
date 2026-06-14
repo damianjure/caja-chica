@@ -430,6 +430,11 @@ function TelegramCardSection({
 // WhatsApp section inside each card body (mirror of TelegramCardSection)
 // ---------------------------------------------------------------------------
 
+// WhatsApp channel is not live yet (no Meta plumbing, whatsapp_links_phase.sql
+// unapplied). Keep the UI and API wiring in place but render nothing and skip
+// the failing /api/whatsapp/links call. Flip to true when the channel ships.
+const WHATSAPP_ENABLED = false;
+
 interface WhatsAppCardProps {
   userId: string;
   whatsappLinks: WhatsAppLink[];
@@ -447,6 +452,8 @@ function WhatsAppCardSection({
 }: WhatsAppCardProps) {
   const [generatingToken, setGeneratingToken] = useState(false);
   const [freshToken, setFreshToken] = useState<{ token: string; expiresAt: string } | null>(null);
+
+  if (!WHATSAPP_ENABLED) return null;
 
   const memberLinks = whatsappLinks.filter((l) => l.app_user_id === userId && l.status !== "revoked");
   const activeLink = memberLinks.find((l) => l.status === "active") ?? null;
@@ -946,6 +953,7 @@ export function MiembrosSection({
   }, []);
 
   const loadWhatsAppLinks = useCallback(() => {
+    if (!WHATSAPP_ENABLED) return;
     api.getWhatsAppLinks()
       .then((r) => setWhatsappLinks(r.links))
       .catch(console.error);

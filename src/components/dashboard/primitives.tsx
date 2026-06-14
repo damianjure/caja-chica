@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
-export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, critical }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; sub?: string; critical?: boolean }) {
+export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, critical, onClick, navLabel }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; sub?: string; critical?: boolean; onClick?: () => void; navLabel?: string }) {
   const toneClass = {
     neutral: 'text-[var(--app-text-1)]',
     success: 'text-[var(--chart-income)]',
@@ -13,16 +14,34 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     ? 'border-[color-mix(in_srgb,var(--chart-expense)_50%,var(--app-border))] bg-[color-mix(in_srgb,var(--chart-expense)_10%,var(--app-surface-1))]'
     : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
 
-  return (
-    <div className={`px-5 py-4 rounded-xl border shadow-[var(--app-shadow-sm)] ${cardClass}`}>
+  const inner = (
+    <>
       <div className="flex items-center gap-1.5 mb-2">
         {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
         <span className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest">{label}</span>
       </div>
       <div className={`text-2xl font-bold tracking-tight tabular-nums ${toneClass}`}>{value}</div>
       {sub && <div className="mt-1 text-xs text-[var(--app-text-3)]">{sub}</div>}
-    </div>
+    </>
   );
+
+  const base = `relative px-5 py-4 rounded-xl border shadow-[var(--app-shadow-sm)] ${cardClass}`;
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={navLabel ?? `Ver ${label}`}
+        className={`${base} w-full text-left cursor-pointer transition-[border-color,transform] duration-150 hover:border-[var(--app-border-strong)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
+      >
+        {inner}
+        <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-[var(--app-text-3)]" aria-hidden="true" />
+      </button>
+    );
+  }
+
+  return <div className={base}>{inner}</div>;
 }
 
 export function SectionCard({ title, description, children, icon: Icon, action }: { title: string; description?: string; children: ReactNode; icon?: LucideIcon; action?: ReactNode }) {

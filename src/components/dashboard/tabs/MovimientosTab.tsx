@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2, Search } from 'lucide-react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2, Search, Check } from 'lucide-react';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
 import type { OnboardingState } from '../../../services/api';
@@ -61,7 +61,7 @@ function ExportMenu({
 
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
-import { MetricCard, SectionCard } from '../primitives';
+import { SectionCard } from '../primitives';
 
 type Tipo = 'all' | 'ingreso' | 'egreso';
 type Moneda = 'all' | 'ARS' | 'USD';
@@ -73,16 +73,6 @@ const DATE_OPTS: { id: DatePeriod; label: string }[] = [
   { id: 'mes', label: 'Mes' },
   { id: 'anio', label: 'Año' },
   { id: 'rango', label: 'Rango' },
-];
-const TIPO_OPTS: { id: Tipo; label: string }[] = [
-  { id: 'all', label: 'Todos' },
-  { id: 'ingreso', label: 'Ingresos' },
-  { id: 'egreso', label: 'Gastos' },
-];
-const MONEDA_OPTS: { id: Moneda; label: string }[] = [
-  { id: 'all', label: 'Todas' },
-  { id: 'ARS', label: 'ARS' },
-  { id: 'USD', label: 'USD' },
 ];
 
 function Segmented<T extends string>({
@@ -145,10 +135,34 @@ function Pill({ label, onClear, tone }: { label: string; onClear: () => void; to
   );
 }
 
+function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { label: string; value: string; tone?: 'neutral' | 'income' | 'expense'; selected: boolean; onClick: () => void }) {
+  const valueColor = tone === 'income' ? 'text-[var(--chart-income)]' : tone === 'expense' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]';
+  const selectedClass = selected
+    ? (tone === 'income'
+        ? 'border-[var(--app-green-border)] bg-[var(--app-green-surface)]'
+        : tone === 'expense'
+          ? 'border-[var(--app-red-border)] bg-[var(--app-red-surface)]'
+          : 'border-[var(--app-border-strong)] bg-[var(--app-surface-3)]')
+    : 'border-[var(--app-border)] bg-[var(--app-surface-1)] hover:border-[var(--app-border-strong)]';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`relative px-5 py-4 rounded-xl border text-left shadow-[var(--app-shadow-sm)] transition-[border-color,background-color,transform] duration-150 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
+    >
+      <div className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest mb-2">{label}</div>
+      <div className={`text-2xl font-bold tracking-tight tabular-nums ${valueColor}`}>{value}</div>
+      {selected && <Check className="absolute top-3 right-3 w-4 h-4 text-[var(--app-text-2)]" aria-hidden="true" />}
+    </button>
+  );
+}
+
 export default function MovimientosTab({
-  incomeCount,
-  expenseCount,
-  historyCount,
+  totalCount,
+  arsIngreso,
+  arsEgreso,
+  usdNeto,
   companiesList,
   categories,
   selectedCompany,
@@ -181,9 +195,10 @@ export default function MovimientosTab({
   onDemoDeleted,
   historyCards,
 }: {
-  incomeCount: number;
-  expenseCount: number;
-  historyCount: number;
+  totalCount: number;
+  arsIngreso: string;
+  arsEgreso: string;
+  usdNeto: string;
   companiesList: string[];
   categories: Categoria[];
   selectedCompany: string;
@@ -265,10 +280,11 @@ export default function MovimientosTab({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard label="Ingresos" value={String(incomeCount)} tone="success" />
-        <MetricCard label="Gastos" value={String(expenseCount)} tone="danger" />
-        <MetricCard label="Total movimientos" value={String(historyCount)} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <FilterCard label="Todos" value={`${totalCount} mov`} selected={movementType === 'all' && movementCurrency === 'all'} onClick={() => { setMovementType('all'); setMovementCurrency('all'); }} />
+        <FilterCard label="Ingresos" value={arsIngreso} tone="income" selected={movementType === 'ingreso' && movementCurrency === 'all'} onClick={() => { setMovementType('ingreso'); setMovementCurrency('all'); }} />
+        <FilterCard label="Gastos" value={arsEgreso} tone="expense" selected={movementType === 'egreso' && movementCurrency === 'all'} onClick={() => { setMovementType('egreso'); setMovementCurrency('all'); }} />
+        <FilterCard label="En USD" value={usdNeto} selected={movementCurrency === 'USD'} onClick={() => { setMovementType('all'); setMovementCurrency('USD'); }} />
       </div>
 
       <SectionCard
@@ -317,8 +333,6 @@ export default function MovimientosTab({
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <Segmented value={datePeriod} options={DATE_OPTS} onChange={setDatePeriod} ariaLabel="Filtrar por período" />
-            <Segmented value={movementType} options={TIPO_OPTS} onChange={setMovementType} ariaLabel="Filtrar por tipo" tones={{ ingreso: 'income', egreso: 'expense' }} />
-            <Segmented value={movementCurrency} options={MONEDA_OPTS} onChange={setMovementCurrency} ariaLabel="Filtrar por moneda" />
             <select aria-label="Filtrar por empresa" className={SELECT_CLASS} value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
               {companiesList.map((c) => (
                 <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>

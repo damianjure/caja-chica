@@ -86,13 +86,20 @@ const MONEDA_OPTS: { id: Moneda; label: string }[] = [
 ];
 
 function Segmented<T extends string>({
-  value, options, onChange, ariaLabel,
+  value, options, onChange, ariaLabel, tones,
 }: {
   value: T;
   options: { id: T; label: string }[];
   onChange: (v: T) => void;
   ariaLabel: string;
+  tones?: Partial<Record<T, 'income' | 'expense'>>;
 }) {
+  const activeClass = (id: T) => {
+    const tone = tones?.[id];
+    if (tone === 'income') return 'bg-[var(--app-green-surface)] text-[var(--chart-income)]';
+    if (tone === 'expense') return 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]';
+    return 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]';
+  };
   return (
     <div role="group" aria-label={ariaLabel} className="inline-flex gap-0.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5">
       {options.map((o) => (
@@ -103,7 +110,7 @@ function Segmented<T extends string>({
           onClick={() => onChange(o.id)}
           className={`rounded px-3 py-1.5 text-xs font-semibold transition duration-150 ${
             value === o.id
-              ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]'
+              ? activeClass(o.id)
               : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'
           }`}
         >
@@ -117,15 +124,20 @@ function Segmented<T extends string>({
 const SELECT_CLASS =
   'rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]';
 
-function Pill({ label, onClear }: { label: string; onClear: () => void }) {
+function Pill({ label, onClear, tone }: { label: string; onClear: () => void; tone?: 'income' | 'expense' }) {
+  const toneClass = tone === 'income'
+    ? 'border-[var(--app-green-border)] bg-[var(--app-green-surface)] text-[var(--chart-income)]'
+    : tone === 'expense'
+      ? 'border-[var(--app-red-border)] bg-[var(--app-red-surface)] text-[var(--chart-expense)]'
+      : 'border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-2)]';
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-2)] py-1 pl-3 pr-1.5 text-xs font-medium text-[var(--app-text-2)]">
+    <span className={`inline-flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-1.5 text-xs font-medium ${toneClass}`}>
       {label}
       <button
         type="button"
         onClick={onClear}
         aria-label={`Quitar filtro ${label}`}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[var(--app-text-3)] hover:text-[var(--app-text-1)]"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full opacity-70 hover:opacity-100"
       >
         <X className="h-3 w-3" />
       </button>
@@ -305,7 +317,7 @@ export default function MovimientosTab({
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <Segmented value={datePeriod} options={DATE_OPTS} onChange={setDatePeriod} ariaLabel="Filtrar por período" />
-            <Segmented value={movementType} options={TIPO_OPTS} onChange={setMovementType} ariaLabel="Filtrar por tipo" />
+            <Segmented value={movementType} options={TIPO_OPTS} onChange={setMovementType} ariaLabel="Filtrar por tipo" tones={{ ingreso: 'income', egreso: 'expense' }} />
             <Segmented value={movementCurrency} options={MONEDA_OPTS} onChange={setMovementCurrency} ariaLabel="Filtrar por moneda" />
             <select aria-label="Filtrar por empresa" className={SELECT_CLASS} value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
               {companiesList.map((c) => (
@@ -336,7 +348,7 @@ export default function MovimientosTab({
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-2 border-t border-[var(--app-border)] pt-3">
               {datePeriod !== 'all' && <Pill label={dateLabel} onClear={() => setDatePeriod('all')} />}
-              {movementType !== 'all' && <Pill label={movementType === 'ingreso' ? 'Ingresos' : 'Gastos'} onClear={() => setMovementType('all')} />}
+              {movementType !== 'all' && <Pill label={movementType === 'ingreso' ? 'Ingresos' : 'Gastos'} tone={movementType === 'ingreso' ? 'income' : 'expense'} onClear={() => setMovementType('all')} />}
               {movementCurrency !== 'all' && <Pill label={movementCurrency} onClear={() => setMovementCurrency('all')} />}
               {selectedCompany !== 'all' && <Pill label={selectedCompany} onClear={() => setSelectedCompany('all')} />}
               {selectedCategory !== 'all' && <Pill label={selectedCategory} onClear={() => setSelectedCategory('all')} />}

@@ -92,12 +92,11 @@ export default function EmpresasTab({
       ? { ing: c.ingresosArs, gas: c.gastosArs, sal: c.saldoArs }
       : { ing: c.ingresosUsd, gas: c.gastosUsd, sal: c.saldoUsd };
 
-  const totals = companySummaries.reduce(
-    (a, c) => { const p = pick(c); return { ing: a.ing + p.ing, gas: a.gas + p.gas, sal: a.sal + p.sal }; },
-    { ing: 0, gas: 0, sal: 0 },
-  );
   const salud = [...companySummaries].sort((a, b) => pick(a).sal - pick(b).sal);
   const saludHint = (c: CompanySummaryView) => (pick(c).sal < 0 ? 'saldo negativo' : 'saldo positivo');
+  const masGasta = [...companySummaries].sort((a, b) => pick(b).gas - pick(a).gas)[0];
+  const mejorSaldo = salud[salud.length - 1];
+  const enRojo = companySummaries.filter((c) => pick(c).sal < 0).length;
 
   const CurToggle = (
     <div className="inline-flex shrink-0 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5" role="group" aria-label="Moneda">
@@ -133,9 +132,9 @@ export default function EmpresasTab({
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <MetricCard label="Empresas activas" value={String(companySummaries.length)} tone="neutral" icon={Building2} />
-            <MetricCard label="Ingresos totales" value={formatCurrency(totals.ing, cur)} tone="success" icon={TrendingUp} />
-            <MetricCard label="Gastos totales" value={formatCurrency(totals.gas, cur)} tone="danger" icon={TrendingDown} />
-            <MetricCard label="Utilidad total" value={formatCurrency(totals.sal, cur)} tone={totals.sal >= 0 ? 'success' : 'danger'} critical={totals.sal < 0} icon={Wallet} />
+            <MetricCard label="Más gasta" value={formatCurrency(pick(masGasta).gas, cur)} sub={masGasta.name} tone="danger" icon={TrendingDown} onClick={() => onDrilldown(masGasta.name, 'all')} navLabel={`Ver movimientos de ${masGasta.name}`} />
+            <MetricCard label="Mejor saldo" value={formatCurrency(pick(mejorSaldo).sal, cur)} sub={mejorSaldo.name} tone={pick(mejorSaldo).sal >= 0 ? 'success' : 'danger'} icon={TrendingUp} onClick={() => onDrilldown(mejorSaldo.name, 'all')} navLabel={`Ver movimientos de ${mejorSaldo.name}`} />
+            <MetricCard label="En rojo" value={String(enRojo)} sub={enRojo === 1 ? 'empresa con saldo negativo' : 'empresas con saldo negativo'} tone={enRojo > 0 ? 'danger' : 'neutral'} icon={Wallet} />
           </div>
 
           <SectionCard title="Salud por empresa" description={`Ingresos, gastos y saldo en ${cur} por empresa.`} action={CurToggle}>

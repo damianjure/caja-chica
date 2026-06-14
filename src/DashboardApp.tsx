@@ -405,7 +405,9 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // user can trust the dashboard reflects what was loaded from Telegram.
   const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
   useEffect(() => { setLastRefreshed(Date.now()); }, [history]);
-  const { pull: ptrPull, refreshing: ptrRefreshing } = usePullToRefresh(() => loadData(false));
+  const { pull: ptrPull, refreshing: ptrRefreshing, dragging: ptrDragging } = usePullToRefresh(() => loadData(false));
+  const ptrShift = ptrRefreshing ? 52 : Math.min(ptrPull, 96);
+  const ptrTransition = ptrDragging ? 'none' : 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)';
 
   // ── Command palette actions + handler (depend on tabs/canWriteData) ──────────
   const paletteQuickActions = useMemo((): QuickAction[] => {
@@ -586,7 +588,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {(ptrPull > 0 || ptrRefreshing) && (
         <div
           className="md:hidden fixed inset-x-0 top-0 z-[60] flex justify-center pointer-events-none"
-          style={{ transform: `translateY(${ptrRefreshing ? 14 : Math.max(0, Math.min(ptrPull, 80) - 18)}px)`, opacity: ptrRefreshing ? 1 : Math.min(1, ptrPull / 70) }}
+          style={{ transform: `translateY(${Math.max(6, ptrShift - 38)}px)`, opacity: ptrRefreshing ? 1 : Math.min(1, ptrPull / 70), transition: ptrTransition }}
           aria-hidden="true"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-md)]">
@@ -603,7 +605,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         />
       )}
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div
+        className="max-w-7xl mx-auto space-y-8"
+        style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition }}
+      >
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
         {apiStatus === 'load_error' && <div role="alert" className="bg-[var(--app-red-surface)] border border-[var(--app-red-border)] p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 
@@ -647,7 +652,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               disabled={isLoading}
               aria-label="Actualizar datos"
               title={lastRefreshed ? `Actualizado ${new Date(lastRefreshed).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Actualizar datos'}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors duration-150 disabled:opacity-60"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-xs text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] transition-colors duration-150 disabled:opacity-60"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
               {lastRefreshed && <span className="hidden sm:inline tabular-nums">{new Date(lastRefreshed).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>}

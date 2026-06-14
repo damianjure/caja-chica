@@ -12,6 +12,7 @@ const MAX = 110; // cap so the indicator never runs away
 export function usePullToRefresh(onRefresh: () => void) {
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const pullRef = useRef(0);
   const refreshingRef = useRef(false);
@@ -37,12 +38,14 @@ export function usePullToRefresh(onRefresh: () => void) {
       // Only engage on a vertical-dominant drag, so horizontal scrollers (tabs,
       // filter rows) keep working. Once engaged (pullRef > 0), stay engaged.
       if (pullRef.current === 0 && dy <= Math.abs(dx)) return;
+      setDragging(true);
       setP(Math.min(MAX, dy * 0.5));
       if (e.cancelable) e.preventDefault(); // hold the page so the pull reads as intentional
     };
     const onEnd = () => {
       if (start.current === null) return;
       start.current = null;
+      setDragging(false);
       if (pullRef.current >= THRESHOLD) {
         setR(true);
         setP(THRESHOLD);
@@ -65,5 +68,5 @@ export function usePullToRefresh(onRefresh: () => void) {
     };
   }, []);
 
-  return { pull, refreshing };
+  return { pull, refreshing, dragging };
 }

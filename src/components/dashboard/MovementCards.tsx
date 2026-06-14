@@ -93,15 +93,15 @@ function MovementCardsImpl({
                 </div>
                 <div className="flex items-center gap-1">
                   {canWriteData && (
-                    <button onClick={() => onEdit(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar movimiento" aria-label="Editar movimiento">
+                    <button onClick={() => onEdit(item)} className="inline-flex h-11 w-11 items-center justify-center text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Editar movimiento" aria-label="Editar movimiento">
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => onCopy(item)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
+                  <button onClick={() => onCopy(item)} className="inline-flex h-11 w-11 items-center justify-center text-[var(--app-text-3)] hover:text-[var(--app-text-1)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-[var(--app-text-2)]" title="Copiar movimiento" aria-label="Copiar movimiento">
                     {copiedId === item.id ? <Check className="w-4 h-4 text-[var(--chart-income)]" /> : <Copy className="w-4 h-4" />}
                   </button>
                   {canWriteData && (
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-[var(--app-text-3)] hover:text-[var(--chart-expense)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
+                    <button onClick={() => onDelete(item.id)} className="inline-flex h-11 w-11 items-center justify-center text-[var(--app-text-3)] hover:text-[var(--chart-expense)] active:scale-[0.9] transition duration-100 rounded-md border border-transparent hover:border-red-400" title="Borrar movimiento" aria-label="Borrar movimiento">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}

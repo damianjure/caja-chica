@@ -25,15 +25,15 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     </>
   );
 
-  const base = `relative px-5 py-4 rounded-xl border shadow-[var(--app-shadow-sm)] ${cardClass}`;
-
+  // Touch cards are elevated (raised surface + shadow, lift on hover); stat
+  // cards are flat and slightly recessed, so tappable vs read-only reads at a glance.
   if (onClick) {
     return (
       <button
         type="button"
         onClick={onClick}
         aria-label={navLabel ?? `Ver ${label}`}
-        className={`${base} w-full text-left cursor-pointer transition-[border-color,transform] duration-150 hover:border-[var(--app-border-strong)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
+        className={`relative px-5 py-4 rounded-xl border shadow-[var(--app-shadow-md)] ${cardClass} w-full text-left cursor-pointer transition-[border-color,transform,box-shadow] duration-150 hover:border-[var(--app-border-strong)] hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
       >
         {inner}
         <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-[var(--app-text-3)]" aria-hidden="true" />
@@ -41,7 +41,8 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     );
   }
 
-  return <div className={base}>{inner}</div>;
+  const flatClass = critical ? cardClass : 'border-[var(--app-border)] bg-[var(--app-surface-2)]';
+  return <div className={`relative px-5 py-4 rounded-xl border ${flatClass}`}>{inner}</div>;
 }
 
 export function SectionCard({ title, description, children, icon: Icon, action }: { title: string; description?: string; children: ReactNode; icon?: LucideIcon; action?: ReactNode }) {

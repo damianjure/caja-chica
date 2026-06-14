@@ -149,7 +149,7 @@ function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { lab
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`relative px-5 py-4 rounded-xl border text-left shadow-[var(--app-shadow-sm)] transition-[border-color,background-color,transform] duration-150 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
+      className={`relative px-5 py-4 rounded-xl border text-left shadow-[var(--app-shadow-md)] transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
     >
       <div className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest mb-2">{label}</div>
       <div className={`text-2xl font-bold tracking-tight tabular-nums ${valueColor}`}>{value}</div>

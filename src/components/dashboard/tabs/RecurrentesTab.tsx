@@ -474,7 +474,7 @@ export default function RecurrentesTab({
                       <button
                         onClick={() => handleToggle(r.id)}
                         disabled={togglingId === r.id}
-                        className="p-1.5 rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
                         title={r.is_active ? 'Pausar' : 'Activar'}
                         aria-label={r.is_active ? 'Pausar recurrente' : 'Activar recurrente'}
                       >
@@ -482,7 +482,7 @@ export default function RecurrentesTab({
                       </button>
                       <button
                         onClick={() => setEditing(r)}
-                        className="p-1.5 rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors"
                         title="Editar"
                         aria-label="Editar recurrente"
                       >
@@ -491,7 +491,7 @@ export default function RecurrentesTab({
                       <button
                         onClick={() => setDeleteTarget(r.id)}
                         disabled={deletingId === r.id}
-                        className="p-1.5 rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
                         title="Eliminar"
                         aria-label="Eliminar recurrente"
                       >

@@ -225,9 +225,8 @@ export default function ResumenTab(props: ResumenTabProps) {
             {pulseData.length === 0 ? (
               <EmptyState
                 title={pulseCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'}
-                hint="Necesitamos al menos un par de movimientos para mostrarte el ritmo del mes."
+                hint="Cargá un par de movimientos por Telegram y el ritmo del mes aparece acá."
                 canWrite={props.canWriteData}
-                cta={pulseCurrency === 'ARS' ? 'Cargá tu primer movimiento desde el campo de arriba.' : undefined}
                 icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />}
               />
             ) : (

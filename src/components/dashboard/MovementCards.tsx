@@ -52,9 +52,9 @@ function MovementCardsImpl({
         <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
         {selectedCompany === 'all' ? (
           <>
-            <p className="font-medium text-[var(--app-text-3)]">Sin movimientos por ahora.</p>
+            <p className="font-medium text-[var(--app-text-3)]">Todavía no hay movimientos.</p>
             <p className="text-sm mt-1">
-              {canWriteData ? 'Tocá "Cargar" para registrar un movimiento. Tipo: "pagué 4500 de luz".' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
+              {canWriteData ? 'Cargá un gasto por Telegram y aparece acá al toque. También podés usar el botón "Cargar" de arriba.' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
             </p>
           </>
         ) : (

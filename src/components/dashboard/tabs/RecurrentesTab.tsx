@@ -260,6 +260,7 @@ export default function RecurrentesTab({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [empresaFilter, setEmpresaFilter] = useState<string>('all');
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -418,7 +419,7 @@ export default function RecurrentesTab({
                   type="button"
                   onClick={() => setTypeFilter(id)}
                   aria-pressed={typeFilter === id}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold transition ${typeFilter === id ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'}`}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold transition ${typeFilter === id ? (id === 'ingreso' ? 'bg-[var(--app-green-surface)] text-[var(--chart-income)]' : id === 'egreso' ? 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]' : 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]') : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'}`}
                 >
                   {label}
                 </button>
@@ -516,12 +517,31 @@ export default function RecurrentesTab({
                     ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
                     : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
               return (
-                <div key={d.date} title={`${d.date}: ${formatMonto(d.total, 'ARS')}`} className={`grid aspect-square place-items-center rounded-md border text-xs ${cls}`}>
+                <button
+                  key={d.date}
+                  type="button"
+                  onClick={() => setSelectedDay((p) => (p === d.date ? null : d.date))}
+                  aria-pressed={selectedDay === d.date}
+                  title={`${d.date}: ${formatMonto(d.total, 'ARS')}`}
+                  className={`grid aspect-square place-items-center rounded-md border text-xs transition ${cls} ${selectedDay === d.date ? 'ring-2 ring-[var(--app-text-1)]' : ''}`}
+                >
                   {Number(d.date.slice(8, 10))}
-                </div>
+                </button>
               );
             })}
           </div>
+          {selectedDay && (() => {
+            const day = summary.dias.find((x) => x.date === selectedDay);
+            if (!day) return null;
+            return (
+              <div className="mt-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 text-sm">
+                <span className="text-[var(--app-text-2)]">{formatShortDate(selectedDay)}: </span>
+                <span className={`font-semibold tabular-nums ${day.total < 0 ? 'text-[var(--chart-expense)]' : day.total > 0 ? 'text-[var(--chart-income)]' : 'text-[var(--app-text-3)]'}`}>
+                  {day.total === 0 ? 'sin impacto' : formatMonto(day.total, 'ARS')}
+                </span>
+              </div>
+            );
+          })()}
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--app-text-3)]">
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)]" />Sin impacto</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-income)]" />Bajo</span>

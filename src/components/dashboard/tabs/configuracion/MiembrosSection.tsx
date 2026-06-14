@@ -178,6 +178,24 @@ interface InviteFormProps {
   onInvited: () => void;
 }
 
+// Maps backend error codes from POST /api/dashboard/invitations to readable copy.
+function inviteErrorMessage(code: string | undefined, status: number): string {
+  switch (code) {
+    case "shared_dashboard_unavailable":
+      return "No hay un dashboard compartido disponible para invitar.";
+    case "forbidden":
+      return "No tenés permiso para invitar miembros a este dashboard.";
+    case "cannot_invite_self":
+      return "No podés invitarte a vos mismo.";
+    case "invalid_request":
+      return "Revisá el email y el rol.";
+    case "failed_to_save":
+      return "El servidor no pudo guardar la invitación. Probá de nuevo.";
+    default:
+      return `No se pudo enviar la invitación (error ${status}).`;
+  }
+}
+
 function InviteForm({ onInvited }: InviteFormProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<DashboardInvitationRole>("viewer");
@@ -191,12 +209,16 @@ function InviteForm({ onInvited }: InviteFormProps) {
     try {
       const body: Record<string, unknown> = { email: trimmed, role };
       if (telegramPreauth) body.telegram_preauth = true;
-      await fetch("/api/dashboard/invitations", {
+      const res = await fetch("/api/dashboard/invitations", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
         credentials: "include",
       });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(inviteErrorMessage(payload?.error, res.status));
+      }
       setEmail("");
       setRole("viewer");
       setTelegramPreauth(false);

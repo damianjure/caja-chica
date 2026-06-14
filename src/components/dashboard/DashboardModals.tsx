@@ -12,6 +12,7 @@ interface DashboardModalsProps {
   setMovementEditForm: Dispatch<SetStateAction<MovementEditForm | null>>;
   onCloseMovementEdit: () => void;
   onSaveMovementEdit: () => void;
+  onDeleteMovement: (id: string) => void;
 
   editingCompany: Empresa | null;
   companyEditName: string;
@@ -41,7 +42,7 @@ interface DashboardModalsProps {
 }
 
 export function DashboardModals({
-  editingMovement, movementEditForm, setMovementEditForm, onCloseMovementEdit, onSaveMovementEdit,
+  editingMovement, movementEditForm, setMovementEditForm, onCloseMovementEdit, onSaveMovementEdit, onDeleteMovement,
   editingCompany, companyEditName, setCompanyEditName, onCloseCompanyEdit, onSaveCompanyEdit,
   pendingItem, isAssigning, companiesList, readDefaultEmpresa, onAssignCompany, onCancelPending,
   pendingCategory, isAssigningCategory, categoriesList, onAssignCategory, onCancelPendingCategory,
@@ -63,9 +64,12 @@ export function DashboardModals({
             <input value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3 md:col-span-2" placeholder="Empresa" />
             <textarea value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3 md:col-span-2 min-h-[120px]" placeholder="Descripción" />
           </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <button onClick={onCloseMovementEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-            <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
+          <div className="flex items-center justify-between gap-3 mt-4">
+            <button onClick={() => onDeleteMovement(editingMovement.id)} className="rounded-md border border-[var(--app-red-border)] px-4 py-3 text-[var(--chart-expense)] hover:border-red-400">Borrar</button>
+            <div className="flex gap-3">
+              <button onClick={onCloseMovementEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
+              <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
+            </div>
           </div>
         </ModalShell>
       )}

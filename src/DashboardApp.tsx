@@ -768,6 +768,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <DashboardModals
           editingMovement={editingMovement} movementEditForm={movementEditForm} setMovementEditForm={setMovementEditForm}
           onCloseMovementEdit={() => { setEditingMovement(null); setMovementEditForm(null); }} onSaveMovementEdit={() => void saveMovementEdit()}
+          onDeleteMovement={(id) => { setEditingMovement(null); setMovementEditForm(null); deleteItem(id); }}
           editingCompany={editingCompany} companyEditName={companyEditName} setCompanyEditName={setCompanyEditName}
           onCloseCompanyEdit={() => { setEditingCompany(null); setCompanyEditName(''); }} onSaveCompanyEdit={() => void saveCompanyEdit()}
           pendingItem={pendingItem} isAssigning={isAssigning} companiesList={companiesList} readDefaultEmpresa={readDefaultEmpresa}

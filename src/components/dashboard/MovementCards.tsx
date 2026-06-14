@@ -70,7 +70,7 @@ function MovementCardsImpl({
   return (
     <>
       <div ref={topRef} className="scroll-mt-24" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-4">
         {pageItems.map((item, index) => (
             <div
               key={item.id}
@@ -145,6 +145,71 @@ function MovementCardsImpl({
               </div>
             </div>
           ))}
+      </div>
+      <div className="md:hidden overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] divide-y divide-[var(--app-border)]">
+        {pageItems.map((item) => {
+          const isIncome = item.tipo === 'ingreso';
+          const amount = item.monto !== null
+            ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: item.moneda || 'ARS', maximumFractionDigits: 0 }).format(Math.abs(item.monto))
+            : null;
+          const meta = [item.empresa_nombre || 'Personal', item.categoria, new Date(item.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })]
+            .filter(Boolean).join(' · ');
+          const rowInner = (
+            <>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isIncome ? 'bg-[var(--app-green-surface)] text-[var(--chart-income)]' : 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]'}`}>
+                  {isIncome ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-[var(--app-text-1)]">{item.categoria}</div>
+                  <div className="truncate text-xs text-[var(--app-text-3)]">{meta}</div>
+                </div>
+              </div>
+              <span className={`shrink-0 text-sm font-semibold tabular-nums ${isIncome ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>
+                {amount ? `${isIncome ? '+' : '−'}${amount}` : '—'}
+              </span>
+            </>
+          );
+          return (
+            <div key={item.id}>
+              <div className="flex items-stretch">
+                {canWriteData ? (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    aria-label={`Editar ${isIncome ? 'ingreso' : 'gasto'} ${item.categoria}`}
+                    className="flex flex-1 items-center justify-between gap-3 px-3 py-3 text-left min-w-0 active:bg-[var(--app-surface-2)] transition-colors"
+                  >
+                    {rowInner}
+                  </button>
+                ) : (
+                  <div className="flex flex-1 items-center justify-between gap-3 px-3 py-3 min-w-0">{rowInner}</div>
+                )}
+                {item.has_lineas && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                    aria-expanded={expandedId === item.id}
+                    aria-label="Ver renglones del ticket"
+                    className="flex w-11 shrink-0 items-center justify-center border-l border-[var(--app-border)] text-[var(--app-text-3)] active:bg-[var(--app-surface-2)]"
+                  >
+                    {expandedId === item.id ? <ChevronUp className="h-4 w-4" /> : <ReceiptText className="h-4 w-4" />}
+                  </button>
+                )}
+              </div>
+              {item.has_lineas && expandedId === item.id && (
+                <div className="px-3 pb-3">
+                  <MovementLines
+                    movimientoId={item.id}
+                    moneda={item.moneda || 'ARS'}
+                    canWrite={canWriteData}
+                    onChanged={(total, hasLines) => onLinesChanged?.(item.id, total, hasLines)}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       {(loadedPages > 1 || hasMore) && (
         <nav className="flex items-center justify-center gap-1.5 pt-5" aria-label="Paginación de movimientos">

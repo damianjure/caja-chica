@@ -219,6 +219,8 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 
 **La Regla del Borde en Hover.** Ningún elemento cliqueable se ilumina (cambia su fondo) en hover. El feedback de hover es siempre el resalte del borde a `border-strong`. La iluminación de fondo está prohibida en elementos tipo botón, tarjeta o chip. (Excepción: los ítems apilados de un menú desplegable usan un fondo sutil `surface-2`, porque el borde no aplica a una lista apilada.)
 
+**La Regla de Touch Eleva, Stat Aplana** (2026-06-14). Una tarjeta tappable (navega o filtra) va **elevada**: `surface-1` + `shadow-md` + lift sutil en hover (`-translate-y-0.5`). Una tarjeta de solo lectura va **plana y recedida**: `surface-2`, sin sombra. El usuario distingue "tocable" de "dato" de un vistazo, sin leer. Signifier extra: chevron `›` = navega · check `✓` = filtro activo · sin adorno = solo lectura. (Resolvió el problema de las MetricCard que parecían botones pero no hacían nada.)
+
 ## 5. Components
 
 ### Buttons
@@ -247,6 +249,14 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **Border:** `border` de 1px, siempre completo. El border-left/right de color como acento está prohibido.
 - **Internal Padding:** `1.75rem 2rem` (escala `relaxed`/`section`).
 
+### Tarjetas de métrica e interacción (2026-06-14)
+- **`MetricCard`:** sin `onClick` = `<div>` stat plano (ver Regla de Touch Eleva). Con `onClick` = `<button>` elevado con chevron, `aria-label` y target ≥44px. Misma firma, dos afordancias según si es interactiva.
+- **Atajos del Resumen:** cada métrica navega al detalle — Ingresos/Gastos/Utilidad/USD → Movimientos con el filtro puesto; Empresas/Recurrentes → su tab. El estado de filtros vive en `DashboardApp`, así que el atajo es `setX(...)` + `setActiveTab(...)` (espeja el `onDrilldown` de Empresas).
+- **`FilterCard` (Movimientos):** 4 tarjetas que **reemplazan** el segmented de tipo/moneda (Todos / Ingresos / Gastos / En USD). Tocar filtra la lista; la activa se ilumina por significado (verde/rojo) con check. Muestran el **total global** (de `getCurrencyTotals(history)`, sin filtrar), no el conteo filtrado.
+- **Empresas — datos propios:** no repite los totales del Resumen; muestra Más gasta · Mejor saldo (tappables, drillean a esa empresa) · Empresas activas · En rojo (stats).
+- **Agrupación:** en páginas mixtas (Empresas) las tappables van juntas en una fila y las stats en otra, para que el patrón visual sea legible.
+- **Touch targets:** los botones de ícono de acción (editar/copiar/borrar en cards de movimiento, pausar/editar/borrar en Recurrentes) usan `h-11 w-11` (44px, WCAG 2.5.5) — el ícono queda chico, crece el área tocable.
+
 ### Inputs / Fields
 - **Style:** fondo `surface-1`, borde `border` de 1px, `rounded-md`.
 - **Focus:** `focus:ring-2` con el color de texto principal; sin glow de color.
@@ -254,11 +264,13 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 
 ### Navigation
 - **Tab nav:** contenedor plano `surface-2` (glass en v2, ver Regla del Vidrio). Cada pestaña es una tarjeta que levita (ver Regla de la Tarjeta que Levita). Activa: acento de marca/`strong-surface` + `shadow-md`. Inactiva: hover resalta el borde. Móvil: tira de scroll horizontal compacto.
+- **Affordance de scroll (2026-06-14):** la tira hace `mask-image` fade en los bordes **solo cuando hay overflow real** (se calcula en vivo con listeners de scroll/resize comparando `scrollWidth`/`clientWidth`), y **auto-centra la pestaña activa** al cambiar (`scrollIntoView({ inline: 'center', block: 'nearest' })`). Resuelve "no se ve que hay más tabs" y "la activa queda fuera de pantalla".
 
 ### Header / App-bar (v2, 2026-05-31)
 Glass (chrome), sticky. **Sin título de página** (redundante con la sección activa). Layout:
 - **Izquierda:** monograma + wordmark "Caja Chica" + CTA primario **Nueva operación** (acento mint, atajo a cargar movimiento).
-- **Derecha (en orden):** Buscar (⌘K) · toggle de tema (Claro/Oscuro) · badge de rol (Dueño) · avatar de usuario.
+- **Derecha (en orden):** Frescura (refresh + hora) · Buscar (⌘K) · toggle de tema (Claro/Oscuro) · badge de rol (Dueño) · avatar de usuario.
+- **Frescura (2026-06-14):** botón de refresh (`RefreshCw`, gira con `isLoading`, recarga vía `loadData(false)`) + hora de última actualización, estampada en cada cambio de `history` (incluido el push de realtime). Da confianza de que el dashboard refleja lo cargado por Telegram. En mobile la hora se oculta (`hidden sm:inline`), queda solo el ícono.
 
 ### Marca / BrandMark (2026-06-03)
 Logo real reemplaza el placeholder anterior (ícono `ShieldCheck` + badge de texto "CC"). Componente `BrandMark` con 3 variantes que apuntan a assets en `/public`:
@@ -317,6 +329,8 @@ Skeletons tonales (`surface-2`/`surface-3`) que respetan el layout final, no spi
 
 ### Empty
 Primitive `EmptyState` (title + hint + CTA opcional gated por `canWrite`). Nunca una vista en blanco: título corto, hint de una línea, y si el usuario puede escribir, un CTA al composer. Aplicado en Resumen mensual, Ingresos/Gastos recientes.
+
+**Telegram-first (2026-06-14):** el copy de los vacíos apunta a **Telegram como fuente de carga** ("Cargá por Telegram y aparece acá al toque"), no a un campo del dashboard — que en mobile no existe (se quitó el "↑ desde el campo de arriba" que apuntaba a la nada). La carga local queda como camino secundario. Refleja el modelo del producto: Telegram carga, el dashboard muestra.
 
 ### Error
 Texto plano y accionable (Nielsen #9): qué pasó + cómo seguir. `role="alert"` para errores de carga/acción, `role="status"` para avisos no urgentes (banner `missing_url`). Nunca el código técnico crudo. Rojo semántico solo en borde/texto del callout, sin relleno alarmante.

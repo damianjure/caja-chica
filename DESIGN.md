@@ -257,6 +257,9 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 - **Agrupación:** en páginas mixtas (Empresas) las tappables van juntas en una fila y las stats en otra, para que el patrón visual sea legible.
 - **Touch targets:** los botones de ícono de acción (editar/copiar/borrar en cards de movimiento, pausar/editar/borrar en Recurrentes) usan `h-11 w-11` (44px, WCAG 2.5.5) — el ícono queda chico, crece el área tocable.
 
+### Movimientos: card en desktop, fila en mobile (2026-06-14)
+Patrón `hidden md:grid` / `md:hidden` (como los charts): el desktop mantiene las **cards** (1 por movimiento); el mobile usa una **lista densa tipo extracto de banco** (ícono tipo + categoría + `empresa · categoría · fecha` + monto firmado a la derecha, ~6 por pantalla). Tocar la fila abre el **editor** (las acciones salen del medio); los renglones de ticket se expanden con un toggle de recibo al final de la fila. Para que el borrado sobreviva la mudanza, el **editor de movimiento ahora tiene botón Borrar** (rojo, a la izquierda del footer). Viewers: la fila no es botón (solo lectura).
+
 ### Inputs / Fields
 - **Style:** fondo `surface-1`, borde `border` de 1px, `rounded-md`.
 - **Focus:** `focus:ring-2` con el color de texto principal; sin glow de color.
@@ -319,6 +322,8 @@ El movimiento es funcional, nunca decorativo (coherente con la Regla del Color S
 **La Regla del Reduced-Motion.** Todo `.anim-*` se anula bajo `@media (prefers-reduced-motion: reduce)` (`animation: none`). El movimiento es progressive enhancement, nunca requisito para entender la UI.
 
 **El feedback de click** es `active:scale-[0.97]` (§5 Buttons), no una animación de color.
+
+**Pull-to-refresh (gesto, 2026-06-14).** Solo mobile. Hook propio `usePullToRefresh` (listeners de touch en window, stdlib, sin lib externa): un arrastre **vertical-dominante** desde el tope de la página (`scrollY === 0`) crece con resistencia; al soltar pasando el umbral dispara `loadData(false)`. La dominancia vertical evita pelear con los scrollers horizontales (tabs, filas). Un spinner flotante (`RefreshCw`) sigue el dedo y gira mientras recarga; al llegar los datos, la marca de frescura (§5 Header) se actualiza. Encaja con el modelo Telegram-first: el gesto universal para "traeme lo último que cargué".
 
 ## 7. States (Loading / Empty / Error)
 

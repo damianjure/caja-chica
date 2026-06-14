@@ -62,6 +62,7 @@ function ExportMenu({
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
 import { SectionCard } from '../primitives';
+import { useFitText } from '../../../hooks/useFitText';
 
 type Tipo = 'all' | 'ingreso' | 'egreso';
 type Moneda = 'all' | 'ARS' | 'USD';
@@ -136,6 +137,7 @@ function Pill({ label, onClear, tone }: { label: string; onClear: () => void; to
 }
 
 function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { label: string; value: string; tone?: 'neutral' | 'income' | 'expense'; selected: boolean; onClick: () => void }) {
+  const valueRef = useFitText<HTMLDivElement>(value);
   const valueColor = tone === 'income' ? 'text-[var(--chart-income)]' : tone === 'expense' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]';
   const selectedClass = selected
     ? (tone === 'income'
@@ -152,7 +154,7 @@ function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { lab
       className={`relative px-5 py-4 rounded-xl border text-left shadow-[var(--app-shadow-md)] transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
     >
       <div className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest mb-2">{label}</div>
-      <div className={`text-2xl font-bold tracking-tight tabular-nums ${valueColor}`}>{value}</div>
+      <div ref={valueRef} className={`w-full text-2xl font-bold tracking-tight tabular-nums whitespace-nowrap overflow-hidden ${valueColor}`}>{value}</div>
       {selected && <Check className="absolute top-3 right-3 w-4 h-4 text-[var(--app-text-2)]" aria-hidden="true" />}
     </button>
   );

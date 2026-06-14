@@ -108,12 +108,12 @@ export default function ResumenTab(props: ResumenTabProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-        <MetricCard label="Ingresos ARS" value={props.arsIngreso} tone="success" icon={TrendingUp} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('ingresos') : undefined} navLabel="Ver ingresos en movimientos" />
-        <MetricCard label="Gastos ARS" value={props.arsEgreso} tone="danger" icon={TrendingDown} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('gastos') : undefined} navLabel="Ver gastos en movimientos" />
-        <MetricCard label="Utilidad ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} icon={Wallet} critical={!props.netPositive} sub={props.netPositive ? undefined : 'requiere revisión'} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('utilidad') : undefined} navLabel="Ver todos los movimientos" />
-        <MetricCard label="Caja USD" value={props.usdNeto} tone="neutral" icon={Wallet} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('usd') : undefined} navLabel="Ver movimientos en dólares" />
-        <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('empresas') : undefined} navLabel="Ver empresas" />
-        <MetricCard label="Recurrentes activos" value={String(props.recurrentesCount)} tone="neutral" icon={Repeat} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('recurrentes') : undefined} navLabel="Ver recurrentes" />
+        <MetricCard label="Ingresos" value={props.arsIngreso} tone="success" icon={TrendingUp} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('ingresos') : undefined} navLabel="Ver ingresos en movimientos" />
+        <MetricCard label="Gastos" value={props.arsEgreso} tone="danger" icon={TrendingDown} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('gastos') : undefined} navLabel="Ver gastos en movimientos" />
+        <MetricCard label="Utilidad" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} icon={Wallet} critical={!props.netPositive} sub={props.netPositive ? undefined : 'requiere revisión'} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('utilidad') : undefined} navLabel="Ver todos los movimientos" />
+        <MetricCard label="Caja" value={props.usdNeto} tone="neutral" icon={Wallet} onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('usd') : undefined} navLabel="Ver movimientos en dólares" />
+        <MetricCard label="Empresas activas" value={String(props.companyCount)} tone="neutral" icon={Building2} align="center" onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('empresas') : undefined} navLabel="Ver empresas" />
+        <MetricCard label="Recurrentes activos" value={String(props.recurrentesCount)} tone="neutral" icon={Repeat} align="center" onClick={props.onMetricNavigate ? () => props.onMetricNavigate!('recurrentes') : undefined} navLabel="Ver recurrentes" />
       </div>
 
       {!props.netPositive && (

@@ -130,11 +130,11 @@ export default function EmpresasTab({
     <div className="space-y-6">
       {companySummaries.length > 0 && (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <MetricCard label="Más gasta" value={formatCurrency(pick(masGasta).gas, cur)} sub={masGasta.name} tone="danger" icon={TrendingDown} onClick={() => onDrilldown(masGasta.name, 'all')} navLabel={`Ver movimientos de ${masGasta.name}`} />
             <MetricCard label="Mejor saldo" value={formatCurrency(pick(mejorSaldo).sal, cur)} sub={mejorSaldo.name} tone={pick(mejorSaldo).sal >= 0 ? 'success' : 'danger'} icon={TrendingUp} onClick={() => onDrilldown(mejorSaldo.name, 'all')} navLabel={`Ver movimientos de ${mejorSaldo.name}`} />
-            <MetricCard label="Empresas activas" value={String(companySummaries.length)} tone="neutral" icon={Building2} />
-            <MetricCard label="En rojo" value={String(enRojo)} sub={enRojo === 1 ? 'empresa con saldo negativo' : 'empresas con saldo negativo'} tone={enRojo > 0 ? 'danger' : 'neutral'} icon={Wallet} />
+            <MetricCard label="Empresas activas" value={String(companySummaries.length)} tone="neutral" icon={Building2} align="center" />
+            <MetricCard label="En rojo" value={String(enRojo)} sub={enRojo === 1 ? 'empresa con saldo negativo' : 'empresas con saldo negativo'} tone={enRojo > 0 ? 'danger' : 'neutral'} icon={Wallet} align="center" />
           </div>
 
           <SectionCard title="Salud por empresa" description={`Ingresos, gastos y saldo en ${cur} por empresa.`} action={CurToggle}>

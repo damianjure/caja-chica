@@ -390,8 +390,8 @@ export default function RecurrentesTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Recurrentes activos" value={String(summary.activos)} sub="Este mes" tone="neutral" />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <MetricCard label="Recurrentes activos" value={String(summary.activos)} sub="Este mes" tone="neutral" align="center" />
         <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} sub="Promedio" tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
         <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatShortDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} tone="warning" />
         <MetricCard label="Impacto 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} sub="Proyección" tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} />

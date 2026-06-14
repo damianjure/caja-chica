@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
+import { useFitText } from '../../hooks/useFitText';
 
-export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, critical, onClick, navLabel }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; sub?: string; critical?: boolean; onClick?: () => void; navLabel?: string }) {
+export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, critical, onClick, navLabel, align = 'left' }: { label: string; value: string; tone?: 'neutral' | 'success' | 'danger' | 'warning'; icon?: LucideIcon; sub?: string; critical?: boolean; onClick?: () => void; navLabel?: string; align?: 'left' | 'center' }) {
   const toneClass = {
     neutral: 'text-[var(--app-text-1)]',
     success: 'text-[var(--chart-income)]',
@@ -14,15 +15,18 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     ? 'border-[color-mix(in_srgb,var(--chart-expense)_50%,var(--app-border))] bg-[color-mix(in_srgb,var(--chart-expense)_10%,var(--app-surface-1))]'
     : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
 
+  const valueRef = useFitText<HTMLDivElement>(value);
+  const centered = align === 'center';
+
   const inner = (
-    <>
-      <div className="flex items-center gap-1.5 mb-2">
+    <div className={`flex h-full flex-col ${centered ? 'items-center justify-center text-center' : ''}`}>
+      <div className={`flex items-center gap-1.5 mb-2 ${centered ? 'justify-center px-3' : ''}`}>
         {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
         <span className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest">{label}</span>
       </div>
-      <div className={`text-2xl font-bold tracking-tight tabular-nums ${toneClass}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-[var(--app-text-3)]">{sub}</div>}
-    </>
+      <div ref={valueRef} className={`w-full text-2xl font-bold tracking-tight tabular-nums whitespace-nowrap overflow-hidden ${centered ? 'text-center' : ''} ${toneClass}`}>{value}</div>
+      {sub && <div className={`mt-1 text-xs text-[var(--app-text-3)] ${centered ? 'text-center' : ''}`}>{sub}</div>}
+    </div>
   );
 
   // Touch cards are elevated (raised surface + shadow, lift on hover); stat

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
@@ -404,6 +405,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // user can trust the dashboard reflects what was loaded from Telegram.
   const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
   useEffect(() => { setLastRefreshed(Date.now()); }, [history]);
+  const { pull: ptrPull, refreshing: ptrRefreshing } = usePullToRefresh(() => loadData(false));
 
   // ── Command palette actions + handler (depend on tabs/canWriteData) ──────────
   const paletteQuickActions = useMemo((): QuickAction[] => {
@@ -581,6 +583,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
+      {(ptrPull > 0 || ptrRefreshing) && (
+        <div
+          className="md:hidden fixed inset-x-0 top-0 z-[60] flex justify-center pointer-events-none"
+          style={{ transform: `translateY(${ptrRefreshing ? 14 : Math.max(0, Math.min(ptrPull, 80) - 18)}px)`, opacity: ptrRefreshing ? 1 : Math.min(1, ptrPull / 70) }}
+          aria-hidden="true"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-md)]">
+            <RefreshCw className={`h-4 w-4 text-[var(--app-text-2)] ${ptrRefreshing ? 'animate-spin' : ''}`} style={ptrRefreshing ? undefined : { transform: `rotate(${ptrPull * 3}deg)` }} />
+          </div>
+        </div>
+      )}
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard

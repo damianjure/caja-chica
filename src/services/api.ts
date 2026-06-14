@@ -825,10 +825,15 @@ export const api = {
   async inviteDashboardMember(
     email: string,
     role: DashboardInvitationRole,
+    telegramPreauth?: boolean,
   ): Promise<DashboardInvitation> {
     return fetchApi("/api/dashboard/invitations", {
       method: "POST",
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({
+        email,
+        role,
+        ...(telegramPreauth ? { telegram_preauth: true } : {}),
+      }),
     });
   },
 

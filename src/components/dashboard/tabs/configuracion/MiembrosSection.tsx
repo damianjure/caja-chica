@@ -207,25 +207,16 @@ function InviteForm({ onInvited }: InviteFormProps) {
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      const body: Record<string, unknown> = { email: trimmed, role };
-      if (telegramPreauth) body.telegram_preauth = true;
-      const res = await fetch("/api/dashboard/invitations", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(inviteErrorMessage(payload?.error, res.status));
-      }
+      await api.inviteDashboardMember(trimmed, role, telegramPreauth);
       setEmail("");
       setRole("viewer");
       setTelegramPreauth(false);
       toast.success(`Invitación enviada a ${trimmed}`);
       onInvited();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "No se pudo enviar la invitación.");
+      const code = api.isApiError(err) ? err.message : undefined;
+      const status = api.isApiError(err) ? err.status : 0;
+      toast.error(inviteErrorMessage(code, status));
     } finally {
       setSubmitting(false);
     }

@@ -1,4 +1,4 @@
-import { useState, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useState, useMemo, useDeferredValue, type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento } from '../../services/api';
 import { filterMovements, periodToRange, type DatePeriod } from '../../dashboard/summary';
 
@@ -39,8 +39,11 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     return periodToRange(datePeriod, new Date()) ?? { from: undefined, to: undefined };
   }, [datePeriod, customFrom, customTo]);
 
-  const filteredMovimientos = useMemo(() => {
-    const base = filterMovements(movimientos, {
+  // ⚡ Bolt Performance Optimization:
+  // Split the filtering into two stages. The base filters (company, type, etc.) are computed first.
+  // Then the search text filtering is computed separately.
+  const baseFilteredMovimientos = useMemo(() => {
+    return filterMovements(movimientos, {
       company: selectedCompany,
       tipo: movementType,
       moneda: movementCurrency,
@@ -48,12 +51,20 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
       from: dateRange.from,
       to: dateRange.to,
     });
-    const q = searchText.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((m) =>
+  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange]);
+
+  // ⚡ Bolt Performance Optimization:
+  // Defer the search text value to prevent the text matching loop from blocking typing responsiveness
+  // when the dataset grows large.
+  const deferredSearchText = useDeferredValue(searchText);
+
+  const filteredMovimientos = useMemo(() => {
+    const q = deferredSearchText.trim().toLowerCase();
+    if (!q) return baseFilteredMovimientos;
+    return baseFilteredMovimientos.filter((m) =>
       `${m.descripcion ?? ''} ${m.empresa_nombre ?? ''} ${m.categoria ?? ''}`.toLowerCase().includes(q),
     );
-  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, searchText]);
+  }, [baseFilteredMovimientos, deferredSearchText]);
 
   const hasActiveFilters =
     selectedCompany !== 'all' ||

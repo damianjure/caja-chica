@@ -611,7 +611,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8">
+    <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans px-4 md:px-8 pb-4 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-8">
       {(ptrPull > 0 || ptrRefreshing) && (
         <div
           className="md:hidden fixed inset-x-0 top-0 z-[60] flex justify-center pointer-events-none"

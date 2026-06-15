@@ -1,33 +1,28 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef } from 'react';
 
-const THRESHOLD = 70; // px of horizontal travel to count as a section swipe
-const DOMINANCE = 1.8; // horizontal must beat vertical by this factor
+const THRESHOLD = 50; // px of horizontal travel to count as a section swipe
+const DOMINANCE = 1.3; // horizontal must beat vertical by this factor
 
 /**
- * Horizontal swipe navigation between sections. Attaches touch listeners to
- * `ref` and calls onPrev/onNext on a clear left/right swipe. Bails when the
- * gesture starts inside a horizontally-scrollable element (tabs, filter rows,
- * charts) so those keep scrolling. Stdlib only; no-op on desktop (no touch).
+ * Horizontal swipe navigation between sections. Listens on window so the
+ * gesture is caught no matter which element is touched, and calls onPrev/onNext
+ * on a clear left/right swipe. Bails when the gesture starts inside a
+ * horizontally-scrollable element (tabs, filter rows, charts) so those keep
+ * scrolling. Stdlib only; no-op on desktop (no touch events).
  */
-export function useSwipeNav<T extends HTMLElement>(
-  ref: RefObject<T | null>,
-  onPrev: () => void,
-  onNext: () => void,
-) {
+export function useSwipeNav(onPrev: () => void, onNext: () => void) {
   const onPrevRef = useRef(onPrev);
   const onNextRef = useRef(onNext);
   useEffect(() => { onPrevRef.current = onPrev; onNextRef.current = onNext; });
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
     let sx = 0;
     let sy = 0;
     let armed = false;
 
-    const startsInHScroller = (target: EventTarget | null) => {
+    const inHScroller = (target: EventTarget | null) => {
       let n = target as HTMLElement | null;
-      while (n && n !== el) {
+      while (n && n !== document.documentElement) {
         const s = getComputedStyle(n);
         if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 4) return true;
         n = n.parentElement;
@@ -37,7 +32,7 @@ export function useSwipeNav<T extends HTMLElement>(
 
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) { armed = false; return; }
-      armed = !startsInHScroller(e.target);
+      armed = !inHScroller(e.target);
       sx = e.touches[0].clientX;
       sy = e.touches[0].clientY;
     };
@@ -53,11 +48,11 @@ export function useSwipeNav<T extends HTMLElement>(
       }
     };
 
-    el.addEventListener('touchstart', onStart, { passive: true });
-    el.addEventListener('touchend', onEnd, { passive: true });
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchend', onEnd, { passive: true });
     return () => {
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchend', onEnd);
     };
-  }, [ref]);
+  }, []);
 }

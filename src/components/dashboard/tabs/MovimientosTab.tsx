@@ -284,8 +284,8 @@ export default function MovimientosTab({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <FilterCard label="Todos" value={`${totalCount} mov`} selected={movementType === 'all' && movementCurrency === 'all'} onClick={() => { setMovementType('all'); setMovementCurrency('all'); }} />
-        <FilterCard label="Ingresos" value={arsIngreso} tone="income" selected={movementType === 'ingreso' && movementCurrency === 'all'} onClick={() => { setMovementType('ingreso'); setMovementCurrency('all'); }} />
-        <FilterCard label="Gastos" value={arsEgreso} tone="expense" selected={movementType === 'egreso' && movementCurrency === 'all'} onClick={() => { setMovementType('egreso'); setMovementCurrency('all'); }} />
+        <FilterCard label="Ingresos ARS" value={arsIngreso} tone="income" selected={movementType === 'ingreso' && movementCurrency === 'all'} onClick={() => { setMovementType('ingreso'); setMovementCurrency('all'); }} />
+        <FilterCard label="Gastos ARS" value={arsEgreso} tone="expense" selected={movementType === 'egreso' && movementCurrency === 'all'} onClick={() => { setMovementType('egreso'); setMovementCurrency('all'); }} />
         <FilterCard label="En USD" value={usdNeto} selected={movementCurrency === 'USD'} onClick={() => { setMovementType('all'); setMovementCurrency('USD'); }} />
       </div>
 

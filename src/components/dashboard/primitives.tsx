@@ -50,7 +50,7 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     );
   }
 
-  const flatClass = critical ? cardClass : 'border-[var(--app-border)] bg-[var(--app-surface-2)]';
+  const flatClass = critical ? cardClass : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
   return <div className={`relative px-5 py-4 rounded-xl border ${flatClass}`}>{inner}</div>;
 }
 

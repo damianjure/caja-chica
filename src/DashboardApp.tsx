@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useSwipeNav } from './hooks/useSwipeNav';
+import { useBackClose } from './hooks/useBackClose';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
@@ -489,6 +490,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     setNavDir(i >= prevTabIndexRef.current ? 'next' : 'prev');
     prevTabIndexRef.current = i;
   }, [activeTab, tabs]);
+
+  // Android/browser Back closes the open modal instead of leaving the page.
+  useBackClose(Boolean(editingMovement), () => { setEditingMovement(null); setMovementEditForm(null); });
+  useBackClose(Boolean(editingCompany), () => { setEditingCompany(null); setCompanyEditName(''); });
+  useBackClose(Boolean(confirmationModal), () => { if (!isConfirmingAction) { setConfirmationModal(null); setConfirmationInput(''); } });
+  useBackClose(isPaletteOpen, () => setIsPaletteOpen(false));
+  useBackClose(isHelpOpen, () => setIsHelpOpen(false));
+  useBackClose(isTourOpen, () => setIsTourOpen(false));
+  useBackClose(isCargaOpen, () => setIsCargaOpen(false));
+  useBackClose(Boolean(extracted), clearExtracted);
 
   const topExpenseCategories = useMemo(() => categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` })), [categorySummaries]);
   const topIncomeTags = useMemo(() => incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` })), [incomeTagSummaries]);

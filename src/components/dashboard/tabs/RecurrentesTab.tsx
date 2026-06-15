@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { useBackClose } from '../../../hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -268,6 +269,9 @@ export default function RecurrentesTab({
   const [typeFilter, setTypeFilter] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [empresaFilter, setEmpresaFilter] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  useBackClose(creating, () => setCreating(false));
+  useBackClose(Boolean(editing), () => setEditing(null));
+  useBackClose(Boolean(deleteTarget), () => setDeleteTarget(null));
 
   const load = async () => {
     try {
@@ -453,12 +457,12 @@ export default function RecurrentesTab({
             )}
           </div>
 
-          <div className="divide-y divide-[var(--app-border)]">
+          <div className="overflow-hidden rounded-xl border border-[var(--app-border)] divide-y divide-[var(--app-border)]">
             {filtered.length === 0 && (
-              <p className="py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
+              <p className="px-3.5 py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
             )}
             {filtered.map((r) => (
-              <div key={r.id} className={`flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0 ${r.is_active ? '' : 'opacity-60'}`}>
+              <div key={r.id} className={`flex items-start justify-between gap-3 px-3.5 py-3 ${r.is_active ? '' : 'opacity-60'}`}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-[var(--app-text-1)] truncate">{r.descripcion || r.empresa_nombre || 'Recurrente'}</span>

@@ -5,6 +5,7 @@ import { ChartCard, HorizontalBarList, AreaTrendChart, WaterfallChart } from '..
 import { EmptyState, MetricCard, MetricChip, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
 import { buildMonthlyChartData, buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
@@ -75,6 +76,10 @@ export default function ResumenTab(props: ResumenTabProps) {
   const [pulseSeries, setPulseSeries] = useState({ income: true, expense: true, net: true });
   const [hiddenCompanies, setHiddenCompanies] = useState<Set<string>>(new Set());
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  // Desktop always shows the secondary charts; mobile mounts them only when the
+  // user opens "Ver análisis" — so the landing tab doesn't pay for 3 hidden
+  // charts on phones (CSS `hidden` would still mount + render them).
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const nav = (m: 'ingresos' | 'gastos' | 'utilidad' | 'usd' | 'empresas' | 'recurrentes') =>
     props.onMetricNavigate ? () => props.onMetricNavigate!(m) : undefined;
@@ -206,7 +211,8 @@ export default function ResumenTab(props: ResumenTabProps) {
           <ChevronDown className={`h-4 w-4 transition-transform ${analysisOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           {analysisOpen ? 'Ocultar análisis' : 'Ver análisis'}
         </button>
-        <div className={`space-y-6 ${analysisOpen ? '' : 'hidden md:block'}`}>
+        {(isDesktop || analysisOpen) && (
+        <div className="space-y-6">
       {(props.insights.length > 0 || comparison.hasPrev) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {props.insights.length > 0 && (
@@ -304,6 +310,7 @@ export default function ResumenTab(props: ResumenTabProps) {
         </ChartCard>
       )}
         </div>
+        )}
       </div>
 
       <SectionCard

@@ -371,6 +371,12 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', short: 'Admin', description: '', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
+  // Bottom-nav / top tab bar / swipe only cycle the frequent destinations.
+  // Configuración and Super Admin are reached from the avatar menu (settings
+  // conventionally live there, and it keeps the bottom-nav within 3–5 items).
+  const NAV_TAB_IDS: ReadonlyArray<DashboardTab> = ['resumen', 'movimientos', 'recurrentes', 'empresas'];
+  const navTabs = tabs.filter((t) => NAV_TAB_IDS.includes(t.id));
+
   useEffect(() => {
     const allowedIds = tabs.map((t) => t.id);
     if (!allowedIds.includes(activeTab)) setActiveTab(tabs[0].id);
@@ -410,10 +416,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   useEffect(() => { setLastRefreshed(Date.now()); }, [history]);
   const { pull: ptrPull, refreshing: ptrRefreshing, dragging: ptrDragging } = usePullToRefresh(() => loadData(false));
   const goToTabOffset = useCallback((delta: number) => {
-    const i = tabs.findIndex((t) => t.id === activeTab);
-    const next = tabs[i + delta];
+    const i = navTabs.findIndex((t) => t.id === activeTab);
+    if (i === -1) return; // on Configuración/Super Admin (not in the swipe cycle)
+    const next = navTabs[i + delta];
     if (next) setActiveTab(next.id);
-  }, [tabs, activeTab]);
+  }, [navTabs, activeTab]);
   useSwipeNav(() => goToTabOffset(-1), () => goToTabOffset(1));
   const ptrShift = ptrRefreshing ? 52 : Math.min(ptrPull, 96);
   const ptrTransition = ptrDragging ? 'none' : 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)';
@@ -629,7 +636,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         className="sm:hidden fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-0.5 border-t border-[var(--app-border)] bg-[var(--app-surface-1)]/95 px-1 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.32)] backdrop-blur-md"
         aria-label="Secciones"
       >
-        {tabs.map((tab) => {
+        {navTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -638,10 +645,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2 text-[10px] font-semibold transition-colors active:scale-[0.94] ${isActive ? 'text-[var(--app-strong-surface)]' : 'text-[var(--app-text-2)]'}`}
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2 text-[11px] font-semibold transition-colors active:scale-[0.94] ${isActive ? 'text-[var(--app-strong-surface)]' : 'text-[var(--app-text-2)]'}`}
             >
               <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
-              <span className="leading-none">{tab.short}</span>
+              <span className="leading-none">{tab.label}</span>
             </button>
           );
         })}
@@ -760,6 +767,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               theme={theme}
               onToggleTheme={onToggleTheme}
               onSignOut={() => void handleSignOut()}
+              onOpenSettings={() => setActiveTab('configuracion')}
+              onOpenAdmin={viewer.role === 'superadmin' ? () => setActiveTab('superadmin') : undefined}
               onOpenHelp={() => setIsHelpOpen(true)}
               onReplayTour={() => setIsTourOpen(true)}
               onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}
@@ -774,7 +783,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <h1 className="text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
             </div>
             <div ref={tablistRef} role="navigation" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="hidden md:flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} aria-current={isActive ? 'page' : undefined} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+              {navTabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} aria-current={isActive ? 'page' : undefined} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}
           </div>

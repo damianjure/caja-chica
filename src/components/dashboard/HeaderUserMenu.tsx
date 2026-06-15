@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOut, HelpCircle, Compass, Download, Sun, Moon } from 'lucide-react';
+import { LogOut, HelpCircle, Compass, Download, Sun, Moon, Settings, ShieldCheck } from 'lucide-react';
 import { initialsFromEmail } from '../../services/labels';
 import type { ThemeMode } from '../ThemeToggle';
 
@@ -16,6 +16,8 @@ export function HeaderUserMenu({
   theme,
   onToggleTheme,
   onSignOut,
+  onOpenSettings,
+  onOpenAdmin,
   onOpenHelp,
   onReplayTour,
   onInstallApp,
@@ -26,6 +28,8 @@ export function HeaderUserMenu({
   theme: ThemeMode;
   onToggleTheme: () => void;
   onSignOut: () => void;
+  onOpenSettings: () => void;
+  onOpenAdmin?: () => void;
   onOpenHelp?: () => void;
   onReplayTour?: () => void;
   onInstallApp?: () => void;
@@ -83,6 +87,25 @@ export function HeaderUserMenu({
             <div className="text-xs font-medium text-[var(--app-text-1)] truncate">{email}</div>
             <div className="text-xs text-[var(--app-text-3)] truncate">{identityLabel}</div>
           </div>
+          <div className="my-1 h-px bg-[var(--app-border)]" />
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); onOpenSettings(); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            Configuración
+          </button>
+          {onOpenAdmin && (
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); onOpenAdmin(); }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] transition-colors"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Super admin
+            </button>
+          )}
           <div className="my-1 h-px bg-[var(--app-border)]" />
           <button
             role="menuitem"

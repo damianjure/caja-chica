@@ -9,6 +9,7 @@ import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovim
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
 import { ScrollToTop } from './components/ScrollToTop';
+import { OfflineBanner } from './components/OfflineBanner';
 import AskChat from './components/dashboard/AskChat';
 import { HelpModal } from './components/HelpModal';
 import { TourModal } from './components/TourModal';
@@ -612,6 +613,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans px-4 md:px-8 pb-4 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-8">
+      <OfflineBanner />
       {(ptrPull > 0 || ptrRefreshing) && (
         <div
           className="md:hidden fixed inset-x-0 top-0 z-[60] flex justify-center pointer-events-none"

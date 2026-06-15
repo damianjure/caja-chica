@@ -2,7 +2,9 @@ import { Pencil, Plus, Trash2, Building2, TrendingUp, TrendingDown, Wallet } fro
 import { useState } from 'react';
 
 import type { Empresa, Movimiento } from '../../../services/api';
-import { SectionCard, MetricCard } from '../primitives';
+import { SectionCard, MetricCard, MetricChip } from '../primitives';
+import { Input, Select } from '../../ui/Field';
+import { Button } from '../../ui/Button';
 import { topCategoriesByType, formatNumber, type TopCategory } from '../../../dashboard/summary';
 
 function DrillPanel({
@@ -93,7 +95,6 @@ export default function EmpresasTab({
       : { ing: c.ingresosUsd, gas: c.gastosUsd, sal: c.saldoUsd };
 
   const salud = [...companySummaries].sort((a, b) => pick(a).sal - pick(b).sal);
-  const saludHint = (c: CompanySummaryView) => (pick(c).sal < 0 ? 'saldo negativo' : 'saldo positivo');
   const masGasta = [...companySummaries].sort((a, b) => pick(b).gas - pick(a).gas)[0];
   const mejorSaldo = salud[salud.length - 1];
   const enRojo = companySummaries.filter((c) => pick(c).sal < 0).length;
@@ -130,68 +131,39 @@ export default function EmpresasTab({
     <div className="space-y-6">
       {companySummaries.length > 0 && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <MetricCard label="Más gasta" value={formatNumber(pick(masGasta).gas)} sub={masGasta.name} tone="danger" icon={TrendingDown} onClick={() => onDrilldown(masGasta.name, 'all')} navLabel={`Ver movimientos de ${masGasta.name}`} />
-            <MetricCard label="Mejor saldo" value={formatNumber(pick(mejorSaldo).sal)} sub={mejorSaldo.name} tone={pick(mejorSaldo).sal >= 0 ? 'success' : 'danger'} icon={TrendingUp} onClick={() => onDrilldown(mejorSaldo.name, 'all')} navLabel={`Ver movimientos de ${mejorSaldo.name}`} />
-            <MetricCard label="Empresas activas" value={String(companySummaries.length)} tone="neutral" icon={Building2} />
-            <MetricCard label="En rojo" value={String(enRojo)} tone={enRojo > 0 ? 'danger' : 'neutral'} icon={Wallet} />
-          </div>
-
-          <SectionCard title="Salud por empresa" description={`Ingresos, gastos y saldo en ${cur} por empresa.`} action={CurToggle}>
-            <div className="space-y-2">
-              {salud.map((c) => {
-                const p = pick(c);
-                return (
-                  <div key={c.name} className="flex flex-col gap-2 rounded-md border border-[var(--app-border)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-[var(--app-text-1)]">{c.name}</div>
-                      <div className="text-xs text-[var(--app-text-3)]">{c.movimientos} mov · {saludHint(c)}</div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-x-6 sm:w-[26rem] sm:shrink-0">
-                      <div className="text-right">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Ingresos</div>
-                        <div className="text-sm font-semibold tabular-nums text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Gastos</div>
-                        <div className="text-sm font-semibold tabular-nums text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--app-text-3)]">Saldo</div>
-                        <div className={`text-sm font-semibold tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <MetricCard label="Más gasta" value={formatNumber(pick(masGasta).gas)} sub={masGasta.name} tone="danger" icon={TrendingDown} onClick={() => onDrilldown(masGasta.name, 'all')} navLabel={`Ver movimientos de ${masGasta.name}`} />
+              <MetricCard label="Mejor saldo" value={formatNumber(pick(mejorSaldo).sal)} sub={mejorSaldo.name} tone={pick(mejorSaldo).sal >= 0 ? 'success' : 'danger'} icon={TrendingUp} onClick={() => onDrilldown(mejorSaldo.name, 'all')} navLabel={`Ver movimientos de ${mejorSaldo.name}`} />
             </div>
-          </SectionCard>
+            <div className="flex flex-wrap gap-2">
+              <MetricChip label="Empresas" value={String(companySummaries.length)} icon={Building2} />
+              <MetricChip label="En rojo" value={String(enRojo)} icon={Wallet} />
+            </div>
+          </div>
         </>
       )}
 
       <SectionCard
         title="Empresas"
-        description="Tus empresas. Agregá una para editarla o borrarla."
+        description="Ordenadas por saldo (las que están en rojo, primero). Agregá una para editarla o borrarla."
         action={CurToggle}
       >
         {canWriteData && (
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              aria-label="Nombre de la empresa"
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Input
+              label="Nombre de la empresa"
+              hideLabel
+              wrapClassName="flex-1"
               value={newCompany}
               onChange={(event) => setNewCompany(event.target.value)}
               onKeyDown={(event) => { if (event.key === 'Enter') void handleCreate(); }}
               placeholder="Nombre de la nueva empresa"
-              className="flex-1 rounded-md border border-[var(--app-border)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             />
-            <button
-              onClick={() => void handleCreate()}
-              disabled={!newCompany.trim() || creating}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-5 py-2.5 text-sm font-bold text-[var(--app-strong-text)] active:scale-[0.97] disabled:opacity-50 transition"
-            >
+            <Button onClick={() => void handleCreate()} disabled={!newCompany.trim() || creating}>
               <Plus className="w-4 h-4" />
               {creating ? 'Creando…' : 'Agregar empresa'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -202,7 +174,7 @@ export default function EmpresasTab({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {companySummaries.map((company) => {
+            {salud.map((company) => {
               const p = pick(company);
               return (
                 <div key={company.name} className="rounded-xl border border-[var(--app-border)] p-5 space-y-3">
@@ -256,16 +228,11 @@ export default function EmpresasTab({
         description={`Top 3 de ${drillLabel}. Tocá una categoría para ver esos movimientos.`}
       >
         <div className="mb-4">
-          <select
-            aria-label="Elegir empresa para el detalle por categoría"
-            value={drillCompany}
-            onChange={(e) => setDrillCompany(e.target.value)}
-            className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-          >
+          <Select label="Elegir empresa para el detalle por categoría" hideLabel size="sm" value={drillCompany} onChange={(e) => setDrillCompany(e.target.value)}>
             {companiesList.map((c) => (
               <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <DrillPanel title="Gastos que más pesan" items={topGastos} accent="danger" empty="Sin gastos en este alcance." onPick={(cat) => onDrilldown(drillCompany, cat)} formatCurrency={formatCurrency} />

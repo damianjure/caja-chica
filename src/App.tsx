@@ -85,6 +85,15 @@ export default function App() {
   const [darkPalette, setDarkPaletteState] = useState<string>(readDarkPalette);
   // Aplica la paleta del modo activo cada vez que cambia el modo o una elección.
   useEffect(() => { applyPalette(theme, lightPalette, darkPalette); }, [theme, lightPalette, darkPalette]);
+
+  // Sync the browser chrome / Android status-bar color to the active theme
+  // (the static meta was pinned to the dark surface, looking off in light mode).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#171f1b" : "#ecf2ee");
+  }, [theme]);
   const setLightPalette = (id: string) => { setLightPaletteState(id); storeLightPalette(id); };
   const setDarkPalette = (id: string) => { setDarkPaletteState(id); storeDarkPalette(id); };
 

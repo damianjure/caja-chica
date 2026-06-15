@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Sparkles, SendHorizontal, Loader2, X, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useBackClose } from '../../hooks/useBackClose';
+import { useKeyboardInset } from '../../hooks/useKeyboardInset';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -97,6 +98,7 @@ export default function AskChat() {
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const keyboardInset = useKeyboardInset();
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -177,7 +179,10 @@ export default function AskChat() {
         aria-hidden="true"
         className="fixed inset-0 z-30 bg-black/45 sm:hidden"
       />
-      <div className="fixed z-40 inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[360px] flex flex-col rounded-2xl border border-[var(--app-strong-surface)] sm:border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-[0_20px_56px_rgba(0,0,0,0.55)] sm:shadow-[0_16px_48px_rgba(0,0,0,0.4)] overflow-hidden">
+      <div
+        style={keyboardInset ? { bottom: keyboardInset + 8 } : undefined}
+        className="fixed z-40 inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[360px] flex flex-col rounded-2xl border border-[var(--app-strong-surface)] sm:border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-[0_20px_56px_rgba(0,0,0,0.55)] sm:shadow-[0_16px_48px_rgba(0,0,0,0.4)] overflow-hidden transition-[bottom] duration-150"
+      >
       <div className="border-b border-[var(--app-border)] bg-[var(--app-surface-3)] sm:bg-transparent px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">

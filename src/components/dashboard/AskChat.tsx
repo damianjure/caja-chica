@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, SendHorizontal, Loader2, X, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
+import { useBackClose } from '../../hooks/useBackClose';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -104,6 +105,10 @@ export default function AskChat() {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // Android/browser Back closes the panel instead of leaving the app — same
+  // contract as every dashboard modal.
+  useBackClose(open, () => setOpen(false));
 
   useEffect(() => {
     try { window.localStorage.setItem(HISTORY_MODE_KEY, historyMode); } catch {}

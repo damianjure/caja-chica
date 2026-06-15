@@ -151,8 +151,8 @@ function RecurrenteModal({
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" size="sm" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" size="sm" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
         </div>
       </form>
     </ModalShell>

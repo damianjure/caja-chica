@@ -75,10 +75,9 @@ export function CargaModal({
       </div>
 
       <div className="flex items-center justify-end gap-2 mt-4">
-        <Button variant="secondary" size="sm" onClick={onClose}>Cancelar</Button>
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
         <Button
           variant="primary"
-          size="sm"
           onClick={onSubmit}
           disabled={!inputText.trim() || isProcessing}
         >

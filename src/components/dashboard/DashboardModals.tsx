@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento, type Empresa } from '../../services/api';
 import { ModalShell } from '../ui/ModalShell';
+import { Button } from '../ui/Button';
 import { ConfirmDestructive } from '../ui/ConfirmDestructive';
 import { type MovementEditForm, type ConfirmationModalState } from '../../types/dashboard';
 import { type PendingCompanyItem } from '../../hooks/dashboard/useCompanyAssignment';
@@ -65,10 +66,10 @@ export function DashboardModals({
             <textarea aria-label="Descripción" value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3 md:col-span-2 min-h-[120px]" placeholder="Descripción" />
           </div>
           <div className="flex items-center justify-between gap-3 mt-4">
-            <button onClick={() => onDeleteMovement(editingMovement.id)} className="rounded-md border border-[var(--app-red-border)] px-4 py-3 text-[var(--chart-expense)] hover:border-red-400">Borrar</button>
+            <Button variant="danger" onClick={() => onDeleteMovement(editingMovement.id)}>Borrar</Button>
             <div className="flex gap-3">
-              <button onClick={onCloseMovementEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-              <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar</button>
+              <Button variant="secondary" onClick={onCloseMovementEdit}>Cancelar</Button>
+              <Button variant="primary" onClick={onSaveMovementEdit}>Guardar</Button>
             </div>
           </div>
         </ModalShell>
@@ -81,8 +82,8 @@ export function DashboardModals({
             <p className="text-sm text-[var(--app-text-3)]">Esto renombra la empresa para el dashboard. Los movimientos visibles también se actualizan en la UI.</p>
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={onCloseCompanyEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-            <button onClick={onSaveCompanyEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar</button>
+            <Button variant="secondary" onClick={onCloseCompanyEdit}>Cancelar</Button>
+            <Button variant="primary" onClick={onSaveCompanyEdit}>Guardar</Button>
           </div>
         </ModalShell>
       )}
@@ -114,7 +115,7 @@ export function DashboardModals({
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={onCancelPending} disabled={isAssigning} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar registro</button>
+            <Button variant="secondary" onClick={onCancelPending} disabled={isAssigning}>Cancelar registro</Button>
           </div>
         </ModalShell>
       )}
@@ -155,7 +156,7 @@ export function DashboardModals({
             )}
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={onCancelPendingCategory} disabled={isAssigningCategory} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar registro</button>
+            <Button variant="secondary" onClick={onCancelPendingCategory} disabled={isAssigningCategory}>Cancelar registro</Button>
           </div>
         </ModalShell>
       )}

@@ -20,13 +20,16 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
     : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
 
   // Hero shows the period's headline number large; the auto-fit ceiling rises so
-  // it can breathe but still never overflows the card on a narrow phone.
-  const valueRef = useFitText<HTMLDivElement>(value, hero ? 40 : 24);
+  // it can breathe but still never overflows the card on a narrow phone. The
+  // floor drops low enough that long money figures fit in a 2-up phone column.
+  const valueRef = useFitText<HTMLDivElement>(value, hero ? 40 : 24, hero ? 20 : 12);
   const centered = align === 'center';
 
-  const inner = (
+  // Only the top row (label/chevron) needs clearance for the corner chevron;
+  // the value below uses the full card width so long numbers aren't clipped.
+  const inner = (chevron: boolean) => (
     <div className={`flex h-full flex-col ${centered ? 'items-center justify-center text-center' : ''}`}>
-      <div className={`flex items-center gap-1.5 mb-2 ${centered ? 'justify-center px-3' : ''}`}>
+      <div className={`flex items-center gap-1.5 mb-2 ${chevron ? 'pr-7' : ''} ${centered ? 'justify-center px-3' : ''}`}>
         {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
         <span className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest">{label}</span>
         {delta && (
@@ -34,7 +37,7 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
         )}
       </div>
       <div ref={valueRef} className={`w-full font-bold tracking-tight tabular-nums whitespace-nowrap overflow-hidden ${hero ? 'text-4xl' : 'text-2xl'} ${centered ? 'text-center' : ''} ${toneClass}`}>{value}</div>
-      {sub && <div className={`mt-1 text-xs text-[var(--app-text-3)] ${centered ? 'text-center' : ''}`}>{sub}</div>}
+      {sub && <div className={`mt-1 text-xs text-[var(--app-text-3)] truncate ${centered ? 'text-center' : ''}`}>{sub}</div>}
     </div>
   );
 
@@ -51,9 +54,9 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
         type="button"
         onClick={onClick}
         aria-label={navLabel ?? `Ver ${label}`}
-        className={`relative ${pad} pr-10 rounded-xl border shadow-[var(--app-shadow-md)] ${touchCardClass} w-full text-left cursor-pointer transition-[border-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
+        className={`relative ${pad} rounded-xl border shadow-[var(--app-shadow-md)] ${touchCardClass} w-full text-left cursor-pointer transition-[border-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
       >
-        {inner}
+        {inner(true)}
         <span className="absolute top-2.5 right-2.5 flex h-6 w-6 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--app-strong-surface)_15%,transparent)] text-[var(--app-strong-surface)]" aria-hidden="true">
           <ChevronRight className="w-4 h-4" />
         </span>
@@ -62,7 +65,7 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
   }
 
   const flatClass = critical ? cardClass : 'border-[var(--app-border)] bg-[var(--app-surface-1)]';
-  return <div className={`relative ${pad} rounded-xl border ${flatClass}`}>{inner}</div>;
+  return <div className={`relative ${pad} rounded-xl border ${flatClass}`}>{inner(false)}</div>;
 }
 
 // Compact, low-emphasis stat for counts that shouldn't compete with money

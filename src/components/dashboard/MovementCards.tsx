@@ -1,14 +1,17 @@
 import { memo, useRef, useState } from 'react';
-import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ReceiptText } from 'lucide-react';
+import { TrendingDown, TrendingUp, MessageSquareText, Loader2, Copy, Check, Pencil, Trash2, Building2, Tag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ReceiptText, X, Plus } from 'lucide-react';
 import { type Movimiento } from '../../services/api';
 import { MovementLines } from './MovementLines';
+import { Button } from '../ui/Button';
 import { pageSlice, totalPages, pageList } from '../../dashboard/pagination';
 
 const PER_PAGE = 10;
 
 interface MovementCardsProps {
   filteredHistory: Movimiento[];
-  selectedCompany: string;
+  hasActiveFilters: boolean;
+  onResetFilters: () => void;
+  onOpenCarga?: () => void;
   canWriteData: boolean;
   hasMore: boolean;
   loadingMore: boolean;
@@ -23,7 +26,7 @@ interface MovementCardsProps {
 }
 
 function MovementCardsImpl({
-  filteredHistory, selectedCompany, canWriteData, hasMore, loadingMore,
+  filteredHistory, hasActiveFilters, onResetFilters, onOpenCarga, canWriteData, hasMore, loadingMore,
   copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore, onLinesChanged,
 }: MovementCardsProps) {
   const topRef = useRef<HTMLDivElement>(null);
@@ -48,19 +51,28 @@ function MovementCardsImpl({
 
   if (filteredHistory.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 border border-[var(--app-border)] rounded-xl text-[var(--app-text-3)]">
+      <div className="flex flex-col items-center justify-center py-16 px-4 border border-[var(--app-border)] rounded-xl text-center text-[var(--app-text-3)]">
         <MessageSquareText className="w-10 h-10 mb-3 opacity-40" />
-        {selectedCompany === 'all' ? (
+        {hasActiveFilters ? (
+          // Hay datos, pero los filtros activos los tapan: no es primer uso.
           <>
-            <p className="font-medium text-[var(--app-text-3)]">Todavía no hay movimientos.</p>
-            <p className="text-sm mt-1">
-              {canWriteData ? 'Cargá un gasto por Telegram y aparece acá al toque. También podés usar el botón "Cargar" de arriba.' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
-            </p>
+            <p className="font-medium text-[var(--app-text-2)]">Sin movimientos para estos filtros.</p>
+            <p className="text-sm mt-1">Probá ampliar el período o sacar algún filtro.</p>
+            <Button variant="secondary" size="sm" onClick={onResetFilters} className="mt-4">
+              <X className="h-4 w-4" /> Limpiar filtros
+            </Button>
           </>
         ) : (
           <>
-            <p className="font-medium text-[var(--app-text-3)]">{`No hay datos para "${selectedCompany}"`}</p>
-            <p className="text-sm mt-1">Probá con otra empresa o sacá el filtro.</p>
+            <p className="font-medium text-[var(--app-text-2)]">Todavía no hay movimientos.</p>
+            <p className="text-sm mt-1">
+              {canWriteData ? 'Cargá un gasto por Telegram y aparece acá al toque.' : 'El dueño todavía no cargó nada. Vas a verlos acá apenas pase.'}
+            </p>
+            {canWriteData && onOpenCarga && (
+              <Button size="sm" onClick={onOpenCarga} className="mt-4">
+                <Plus className="h-4 w-4" /> Cargar movimiento
+              </Button>
+            )}
           </>
         )}
       </div>

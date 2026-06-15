@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento, type Empresa } from '../../services/api';
 import { ModalShell } from '../ui/ModalShell';
 import { Button } from '../ui/Button';
@@ -50,27 +50,47 @@ export function DashboardModals({
   pendingCategory, isAssigningCategory, categoriesList, onAssignCategory, onCancelPendingCategory,
   confirmationModal, confirmationInput, setConfirmationInput, isConfirmingAction, onCloseConfirmation, onRunConfirmation,
 }: DashboardModalsProps) {
+  // Inline validation for the movement editor: surface errors only after a save
+  // attempt, point at the failing field, and tell the user how to fix it.
+  const [movementSubmitTried, setMovementSubmitTried] = useState(false);
+  useEffect(() => { setMovementSubmitTried(false); }, [editingMovement]);
+
+  const montoNum = movementEditForm ? Number(movementEditForm.monto) : NaN;
+  const montoError = movementEditForm && (movementEditForm.monto.trim() === '' || !Number.isFinite(montoNum))
+    ? 'Ingresá un monto válido (ej. 1500).' : undefined;
+  const categoriaError = movementEditForm && !movementEditForm.categoria.trim()
+    ? 'Poné una categoría (ej. Combustible).' : undefined;
+  const descripcionError = movementEditForm && !movementEditForm.descripcion.trim()
+    ? 'Agregá una descripción de qué fue.' : undefined;
+
+  const handleSaveMovement = () => {
+    if (montoError || categoriaError || descripcionError) { setMovementSubmitTried(true); return; }
+    onSaveMovementEdit();
+  };
+
+  const companyOptions = companiesList.filter((c) => c !== 'all');
+
   return (
     <>
       {editingMovement && movementEditForm && (
         <ModalShell title="Editar movimiento" onClose={onCloseMovementEdit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Select label="Tipo de movimiento" hideLabel value={movementEditForm.tipo} onChange={(e) => setMovementEditForm((p) => p ? { ...p, tipo: e.target.value as 'ingreso' | 'egreso' } : p)}>
+            <Select label="Tipo" value={movementEditForm.tipo} onChange={(e) => setMovementEditForm((p) => p ? { ...p, tipo: e.target.value as 'ingreso' | 'egreso' } : p)}>
               <option value="ingreso">Ingreso</option><option value="egreso">Gasto</option>
             </Select>
-            <Select label="Moneda" hideLabel value={movementEditForm.moneda} onChange={(e) => setMovementEditForm((p) => p ? { ...p, moneda: e.target.value as 'ARS' | 'USD' } : p)}>
+            <Select label="Moneda" value={movementEditForm.moneda} onChange={(e) => setMovementEditForm((p) => p ? { ...p, moneda: e.target.value as 'ARS' | 'USD' } : p)}>
               <option value="ARS">ARS</option><option value="USD">USD</option>
             </Select>
-            <Input label="Monto" hideLabel value={movementEditForm.monto} onChange={(e) => setMovementEditForm((p) => p ? { ...p, monto: e.target.value } : p)} type="number" placeholder="Monto" />
-            <Input label="Categoría" hideLabel value={movementEditForm.categoria} onChange={(e) => setMovementEditForm((p) => p ? { ...p, categoria: e.target.value } : p)} placeholder="Categoría" />
-            <Input label="Empresa" hideLabel wrapClassName="md:col-span-2" value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} placeholder="Empresa" />
-            <Textarea label="Descripción" hideLabel wrapClassName="md:col-span-2" value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="min-h-[120px]" placeholder="Descripción" />
+            <Input label="Monto" required inputMode="decimal" error={movementSubmitTried ? montoError : undefined} value={movementEditForm.monto} onChange={(e) => setMovementEditForm((p) => p ? { ...p, monto: e.target.value } : p)} placeholder="1500" />
+            <Input label="Categoría" required options={categoriesList} error={movementSubmitTried ? categoriaError : undefined} value={movementEditForm.categoria} onChange={(e) => setMovementEditForm((p) => p ? { ...p, categoria: e.target.value } : p)} placeholder="Combustible" />
+            <Input label="Empresa" wrapClassName="md:col-span-2" options={companyOptions} value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} placeholder="Personal" />
+            <Textarea label="Descripción" required wrapClassName="md:col-span-2" error={movementSubmitTried ? descripcionError : undefined} value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="min-h-[120px]" placeholder="Nafta para la camioneta" />
           </div>
           <div className="flex items-center justify-between gap-3 mt-4">
             <Button variant="danger" onClick={() => onDeleteMovement(editingMovement.id)}>Borrar</Button>
             <div className="flex gap-3">
               <Button variant="secondary" onClick={onCloseMovementEdit}>Cancelar</Button>
-              <Button variant="primary" onClick={onSaveMovementEdit}>Guardar</Button>
+              <Button variant="primary" onClick={handleSaveMovement}>Guardar</Button>
             </div>
           </div>
         </ModalShell>
@@ -79,7 +99,7 @@ export function DashboardModals({
       {editingCompany && (
         <ModalShell title="Editar empresa" onClose={onCloseCompanyEdit}>
           <div className="space-y-4">
-            <Input label="Nombre de empresa" hideLabel value={companyEditName} onChange={(e) => setCompanyEditName(e.target.value)} placeholder="Nombre de empresa" />
+            <Input label="Nombre de empresa" required value={companyEditName} onChange={(e) => setCompanyEditName(e.target.value)} placeholder="Distribuidora del Sur" />
             <p className="text-sm text-[var(--app-text-3)]">Esto renombra la empresa para el dashboard. Los movimientos visibles también se actualizan en la UI.</p>
           </div>
           <div className="flex justify-end gap-3 mt-4">

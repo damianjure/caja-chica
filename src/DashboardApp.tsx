@@ -86,12 +86,12 @@ const AdminPanel = lazy(() => import('./components/AdminPanel').then((m) => ({ d
 const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/ConfiguracionTab'));
 const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/RecurrentesTab'));
 
-const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
-  { id: 'resumen', label: 'Resumen', description: 'Un vistazo general de todo', icon: LayoutGrid },
-  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo', icon: ArrowUpDown },
-  { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
-  { id: 'empresas', label: 'Empresas', description: 'Saldos e informes', icon: Building2 },
-  { id: 'configuracion', label: 'Configuración', description: '', icon: Settings },
+const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; short: string; description: string; icon: typeof LayoutGrid }> = [
+  { id: 'resumen', label: 'Resumen', short: 'Resumen', description: 'Un vistazo general de todo', icon: LayoutGrid },
+  { id: 'movimientos', label: 'Movimientos', short: 'Movim.', description: 'Historial completo', icon: ArrowUpDown },
+  { id: 'recurrentes', label: 'Recurrentes', short: 'Recurr.', description: 'Gastos e ingresos automáticos', icon: Repeat },
+  { id: 'empresas', label: 'Empresas', short: 'Empresas', description: 'Saldos e informes', icon: Building2 },
+  { id: 'configuracion', label: 'Configuración', short: 'Config', description: '', icon: Settings },
 ];
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
@@ -366,7 +366,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // ───────────────────────────────────────────────────────────────────────────
 
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: '', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', short: 'Admin', description: '', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   useEffect(() => {
@@ -481,6 +481,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const incomeTagSummaries = useMemo(() => getIncomeTagSummaries(history), [history]);
   const monthlySummaries = useMemo(() => getMonthlySummaries(history), [history]);
   const activeTabMeta = useMemo(() => tabs.find((t) => t.id === activeTab) ?? tabs[0], [tabs, activeTab]);
+  const ActiveTabIcon = activeTabMeta.icon;
 
   const topExpenseCategories = useMemo(() => categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` })), [categorySummaries]);
   const topIncomeTags = useMemo(() => incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` })), [incomeTagSummaries]);
@@ -604,6 +605,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </div>
       )}
+      <nav
+        className="sm:hidden fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-0.5 border-t border-[var(--app-border)] bg-[var(--app-surface-1)]/95 px-1 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.32)] backdrop-blur-md"
+        aria-label="Secciones"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold transition-colors active:scale-[0.94] ${isActive ? 'text-[var(--app-strong-surface)]' : 'text-[var(--app-text-3)]'}`}
+            >
+              <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
+              <span className="leading-none">{tab.short}</span>
+            </button>
+          );
+        })}
+      </nav>
       {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard
@@ -614,7 +636,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       )}
 
       <div
-        className="max-w-7xl mx-auto space-y-8"
+        className="max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0"
         style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition }}
       >
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
@@ -654,6 +676,24 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <span id="app-title" className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>
             </div>
             <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              aria-label="Búsqueda global"
+              className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-2)] active:scale-95"
+            >
+              <Search className="w-4 h-4" aria-hidden="true" />
+            </button>
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={goToComposer}
+                aria-label="Nueva operación"
+                className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-md bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] active:scale-95"
+              >
+                <span aria-hidden="true">＋</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => loadData(false)}
@@ -709,14 +749,18 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         <section className="sticky top-3 z-20">
           <div className="glass-chrome border border-[var(--app-border-strong)] rounded-2xl p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
-            <div ref={tablistRef} role="tablist" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
+            <div className="md:hidden flex items-center gap-2 px-1">
+              <ActiveTabIcon className="h-5 w-5 shrink-0 text-[var(--app-strong-surface)]" aria-hidden="true" />
+              <h1 className="text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
+            </div>
+            <div ref={tablistRef} role="tablist" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="hidden md:flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
               {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}
           </div>
         </section>
 
-        <main ref={mainRef} className="sm:pb-0 pb-24">
+        <main ref={mainRef}>
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} arsNeto={formatNumber(arsTotals.neto)} usdNeto={formatNumber(usdTotals.neto)} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} recurrentesCount={recurrentes.filter((r) => r.is_active && !r.deleted_at).length} onMetricNavigate={(m) => { if (m === 'empresas') { setActiveTab('empresas'); return; } if (m === 'recurrentes') { setActiveTab('recurrentes'); return; } setSelectedCompany('all'); setSelectedCategory('all'); setDatePeriod('all'); setMovementType(m === 'ingresos' ? 'ingreso' : m === 'gastos' ? 'egreso' : 'all'); setMovementCurrency(m === 'usd' ? 'USD' : 'all'); setActiveTab('movimientos'); }} />}
@@ -741,30 +785,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         )}
 
         {/* Barra flotante (solo mobile): acceso rápido a buscar y cargar */}
-        <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
-          <div className="flex min-h-12 items-center gap-1.5 rounded-full border border-white/15 bg-[#202020]/95 px-1.5 py-1.5 shadow-[0_-10px_34px_rgba(0,0,0,0.42),0_10px_28px_rgba(0,0,0,0.32)] backdrop-blur-md ring-1 ring-black/40">
-            <button
-              type="button"
-              onClick={() => setIsPaletteOpen(true)}
-              aria-label="Búsqueda global"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold text-neutral-200 transition duration-150 hover:bg-white/5 active:scale-[0.97]"
-            >
-              <Search className="w-4 h-4" aria-hidden="true" />
-              Buscar
-            </button>
-            {canWriteData && (
-              <button
-                type="button"
-                onClick={goToComposer}
-                aria-label="Nueva operación"
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--app-strong-surface)] px-4 text-sm font-black text-[var(--app-strong-text)] shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition duration-150 active:scale-[0.97]"
-              >
-                <span aria-hidden="true">＋</span>Nueva
-              </button>
-            )}
-          </div>
-        </div>
-
         <CommandPalette
           open={isPaletteOpen}
           onClose={() => setIsPaletteOpen(false)}

@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction } from 'react';
 import { type Movimiento, type Empresa } from '../../services/api';
 import { ModalShell } from '../ui/ModalShell';
 import { Button } from '../ui/Button';
+import { Input, Textarea, Select } from '../ui/Field';
 import { ConfirmDestructive } from '../ui/ConfirmDestructive';
 import { type MovementEditForm, type ConfirmationModalState } from '../../types/dashboard';
 import { type PendingCompanyItem } from '../../hooks/dashboard/useCompanyAssignment';
@@ -54,16 +55,16 @@ export function DashboardModals({
       {editingMovement && movementEditForm && (
         <ModalShell title="Editar movimiento" onClose={onCloseMovementEdit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <select aria-label="Tipo de movimiento" value={movementEditForm.tipo} onChange={(e) => setMovementEditForm((p) => p ? { ...p, tipo: e.target.value as 'ingreso' | 'egreso' } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3">
+            <Select label="Tipo de movimiento" hideLabel value={movementEditForm.tipo} onChange={(e) => setMovementEditForm((p) => p ? { ...p, tipo: e.target.value as 'ingreso' | 'egreso' } : p)}>
               <option value="ingreso">Ingreso</option><option value="egreso">Gasto</option>
-            </select>
-            <select aria-label="Moneda" value={movementEditForm.moneda} onChange={(e) => setMovementEditForm((p) => p ? { ...p, moneda: e.target.value as 'ARS' | 'USD' } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3">
+            </Select>
+            <Select label="Moneda" hideLabel value={movementEditForm.moneda} onChange={(e) => setMovementEditForm((p) => p ? { ...p, moneda: e.target.value as 'ARS' | 'USD' } : p)}>
               <option value="ARS">ARS</option><option value="USD">USD</option>
-            </select>
-            <input aria-label="Monto" value={movementEditForm.monto} onChange={(e) => setMovementEditForm((p) => p ? { ...p, monto: e.target.value } : p)} type="number" className="rounded-md border border-[var(--app-border)] px-4 py-3" placeholder="Monto" />
-            <input aria-label="Categoría" value={movementEditForm.categoria} onChange={(e) => setMovementEditForm((p) => p ? { ...p, categoria: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3" placeholder="Categoría" />
-            <input aria-label="Empresa" value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3 md:col-span-2" placeholder="Empresa" />
-            <textarea aria-label="Descripción" value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="rounded-md border border-[var(--app-border)] px-4 py-3 md:col-span-2 min-h-[120px]" placeholder="Descripción" />
+            </Select>
+            <Input label="Monto" hideLabel value={movementEditForm.monto} onChange={(e) => setMovementEditForm((p) => p ? { ...p, monto: e.target.value } : p)} type="number" placeholder="Monto" />
+            <Input label="Categoría" hideLabel value={movementEditForm.categoria} onChange={(e) => setMovementEditForm((p) => p ? { ...p, categoria: e.target.value } : p)} placeholder="Categoría" />
+            <Input label="Empresa" hideLabel wrapClassName="md:col-span-2" value={movementEditForm.empresa} onChange={(e) => setMovementEditForm((p) => p ? { ...p, empresa: e.target.value } : p)} placeholder="Empresa" />
+            <Textarea label="Descripción" hideLabel wrapClassName="md:col-span-2" value={movementEditForm.descripcion} onChange={(e) => setMovementEditForm((p) => p ? { ...p, descripcion: e.target.value } : p)} className="min-h-[120px]" placeholder="Descripción" />
           </div>
           <div className="flex items-center justify-between gap-3 mt-4">
             <Button variant="danger" onClick={() => onDeleteMovement(editingMovement.id)}>Borrar</Button>
@@ -78,7 +79,7 @@ export function DashboardModals({
       {editingCompany && (
         <ModalShell title="Editar empresa" onClose={onCloseCompanyEdit}>
           <div className="space-y-4">
-            <input aria-label="Nombre de empresa" value={companyEditName} onChange={(e) => setCompanyEditName(e.target.value)} className="w-full rounded-md border border-[var(--app-border)] px-4 py-3" placeholder="Nombre de empresa" />
+            <Input label="Nombre de empresa" hideLabel value={companyEditName} onChange={(e) => setCompanyEditName(e.target.value)} placeholder="Nombre de empresa" />
             <p className="text-sm text-[var(--app-text-3)]">Esto renombra la empresa para el dashboard. Los movimientos visibles también se actualizan en la UI.</p>
           </div>
           <div className="flex justify-end gap-3 mt-4">

@@ -8,14 +8,18 @@ import { useId, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 // autocomplete (datalist) to cut typing and avoid duplicate/typo'd entries.
 
 const CONTROL =
-  'w-full rounded-md border bg-[var(--app-surface-1)] px-4 py-3 text-[var(--app-text-1)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] disabled:opacity-50';
+  'w-full rounded-md border bg-[var(--app-surface-1)] text-[var(--app-text-1)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] disabled:opacity-50';
+const SIZE = {
+  sm: 'px-3 py-1.5 text-xs font-medium',
+  md: 'px-4 py-3',
+} as const;
 const BORDER_OK = 'border-[var(--app-border)] focus-visible:border-[var(--app-text-2)]';
 const BORDER_ERR = 'border-[var(--app-red-border)] focus-visible:border-[var(--chart-expense)]';
 
 const LABEL = 'flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)] mb-1.5';
 const SR_ONLY = 'absolute h-px w-px -m-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]';
 
-type FieldExtras = { label: string; hideLabel?: boolean; wrapClassName?: string; required?: boolean; error?: string };
+type FieldExtras = { label: string; hideLabel?: boolean; wrapClassName?: string; required?: boolean; error?: string; size?: keyof typeof SIZE };
 
 function useField(id: string | undefined, error?: string) {
   const auto = useId();
@@ -37,16 +41,16 @@ function Wrap({ id, label, hideLabel, required, error, errorId, className, child
   );
 }
 
-const controlClass = (className: string, hasError: boolean) => `${CONTROL} ${hasError ? BORDER_ERR : BORDER_OK} ${className}`;
+const controlClass = (size: keyof typeof SIZE, className: string, hasError: boolean) => `${CONTROL} ${SIZE[size]} ${hasError ? BORDER_ERR : BORDER_OK} ${className}`;
 
-export function Input({ label, hideLabel, wrapClassName, required, error, options, className = '', id, ...rest }: ComponentPropsWithoutRef<'input'> & FieldExtras & { options?: string[] }) {
+export function Input({ label, hideLabel, wrapClassName, required, error, options, size = 'md', className = '', id, ...rest }: ComponentPropsWithoutRef<'input'> & FieldExtras & { options?: string[] }) {
   const { fieldId, errorId, hasError } = useField(id, error);
   const listId = `${fieldId}-list`;
   return (
     <Wrap id={fieldId} label={label} hideLabel={hideLabel} required={required} error={error} errorId={errorId} className={wrapClassName}>
       <input
         id={fieldId}
-        className={controlClass(className, hasError)}
+        className={controlClass(size, className, hasError)}
         aria-invalid={hasError || undefined}
         aria-describedby={hasError ? errorId : undefined}
         list={options && options.length ? listId : undefined}
@@ -61,13 +65,13 @@ export function Input({ label, hideLabel, wrapClassName, required, error, option
   );
 }
 
-export function Textarea({ label, hideLabel, wrapClassName, required, error, className = '', id, ...rest }: ComponentPropsWithoutRef<'textarea'> & FieldExtras) {
+export function Textarea({ label, hideLabel, wrapClassName, required, error, size = 'md', className = '', id, ...rest }: ComponentPropsWithoutRef<'textarea'> & FieldExtras) {
   const { fieldId, errorId, hasError } = useField(id, error);
   return (
     <Wrap id={fieldId} label={label} hideLabel={hideLabel} required={required} error={error} errorId={errorId} className={wrapClassName}>
       <textarea
         id={fieldId}
-        className={controlClass(className, hasError)}
+        className={controlClass(size, className, hasError)}
         aria-invalid={hasError || undefined}
         aria-describedby={hasError ? errorId : undefined}
         {...rest}
@@ -76,13 +80,13 @@ export function Textarea({ label, hideLabel, wrapClassName, required, error, cla
   );
 }
 
-export function Select({ label, hideLabel, wrapClassName, required, error, className = '', id, children, ...rest }: ComponentPropsWithoutRef<'select'> & FieldExtras) {
+export function Select({ label, hideLabel, wrapClassName, required, error, size = 'md', className = '', id, children, ...rest }: ComponentPropsWithoutRef<'select'> & FieldExtras) {
   const { fieldId, errorId, hasError } = useField(id, error);
   return (
     <Wrap id={fieldId} label={label} hideLabel={hideLabel} required={required} error={error} errorId={errorId} className={wrapClassName}>
       <select
         id={fieldId}
-        className={controlClass(className, hasError)}
+        className={controlClass(size, className, hasError)}
         aria-invalid={hasError || undefined}
         aria-describedby={hasError ? errorId : undefined}
         {...rest}

@@ -62,6 +62,7 @@ function ExportMenu({
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
 import { SectionCard } from '../primitives';
+import { Input, Select } from '../../ui/Field';
 import { useFitText } from '../../../hooks/useFitText';
 
 type Tipo = 'all' | 'ingreso' | 'egreso';
@@ -111,9 +112,6 @@ function Segmented<T extends string>({
     </div>
   );
 }
-
-const SELECT_CLASS =
-  'rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]';
 
 function Pill({ label, onClear, tone }: { label: string; onClear: () => void; tone?: 'income' | 'expense' }) {
   const toneClass = tone === 'income'
@@ -335,28 +333,28 @@ export default function MovimientosTab({
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <Segmented value={datePeriod} options={DATE_OPTS} onChange={setDatePeriod} ariaLabel="Filtrar por período" />
-            <select aria-label="Filtrar por empresa" className={SELECT_CLASS} value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
+            <Select label="Filtrar por empresa" hideLabel size="sm" value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)}>
               {companiesList.map((c) => (
                 <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
               ))}
-            </select>
-            <select aria-label="Filtrar por categoría" className={SELECT_CLASS} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+            </Select>
+            <Select label="Filtrar por categoría" hideLabel size="sm" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
               <option value="all">Todas las categorías</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Rango personalizado */}
           {datePeriod === 'rango' && (
             <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--app-text-2)]">
-              <label className="flex items-center gap-1.5">Desde
-                <input type="date" className={SELECT_CLASS} value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} aria-label="Fecha desde" />
-              </label>
-              <label className="flex items-center gap-1.5">Hasta
-                <input type="date" className={SELECT_CLASS} value={customTo} onChange={(e) => setCustomTo(e.target.value)} aria-label="Fecha hasta" />
-              </label>
+              <div className="flex items-center gap-1.5">Desde
+                <Input label="Fecha desde" hideLabel size="sm" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              </div>
+              <div className="flex items-center gap-1.5">Hasta
+                <Input label="Fecha hasta" hideLabel size="sm" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              </div>
             </div>
           )}
 

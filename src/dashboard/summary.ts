@@ -127,6 +127,12 @@ export function formatCurrency(amount: number, currency: 'ARS' | 'USD') {
   }).format(amount);
 }
 
+// Number without a currency symbol — for metric cards where the currency
+// lives in the title/toggle, so it never repeats nor eats width.
+export function formatNumber(amount: number) {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(amount);
+}
+
 export function getCurrentPeriod(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }

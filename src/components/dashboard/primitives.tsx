@@ -32,15 +32,20 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
   // Touch cards are elevated (raised surface + shadow, lift on hover); stat
   // cards are flat and slightly recessed, so tappable vs read-only reads at a glance.
   if (onClick) {
+    const touchCardClass = critical
+      ? cardClass
+      : 'border-[color-mix(in_srgb,var(--app-strong-surface)_34%,var(--app-border))] bg-[var(--app-surface-1)]';
     return (
       <button
         type="button"
         onClick={onClick}
         aria-label={navLabel ?? `Ver ${label}`}
-        className={`relative px-5 py-4 rounded-xl border shadow-[var(--app-shadow-md)] ${cardClass} w-full text-left cursor-pointer transition-[border-color,transform,box-shadow] duration-150 hover:border-[var(--app-border-strong)] hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
+        className={`relative px-5 py-4 pr-10 rounded-xl border shadow-[var(--app-shadow-md)] ${touchCardClass} w-full text-left cursor-pointer transition-[border-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)]`}
       >
         {inner}
-        <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-[var(--app-text-3)]" aria-hidden="true" />
+        <span className="absolute top-2.5 right-2.5 flex h-6 w-6 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--app-strong-surface)_15%,transparent)] text-[var(--app-strong-surface)]" aria-hidden="true">
+          <ChevronRight className="w-4 h-4" />
+        </span>
       </button>
     );
   }

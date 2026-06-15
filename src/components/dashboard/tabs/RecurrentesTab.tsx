@@ -30,6 +30,13 @@ function formatShortDate(isoDate: string): string {
   return s.replace('.', '').replace(/\b\w/, (c) => c.toUpperCase());
 }
 
+// "14 junio" when the month name is short enough to fit; otherwise "14/6".
+function formatImpactDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00`);
+  const month = d.toLocaleDateString('es-AR', { month: 'long' });
+  return month.length <= 6 ? `${d.getDate()} ${month}` : `${d.getDate()}/${d.getMonth() + 1}`;
+}
+
 function daysUntilLabel(isoDate: string): string {
   const target = new Date(`${isoDate}T00:00:00`).getTime();
   const days = Math.max(0, Math.round((target - Date.now()) / 86_400_000));
@@ -391,9 +398,9 @@ export default function RecurrentesTab({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <MetricCard label="Recurrentes activos" value={String(summary.activos)} sub="Este mes" tone="neutral" align="center" />
+        <MetricCard label="Recurrentes activos" value={String(summary.activos)} sub="Este mes" tone="neutral" />
         <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} sub="Promedio" tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
-        <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatShortDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} tone="warning" />
+        <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} tone="warning" />
         <MetricCard label="Impacto 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} sub="Proyección" tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} />
       </div>
 

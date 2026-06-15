@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { useSwipeNav } from './hooks/useSwipeNav';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
@@ -406,6 +407,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
   useEffect(() => { setLastRefreshed(Date.now()); }, [history]);
   const { pull: ptrPull, refreshing: ptrRefreshing, dragging: ptrDragging } = usePullToRefresh(() => loadData(false));
+  const mainRef = useRef<HTMLElement>(null);
+  const goToTabOffset = useCallback((delta: number) => {
+    const i = tabs.findIndex((t) => t.id === activeTab);
+    const next = tabs[i + delta];
+    if (next) setActiveTab(next.id);
+  }, [tabs, activeTab]);
+  useSwipeNav(mainRef, () => goToTabOffset(-1), () => goToTabOffset(1));
   const ptrShift = ptrRefreshing ? 52 : Math.min(ptrPull, 96);
   const ptrTransition = ptrDragging ? 'none' : 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)';
 
@@ -708,7 +716,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </section>
 
-        <main className="sm:pb-0 pb-24">
+        <main ref={mainRef} className="sm:pb-0 pb-24">
           <div key={activeTab} className="anim-fade-in">
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} arsNeto={formatNumber(arsTotals.neto)} usdNeto={formatNumber(usdTotals.neto)} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} recurrentesCount={recurrentes.filter((r) => r.is_active && !r.deleted_at).length} onMetricNavigate={(m) => { if (m === 'empresas') { setActiveTab('empresas'); return; } if (m === 'recurrentes') { setActiveTab('recurrentes'); return; } setSelectedCompany('all'); setSelectedCategory('all'); setDatePeriod('all'); setMovementType(m === 'ingresos' ? 'ingreso' : m === 'gastos' ? 'egreso' : 'all'); setMovementCurrency(m === 'usd' ? 'USD' : 'all'); setActiveTab('movimientos'); }} />}

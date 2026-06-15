@@ -260,14 +260,32 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 ### Movimientos: card en desktop, fila en mobile (2026-06-14)
 Patrón `hidden md:grid` / `md:hidden` (como los charts): el desktop mantiene las **cards** (1 por movimiento); el mobile usa una **lista densa tipo extracto de banco** (ícono tipo + categoría + `empresa · categoría · fecha` + monto firmado a la derecha, ~6 por pantalla). Tocar la fila abre el **editor** (las acciones salen del medio); los renglones de ticket se expanden con un toggle de recibo al final de la fila. Para que el borrado sobreviva la mudanza, el **editor de movimiento ahora tiene botón Borrar** (rojo, a la izquierda del footer). Viewers: la fila no es botón (solo lectura).
 
+### Primitivas del design system (2026-06-15)
+Componentes reutilizables en `src/components/ui/`. **Convención de adopción incremental:** los componentes nuevos SIEMPRE usan estas primitivas; al tocar un archivo con botones/inputs/selects inline, se migran en la misma pasada (no hay sweep masivo). Migrados hasta ahora: `DashboardModals`, `CargaModal`, `RecurrenteModal`, toolbar de `MovimientosTab`, filtros de `RecurrentesTab`, form de `EmpresasTab`.
+
+- **`Button`** (`ui/Button.tsx`): variantes `primary` (strong-surface) · `secondary` (borde) · `danger` (borde rojo) · `ghost`; tamaños `sm` (`px-3 py-2 text-sm`) / `md` (`px-4 py-3`). A11y built-in: `focus-visible:ring`, `disabled:opacity + cursor-not-allowed`, `type="button"` por defecto. Hereda props nativos (`ComponentPropsWithoutRef<'button'>`).
+- **`Field`** (`ui/Field.tsx`): `Input` / `Textarea` / `Select`. El prop `label` es **obligatorio por tipos** → imposible un control sin nombre accesible (tapa de raíz el placeholder-as-label). Props: `hideLabel` (label sr-only, mantiene look placeholder-only sin rediseñar), `required` (asterisco rojo si el label es visible), `error` (mensaje inline al pie + borde rojo + `aria-invalid`/`aria-describedby`, no limpia el input), `options` (Input → `<datalist>` autocompletar), `size` sm/md. Patrón de validación: mostrar errores **solo tras intento de submit**.
+- **`Segmented`** (`ui/Segmented.tsx`): control segmentado para filtros mutuamente excluyentes (tipo/período). `tones` pinta el segmento activo verde/rojo (income/expense). Compartido por Movimientos y Recurrentes.
+- **`MetricCard` `hero`** (`dashboard/primitives.tsx`): variante de número grande (`text-4xl`, auto-fit a 40px, padding mayor), ancho completo, `delta` opcional. **Regla de ancho del valor:** el `pr` para el chevron solo va en el renglón de la etiqueta; el número usa el ancho completo de la card (si no, se recorta en columnas 2-up). Auto-fit floor 12px (no-hero) para cifras largas.
+- **`MetricChip`** (`dashboard/primitives.tsx`): pill compacta para **conteos** que no deben competir con cifras de plata (ej. "Empresas 4", "Recurrentes 3"). Tappable si recibe `onClick`.
+
+### Jerarquía del dashboard (2026-06-15)
+Cada pestaña lleva **un número que manda** arriba, no una fila plana de cards iguales. Resumen: hero Utilidad + Ingresos/Gastos secundarias + chips (Neto USD/Empresas/Recurrentes). Recurrentes: hero Impacto 30 días. Empresas: **sin hero** (pestaña comparativa, sin número dominante único) — 2 cards accionables + chips. Movimientos: las `FilterCard` cumplen el rol (son filtros, no métricas). **Progressive disclosure mobile:** en Resumen los charts secundarios (Comparativa, Flujo de caja, Etiquetas) se colapsan en mobile detrás de "Ver análisis" y quedan siempre visibles en desktop — patrón CSS puro `${open ? '' : 'hidden md:block'}` + botón `md:hidden`, sin JS de media query.
+
 ### Inputs / Fields
 - **Style:** fondo `surface-1`, borde `border` de 1px, `rounded-md`.
 - **Focus:** `focus:ring-2` con el color de texto principal; sin glow de color.
-- **Placeholder:** `text-3`.
+- **Placeholder:** `text-3` — **nunca** como único label (usar `Field` con `label`).
 
 ### Navigation
-- **Tab nav:** contenedor plano `surface-2` (glass en v2, ver Regla del Vidrio). Cada pestaña es una tarjeta que levita (ver Regla de la Tarjeta que Levita). Activa: acento de marca/`strong-surface` + `shadow-md`. Inactiva: hover resalta el borde. Móvil: tira de scroll horizontal compacto.
-- **Affordance de scroll (2026-06-14):** la tira hace `mask-image` fade en los bordes **solo cuando hay overflow real** (se calcula en vivo con listeners de scroll/resize comparando `scrollWidth`/`clientWidth`), y **auto-centra la pestaña activa** al cambiar (`scrollIntoView({ inline: 'center', block: 'nearest' })`). Resuelve "no se ve que hay más tabs" y "la activa queda fuera de pantalla".
+- **Tab nav (desktop):** `hidden md:flex`, contenedor plano `surface-2` (glass en v2). Cada pestaña levita; activa con acento/`strong-surface` + `shadow-md`. Semántica de **navegación** (`role="navigation"` + `aria-current="page"`), no `tablist`/`tab` (no hay `tabpanel` ni navegación por flechas; el patrón tab a medias confundía a los lectores de pantalla).
+- **Affordance de scroll (2026-06-14):** la tira hace `mask-image` fade en los bordes **solo cuando hay overflow real** (listeners de scroll/resize comparando `scrollWidth`/`clientWidth`), y **auto-centra la pestaña activa** al cambiar (`scrollIntoView`).
+- **Bottom-nav (mobile, 2026-06-15):** `sm:hidden fixed bottom-0`, ícono + label corto por pestaña, `aria-current="page"`. Target ≥44px (`py-2`). Montada **fuera** del wrapper transformado del pull-to-refresh (si no, `fixed` queda atrapado). Respeta `safe-area-inset-bottom`. En mobile el título de pantalla vive en el header sticky, no en la tab bar.
+- **Swipe entre secciones (mobile):** `useSwipeNav` (gesto horizontal en `window`, umbral 50px, dominancia 1.3, ignora scrollers horizontales internos) cambia de pestaña con transición direccional (`anim-slide-in-right/left` según `navDir`).
+- **Back cierra modal (`useBackClose`):** al abrir un modal se hace `history.pushState`; el Back de Android/navegador lo cierra en vez de salir de la página. Aplicado a todos los modales de `DashboardApp` + create/edit/delete de Recurrentes.
+
+### PWA / Safe areas (2026-06-15)
+`viewport-fit=cover` en `index.html` es **requisito** para que `env(safe-area-inset-*)` valga distinto de 0 en iOS con notch — sin él, toda la chamba de safe-area (bottom-nav, ScrollToTop, pull-to-refresh, OfflineBanner) queda inerte. El contenedor del dashboard lleva `pt-[max(1rem,env(safe-area-inset-top))]` para que el header no quede bajo la barra de estado en standalone (status-bar `black-translucent`). PWA: `vite-plugin-pwa` (manifest + icono maskable, precache del app-shell, `NetworkOnly` para `/api`/Supabase/Cloud Run — la data financiera nunca se cachea).
 
 ### Header / App-bar (v2, 2026-05-31)
 Glass (chrome), sticky. **Sin título de página** (redundante con la sección activa). Layout:
@@ -339,6 +357,9 @@ Primitive `EmptyState` (title + hint + CTA opcional gated por `canWrite`). Nunca
 
 ### Error
 Texto plano y accionable (Nielsen #9): qué pasó + cómo seguir. `role="alert"` para errores de carga/acción, `role="status"` para avisos no urgentes (banner `missing_url`). Nunca el código técnico crudo. Rojo semántico solo en borde/texto del callout, sin relleno alarmante.
+
+### Offline (2026-06-15)
+`OfflineBanner` (`components/OfflineBanner.tsx`) + hook `useOnlineStatus` (stdlib, `navigator.onLine` + eventos `online`/`offline`). Píldora fija arriba: ámbar "Sin conexión — los datos pueden estar desactualizados" mientras no hay red, luego verde "Conexión restablecida" 2,5s. `role="status"`/`aria-live`, `pointer-events-none`, respeta `safe-area-inset-top`. Montada **fuera** del wrapper transformado del pull-to-refresh (si no, el `fixed` queda atrapado). Cubre "sin red"; el "server caído con red" lo cubre el banner `load_error` de una fetch fallida (complementarios — `onLine` solo conoce la interfaz, no si el backend responde).
 
 ### Named Rules
 **La Regla del Estado Triple.** Toda vista que carga datos define loading + empty + error explícitamente. "No hay datos todavía" es un diseño, no un bug.

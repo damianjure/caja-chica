@@ -267,6 +267,9 @@ export default function AskChat() {
         <input
           ref={inputRef}
           type="text"
+          inputMode="text"
+          enterKeyHint="send"
+          autoComplete="off"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={500}

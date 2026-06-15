@@ -68,7 +68,7 @@ export function DashboardModals({
             <button onClick={() => onDeleteMovement(editingMovement.id)} className="rounded-md border border-[var(--app-red-border)] px-4 py-3 text-[var(--chart-expense)] hover:border-red-400">Borrar</button>
             <div className="flex gap-3">
               <button onClick={onCloseMovementEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-              <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
+              <button onClick={onSaveMovementEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar</button>
             </div>
           </div>
         </ModalShell>
@@ -82,7 +82,7 @@ export function DashboardModals({
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={onCloseCompanyEdit} className="rounded-md border border-[var(--app-border)] px-4 py-3 text-[var(--app-text-2)]">Cancelar</button>
-            <button onClick={onSaveCompanyEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar cambios</button>
+            <button onClick={onSaveCompanyEdit} className="rounded-md bg-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium">Guardar</button>
           </div>
         </ModalShell>
       )}

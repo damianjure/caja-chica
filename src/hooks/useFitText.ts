@@ -22,11 +22,15 @@ export function useFitText<T extends HTMLElement>(text: string, maxPx = 24, minP
       }
     };
     fit();
-    // Observe the parent (not the element) so our own font change doesn't loop.
-    const parent = el.parentElement;
+    // Re-measure once the layout has settled (the first sync pass can run before
+    // a grid has split the card into its final column width).
+    const raf = requestAnimationFrame(fit);
+    // Observe the element itself: changing font-size only moves its scrollWidth,
+    // not its content-box width (w-full), so this can't loop — and it catches the
+    // card resizing from full-width to a 2-up column.
     const ro = new ResizeObserver(fit);
-    if (parent) ro.observe(parent);
-    return () => ro.disconnect();
+    ro.observe(el);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, [text, maxPx, minPx]);
 
   return ref;

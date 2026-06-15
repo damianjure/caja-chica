@@ -481,6 +481,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const monthlySummaries = useMemo(() => getMonthlySummaries(history), [history]);
   const activeTabMeta = useMemo(() => tabs.find((t) => t.id === activeTab) ?? tabs[0], [tabs, activeTab]);
   const ActiveTabIcon = activeTabMeta.icon;
+  // Slide the section content in the direction of travel (swipe or nav click).
+  const prevTabIndexRef = useRef(0);
+  const [navDir, setNavDir] = useState<'next' | 'prev'>('next');
+  useEffect(() => {
+    const i = tabs.findIndex((t) => t.id === activeTab);
+    setNavDir(i >= prevTabIndexRef.current ? 'next' : 'prev');
+    prevTabIndexRef.current = i;
+  }, [activeTab, tabs]);
 
   const topExpenseCategories = useMemo(() => categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` })), [categorySummaries]);
   const topIncomeTags = useMemo(() => incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` })), [incomeTagSummaries]);
@@ -760,7 +768,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         </section>
 
         <main>
-          <div key={activeTab} className="anim-fade-in">
+          <div key={activeTab} className={navDir === 'next' ? 'anim-slide-in-right' : 'anim-slide-in-left'}>
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} arsNeto={formatNumber(arsTotals.neto)} usdNeto={formatNumber(usdTotals.neto)} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} recurrentesCount={recurrentes.filter((r) => r.is_active && !r.deleted_at).length} onMetricNavigate={(m) => { if (m === 'empresas') { setActiveTab('empresas'); return; } if (m === 'recurrentes') { setActiveTab('recurrentes'); return; } setSelectedCompany('all'); setSelectedCategory('all'); setDatePeriod('all'); setMovementType(m === 'ingresos' ? 'ingreso' : m === 'gastos' ? 'egreso' : 'all'); setMovementCurrency(m === 'usd' ? 'USD' : 'all'); setActiveTab('movimientos'); }} />}
                 {activeTab === 'movimientos' && <MovimientosTab totalCount={history.length} arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} usdNeto={formatNumber(usdTotals.neto)} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} searchText={searchText} setSearchText={setSearchText} onOpenSearch={() => setIsPaletteOpen(true)} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} historyCards={<MovementCards filteredHistory={filteredHistory} selectedCompany={selectedCompany} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} onLinesChanged={(id, total, hasLines) => patchMovement(id, { monto: total, has_lineas: hasLines })} />} />}

@@ -399,7 +399,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     };
   }, [updateTabEdges, tabs.length]);
   useEffect(() => {
-    tablistRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    tablistRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }, [activeTab]);
   const tabMask = `linear-gradient(to right, ${tabEdges.left ? 'transparent, #000 24px' : '#000, #000'}, ${tabEdges.right ? '#000 calc(100% - 24px), transparent' : '#000, #000'})`;
 
@@ -636,7 +636,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               type="button"
               onClick={() => setActiveTab(tab.id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-semibold transition-colors active:scale-[0.94] ${isActive ? 'text-[var(--app-strong-surface)]' : 'text-[var(--app-text-3)]'}`}
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2 text-[10px] font-semibold transition-colors active:scale-[0.94] ${isActive ? 'text-[var(--app-strong-surface)]' : 'text-[var(--app-text-2)]'}`}
             >
               <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
               <span className="leading-none">{tab.short}</span>
@@ -771,8 +771,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               <ActiveTabIcon className="h-5 w-5 shrink-0 text-[var(--app-strong-surface)]" aria-hidden="true" />
               <h1 className="text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
             </div>
-            <div ref={tablistRef} role="tablist" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="hidden md:flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
-              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} role="tab" aria-selected={isActive ? 'true' : 'false'} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
+            <div ref={tablistRef} role="navigation" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="hidden md:flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
+              {tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} aria-current={isActive ? 'page' : undefined} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}
           </div>

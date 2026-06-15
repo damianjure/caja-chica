@@ -1,10 +1,13 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useBackClose } from '../../../hooks/useBackClose';
-import { createPortal } from 'react-dom';
-import { Pause, Play, Pencil, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Pause, Play, Pencil, Trash2, Plus, Loader2, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
-import { SectionCard, MetricCard } from '../primitives';
+import { SectionCard, MetricCard, MetricChip } from '../primitives';
+import { ModalShell } from '../../ui/ModalShell';
+import { Button } from '../../ui/Button';
+import { Input, Select } from '../../ui/Field';
+import { Segmented } from '../../ui/Segmented';
 import { buildRecurrentesSummary } from '../../../dashboard/recurrentesSummary';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 
@@ -93,6 +96,7 @@ function RecurrenteModal({
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [saving, setSaving] = useState(false);
+  const isNew = initial.monto === '';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -109,146 +113,49 @@ function RecurrenteModal({
     }
   };
 
-  return createPortal(
-    <div
-      className="anim-backdrop-in fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-[2px]"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--app-text-1) 42%, transparent)' }}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recurrente-modal-title"
-        className="anim-scale-in bg-[var(--app-surface-1)] border border-[var(--app-border-strong)] rounded-2xl shadow-[var(--app-shadow-md)] w-full max-w-md p-6 space-y-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="recurrente-modal-title" className="text-base font-semibold text-[var(--app-text-1)]">
-          {form === initial && initial.monto === '' ? 'Nuevo recurrente' : 'Editar recurrente'}
-        </h2>
+  return (
+    <ModalShell title={isNew ? 'Nuevo recurrente' : 'Editar recurrente'} onClose={onClose} size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input label="Monto" required inputMode="decimal" wrapClassName="sm:col-span-2" value={form.monto} onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))} placeholder="0,00" />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="col-span-1 sm:col-span-2">
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Monto</label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={form.monto}
-                onChange={(e) => setForm((f) => ({ ...f, monto: e.target.value }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="0.00"
-                required
-              />
-            </div>
+          <Select label="Tipo" value={form.tipo} onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}>
+            <option value="egreso">Gasto</option>
+            <option value="ingreso">Ingreso</option>
+          </Select>
 
-            <div>
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Tipo</label>
-              <select
-                value={form.tipo}
-                onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'egreso' | 'ingreso' }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-              >
-                <option value="egreso">Gasto</option>
-                <option value="ingreso">Ingreso</option>
-              </select>
-            </div>
+          <Select label="Moneda" value={form.moneda} onChange={(e) => setForm((f) => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}>
+            <option value="ARS">ARS</option>
+            <option value="USD">USD</option>
+          </Select>
 
-            <div>
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Moneda</label>
-              <select
-                value={form.moneda}
-                onChange={(e) => setForm((f) => ({ ...f, moneda: e.target.value as 'ARS' | 'USD' }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-              >
-                <option value="ARS">ARS</option>
-                <option value="USD">USD</option>
-              </select>
-            </div>
+          <Select label="Frecuencia" wrapClassName={form.frecuencia === 'mensual' ? '' : 'sm:col-span-2'} value={form.frecuencia} onChange={(e) => setForm((f) => ({ ...f, frecuencia: e.target.value as Frecuencia }))}>
+            {FRECUENCIA_OPTIONS.map((f) => (
+              <option key={f} value={f}>{FRECUENCIA_LABELS[f]}</option>
+            ))}
+          </Select>
 
-            <div className={form.frecuencia === 'mensual' ? '' : 'col-span-1 sm:col-span-2'}>
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Frecuencia</label>
-              <select
-                value={form.frecuencia}
-                onChange={(e) => setForm((f) => ({ ...f, frecuencia: e.target.value as Frecuencia }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-              >
-                {FRECUENCIA_OPTIONS.map((f) => (
-                  <option key={f} value={f}>{FRECUENCIA_LABELS[f]}</option>
-                ))}
-              </select>
-            </div>
+          {form.frecuencia === 'mensual' && (
+            <Select label="Día del mes" value={form.dayOfMonth} onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={String(d)}>{d}</option>
+              ))}
+            </Select>
+          )}
 
-            {form.frecuencia === 'mensual' && (
-              <div>
-                <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Día del mes</label>
-                <select
-                  value={form.dayOfMonth}
-                  onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
-                  className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                    <option key={d} value={String(d)}>{d}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <Input label="Categoría" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="servicios" />
 
-            <div>
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Categoría</label>
-              <input
-                type="text"
-                value={form.categoria}
-                onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="Ej: servicios"
-              />
-            </div>
+          <Input label="Empresa" value={form.empresa_nombre} onChange={(e) => setForm((f) => ({ ...f, empresa_nombre: e.target.value }))} placeholder="Personal" />
 
-            <div>
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Empresa</label>
-              <input
-                type="text"
-                value={form.empresa_nombre}
-                onChange={(e) => setForm((f) => ({ ...f, empresa_nombre: e.target.value }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="Personal"
-              />
-            </div>
+          <Input label="Descripción" wrapClassName="sm:col-span-2" value={form.descripcion} onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))} placeholder="alquiler local" />
+        </div>
 
-            <div className="col-span-1 sm:col-span-2">
-              <label className="block text-xs font-medium text-[var(--app-text-3)] uppercase tracking-wide mb-1">Descripción</label>
-              <input
-                type="text"
-                value={form.descripcion}
-                onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-                placeholder="Ej: alquiler local"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-md text-sm font-medium text-[var(--app-text-2)] border border-[var(--app-border)] hover:border-[var(--app-text-2)] transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 rounded-md text-sm font-bold bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] active:scale-[0.97] disabled:opacity-50 transition"
-            >
-              {saving ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" size="sm" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" size="sm" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 
@@ -389,7 +296,7 @@ export default function RecurrentesTab({
           <p className="font-semibold text-[var(--app-text-2)] mb-1">Sin recurrentes todavía</p>
           <p className="text-sm text-[var(--app-text-3)] mb-4">Creá tu primer movimiento recurrente para automatizar registros periódicos.</p>
           {canWriteData && (
-            <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-4 py-2 text-sm font-medium text-[var(--app-strong-text)]"><Plus className="w-4 h-4" /> Nuevo recurrente</button>
+            <Button onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> Nuevo recurrente</Button>
           )}
         </div>
         {creating && (
@@ -401,11 +308,15 @@ export default function RecurrentesTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <MetricCard label="Recurrentes activos" value={String(summary.activos)} sub="Este mes" tone="neutral" />
-        <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} sub="Promedio" tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
-        <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} tone="warning" />
-        <MetricCard label="Impacto 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} sub="Proyección" tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} />
+      <div className="space-y-3">
+        <MetricCard hero label="Impacto proyectado · 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} sub="con recurrentes activos" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} sub="Promedio" tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
+          <MetricCard label="Próximo impacto" value={summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} tone="warning" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <MetricChip label="Activos" value={String(summary.activos)} icon={Repeat} />
+        </div>
       </div>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -413,39 +324,23 @@ export default function RecurrentesTab({
           title="Próximos recurrentes"
           description="Ordenados por próxima carga."
           action={canWriteData ? (
-            <button
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] active:scale-[0.97] transition"
-            >
-              <Plus className="w-4 h-4" /> Nuevo
-            </button>
+            <Button size="sm" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> Nuevo</Button>
           ) : undefined}
         >
           {/* Filtros — mismo formato que Movimientos */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg border border-[var(--app-border)] p-0.5" role="group" aria-label="Filtrar por tipo">
-              {([['all', 'Todos'], ['ingreso', 'Ingresos'], ['egreso', 'Gastos']] as const).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTypeFilter(id)}
-                  aria-pressed={typeFilter === id}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold transition ${typeFilter === id ? (id === 'ingreso' ? 'bg-[var(--app-green-surface)] text-[var(--chart-income)]' : id === 'egreso' ? 'bg-[var(--app-red-surface)] text-[var(--chart-expense)]' : 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]') : 'text-[var(--app-text-2)] hover:text-[var(--app-text-1)]'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <select
-              aria-label="Filtrar por empresa"
-              value={empresaFilter}
-              onChange={(e) => setEmpresaFilter(e.target.value)}
-              className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs text-[var(--app-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-            >
+            <Segmented
+              value={typeFilter}
+              options={[{ id: 'all', label: 'Todos' }, { id: 'ingreso', label: 'Ingresos' }, { id: 'egreso', label: 'Gastos' }]}
+              onChange={setTypeFilter}
+              ariaLabel="Filtrar por tipo"
+              tones={{ ingreso: 'income', egreso: 'expense' }}
+            />
+            <Select label="Filtrar por empresa" hideLabel size="sm" value={empresaFilter} onChange={(e) => setEmpresaFilter(e.target.value)}>
               {empresaOptions.map((c) => (
                 <option key={c} value={c}>{c === 'all' ? 'Todas las empresas' : c}</option>
               ))}
-            </select>
+            </Select>
             {hasRecurrenteFilters && (
               <button
                 type="button"

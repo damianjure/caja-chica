@@ -88,12 +88,12 @@ const AdminPanel = lazy(() => import('./components/AdminPanel').then((m) => ({ d
 const ConfiguracionTab = lazy(() => import('./components/dashboard/tabs/ConfiguracionTab'));
 const RecurrentesTab = lazy(() => import('./components/dashboard/tabs/RecurrentesTab'));
 
-const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; short: string; description: string; icon: typeof LayoutGrid }> = [
-  { id: 'resumen', label: 'Resumen', short: 'Resumen', description: 'Un vistazo general de todo', icon: LayoutGrid },
-  { id: 'movimientos', label: 'Movimientos', short: 'Movim.', description: 'Historial completo', icon: ArrowUpDown },
-  { id: 'recurrentes', label: 'Recurrentes', short: 'Recurr.', description: 'Gastos e ingresos automáticos', icon: Repeat },
-  { id: 'empresas', label: 'Empresas', short: 'Empresas', description: 'Saldos e informes', icon: Building2 },
-  { id: 'configuracion', label: 'Configuración', short: 'Config', description: '', icon: Settings },
+const BASE_TAB_CONFIG: Array<{ id: DashboardTab; label: string; description: string; icon: typeof LayoutGrid }> = [
+  { id: 'resumen', label: 'Resumen', description: 'Un vistazo general de todo', icon: LayoutGrid },
+  { id: 'movimientos', label: 'Movimientos', description: 'Historial completo', icon: ArrowUpDown },
+  { id: 'recurrentes', label: 'Recurrentes', description: 'Gastos e ingresos automáticos', icon: Repeat },
+  { id: 'empresas', label: 'Empresas', description: 'Saldos e informes', icon: Building2 },
+  { id: 'configuracion', label: 'Configuración', description: '', icon: Settings },
 ];
 
 const ACTIVE_TAB_STORAGE_KEY = 'caja-chica:activeTab';
@@ -368,7 +368,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // ───────────────────────────────────────────────────────────────────────────
 
   const tabs = viewer.role === 'superadmin'
-    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', short: 'Admin', description: '', icon: ShieldCheck }]
+    ? [...BASE_TAB_CONFIG, { id: 'superadmin' as DashboardTab, label: 'Super Admin', description: '', icon: ShieldCheck }]
     : BASE_TAB_CONFIG;
 
   // Bottom-nav / top tab bar / swipe only cycle the frequent destinations.

@@ -99,6 +99,32 @@ function Pill({ label, onClear, tone }: { label: string; onClear: () => void; to
   );
 }
 
+/**
+ * Compact, dense KPI cell for desktop (≥ lg). Same click-to-filter behaviour as
+ * the big FilterCard, but a fraction of the height so the table gets the space.
+ */
+function KpiCell({ label, value, tone = 'neutral', selected, onClick }: { label: string; value: string; tone?: 'neutral' | 'income' | 'expense'; selected: boolean; onClick: () => void }) {
+  const valueColor = tone === 'income' ? 'text-[var(--chart-income)]' : tone === 'expense' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]';
+  const selectedClass = selected
+    ? (tone === 'income'
+        ? 'border-[var(--app-green-border)] bg-[var(--app-green-surface)]'
+        : tone === 'expense'
+          ? 'border-[var(--app-red-border)] bg-[var(--app-red-surface)]'
+          : 'border-[var(--app-border-strong)] bg-[var(--app-surface-3)]')
+    : 'border-[var(--app-border)] bg-[var(--app-surface-1)] hover:border-[var(--app-border-strong)]';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-[border-color,background-color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
+    >
+      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--app-text-3)]">{label}</span>
+      <span className={`text-lg font-bold tabular-nums whitespace-nowrap ${valueColor}`}>{value}</span>
+    </button>
+  );
+}
+
 function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { label: string; value: string; tone?: 'neutral' | 'income' | 'expense'; selected: boolean; onClick: () => void }) {
   const valueRef = useFitText<HTMLDivElement>(value);
   const valueColor = tone === 'income' ? 'text-[var(--chart-income)]' : tone === 'expense' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]';
@@ -245,11 +271,17 @@ export default function MovimientosTab({
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:hidden">
         <FilterCard label="Todos" value={`${totalCount} mov`} selected={movementType === 'all' && movementCurrency === 'all'} onClick={() => { setMovementType('all'); setMovementCurrency('all'); }} />
         <FilterCard label="Ingresos ARS" value={arsIngreso} tone="income" selected={movementType === 'ingreso' && movementCurrency === 'all'} onClick={() => { setMovementType('ingreso'); setMovementCurrency('all'); }} />
         <FilterCard label="Gastos ARS" value={arsEgreso} tone="expense" selected={movementType === 'egreso' && movementCurrency === 'all'} onClick={() => { setMovementType('egreso'); setMovementCurrency('all'); }} />
         <FilterCard label="En USD" value={usdNeto} selected={movementCurrency === 'USD'} onClick={() => { setMovementType('all'); setMovementCurrency('USD'); }} />
+      </div>
+      <div className="hidden lg:grid lg:grid-cols-4 gap-3">
+        <KpiCell label="Todos" value={`${totalCount} mov`} selected={movementType === 'all' && movementCurrency === 'all'} onClick={() => { setMovementType('all'); setMovementCurrency('all'); }} />
+        <KpiCell label="Ingresos ARS" value={arsIngreso} tone="income" selected={movementType === 'ingreso' && movementCurrency === 'all'} onClick={() => { setMovementType('ingreso'); setMovementCurrency('all'); }} />
+        <KpiCell label="Gastos ARS" value={arsEgreso} tone="expense" selected={movementType === 'egreso' && movementCurrency === 'all'} onClick={() => { setMovementType('egreso'); setMovementCurrency('all'); }} />
+        <KpiCell label="En USD" value={usdNeto} selected={movementCurrency === 'USD'} onClick={() => { setMovementType('all'); setMovementCurrency('USD'); }} />
       </div>
 
       <SectionCard

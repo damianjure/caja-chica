@@ -1,6 +1,25 @@
 import { useState, useMemo, type Dispatch, type SetStateAction } from 'react';
-import { type Movimiento } from '../../services/api';
+import { type Movimiento, type MovementSource } from '../../services/api';
 import { filterMovements, periodToRange, type DatePeriod } from '../../dashboard/summary';
+
+/** User-facing source filter groups (Ticket bundles every photo/scan variant). */
+export type SourceFilter = 'all' | 'web' | 'telegram' | 'ticket' | 'pdf' | 'statement' | 'recurrente';
+
+export const SOURCE_FILTER_OPTIONS: { id: SourceFilter; label: string }[] = [
+  { id: 'all', label: 'Todas las fuentes' },
+  { id: 'web', label: 'Web' },
+  { id: 'telegram', label: 'Telegram' },
+  { id: 'ticket', label: 'Ticket / foto' },
+  { id: 'pdf', label: 'PDF' },
+  { id: 'statement', label: 'Resumen' },
+  { id: 'recurrente', label: 'Recurrente' },
+];
+
+function matchesSource(source: MovementSource | null | undefined, filter: SourceFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'ticket') return source === 'web_ticket' || source === 'photo' || source === 'handwritten' || source === 'multi';
+  return source === filter;
+}
 
 export interface MovementsFilterResult {
   selectedCompany: string;
@@ -19,6 +38,8 @@ export interface MovementsFilterResult {
   setCustomTo: Dispatch<SetStateAction<string>>;
   searchText: string;
   setSearchText: Dispatch<SetStateAction<string>>;
+  selectedSource: SourceFilter;
+  setSelectedSource: Dispatch<SetStateAction<SourceFilter>>;
   filteredMovimientos: Movimiento[];
   hasActiveFilters: boolean;
   resetFilters: () => void;
@@ -33,6 +54,7 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
   const [customFrom, setCustomFrom] = useState<string>('');
   const [customTo, setCustomTo] = useState<string>('');
   const [searchText, setSearchText] = useState<string>('');
+  const [selectedSource, setSelectedSource] = useState<SourceFilter>('all');
 
   const dateRange = useMemo(() => {
     if (datePeriod === 'rango') return { from: customFrom || undefined, to: customTo || undefined };
@@ -48,12 +70,13 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
       from: dateRange.from,
       to: dateRange.to,
     });
+    const bySource = selectedSource === 'all' ? base : base.filter((m) => matchesSource(m.source, selectedSource));
     const q = searchText.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((m) =>
+    if (!q) return bySource;
+    return bySource.filter((m) =>
       `${m.descripcion ?? ''} ${m.empresa_nombre ?? ''} ${m.categoria ?? ''}`.toLowerCase().includes(q),
     );
-  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, searchText]);
+  }, [movimientos, selectedCompany, movementType, movementCurrency, selectedCategory, dateRange, searchText, selectedSource]);
 
   const hasActiveFilters =
     selectedCompany !== 'all' ||
@@ -61,6 +84,7 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     movementCurrency !== 'all' ||
     selectedCategory !== 'all' ||
     datePeriod !== 'all' ||
+    selectedSource !== 'all' ||
     searchText.trim() !== '';
 
   const resetFilters = () => {
@@ -72,6 +96,7 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     setCustomFrom('');
     setCustomTo('');
     setSearchText('');
+    setSelectedSource('all');
   };
 
   return {
@@ -91,6 +116,8 @@ export function useMovementsFilter(movimientos: Movimiento[]): MovementsFilterRe
     setCustomTo,
     searchText,
     setSearchText,
+    selectedSource,
+    setSelectedSource,
     filteredMovimientos,
     hasActiveFilters,
     resetFilters,

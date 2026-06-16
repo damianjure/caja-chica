@@ -61,6 +61,7 @@ function ExportMenu({
 
 import type { Categoria } from '../../../services/api';
 import type { DatePeriod } from '../../../dashboard/summary';
+import { type SourceFilter, SOURCE_FILTER_OPTIONS } from '../../../hooks/dashboard/useMovementsFilter';
 import { SectionCard } from '../primitives';
 import { Input, Select } from '../../ui/Field';
 import { Segmented } from '../../ui/Segmented';
@@ -172,6 +173,8 @@ export default function MovimientosTab({
   setCustomTo,
   searchText,
   setSearchText,
+  selectedSource,
+  setSelectedSource,
   onOpenSearch,
   hasActiveFilters,
   resetFilters,
@@ -208,6 +211,8 @@ export default function MovimientosTab({
   setCustomTo: (value: string) => void;
   searchText: string;
   setSearchText: (value: string) => void;
+  selectedSource: SourceFilter;
+  setSelectedSource: (value: SourceFilter) => void;
   onOpenSearch: () => void;
   hasActiveFilters: boolean;
   resetFilters: () => void;
@@ -304,6 +309,9 @@ export default function MovimientosTab({
         }
       >
         <div className="space-y-4">
+          {/* Filtros: en desktop se vuelven sticky bajo el topbar para no perderlos
+              al recorrer una tabla larga. En mobile/tablet quedan en flujo normal. */}
+          <div className="space-y-4 lg:sticky lg:top-[60px] lg:z-10 bg-white lg:-mx-8 lg:px-8 lg:pt-1 lg:pb-3">
           {/* Buscar: campo inline (filtra la lista) + acceso al buscador global */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -341,6 +349,11 @@ export default function MovimientosTab({
                 <option key={c.id} value={c.nombre}>{c.nombre}</option>
               ))}
             </Select>
+            <Select label="Filtrar por fuente" hideLabel size="sm" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value as SourceFilter)}>
+              {SOURCE_FILTER_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </Select>
           </div>
 
           {/* Rango personalizado */}
@@ -363,12 +376,14 @@ export default function MovimientosTab({
               {movementCurrency !== 'all' && <Pill label={movementCurrency} onClear={() => setMovementCurrency('all')} />}
               {selectedCompany !== 'all' && <Pill label={selectedCompany} onClear={() => setSelectedCompany('all')} />}
               {selectedCategory !== 'all' && <Pill label={selectedCategory} onClear={() => setSelectedCategory('all')} />}
+              {selectedSource !== 'all' && <Pill label={SOURCE_FILTER_OPTIONS.find((o) => o.id === selectedSource)?.label ?? selectedSource} onClear={() => setSelectedSource('all')} />}
               {searchText.trim() !== '' && <Pill label={`"${searchText.trim()}"`} onClear={() => setSearchText('')} />}
               <button type="button" onClick={resetFilters} className="text-xs text-[var(--app-text-3)] underline underline-offset-2 hover:text-[var(--app-text-1)]">
                 Limpiar todo
               </button>
             </div>
           )}
+          </div>
 
           {historyCards}
         </div>

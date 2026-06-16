@@ -501,7 +501,6 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const incomeTagSummaries = useMemo(() => getIncomeTagSummaries(history), [history]);
   const monthlySummaries = useMemo(() => getMonthlySummaries(history), [history]);
   const activeTabMeta = useMemo(() => tabs.find((t) => t.id === activeTab) ?? tabs[0], [tabs, activeTab]);
-  const ActiveTabIcon = activeTabMeta.icon;
   // Slide the section content in the direction of travel (swipe or nav click).
   const prevTabIndexRef = useRef(0);
   const [navDir, setNavDir] = useState<'next' | 'prev'>('next');
@@ -788,13 +787,15 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </header>
 
-        <section className="sticky top-3 z-20">
-          <div className="glass-chrome border border-[var(--app-border-strong)] rounded-2xl p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
-            <div className="md:hidden flex items-center gap-2 px-1">
-              <ActiveTabIcon className="h-5 w-5 shrink-0 text-[var(--app-strong-surface)]" aria-hidden="true" />
-              <h1 className="text-lg font-bold tracking-tight text-[var(--app-text-1)]">{activeTabMeta.label}</h1>
-            </div>
-            <div ref={tablistRef} role="navigation" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="hidden md:flex gap-2 overflow-x-auto scroll-smooth md:flex-wrap">
+        <section className="md:sticky md:top-3 z-20">
+          {/* Mobile: la sección ya la identifica (e ilumina) la bottom-nav, así que
+              acá no repetimos el título ni lo dejamos sticky tapando el contenido —
+              solo el contexto, como texto liviano. */}
+          {activeTabMeta.description && (
+            <p className="md:hidden px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>
+          )}
+          <div className="hidden md:block glass-chrome border border-[var(--app-border-strong)] rounded-2xl p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
+            <div ref={tablistRef} role="navigation" aria-label="Secciones del dashboard" style={{ maskImage: tabMask, WebkitMaskImage: tabMask }} className="flex gap-2 overflow-x-auto scroll-smooth flex-wrap">
               {navTabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} aria-current={isActive ? 'page' : undefined} onClick={() => setActiveTab(tab.id)} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-bold whitespace-nowrap transition duration-150 active:scale-[0.97] border ${isActive ? 'bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)] shadow-[var(--app-shadow-md)]' : 'bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border)] shadow-[var(--app-shadow-sm)] hover:border-[var(--app-border-strong)]'}`}><Icon className="w-4 h-4 shrink-0" />{tab.label}</button>; })}
             </div>
             {activeTabMeta.description && <p className="mt-2.5 px-1 text-sm text-[var(--app-text-3)]">{activeTabMeta.description}</p>}

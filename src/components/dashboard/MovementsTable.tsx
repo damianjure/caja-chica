@@ -32,13 +32,16 @@ interface MovementsTableProps {
   onDelete: (id: string) => void;
   onLoadMore: () => void;
   onLinesChanged?: (id: string, total: number, hasLines: boolean) => void;
+  /** Row click → open the detail drawer (master-detail). */
+  onSelect?: (item: Movimiento) => void;
+  selectedId?: string | null;
 }
 
 type SortKey = 'fecha' | 'descripcion' | 'empresa' | 'monto';
 type SortDir = 'asc' | 'desc';
 
 /** Map the persisted `source` to a human label + icon for the Fuente column. */
-function sourceMeta(source: MovementSource | null | undefined): { label: string; Icon: typeof PenLine | null } {
+export function sourceMeta(source: MovementSource | null | undefined): { label: string; Icon: typeof PenLine | null } {
   switch (source) {
     case 'web': return { label: 'Web', Icon: PenLine };
     case 'web_ticket':
@@ -61,7 +64,7 @@ function signedAmount(m: Movimiento): number {
 
 function MovementsTableImpl({
   filteredHistory, hasActiveFilters, onResetFilters, onOpenCarga, canWriteData, hasMore, loadingMore,
-  copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore, onLinesChanged,
+  copiedId, page, onPageChange, onEdit, onCopy, onDelete, onLoadMore, onLinesChanged, onSelect, selectedId,
 }: MovementsTableProps) {
   const topRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -175,7 +178,12 @@ function MovementsTableImpl({
               const isExpanded = expandedId === item.id;
               return (
                 <>
-                  <tr key={item.id} className="group hover:bg-[var(--app-surface-2)] transition-colors">
+                  <tr
+                    key={item.id}
+                    onClick={onSelect ? () => onSelect(item) : undefined}
+                    aria-selected={selectedId === item.id || undefined}
+                    className={`group transition-colors ${onSelect ? 'cursor-pointer' : ''} ${selectedId === item.id ? 'bg-[var(--app-surface-3)]' : 'hover:bg-[var(--app-surface-2)]'}`}
+                  >
                     <td className="px-3 py-2.5 whitespace-nowrap text-[var(--app-text-3)] tabular-nums">
                       {new Date(item.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
                     </td>
@@ -188,7 +196,7 @@ function MovementsTableImpl({
                         {item.has_lineas && (
                           <button
                             type="button"
-                            onClick={() => setExpandedId((p) => (p === item.id ? null : item.id))}
+                            onClick={(e) => { e.stopPropagation(); setExpandedId((p) => (p === item.id ? null : item.id)); }}
                             aria-expanded={isExpanded}
                             aria-label="Ver renglones del ticket"
                             className="shrink-0 text-[var(--app-text-3)] hover:text-[var(--app-text-1)]"
@@ -211,9 +219,9 @@ function MovementsTableImpl({
                     {canWriteData && (
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                          <button onClick={() => onEdit(item)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]" title="Editar" aria-label="Editar movimiento"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => onCopy(item)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]" title="Copiar" aria-label="Copiar movimiento">{copiedId === item.id ? <Check className="w-4 h-4 text-[var(--chart-income)]" /> : <Copy className="w-4 h-4" />}</button>
-                          <button onClick={() => onDelete(item.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-red-surface)]" title="Borrar" aria-label="Borrar movimiento"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); onEdit(item); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]" title="Editar" aria-label="Editar movimiento"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); onCopy(item); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]" title="Copiar" aria-label="Copiar movimiento">{copiedId === item.id ? <Check className="w-4 h-4 text-[var(--chart-income)]" /> : <Copy className="w-4 h-4" />}</button>
+                          <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-red-surface)]" title="Borrar" aria-label="Borrar movimiento"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     )}

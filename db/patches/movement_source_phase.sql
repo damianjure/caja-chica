@@ -37,3 +37,22 @@ update public.movimientos
 
 create index if not exists idx_movimientos_source
     on public.movimientos (source);
+
+-- Refinement (applied 2026-06-16): the prefix/has_lineas heuristic above only
+-- recovers tickets; plain text from web vs Telegram is indistinguishable in
+-- original_text. The audit trail DOES record the channel, so reclassify the
+-- `legacy` rows that have a create-audit entry. Rows older than the audit log
+-- (no entry) stay `legacy`. Result on prod: 68 telegram, 11 web, 90 legacy.
+update public.movimientos m
+   set source = (
+     select a.source from public.audit_logs a
+     where a.entity_type='movimiento' and a.action='create' and a.entity_id=m.id
+       and a.source in ('web','telegram')
+     order by a.created_at asc limit 1
+   )
+ where m.source='legacy'
+   and exists (
+     select 1 from public.audit_logs a
+     where a.entity_type='movimiento' and a.action='create' and a.entity_id=m.id
+       and a.source in ('web','telegram')
+   );

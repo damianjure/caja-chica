@@ -104,6 +104,7 @@ export async function seedDemoData(
     categoria: m.categoria,
     empresa_nombre: DEMO_EMPRESA,
     descripcion: m.descripcion,
+    source: "demo",
     conciliado: false,
     is_demo: true,
     created_at: daysAgoDate(m.daysAgo),

@@ -74,6 +74,7 @@ export async function runRecurrentes({
             empresa_nombre: r.empresa_nombre,
             descripcion: r.descripcion + " (Recurrente)",
             original_text: "System Generated",
+            source: "recurrente",
             conciliado: true,
             conciliado_notas: null,
           },

@@ -608,6 +608,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | `maintenance_mode_phase.sql` | ✔ prod 2026-05-26 |
 | `email_management_phase.sql` | ✔ prod 2026-05-29 |
 | `ai_events_phase.sql` | ✔ prod 2026-06-12 (insight de salud IA) |
+| `movement_source_phase.sql` | ✔ prod 2026-06-16 (columna `source` en movimientos: cómo se ingresó cada mov) |
 | `dashboard_types_phase.sql` | ⏳ **NO aplicado** — esperando revisar el flujo del switcher personal/pyme |
 | `whatsapp_links_phase.sql` | ⏳ **NO aplicado** — va con la plomería de Meta |
 

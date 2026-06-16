@@ -38,7 +38,23 @@ export interface Movimiento {
   conciliado_notas?: string | null;
   /** True when this movement is a ticket with persisted child lines. */
   has_lineas?: boolean;
+  /** How the movement was entered. Null/`legacy` for pre-migration rows. */
+  source?: MovementSource | null;
 }
+
+/** How a movement entered the system. See db/patches/movement_source_phase.sql. */
+export type MovementSource =
+  | "web"
+  | "web_ticket"
+  | "telegram"
+  | "photo"
+  | "handwritten"
+  | "multi"
+  | "pdf"
+  | "statement"
+  | "recurrente"
+  | "demo"
+  | "legacy";
 
 export interface Empresa {
   id: string;

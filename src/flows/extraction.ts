@@ -51,6 +51,7 @@ export async function insertExtractionMovement(
     empresa_nombre: d.empresa,
     descripcion: d.descripcion,
     original_text: `[${d.sourceType}] ${d.descripcion}`,
+    source: d.sourceType,
     conciliado: true,
     conciliado_notas: null,
     // Statement transactions keep their real date so monthly reports stay

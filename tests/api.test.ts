@@ -474,6 +474,7 @@ test("guarda movimientos conciliados por defecto", async () => {
     const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : undefined;
     assert.equal(payload?.conciliado, true);
     assert.equal(payload?.conciliado_notas, null);
+    assert.equal(payload?.source, "web");
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((err) => (err ? reject(err) : resolve())),

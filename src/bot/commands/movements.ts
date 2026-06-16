@@ -191,6 +191,7 @@ export async function persistTelegramMovement(supabase: BotDeps["supabase"], arg
       empresa_nombre: empresaNombre,
       descripcion: args.item.descripcion,
       original_text: args.originalText,
+      source: "telegram",
       conciliado: true,
       conciliado_notas: null,
     }])
@@ -250,6 +251,7 @@ export async function persistTelegramTicket(
       empresa_nombre: "Personal",
       descripcion: merchant,
       original_text: `[${args.sourceType}] ${merchant}`,
+      source: args.sourceType,
       conciliado: true,
       conciliado_notas: null,
       has_lineas: true,

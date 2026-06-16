@@ -252,15 +252,27 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const pwa = usePwaInstall();
 
   useEffect(() => {
-    if (!localStorage.getItem('tour_seen')) {
+    // First-run users get the activation wizard, which already teaches the core
+    // value — don't stack the auto-tour on top. The tour stays available from
+    // the avatar menu.
+    const isFirstRun = viewer.onboarding_state === 'pending' || viewer.onboarding_state === 'seeded';
+    if (!isFirstRun && !localStorage.getItem('tour_seen')) {
       const t = setTimeout(() => setIsTourOpen(true), 800);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const closeTour = useCallback(() => {
     localStorage.setItem('tour_seen', '1');
     setIsTourOpen(false);
+  }, []);
+
+  // Finishing onboarding also marks the tour seen: the wizard already covered
+  // the basics, so the auto-tour shouldn't pop in a later session either.
+  const finishOnboarding = useCallback(() => {
+    setShowWizard(false);
+    try { localStorage.setItem('tour_seen', '1'); } catch { /* ignore */ }
   }, []);
 
   const handleImageFile = useCallback((file: File) => {
@@ -653,10 +665,10 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           );
         })}
       </nav>
-      {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={() => setShowWizard(false)} />}
+      {showWizard && viewer.is_dashboard_joiner && <WelcomeJoined viewer={viewer} onFinish={finishOnboarding} />}
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard
-          onFinish={() => setShowWizard(false)}
+          onFinish={finishOnboarding}
           canInstall={pwa.available}
           onInstall={() => void pwa.promptInstall()}
         />

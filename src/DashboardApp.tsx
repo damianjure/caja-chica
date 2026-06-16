@@ -2,6 +2,8 @@ import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } fro
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useSwipeNav } from './hooks/useSwipeNav';
 import { useBackClose } from './hooks/useBackClose';
+import { useBackExitGuard, stayInApp, leaveApp } from './hooks/useBackExitGuard';
+import { ConfirmModal } from './components/ui/ConfirmModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
@@ -520,6 +522,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   useBackClose(isCargaOpen, () => setIsCargaOpen(false));
   useBackClose(Boolean(extracted), clearExtracted);
 
+  // Back on the app root (no modal open) asks before leaving, instead of
+  // dropping the user straight out of the PWA.
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  useBackExitGuard(() => setShowExitConfirm(true));
+
   const topExpenseCategories = useMemo(() => categorySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.egresoArs, secondary: `${c.movimientos} movimientos` })), [categorySummaries]);
   const topIncomeTags = useMemo(() => incomeTagSummaries.slice(0, 10).map((t) => ({ label: t.label, value: formatCurrency(t.ars, 'ARS'), secondary: `${t.movimientos} movimientos · ${formatCurrency(t.usd, 'USD')} en USD` })), [incomeTagSummaries]);
   const topCompanies = useMemo(() => companySummaries.slice(0, 5).map((c) => ({ label: c.name, value: c.ingresosArs + c.gastosArs, valueLabel: formatCurrency(c.ingresosArs, 'ARS'), secondary: `${c.movimientos} movimientos`, supportingValue: `Saldo ${formatCurrency(c.saldoArs, 'ARS')}`, segments: [{ value: c.ingresosArs, colorClass: 'bg-[var(--app-green-surface)]0', label: 'Ingresos ARS', currency: 'ARS' as const }, { value: c.gastosArs, colorClass: 'bg-[var(--app-red-surface)]0', label: 'Gastos ARS', currency: 'ARS' as const }] })), [companySummaries]);
@@ -870,6 +877,17 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           onCloseConfirmation={() => { if (!isConfirmingAction) { setConfirmationModal(null); setConfirmationInput(''); } }}
           onRunConfirmation={() => void runConfirmation()}
         />
+
+        {showExitConfirm && (
+          <ConfirmModal
+            title="¿Salir de Caja Chica?"
+            description="Vas a cerrar la app. Tus datos quedan guardados."
+            confirmLabel="Salir"
+            cancelLabel="Quedarme"
+            onConfirm={() => { setShowExitConfirm(false); leaveApp(); }}
+            onCancel={() => { setShowExitConfirm(false); stayInApp(); }}
+          />
+        )}
 
         <footer className="pt-12 pb-8 border-t border-[var(--app-border)] text-center">
           <p className="text-xs text-[var(--app-text-3)]">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>

@@ -34,6 +34,8 @@ import { SectionCard } from './components/dashboard/primitives';
 import { ModalShell } from './components/ui/ModalShell';
 import { MovementCards } from './components/dashboard/MovementCards';
 import { HeaderUserMenu } from './components/dashboard/HeaderUserMenu';
+import { DesktopSidebar } from './components/dashboard/DesktopSidebar';
+import { DesktopTopbar } from './components/dashboard/DesktopTopbar';
 import { BrandMark } from './components/BrandMark';
 import { DashboardSwitcher } from './components/DashboardSwitcher';
 import { DashboardModals } from './components/dashboard/DashboardModals';
@@ -637,7 +639,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   if (isLoading) return <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans p-4 md:p-8"><div className="mx-auto max-w-7xl"><DashboardSkeleton /></div></div>;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans px-4 md:px-8 pb-4 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-8">
+    <div className="min-h-screen overflow-x-clip bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans px-4 md:px-8 pb-4 md:pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:pt-8 lg:px-0 lg:pt-0 lg:pb-0">
       <OfflineBanner />
       {(ptrPull > 0 || ptrRefreshing) && (
         <div
@@ -680,8 +682,37 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         />
       )}
 
+      <div className="lg:flex">
+      <DesktopSidebar
+        navItems={navTabs}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        isSuperadmin={viewer.role === 'superadmin'}
+      />
+      <div className="lg:flex-1 lg:min-w-0">
+      <DesktopTopbar
+        sectionTitle={activeTabMeta.label}
+        sectionDescription={activeTabMeta.description || undefined}
+        onRefresh={() => loadData(false)}
+        isRefreshing={isLoading}
+        lastRefreshed={lastRefreshed}
+        onOpenSearch={() => setIsPaletteOpen(true)}
+        canWriteData={canWriteData}
+        onNewOperation={goToComposer}
+        email={viewer.email}
+        identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
+        photoUrl={viewer.profile_photo_url}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+        onSignOut={() => void handleSignOut()}
+        onOpenSettings={() => setActiveTab('configuracion')}
+        onOpenAdmin={viewer.role === 'superadmin' ? () => setActiveTab('superadmin') : undefined}
+        onOpenHelp={() => setIsHelpOpen(true)}
+        onReplayTour={() => setIsTourOpen(true)}
+        onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}
+      />
       <div
-        className="max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0"
+        className="max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6"
         style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition }}
       >
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
@@ -714,7 +745,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         )}
 
-        <header className="relative z-30">
+        <header className="relative z-30 lg:hidden">
           <div className="glass-chrome flex items-center gap-3 rounded-xl border border-[var(--app-border-strong)] px-5 py-3.5 shadow-[var(--app-shadow-md)]">
             <div className="flex items-center gap-2">
               <BrandMark variant="badge" />
@@ -794,7 +825,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           </div>
         </header>
 
-        <section className="md:sticky md:top-3 z-20">
+        <section className="md:sticky md:top-3 z-20 lg:hidden">
           {/* Mobile: la sección ya la identifica (e ilumina) la bottom-nav, así que
               acá no repetimos el título ni lo dejamos sticky tapando el contenido —
               solo el contexto, como texto liviano. */}
@@ -892,6 +923,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         <footer className="pt-12 pb-8 border-t border-[var(--app-border)] text-center">
           <p className="text-xs text-[var(--app-text-3)]">Desarrollado para el mercado Argentino. Las conversiones de jerga son aproximadas y se basan en el uso común.</p>
         </footer>
+      </div>
+      </div>
       </div>
     </div>
   );

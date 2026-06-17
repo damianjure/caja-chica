@@ -208,70 +208,79 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
   return [...map.values()].sort((a, b) => (b.saldoArs + b.saldoUsd) - (a.saldoArs + a.saldoUsd));
 }
 
+// ⚡ Bolt Performance Optimization:
+// Replaced .filter().filter().forEach() with a single for...of loop
+// to prevent intermediate array allocations and reduce iteration overhead.
 export function getCategorySummaries(history: Movimiento[], companyName?: string) {
   const map = new Map<string, CategorySummary>();
 
-  history
-    .filter((item) => item.tipo === 'egreso')
-    .filter((item) => !companyName || item.empresa_nombre === companyName)
-    .forEach((item) => {
-      const name = item.categoria || 'Otros';
-      const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  for (const item of history) {
+    if (item.tipo !== 'egreso') continue;
+    if (companyName && item.empresa_nombre !== companyName) continue;
 
-      if (item.moneda === 'ARS') summary.egresoArs += amount;
-      if (item.moneda === 'USD') summary.egresoUsd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.categoria || 'Otros';
+    const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.egresoArs += amount;
+    if (item.moneda === 'USD') summary.egresoUsd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.egresoArs - a.egresoArs || b.egresoUsd - a.egresoUsd);
 }
 
+// ⚡ Bolt Performance Optimization:
+// Replaced .filter().forEach() with a single for...of loop
+// to prevent intermediate array allocations and reduce iteration overhead.
 export function getIncomeSummaries(history: Movimiento[]) {
   const map = new Map<string, IncomeSummary>();
 
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
-      const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
+
+    const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
+    const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.ars += amount;
+    if (item.moneda === 'USD') summary.usd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
+
+  return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd);
+}
+
+// ⚡ Bolt Performance Optimization:
+// Replaced .filter().forEach() with a single for...of loop
+// to prevent intermediate array allocations and reduce iteration overhead.
+export function getIncomeTagSummaries(history: Movimiento[]) {
+  const map = new Map<string, IncomeTagSummary>();
+
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
+
+    const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const matchedTags = INCOME_TAG_LIBRARY.filter((tag) =>
+      tag.keywords.some((keyword) => haystack.includes(keyword)),
+    );
+    const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
+
+    for (const tag of tags) {
+      const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
       const amount = Number(item.monto || 0);
 
       if (item.moneda === 'ARS') summary.ars += amount;
       if (item.moneda === 'USD') summary.usd += amount;
       summary.movimientos += 1;
-      map.set(name, summary);
-    });
-
-  return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd);
-}
-
-export function getIncomeTagSummaries(history: Movimiento[]) {
-  const map = new Map<string, IncomeTagSummary>();
-
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      const matchedTags = INCOME_TAG_LIBRARY.filter((tag) =>
-        tag.keywords.some((keyword) => haystack.includes(keyword)),
-      );
-      const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
-
-      tags.forEach((tag) => {
-        const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
-        const amount = Number(item.monto || 0);
-
-        if (item.moneda === 'ARS') summary.ars += amount;
-        if (item.moneda === 'USD') summary.usd += amount;
-        summary.movimientos += 1;
-        map.set(tag.label, summary);
-      });
-    });
+      map.set(tag.label, summary);
+    }
+  }
 
   return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd || b.movimientos - a.movimientos);
 }

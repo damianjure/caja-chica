@@ -61,19 +61,19 @@ const statusBadge: Record<
 > = {
   active: {
     label: "Activo",
-    className: "bg-green-100 text-green-800 border-green-300",
+    className: "bg-[var(--app-green-surface)] text-[var(--app-green-text)] border-[var(--app-green-border)]",
   },
   paused: {
     label: "Pausado",
-    className: "bg-amber-100 text-[var(--app-amber-text)] border-amber-300",
+    className: "bg-[var(--app-amber-surface)] text-[var(--app-amber-text)] border-[var(--app-amber-border)]",
   },
   blocked: {
     label: "Bloqueado",
-    className: "bg-red-100 text-red-800 border-red-300",
+    className: "bg-[var(--app-red-surface)] text-[var(--app-red-text)] border-[var(--app-red-border)]",
   },
   suspended: {
     label: "Suspendido (legacy)",
-    className: "bg-neutral-200 text-[var(--app-text-2)] border-neutral-400",
+    className: "bg-[var(--app-surface-2)] text-[var(--app-text-2)] border-[var(--app-border-strong)]",
   },
 };
 
@@ -466,8 +466,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
   return (
     <div className="space-y-6">
-      {/* Tab nav */}
-      <div className="flex gap-1 border-b border-[var(--app-border)]">
+      {/* Tab nav — pill style igual que Configuración */}
+      <div className="flex overflow-x-auto gap-1 pb-1 -mx-1 px-1">
         {(["usuarios", "invitaciones", "sistema"] as const).map((tab) => {
           const labels = { usuarios: "Usuarios", invitaciones: "Invitaciones", sistema: "Sistema" };
           return (
@@ -475,12 +475,11 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               key={tab}
               type="button"
               onClick={() => setAdminTab(tab)}
-              className={[
-                "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
                 adminTab === tab
-                  ? "border-[var(--app-text-1)] text-[var(--app-text-1)]"
-                  : "border-transparent text-[var(--app-text-3)] hover:text-[var(--app-text-2)]",
-              ].join(" ")}
+                  ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)]"
+                  : "text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-text-1)]"
+              }`}
             >
               {labels[tab]}
             </button>
@@ -521,7 +520,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                 onChange={(e) => setUserSearch(e.target.value)}
                 placeholder="Buscar por email…"
                 aria-label="Buscar usuarios"
-                className="w-full rounded-md border border-[var(--app-border-strong)] pl-8 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="w-full rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] pl-8 pr-4 py-2.5 text-sm text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
               />
             </div>
             <select
@@ -1028,16 +1027,16 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               >
                 {m.email ?? "(sin email)"}
               </button>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-1)] bg-[var(--app-surface-2)]">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--app-border-strong)] text-[var(--app-text-1)] bg-[var(--app-surface-2)]">
                 {m.dashboard_role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
               <span
                 className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
                   m.membership_status === "active"
-                    ? "bg-green-100 text-green-800 border-green-300"
+                    ? "bg-[var(--app-green-surface)] text-[var(--app-green-text)] border-[var(--app-green-border)]"
                     : m.membership_status === "revoked"
-                      ? "bg-red-100 text-red-800 border-red-300"
-                      : "bg-neutral-200 text-[var(--app-text-2)] border-neutral-400"
+                      ? "bg-[var(--app-red-surface)] text-[var(--app-red-text)] border-[var(--app-red-border)]"
+                      : "bg-[var(--app-surface-2)] text-[var(--app-text-2)] border-[var(--app-border-strong)]"
                 }`}
               >
                 {m.membership_status === "active"
@@ -1055,7 +1054,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
               <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--app-border)] text-[var(--app-text-2)] bg-[var(--app-surface-2)]">
                 {inv.role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-[var(--app-amber-text)] border border-amber-300">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--app-amber-surface)] text-[var(--app-amber-text)] border border-[var(--app-amber-border)]">
                 Invitado
               </span>
             </li>
@@ -1368,9 +1367,9 @@ interface StatusButtonProps {
 
 function StatusButton({ icon, label, active, onClick, disabled, tone }: StatusButtonProps) {
   const activeClass = {
-    green: "bg-green-600 border-green-600 text-white shadow-md ring-2 ring-green-200",
-    amber: "bg-amber-500 border-amber-500 text-white shadow-md ring-2 ring-amber-200",
-    red: "bg-red-600 border-red-600 text-white shadow-md ring-2 ring-red-200",
+    green: "bg-[var(--app-green-text)] border-[var(--app-green-text)] text-[var(--app-surface-1)] shadow-md ring-2 ring-[var(--app-green-border)]",
+    amber: "bg-[var(--app-amber-text)] border-[var(--app-amber-text)] text-[var(--app-surface-1)] shadow-md ring-2 ring-[var(--app-amber-border)]",
+    red: "bg-[var(--app-red-text)] border-[var(--app-red-text)] text-[var(--app-surface-1)] shadow-md ring-2 ring-[var(--app-red-border)]",
   }[tone];
   const inactiveClass = {
     green: "bg-[var(--app-surface-1)] border-[var(--app-green-border)] text-[var(--app-green-text)] hover:border-[color-mix(in_srgb,var(--app-green-text)_60%,var(--app-border))]",

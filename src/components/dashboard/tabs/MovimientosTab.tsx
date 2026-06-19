@@ -250,8 +250,8 @@ export default function MovimientosTab({
   return (
     <div className="space-y-6">
       {showDemoBanner && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-          <span className="text-sm text-amber-800 dark:text-amber-300">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3">
+          <span className="text-sm text-[var(--app-amber-text)]">
             Estás viendo datos de muestra.
           </span>
           <div className="flex items-center gap-2 shrink-0">
@@ -259,7 +259,7 @@ export default function MovimientosTab({
               type="button"
               onClick={() => void handleDeleteDemo()}
               disabled={deletingDemo}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--app-red-text)] hover:opacity-80 disabled:opacity-50"
             >
               {deletingDemo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               Borrar ahora
@@ -268,7 +268,7 @@ export default function MovimientosTab({
               type="button"
               onClick={() => setDemoBannerDismissed(true)}
               aria-label="Cerrar aviso"
-              className="p-0.5 text-amber-600 hover:text-amber-800 dark:text-amber-400"
+              className="p-0.5 text-[var(--app-amber-text)] hover:opacity-80"
             >
               <X className="h-4 w-4" />
             </button>
@@ -311,7 +311,7 @@ export default function MovimientosTab({
         <div className="space-y-4">
           {/* Filtros: en desktop se vuelven sticky bajo el topbar para no perderlos
               al recorrer una tabla larga. En mobile/tablet quedan en flujo normal. */}
-          <div className="space-y-4 lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-canvas)] lg:-mx-6 lg:px-6 lg:pt-1 lg:pb-3">
+          <div className="space-y-4 lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:bg-[var(--app-canvas)] lg:-mx-6 lg:px-6 lg:pt-1 lg:pb-3">
           {/* Buscar: campo inline (filtra la lista) + acceso al buscador global */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">

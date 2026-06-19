@@ -328,7 +328,7 @@ export default function MovimientosTab({
             <button
               type="button"
               onClick={onOpenSearch}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-border)] px-3 py-2 text-xs font-semibold text-[var(--app-text-2)] hover:border-[var(--app-text-2)] hover:text-[var(--app-text-1)] transition"
+              className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-border)] px-3 py-2 text-xs font-semibold text-[var(--app-text-2)] hover:border-[var(--app-text-2)] hover:text-[var(--app-text-1)] transition"
               title="Búsqueda global"
             >
               <Search className="h-3.5 w-3.5" aria-hidden="true" />

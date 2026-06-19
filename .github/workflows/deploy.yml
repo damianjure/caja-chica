@@ -6,9 +6,34 @@ on:
   workflow_dispatch:
 
 jobs:
+  quality:
+    name: Typecheck, architecture and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Architecture guard
+        run: npm run lint:arch
+
+      - name: Tests
+        run: npm test
+
   # ── Frontend ─────────────────────────────────────────────────────────────────
   deploy-frontend:
     name: Frontend → Firebase Hosting
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,6 +71,7 @@ jobs:
   # ── Backend ──────────────────────────────────────────────────────────────────
   deploy-backend:
     name: Backend → Cloud Run
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read

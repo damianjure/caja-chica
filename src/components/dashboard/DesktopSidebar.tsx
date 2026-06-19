@@ -39,7 +39,7 @@ export function DesktopSidebar({ navItems, activeTab, onSelectTab, isSuperadmin 
   };
 
   return (
-    <aside className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:flex-col gap-1 border-r border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-5">
+    <aside className="hidden lg:flex lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:flex-col gap-1 border-r border-[var(--app-border)] bg-[var(--app-sidebar)] px-3 py-5">
       <div className="flex items-center gap-2 px-2 pb-4">
         <BrandMark variant="badge" />
         <span className="text-[15px] font-bold tracking-tight text-[var(--app-text-1)]">Caja Chica</span>

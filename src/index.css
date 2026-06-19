@@ -94,12 +94,13 @@
     --app-surface-2: #F5F3EF;
     --app-surface-3: #ECE8E0;
     --app-surface-4: #E2DDD4;
-    --app-border: #E0DBD2;
-    --app-border-strong: #BDB6A9;
+    --app-border: #E5E2DC;
+    --app-border-strong: #D3CECA;
     --app-text-1: #211F1C;
-    --app-text-2: #4A463F;
-    --app-text-3: #6A665E;
-    --app-text-4: #9C978E;
+    --app-text-2: #6A665E;
+    --app-text-3: #9C978E;
+    --app-text-4: #B8B3AA;
+    --app-sidebar: #F5F3EF;
     --app-strong-surface: #2F6B4F;
     --app-strong-text: #FBFAF7;
     --app-red-surface: oklch(95.5% 0.019 32);
@@ -115,8 +116,8 @@
     --app-blue-border: oklch(86.4% 0.054 252);
     --app-blue-text: oklch(47% 0.110 258);
     /* Elevation tokens — theme-aware (sombra cálida en light). */
-    --app-shadow-sm: 0 1px 2px rgba(40, 38, 33, 0.07);
-    --app-shadow-md: 0 4px 12px -2px rgba(40, 38, 33, 0.10), 0 1px 3px rgba(40, 38, 33, 0.06);
+    --app-shadow-sm: 0 1px 2px rgba(30,27,22,.05), 0 10px 28px rgba(30,27,22,.07);
+    --app-shadow-md: 0 1px 2px rgba(30,27,22,.06), 0 24px 50px rgba(30,27,22,.13);
     --app-shadow-panel: 0 8px 24px -6px rgba(40, 38, 33, 0.14), 0 2px 6px rgba(40, 38, 33, 0.07);
     /* Chart tokens — semantic, theme-aware. */
     --chart-income: #2F6B4F;
@@ -131,14 +132,15 @@
     --app-surface-2: #23272B;
     --app-surface-3: #2A2F33;
     --app-surface-4: #333A3F;
-    --app-border: #2E3438;
-    --app-border-strong: #474E53;
+    --app-border: #2B3035;
+    --app-border-strong: #444C52;
     --app-text-1: #E9E7E2;
-    --app-text-2: #B6B3AC;
-    --app-text-3: #87847D;
-    --app-text-4: #66635D;
-    --app-strong-surface: #57B083;
-    --app-strong-text: #08140D;
+    --app-text-2: #9B978F;
+    --app-text-3: #6F6B64;
+    --app-text-4: #55524D;
+    --app-strong-surface: #5FA07F;
+    --app-strong-text: #0C0E0D;
+    --app-sidebar: #191B1E;
     --app-red-surface: oklch(27% 0.027 32);
     --app-red-border: oklch(39% 0.056 32);
     --app-red-text: oklch(80% 0.082 32);
@@ -151,11 +153,11 @@
     --app-blue-surface: oklch(25% 0.034 258);
     --app-blue-border: oklch(38.8% 0.066 258);
     --app-blue-text: oklch(81.2% 0.080 252);
-    --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --app-shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.4);
+    --app-shadow-sm: 0 1px 2px rgba(0,0,0,.3), 0 14px 34px rgba(0,0,0,.4);
+    --app-shadow-md: 0 1px 2px rgba(0,0,0,.4), 0 30px 60px rgba(0,0,0,.5);
     --app-shadow-panel: 0 10px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
-    --chart-income: #57B083;
-    --chart-expense: #DD8B7E;
+    --chart-income: #74B290;
+    --chart-expense: #CF8076;
     --chart-net: #6DA8FF;
     --chart-baseline: #2A4036;
   }
@@ -235,11 +237,7 @@
 
   body {
     min-height: 100vh;
-    background:
-      radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--app-strong-surface) 14%, transparent), transparent 30%),
-      radial-gradient(circle at 96% 6%, color-mix(in srgb, var(--app-blue-text) 10%, transparent), transparent 26%),
-      var(--app-canvas);
-    background-attachment: fixed;
+    background: var(--app-canvas);
     color: var(--app-text-1);
   }
 

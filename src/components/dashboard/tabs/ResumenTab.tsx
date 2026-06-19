@@ -1,8 +1,8 @@
 
 import { useMemo, useState } from 'react';
-import { BarChart2, TrendingUp, TrendingDown, Wallet, Building2, Repeat } from 'lucide-react';
+import { BarChart2, TrendingUp, TrendingDown, Building2, Repeat } from 'lucide-react';
 import { ChartCard, HorizontalBarList, GroupedBarChart, WaterfallChart } from '../Charts';
-import { EmptyState, MetricCard, MetricChip, SectionCard } from '../primitives';
+import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
 import { buildMonthlyChartData, buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
@@ -26,6 +26,18 @@ interface ResumenTabProps {
   insights: string[];
   recurrentesCount: number;
   onMetricNavigate?: (metric: 'ingresos' | 'gastos' | 'utilidad' | 'usd' | 'empresas' | 'recurrentes') => void;
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `hace ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `hace ${days}d`;
+  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
 function CompanyFilterPills({
@@ -96,6 +108,15 @@ export default function ResumenTab(props: ResumenTabProps) {
       return next;
     });
 
+  const nextOccurrence = props.forecast.occurrences[0];
+
+  const ingDelta = comparison.hasPrev && !comparison.ingresos.isNew && comparison.ingresos.deltaPct !== null
+    ? { text: `${comparison.ingresos.deltaPct >= 0 ? '+' : ''}${comparison.ingresos.deltaPct}% vs ant.`, tone: (comparison.ingresos.deltaPct >= 0 ? 'success' : 'danger') as 'success' | 'danger' }
+    : undefined;
+  const gasDelta = comparison.hasPrev && !comparison.gastos.isNew && comparison.gastos.deltaPct !== null
+    ? { text: `${comparison.gastos.deltaPct >= 0 ? '+' : ''}${comparison.gastos.deltaPct}% vs ant.`, tone: (comparison.gastos.deltaPct <= 0 ? 'success' : 'danger') as 'success' | 'danger' }
+    : undefined;
+
   const currencyToggle = (
     <div className="inline-flex shrink-0 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-0.5" role="group" aria-label="Moneda del gráfico">
       {(['ARS', 'USD'] as const).map((c) => (
@@ -107,69 +128,104 @@ export default function ResumenTab(props: ResumenTabProps) {
     </div>
   );
 
+  const recentMovements = props.history.slice(0, 6);
+
   return (
     <div className="space-y-6">
-      {/* KPI hierarchy: neto → ingresos → gastos → chips */}
-      <div className="space-y-3">
-        <MetricCard hero label="Utilidad acumulada · ARS" value={props.arsNeto} tone={props.netPositive ? 'success' : 'danger'} critical={!props.netPositive} sub={props.netPositive ? undefined : 'requiere revisión'} onClick={nav('utilidad')} navLabel="Ver todos los movimientos" />
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard label="Ingresos ARS" value={props.arsIngreso} tone="success" icon={TrendingUp} onClick={nav('ingresos')} navLabel="Ver ingresos en movimientos" />
-          <MetricCard label="Gastos ARS" value={props.arsEgreso} tone="danger" icon={TrendingDown} onClick={nav('gastos')} navLabel="Ver gastos en movimientos" />
-        </div>
+      {/* 4-KPI row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <MetricCard
+          label="Saldo total"
+          value={props.arsNeto}
+          tone={props.netPositive ? 'success' : 'danger'}
+          critical={!props.netPositive}
+          sub={`${props.companyCount} empresa${props.companyCount !== 1 ? 's' : ''}`}
+          onClick={nav('utilidad')}
+          navLabel="Ver todos los movimientos"
+        />
+        <MetricCard
+          label="Ingresos del mes"
+          value={props.arsIngreso}
+          tone="success"
+          icon={TrendingUp}
+          delta={ingDelta}
+          onClick={nav('ingresos')}
+          navLabel="Ver ingresos en movimientos"
+        />
+        <MetricCard
+          label="Gastos del mes"
+          value={props.arsEgreso}
+          tone="danger"
+          icon={TrendingDown}
+          delta={gasDelta}
+          onClick={nav('gastos')}
+          navLabel="Ver gastos en movimientos"
+        />
+        <MetricCard
+          label="Recurrentes activos"
+          value={String(props.recurrentesCount)}
+          tone="neutral"
+          icon={Repeat}
+          sub={nextOccurrence ? `Próximo: ${nextOccurrence.date.slice(5)}` : undefined}
+          onClick={nav('recurrentes')}
+          navLabel="Ver recurrentes"
+        />
+      </div>
 
-        {/* vs. período anterior — inline con los KPIs */}
-        {comparison.hasPrev && (
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              ['Ingresos', comparison.ingresos, true],
-              ['Gastos', comparison.gastos, false],
-              ['Utilidad', comparison.utilidad, true],
-            ] as const).map(([label, row, upIsGood]) => {
-              if (row.deltaPct === null || row.isNew) return null;
-              const up = row.deltaPct >= 0;
-              const good = up === upIsGood;
-              return (
-                <div key={label} className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 text-center">
-                  <div className="text-[10px] uppercase tracking-wider text-[var(--app-text-3)] mb-0.5">{label} vs mes ant.</div>
-                  <div className={`text-sm font-bold tabular-nums ${good ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>
-                    <span aria-hidden="true">{up ? '▲' : '▼'} </span>{Math.abs(row.deltaPct)}%
-                  </div>
-                </div>
-              );
-            })}
+      {/* 2-col: chart + actividad reciente */}
+      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <ChartCard title="Flujo de los últimos 6 meses" description="Ingresos y gastos mensuales + línea de saldo neto.">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {companyNames.length > 1 ? (
+              <CompanyFilterPills companyNames={companyNames} hiddenCompanies={hiddenCompanies} onReset={() => setHiddenCompanies(new Set())} onToggle={toggleCompany} />
+            ) : <span />}
+            <div className="flex items-center gap-3 justify-end">
+              <div className="flex items-center gap-3 text-xs text-[var(--app-text-3)]">
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-income)', opacity: 0.75 }} />Ingreso</span>
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-expense)', opacity: 0.75 }} />Gasto</span>
+                <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-net)' }} />Saldo</span>
+              </div>
+              {currencyToggle}
+            </div>
           </div>
-        )}
+          {pulseData.length === 0 ? (
+            <EmptyState title={chartCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'} hint="Cargá movimientos y el gráfico aparece acá." canWrite={props.canWriteData} icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />} />
+          ) : (
+            <GroupedBarChart data={pulseData} currency={chartCurrency} />
+          )}
+        </ChartCard>
 
-        <div className="flex flex-wrap gap-2">
-          <MetricChip label="Neto USD" value={props.usdNeto} icon={Wallet} onClick={nav('usd')} navLabel="Ver movimientos en dólares" />
-          <MetricChip label="Empresas" value={String(props.companyCount)} icon={Building2} onClick={nav('empresas')} navLabel="Ver empresas" />
-          <MetricChip label="Recurrentes" value={String(props.recurrentesCount)} icon={Repeat} onClick={nav('recurrentes')} navLabel="Ver recurrentes" />
+        {/* Actividad reciente */}
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
+          <h3 className="text-sm font-bold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
+          {recentMovements.length === 0 ? (
+            <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
+          ) : (
+            <ul className="divide-y divide-[var(--app-border)]" role="list">
+              {recentMovements.map((m) => (
+                <li key={m.id} role="listitem" className="flex items-center gap-3 py-2.5">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)]' : 'bg-[var(--app-red-surface)]'}`}>
+                    {m.tipo === 'ingreso'
+                      ? <TrendingUp className="w-3.5 h-3.5 text-[var(--app-green-text)]" aria-hidden="true" />
+                      : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[var(--app-text-1)] truncate">
+                      {m.descripcion || '—'}
+                    </div>
+                    <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
+                  </div>
+                  <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
+                    {m.tipo === 'ingreso' ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(m.monto)} {m.moneda}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
-      {/* Visualización 1: Ingresos vs Gastos por mes (grouped bar) */}
-      <ChartCard title="Ingresos vs gastos" description="Barras mensuales + línea de saldo neto.">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {companyNames.length > 1 ? (
-            <CompanyFilterPills companyNames={companyNames} hiddenCompanies={hiddenCompanies} onReset={() => setHiddenCompanies(new Set())} onToggle={toggleCompany} />
-          ) : <span />}
-          <div className="flex items-center gap-3 justify-end">
-            <div className="flex items-center gap-3 text-xs text-[var(--app-text-3)]">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-income)', opacity: 0.75 }} />Ingreso</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-expense)', opacity: 0.75 }} />Gasto</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-net)' }} />Saldo</span>
-            </div>
-            {currencyToggle}
-          </div>
-        </div>
-        {pulseData.length === 0 ? (
-          <EmptyState title={chartCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'} hint="Cargá movimientos y el gráfico aparece acá." canWrite={props.canWriteData} icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />} />
-        ) : (
-          <GroupedBarChart data={pulseData} currency={chartCurrency} />
-        )}
-      </ChartCard>
-
-      {/* Visualizaciones 2 y 3: Flujo de caja + Gastos que más pesan */}
+      {/* Flujo de caja + Gastos que más pesan */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Flujo de caja" description="Cómo cada categoría reduce la caja.">
           {companyNames.length > 1 && (
@@ -196,8 +252,8 @@ export default function ResumenTab(props: ResumenTabProps) {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <MetricCard label="Saldo proyectado ARS" value={props.projectedArsFormatted} tone="neutral" icon={Wallet} />
-              <MetricCard label="Saldo proyectado USD" value={props.projectedUsdFormatted} tone="neutral" icon={Wallet} />
+              <MetricCard label="Saldo proyectado ARS" value={props.projectedArsFormatted} tone="neutral" />
+              <MetricCard label="Saldo proyectado USD" value={props.projectedUsdFormatted} tone="neutral" />
             </div>
             <ul className="space-y-0 divide-y divide-[var(--app-border)]" role="list">
               {props.forecast.occurrences.slice(0, 8).map((occ, i) => (

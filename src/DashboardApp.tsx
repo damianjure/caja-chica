@@ -701,7 +701,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         isRefreshing={isLoading}
         lastRefreshed={lastRefreshed}
         onOpenSearch={() => setIsPaletteOpen(true)}
-        canWriteData={canWriteData}
+        showNewOperation={canWriteData && activeTab !== 'configuracion' && activeTab !== 'superadmin'}
         onNewOperation={goToComposer}
         email={viewer.email}
         identityLabel={formatIdentity(viewer.role as AppRole, dashboardRole as DashboardRole)}
@@ -710,7 +710,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         onToggleTheme={onToggleTheme}
         onSignOut={() => void handleSignOut()}
         onOpenSettings={() => setActiveTab('configuracion')}
-        onOpenAdmin={viewer.role === 'superadmin' ? () => setActiveTab('superadmin') : undefined}
+        onOpenAdmin={undefined}
         onOpenHelp={() => setIsHelpOpen(true)}
         onReplayTour={() => setIsTourOpen(true)}
         onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}

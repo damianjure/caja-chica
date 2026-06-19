@@ -16,7 +16,8 @@ export interface DesktopTopbarProps {
   isRefreshing: boolean;
   lastRefreshed: number | null;
   onOpenSearch: () => void;
-  canWriteData: boolean;
+  /** Show the "Nueva operación" CTA. False on Configuración / Super Admin. */
+  showNewOperation: boolean;
   onNewOperation: () => void;
   // Account menu passthrough
   email: string;
@@ -39,7 +40,7 @@ export function DesktopTopbar({
   isRefreshing,
   lastRefreshed,
   onOpenSearch,
-  canWriteData,
+  showNewOperation,
   onNewOperation,
   email,
   identityLabel,
@@ -89,7 +90,7 @@ export function DesktopTopbar({
           <span>Buscar</span>
           <kbd className="font-mono">⌘K</kbd>
         </button>
-        {canWriteData && (
+        {showNewOperation && (
           <button
             type="button"
             onClick={onNewOperation}

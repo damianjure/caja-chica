@@ -3,7 +3,7 @@ import { useBackClose } from '../../../hooks/useBackClose';
 import { BellDot, CalendarDays, Pause, Play, Pencil, Trash2, Plus, Loader2, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
-import { SectionCard, MetricCard, MetricChip } from '../primitives';
+import { SectionCard, MetricCard, MetricChip, KpiBadgeCard } from '../primitives';
 import { ModalShell } from '../../ui/ModalShell';
 import { Button } from '../../ui/Button';
 import { Input, Select } from '../../ui/Field';
@@ -338,22 +338,9 @@ export default function RecurrentesTab({
     <div className="space-y-6">
       {/* ── Desktop KPI row (icon-badge style) ──────────────────────────── */}
       <div className="hidden lg:grid lg:grid-cols-3 gap-4">
-        {[
-          { label: 'Impacto mensual', value: formatMonto(summary.impactoMensualArs, 'ARS'), tone: summary.impactoMensualArs < 0 ? 'danger' as const : undefined, Icon: CalendarDays },
-          { label: 'Próximo vencimiento', value: summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—', sub: summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined, tone: undefined, Icon: BellDot },
-          { label: 'Activos', value: String(summary.activos), tone: undefined, Icon: Repeat },
-        ].map(({ label, value, sub, tone, Icon }) => (
-          <div key={label} className="flex items-center gap-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-4 shadow-[var(--app-shadow-sm)]">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--app-surface-3)] flex items-center justify-center">
-              <Icon className="w-5 h-5 text-[var(--app-text-3)]" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs text-[var(--app-text-3)] mb-0.5">{label}</div>
-              <div className={`text-xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]'}`}>{value}</div>
-              {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5">{sub}</div>}
-            </div>
-          </div>
-        ))}
+        <KpiBadgeCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} tone={summary.impactoMensualArs < 0 ? 'danger' : undefined} icon={CalendarDays} />
+        <KpiBadgeCard label="Próximo vencimiento" value={summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—'} sub={summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined} icon={BellDot} />
+        <KpiBadgeCard label="Activos" value={String(summary.activos)} icon={Repeat} />
       </div>
 
       {/* ── Mobile KPI cards ─────────────────────────────────────────────── */}

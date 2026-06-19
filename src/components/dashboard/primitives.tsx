@@ -91,7 +91,7 @@ export function MetricChip({ label, value, icon: Icon, onClick, navLabel }: { la
 
 export function SectionCard({ title, description, children, icon: Icon, action }: { title: string; description?: string; children: ReactNode; icon?: LucideIcon; action?: ReactNode }) {
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl px-6 py-6 shadow-[var(--app-shadow-sm)]">
       <header className="mb-2 flex items-start justify-between gap-3">
         <div className="min-w-0 flex items-center gap-2">
           {Icon && <Icon className="w-4 h-4 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
@@ -104,6 +104,32 @@ export function SectionCard({ title, description, children, icon: Icon, action }
       )}
       <div className="space-y-4">{children}</div>
     </section>
+  );
+}
+
+/** Horizontal KPI card with a square icon badge on the left and label+value on the right. */
+export function KpiBadgeCard({
+  label, value, sub, tone, icon: Icon,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: 'danger' | 'success';
+  icon: LucideIcon;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-4 shadow-[var(--app-shadow-sm)]">
+      <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--app-surface-3)] flex items-center justify-center">
+        <Icon className="w-5 h-5 text-[var(--app-text-3)]" aria-hidden="true" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs text-[var(--app-text-3)] mb-0.5">{label}</div>
+        <div className={`text-xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : tone === 'success' ? 'text-[var(--chart-income)]' : 'text-[var(--app-text-1)]'}`}>
+          {value}
+        </div>
+        {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5 truncate">{sub}</div>}
+      </div>
+    </div>
   );
 }
 

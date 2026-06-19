@@ -429,6 +429,179 @@ Nunca color decorativo en un ícono. La Regla del Color Semántico se aplica igu
 
 **La Regla del Ícono Silencioso.** El ícono apoya al texto; nunca reemplaza la etiqueta para el 100% de los casos. Todo ícono interactivo tiene `aria-label` en el botón padre. Todo ícono decorativo tiene `aria-hidden="true"`.
 
+## 10. Implementation conventions (source of truth para código)
+
+### Tokens de color — reglas de uso en código
+
+| Caso de uso | Token correcto | Prohibido |
+|---|---|---|
+| Fondo de tarjeta / panel | `bg-[var(--app-surface-1)]` | `bg-white` |
+| Fondo anidado / thead / hover | `bg-[var(--app-surface-2)]` | `bg-gray-*` |
+| Fondo icon badge | `bg-[var(--app-surface-3)]` | colores fijos |
+| Fondo de página | `bg-[var(--app-canvas)]` | `bg-white`, gradientes por tarjeta |
+| Texto primario | `text-[var(--app-text-1)]` | `text-gray-900` |
+| Texto secundario | `text-[var(--app-text-2)]` | `text-gray-500` |
+| Texto hint / icon | `text-[var(--app-text-3)]` | `text-gray-400` |
+| Borde default | `border-[var(--app-border)]` | `border-gray-200` |
+| Borde activo / strong | `border-[var(--app-border-strong)]` | |
+| Acento primario | `bg-[var(--app-strong-surface)]` / `text-[var(--app-strong-text)]` | `bg-green-*` |
+| Monto ingreso | `text-[var(--chart-income)]` | `text-green-*` |
+| Monto gasto | `text-[var(--chart-expense)]` | `text-red-*` |
+
+**Regla absoluta:** nunca `bg-white` en componentes del dashboard — rompe dark mode. El único lugar donde `bg-white` puede aparecer es en `src/components/ui/` con su correspondiente `dark:bg-[var(--app-surface-*)]`.
+
+### Padding unificado de tarjetas
+
+| Componente | Padding | Notas |
+|---|---|---|
+| `MetricCard` | `px-5 py-4` (default), `px-6 py-5` (hero) | Primitivo en `primitives.tsx` |
+| `KpiBadgeCard` | `px-5 py-4` | Primitivo en `primitives.tsx` |
+| `SectionCard` | `px-6 py-6` | Primitivo en `primitives.tsx` |
+| `CompanyDetailPanel` header/body | `px-5 py-4` | |
+| Toolbar de tabla | `px-4 py-3` | |
+| Celda de tabla (primera/última col) | `px-4 py-2.5` / `px-4 py-3` | |
+| Celda de tabla (col interior) | `px-3 py-2.5` / `px-3 py-3` | |
+| Footer de paginación | `px-4 py-3` | |
+| Detalle panel header | `px-5 py-4` | |
+| Detalle panel body | `px-5 py-4` | |
+
+### Componentes compartidos en `primitives.tsx`
+
+#### `MetricCard` — KPI estándar
+Uso: ResumenTab (4-col grid), ResumenTab proyección, RecurrentesTab mobile.
+
+```tsx
+<MetricCard
+  label="Ingresos del mes"
+  value="$ 45.000"
+  tone="success"          // 'neutral' | 'success' | 'danger' | 'warning'
+  icon={TrendingUp}       // LucideIcon — opcional
+  delta={{ text: '+12% vs ant.', tone: 'success' }}  // opcional
+  sub="3 empresas"        // opcional
+  onClick={() => nav('ingresos')}  // → touch card con shadow-md + chevron
+  navLabel="Ver ingresos"
+/>
+```
+
+#### `KpiBadgeCard` — KPI con badge de ícono
+Uso: EmpresasTab y RecurrentesTab (3-col grid desktop). NO usar en mobile.
+
+```tsx
+<KpiBadgeCard
+  label="Empresas activas"
+  value="10"
+  tone="danger"           // opcional: 'danger' | 'success'
+  sub="mayor deuda: Delta"
+  icon={Building2}        // LucideIcon
+/>
+```
+
+Padding: `px-5 py-4`. Icon badge: `h-10 w-10 rounded-xl bg-[var(--app-surface-3)]`.
+
+#### `SectionCard` — contenedor de sección
+Uso: ResumenTab, EmpresasTab mobile, RecurrentesTab mobile, todas las secciones de Configuración.
+
+```tsx
+<SectionCard
+  title="Resumen por frecuencia"
+  description="Impacto mensual estimado."
+  icon={Repeat}           // opcional
+  action={<Button>...</Button>}  // opcional, va en el header derecho
+>
+  {children}
+</SectionCard>
+```
+
+Fondo: `var(--app-surface-1)`. Padding: `px-6 py-6`. **Ya no usa `bg-white`.**
+
+### Sticky headers
+
+Los headers sticky (filtros, toolbar) usan `bg-[var(--app-canvas)]`, no `bg-white`.
+
+```tsx
+<div className="lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-canvas)] ...">
+```
+
+### Badges de estado
+
+```tsx
+// Activo / Éxito
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-green-surface)] text-[var(--app-green-text)]">
+  Activo
+</span>
+
+// Pausado / Advertencia  
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[color-mix(in_srgb,var(--app-amber-text)_12%,var(--app-surface-2))] text-[var(--app-amber-text)]">
+  Pausado
+</span>
+
+// Neutro
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-2)]">
+  Pendiente
+</span>
+```
+
+### Progress bars
+
+```tsx
+<div className="h-1 bg-[var(--app-surface-3)] rounded-full overflow-hidden">
+  <div
+    className="h-1 rounded-full transition-all duration-300"
+    style={{ width: `${pct}%`, background: 'var(--chart-income)' }}
+  />
+</div>
+```
+
+### Tipo de color de monto
+
+```tsx
+// Ingreso
+<span className="text-[var(--chart-income)] font-semibold tabular-nums">
+  +$ 45.000
+</span>
+
+// Gasto (usar − U+2212, no guión)
+<span className="text-[var(--chart-expense)] font-semibold tabular-nums">
+  −$ 12.000
+</span>
+```
+
+### Tabla estándar
+
+```tsx
+<table className="w-full text-sm">
+  <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
+    <tr>
+      <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">
+        Empresa
+      </th>
+      <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">
+        Saldo
+      </th>
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-[var(--app-border)]">
+    <tr className="cursor-pointer transition-colors hover:bg-[var(--app-surface-2)]">
+      <td className="px-4 py-3">...</td>
+      <td className="px-3 py-3 text-right">...</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+### Footer de paginación
+
+```tsx
+<div className="border-t border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 flex items-center justify-between shrink-0">
+  <span className="text-xs text-[var(--app-text-3)]">
+    Mostrando X a Y de Z empresas
+  </span>
+  <div className="flex items-center gap-1">
+    {/* ChevronLeft / page buttons / ChevronRight */}
+  </div>
+</div>
+```
+
 ## 10. Do's and Don'ts
 
 ### Do:

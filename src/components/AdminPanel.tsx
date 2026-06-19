@@ -15,9 +15,12 @@ import {
   Shield,
   ShieldCheck,
   Trash2,
+  UserCheck,
   UserPlus,
+  Users,
   XCircle,
 } from "lucide-react";
+import { KpiBadgeCard, SectionCard } from "./dashboard/primitives";
 import { toast } from "sonner";
 
 import {
@@ -502,17 +505,10 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
 
           {/* KPI row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Total", value: kpiCounts.total, cls: "" },
-              { label: "Activos", value: kpiCounts.active, cls: "border-green-300 bg-green-50 text-green-800" },
-              { label: "Pausados", value: kpiCounts.paused, cls: "border-amber-300 bg-amber-50 text-[var(--app-amber-text)]" },
-              { label: "Bloqueados", value: kpiCounts.blocked, cls: "border-red-300 bg-red-50 text-red-800" },
-            ].map(({ label, value, cls }) => (
-              <div key={label} className={`rounded-xl border px-4 py-3 ${cls || "border-[var(--app-border-strong)] bg-[var(--app-surface-1)]"}`}>
-                <div className="text-2xl font-bold">{value}</div>
-                <div className="text-xs uppercase tracking-widest mt-0.5 opacity-70">{label}</div>
-              </div>
-            ))}
+            <KpiBadgeCard label="Total" value={String(kpiCounts.total)} icon={Users} />
+            <KpiBadgeCard label="Activos" value={String(kpiCounts.active)} icon={UserCheck} tone={kpiCounts.active > 0 ? 'success' : undefined} />
+            <KpiBadgeCard label="Pausados" value={String(kpiCounts.paused)} icon={Pause} tone={kpiCounts.paused > 0 ? 'warning' : undefined} />
+            <KpiBadgeCard label="Bloqueados" value={String(kpiCounts.blocked)} icon={Ban} tone={kpiCounts.blocked > 0 ? 'danger' : undefined} />
           </div>
 
           {/* Search + role filter */}
@@ -532,7 +528,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as AppRole | "all")}
               aria-label="Filtrar por rol"
-              className="rounded-md border border-[var(--app-border-strong)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white sm:w-48"
+              className="rounded-md border border-[var(--app-border-strong)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-[var(--app-surface-1)] sm:w-48"
             >
               <option value="all">Todos los roles</option>
               <option value="member">{APP_ROLE_LABELS.member}</option>
@@ -694,7 +690,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               value={role}
               onChange={(e) => setRole(e.target.value as AppRole)}
               aria-label="Rol de la invitación"
-              className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white"
+              className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-[var(--app-surface-1)]"
             >
               <option value="member">{APP_ROLE_LABELS.member}</option>
               <option value="admin">{APP_ROLE_LABELS.admin}</option>
@@ -734,7 +730,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
                     "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
                     isSelected
                       ? "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]"
-                      : "bg-white text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-neutral-500",
+                      : "bg-[var(--app-surface-1)] text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]",
                   ].join(" ")}
                 >
                   {INVITATION_STATUS_LABELS[status]}
@@ -866,15 +862,9 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
             <>
               <AiHealthCard />
               <EmailSection />
-              <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
-                <header className="mb-6">
-                  <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
-                  <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
-                    Registro de todos los emails transaccionales enviados por el sistema.
-                  </p>
-                </header>
+              <SectionCard title="Log de emails" description="Registro de todos los emails transaccionales enviados por el sistema.">
                 <EmailLogView />
-              </section>
+              </SectionCard>
             </>
           )}
         </>
@@ -988,7 +978,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
   const totalCount = node.members.length + node.pending_invitations.length;
 
   return (
-    <li className="border border-[var(--app-border)] rounded-xl bg-white shadow-[var(--app-shadow-sm)] overflow-hidden">
+    <li className="border border-[var(--app-border)] rounded-xl bg-[var(--app-surface-1)] shadow-[var(--app-shadow-sm)] overflow-hidden">
       <div className="px-4 py-3 border-b border-[var(--app-border)]">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {node.owner ? (
@@ -1062,7 +1052,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
             <li key={`i-${inv.id}`} className="px-4 py-2 flex items-center gap-2 min-w-0 bg-[var(--app-amber-surface)]/30">
               <span className="text-[var(--app-text-3)] text-xs">└─</span>
               <span className="text-sm text-[var(--app-text-1)] truncate flex-1 italic">{inv.email}</span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-400 text-[var(--app-text-1)] bg-white">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--app-border)] text-[var(--app-text-2)] bg-[var(--app-surface-2)]">
                 {inv.role === "editor" ? "Puede editar" : "Puede ver"}
               </span>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-[var(--app-amber-text)] border border-amber-300">
@@ -1179,15 +1169,15 @@ function UserDetailContent({
             const roleColor = {
               member: {
                 active: "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
-                inactive: "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-neutral-500",
+                inactive: "bg-[var(--app-surface-1)] border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]",
               },
               admin: {
                 active: "bg-blue-600 border-blue-600 text-white",
-                inactive: "bg-white border-blue-300 text-blue-800 hover:border-blue-500",
+                inactive: "bg-[var(--app-surface-1)] border-[color-mix(in_srgb,#3b82f6_40%,var(--app-border))] text-[color-mix(in_srgb,#3b82f6_80%,var(--app-text-1))] hover:border-[color-mix(in_srgb,#3b82f6_70%,var(--app-border))]",
               },
               superadmin: {
                 active: "bg-red-600 border-red-600 text-white",
-                inactive: "bg-white border-red-300 text-red-800 hover:border-red-500",
+                inactive: "bg-[var(--app-surface-1)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))] text-[var(--chart-expense)] hover:border-[color-mix(in_srgb,var(--chart-expense)_70%,var(--app-border))]",
               },
             }[r];
             const roleLabel = APP_ROLE_LABELS[r];
@@ -1383,9 +1373,9 @@ function StatusButton({ icon, label, active, onClick, disabled, tone }: StatusBu
     red: "bg-red-600 border-red-600 text-white shadow-md ring-2 ring-red-200",
   }[tone];
   const inactiveClass = {
-    green: "bg-white border-green-300 text-green-800 hover:border-green-400",
-    amber: "bg-white border-amber-300 text-[var(--app-amber-text)] hover:border-amber-400",
-    red: "bg-white border-red-300 text-red-800 hover:border-red-400",
+    green: "bg-[var(--app-surface-1)] border-[var(--app-green-border)] text-[var(--app-green-text)] hover:border-[color-mix(in_srgb,var(--app-green-text)_60%,var(--app-border))]",
+    amber: "bg-[var(--app-surface-1)] border-[color-mix(in_srgb,var(--app-amber-text)_40%,var(--app-border))] text-[var(--app-amber-text)] hover:border-[color-mix(in_srgb,var(--app-amber-text)_70%,var(--app-border))]",
+    red: "bg-[var(--app-surface-1)] border-[var(--app-red-border)] text-[var(--app-red-text)] hover:border-[color-mix(in_srgb,var(--app-red-text)_60%,var(--app-border))]",
   }[tone];
   return (
     <button

@@ -114,7 +114,7 @@ export function KpiBadgeCard({
   label: string;
   value: string;
   sub?: string;
-  tone?: 'danger' | 'success';
+  tone?: 'danger' | 'success' | 'warning';
   icon: LucideIcon;
 }) {
   return (
@@ -124,7 +124,7 @@ export function KpiBadgeCard({
       </div>
       <div className="min-w-0">
         <div className="text-xs text-[var(--app-text-3)] mb-0.5">{label}</div>
-        <div className={`text-xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : tone === 'success' ? 'text-[var(--chart-income)]' : 'text-[var(--app-text-1)]'}`}>
+        <div className={`text-xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : tone === 'success' ? 'text-[var(--chart-income)]' : tone === 'warning' ? 'text-[var(--app-amber-text)]' : 'text-[var(--app-text-1)]'}`}>
           {value}
         </div>
         {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5 truncate">{sub}</div>}

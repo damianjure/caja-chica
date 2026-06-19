@@ -75,7 +75,7 @@ function SortableCard({ id, children }: { id: string; children: React.ReactNode;
         ref={setActivatorNodeRef}
         type="button"
         aria-label="Reordenar tarjeta"
-        className="absolute top-2.5 right-2.5 z-10 flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]"
+        className="absolute top-2.5 right-2.5 z-10 flex h-6 w-6 items-center justify-center rounded opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-50 transition-opacity cursor-grab active:cursor-grabbing text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]"
         {...attributes}
         {...listeners}
       >

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ComponentType } from "react";
+import { User, SlidersHorizontal, Users, Tag, Plug, ShieldCheck } from "lucide-react";
 import { type AppViewer, type DashboardMembersResponse } from "../../../services/api";
 import type { Empresa } from "../../../services/api";
 import { type ThemePreference } from "../../ThemeToggle";
@@ -9,6 +10,8 @@ import { CuentaIdentidadSection } from "./configuracion/CuentaIdentidadSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
 import { SectionCard } from "../primitives";
+
+type SectionId = "perfil" | "preferencias" | "equipo" | "categorias" | "integraciones" | "seguridad";
 
 interface ConfiguracionTabProps {
   viewer: AppViewer;
@@ -45,6 +48,7 @@ export default function ConfiguracionTab({
   onSetDarkPalette,
   onDemoDeleted,
 }: ConfiguracionTabProps) {
+  const [activeSection, setActiveSection] = useState<SectionId>("perfil");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -70,34 +74,23 @@ export default function ConfiguracionTab({
     setTimeout(() => setNotice(null), 3000);
   };
 
-  return (
-    <div className="stack-relaxed">
-      {error && (
-        <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-sm text-[var(--chart-expense)]">{error}</div>
-      )}
-      {notice && (
-        <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
-      )}
+  const ALL_SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ className?: string }>; visible: boolean }[] = [
+    { id: "perfil",         label: "Perfil",             icon: User,              visible: true },
+    { id: "preferencias",   label: "Preferencias",       icon: SlidersHorizontal, visible: true },
+    { id: "equipo",         label: "Equipo y permisos",  icon: Users,             visible: canManage },
+    { id: "categorias",     label: "Categorías",         icon: Tag,               visible: canManageCategorias },
+    { id: "integraciones",  label: "Integraciones",      icon: Plug,              visible: canManage && canConnectDrive },
+    { id: "seguridad",      label: "Seguridad y datos",  icon: ShieldCheck,       visible: true },
+  ];
 
-      {/*
-        Layout fila superior: 2 columnas explícitas
-        Col izq: Equipo → Cuenta (identidad) → Sesiones activas
-        Col der: Preferencias
-      */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        {/* Columna izquierda */}
-        <div className="space-y-6">
-          {canManage && (
-            <MiembrosSection
-              viewer={viewer}
-              data={data}
-              loading={loading}
-              onRefresh={onRefresh}
-              showNotice={showNotice}
-              setError={setError}
-            />
-          )}
+  const sections = ALL_SECTIONS.filter((s) => s.visible);
 
+  const activeId = sections.some((s) => s.id === activeSection) ? activeSection : sections[0]?.id ?? "perfil";
+
+  const sectionContent = (id: SectionId) => {
+    switch (id) {
+      case "perfil":
+        return (
           <CuentaIdentidadSection
             viewer={viewer}
             selfMembership={selfMembership}
@@ -105,10 +98,9 @@ export default function ConfiguracionTab({
             setError={setError}
             onDemoDeleted={onDemoDeleted}
           />
-        </div>
-
-        {/* Columna derecha */}
-        <div className="space-y-6">
+        );
+      case "preferencias":
+        return (
           <PreferenciasSection
             viewer={viewer}
             companies={companies}
@@ -121,31 +113,94 @@ export default function ConfiguracionTab({
             showNotice={showNotice}
             setError={setError}
           />
-        </div>
-      </div>
-
-      {/* Fila inferior: Categorías + Vinculación (ya estaba bien) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        {canManageCategorias && <CategoriasSection />}
-
-        {canManage && canConnectDrive && (
+        );
+      case "equipo":
+        return (
+          <MiembrosSection
+            viewer={viewer}
+            data={data}
+            loading={loading}
+            onRefresh={onRefresh}
+            showNotice={showNotice}
+            setError={setError}
+          />
+        );
+      case "categorias":
+        return <CategoriasSection />;
+      case "integraciones":
+        return (
           <SectionCard title="Google Drive" description="Conectá Google Drive para guardar tus informes.">
             <DriveSection />
           </SectionCard>
-        )}
+        );
+      case "seguridad":
+        return (
+          <CuentaSection
+            viewer={viewer}
+            selfMembership={selfMembership}
+            isNonOwnerMember={isNonOwnerMember}
+            canConnectDrive={canConnectDrive}
+            onSignOut={onSignOut}
+            onDisconnectDrive={onDisconnectDrive}
+            showNotice={showNotice}
+            setError={setError}
+          />
+        );
+    }
+  };
+
+  const navItemClass = (id: SectionId) =>
+    `flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+      activeId === id
+        ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-medium"
+        : "text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-text-1)]"
+    }`;
+
+  const pillClass = (id: SectionId) =>
+    `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+      activeId === id
+        ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)]"
+        : "text-[var(--app-text-2)] hover:text-[var(--app-text-1)]"
+    }`;
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-sm text-[var(--chart-expense)]">{error}</div>
+      )}
+      {notice && (
+        <div className="rounded-xl border border-[var(--app-green-border)] bg-[var(--app-green-surface)] px-4 py-3 text-sm text-[var(--chart-income)]">{notice}</div>
+      )}
+
+      {/* Mobile: horizontal pill bar */}
+      <div className="flex overflow-x-auto gap-1 pb-1 -mx-1 px-1 lg:hidden">
+        {sections.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => setActiveSection(id)} className={pillClass(id)}>
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Acceso y datos: full-width */}
-      <CuentaSection
-        viewer={viewer}
-        selfMembership={selfMembership}
-        isNonOwnerMember={isNonOwnerMember}
-        canConnectDrive={canConnectDrive}
-        onSignOut={onSignOut}
-        onDisconnectDrive={onDisconnectDrive}
-        showNotice={showNotice}
-        setError={setError}
-      />
+      {/* Mobile: active section */}
+      <div className="lg:hidden">
+        {sectionContent(activeId)}
+      </div>
+
+      {/* Desktop: sticky left nav + content */}
+      <div className="hidden lg:flex gap-8 items-start">
+        <nav className="w-48 shrink-0 sticky top-4 space-y-0.5">
+          {sections.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setActiveSection(id)} className={navItemClass(id)}>
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="flex-1 min-w-0">
+          {sectionContent(activeId)}
+        </div>
+      </div>
     </div>
   );
 }

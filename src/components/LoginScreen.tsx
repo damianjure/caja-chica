@@ -14,6 +14,12 @@ function GoogleIcon() {
   );
 }
 
+const CHANNELS = [
+  { icon: Send, label: "Telegram" },
+  { icon: Mic, label: "Voz" },
+  { icon: Camera, label: "Foto" },
+] as const;
+
 interface LoginScreenProps {
   isLoading: boolean;
   theme: ThemeMode;
@@ -38,24 +44,23 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const [showHelp, setShowHelp] = useState(false);
   return (
-    <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--app-text-1)] font-sans flex flex-col items-center justify-center p-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
       </div>
-      <div className="w-full max-w-md">
-        <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 space-y-6">
-          <div className="relative">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <BrandMark
-                variant="login"
-                className="h-28 w-28 rounded-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.20)]"
-              />
-              <h1 className="sr-only">Caja Chica</h1>
-            </div>
+
+      <div className="w-full max-w-[420px]">
+        <div className="rounded-[18px] border border-[var(--app-border)] bg-[var(--app-surface-1)] shadow-[var(--app-shadow-panel)] px-9 py-10 space-y-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <BrandMark
+              variant="login"
+              className="h-24 w-24 rounded-none drop-shadow-[0_12px_22px_rgba(30,27,22,0.18)]"
+            />
+            <h1 className="sr-only">Caja Chica</h1>
           </div>
 
           {blocked ? (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm text-center">
               <p className="font-semibold text-[var(--app-text-1)]">Esta cuenta de Google no tiene acceso.</p>
               <p className="text-[var(--app-text-2)]">
                 La invitación es para otra dirección. Salí y entrá con la cuenta exacta
@@ -63,16 +68,32 @@ export function LoginScreen({
               </p>
             </div>
           ) : (
-            <div className="space-y-3 text-sm text-[var(--app-text-2)] text-center">
-              <p>
-                Registrá gastos e ingresos hablando normal.
-                <br />
-                <span className="text-[var(--app-text-3)]">"pagué 4500 de luz" y listo.</span>
+            <div className="space-y-4">
+              <p className="text-center text-sm text-[var(--app-text-2)]">
+                Registrá gastos e ingresos como hablás.
               </p>
-              <div className="flex items-center justify-center gap-5 text-xs text-[var(--app-text-3)] pointer-events-none select-none" aria-hidden="true">
-                <span className="inline-flex items-center gap-1.5 opacity-60"><Send className="h-3.5 w-3.5 shrink-0" /> Telegram</span>
-                <span className="inline-flex items-center gap-1.5 opacity-60"><Mic className="h-3.5 w-3.5 shrink-0" /> Voz</span>
-                <span className="inline-flex items-center gap-1.5 opacity-60"><Camera className="h-3.5 w-3.5 shrink-0" /> Foto</span>
+              <div className="flex justify-center">
+                <span className="inline-block rounded-[14px_14px_14px_4px] border border-[var(--app-border)] bg-[var(--app-surface-2)] px-[18px] py-2.5 text-[15px] italic text-[var(--app-text-2)]">
+                  "pagué 4500 de luz"
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-[var(--app-border)]" />
+                <span className="text-xs text-[var(--app-text-3)]">Desde donde quieras</span>
+                <span className="h-px flex-1 bg-[var(--app-border)]" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5" aria-hidden="true">
+                {CHANNELS.map(({ icon: Icon, label }) => (
+                  <div
+                    key={label}
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] py-3.5 text-[var(--app-text-3)]"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="text-sm">{label}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -80,7 +101,7 @@ export function LoginScreen({
           <button
             onClick={() => void onLogin()}
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 rounded-md bg-white border border-[var(--app-border-strong)] px-5 py-3 text-[var(--app-text-1)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-[var(--app-border-strong)] bg-[var(--app-surface-1)] px-5 py-3.5 text-[15px] font-semibold text-[var(--app-text-1)] shadow-[var(--app-shadow-md)] hover:border-[var(--app-text-2)] disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
               <>
@@ -104,13 +125,13 @@ export function LoginScreen({
           {secondaryActionLabel && onSecondaryAction && (
             <button
               onClick={() => void onSecondaryAction()}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-md border border-[var(--app-border)] px-5 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)] transition-colors"
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-[var(--app-border)] px-5 py-3 text-[var(--app-text-2)] font-medium hover:border-[var(--app-text-2)] transition-colors"
             >
               {secondaryActionLabel}
             </button>
           )}
 
-          <div className="pt-2 text-center">
+          <div className="pt-1 text-center">
             <button
               type="button"
               onClick={() => setShowHelp((v) => !v)}
@@ -120,7 +141,7 @@ export function LoginScreen({
               ¿Problemas para entrar?
             </button>
             {showHelp && (
-              <div className="mt-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 text-left text-xs text-[var(--app-text-2)] leading-relaxed space-y-1.5">
+              <div className="mt-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3 text-left text-xs text-[var(--app-text-2)] leading-relaxed space-y-1.5">
                 <p>· Entrá con el <strong>mismo email</strong> con el que te invitaron.</p>
                 <p>· ¿No te invitaron todavía? Pedile al dueño del dashboard que te sume desde <em>Equipo</em>.</p>
                 <p>· ¿Sigue sin andar? Escribinos a <a href="mailto:hola@damianjure.com" className="underline">hola@damianjure.com</a>.</p>
@@ -128,6 +149,10 @@ export function LoginScreen({
             )}
           </div>
         </div>
+
+        <p className="mt-6 text-center text-xs text-[var(--app-text-3)]">
+          © 2026 Caja Chica · Privacidad · Términos
+        </p>
       </div>
     </div>
   );

@@ -1,6 +1,15 @@
 
-import { useMemo, useState } from 'react';
-import { BarChart2, TrendingUp, TrendingDown, Building2, Repeat } from 'lucide-react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { BarChart2, TrendingUp, TrendingDown, Repeat, GripVertical } from 'lucide-react';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable,
+  arrayMove, rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { ChartCard, HorizontalBarList, WaterfallChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
@@ -40,6 +49,43 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
+const CARD_IDS = ['utilidad', 'ingresos', 'gastos', 'recurrentes'] as const;
+type CardId = (typeof CARD_IDS)[number];
+
+function loadCardOrder(): CardId[] {
+  try {
+    const raw = localStorage.getItem('resumen-card-order');
+    if (raw) {
+      const parsed = JSON.parse(raw) as CardId[];
+      if (Array.isArray(parsed) && parsed.length === CARD_IDS.length && CARD_IDS.every((id) => parsed.includes(id))) return parsed;
+    }
+  } catch { /* ignore */ }
+  return [...CARD_IDS];
+}
+
+function SortableCard({ id, children }: { id: string; children: React.ReactNode; key?: React.Key | null }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`relative group${isDragging ? ' opacity-50 z-50' : ''}`}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        aria-label="Reordenar tarjeta"
+        className="absolute top-2.5 right-2.5 z-10 flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-3.5 h-3.5" aria-hidden="true" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
 function CompanyFilterPills({
   companyNames, hiddenCompanies, onReset, onToggle,
 }: {
@@ -71,6 +117,23 @@ function CompanyFilterPills({
 export default function ResumenTab(props: ResumenTabProps) {
   const [chartCurrency, setChartCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [hiddenCompanies, setHiddenCompanies] = useState<Set<string>>(new Set());
+  const [cardOrder, setCardOrder] = useState<CardId[]>(loadCardOrder);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setCardOrder((prev) => {
+        const next = arrayMove(prev, prev.indexOf(active.id as CardId), prev.indexOf(over.id as CardId));
+        localStorage.setItem('resumen-card-order', JSON.stringify(next));
+        return next;
+      });
+    }
+  }, []);
 
   const nav = (m: 'ingresos' | 'gastos' | 'utilidad' | 'usd' | 'empresas' | 'recurrentes') =>
     props.onMetricNavigate ? () => props.onMetricNavigate!(m) : undefined;
@@ -125,47 +188,67 @@ export default function ResumenTab(props: ResumenTabProps) {
 
   const recentMovements = props.history.slice(0, 8);
 
+  const cardDefs: Record<CardId, React.ReactNode> = {
+    utilidad: (
+      <MetricCard
+        label="Saldo total"
+        value={props.arsNeto}
+        tone={props.netPositive ? 'success' : 'danger'}
+        critical={!props.netPositive}
+        sub={`${props.companyCount} empresa${props.companyCount !== 1 ? 's' : ''}`}
+        onClick={nav('utilidad')}
+        navLabel="Ver todos los movimientos"
+      />
+    ),
+    ingresos: (
+      <MetricCard
+        label="Ingresos del mes"
+        value={props.arsIngreso}
+        tone="success"
+        icon={TrendingUp}
+        delta={ingDelta}
+        onClick={nav('ingresos')}
+        navLabel="Ver ingresos en movimientos"
+      />
+    ),
+    gastos: (
+      <MetricCard
+        label="Gastos del mes"
+        value={props.arsEgreso}
+        tone="danger"
+        icon={TrendingDown}
+        delta={gasDelta}
+        onClick={nav('gastos')}
+        navLabel="Ver gastos en movimientos"
+      />
+    ),
+    recurrentes: (
+      <MetricCard
+        label="Recurrentes activos"
+        value={String(props.recurrentesCount)}
+        tone="neutral"
+        icon={Repeat}
+        sub={nextOccurrence ? `Próximo: ${nextOccurrence.date.slice(5)}` : undefined}
+        onClick={nav('recurrentes')}
+        navLabel="Ver recurrentes"
+      />
+    ),
+  };
+
   return (
     <div className="space-y-6">
-      {/* 4-KPI row */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <MetricCard
-          label="Saldo total"
-          value={props.arsNeto}
-          tone={props.netPositive ? 'success' : 'danger'}
-          critical={!props.netPositive}
-          sub={`${props.companyCount} empresa${props.companyCount !== 1 ? 's' : ''}`}
-          onClick={nav('utilidad')}
-          navLabel="Ver todos los movimientos"
-        />
-        <MetricCard
-          label="Ingresos del mes"
-          value={props.arsIngreso}
-          tone="success"
-          icon={TrendingUp}
-          delta={ingDelta}
-          onClick={nav('ingresos')}
-          navLabel="Ver ingresos en movimientos"
-        />
-        <MetricCard
-          label="Gastos del mes"
-          value={props.arsEgreso}
-          tone="danger"
-          icon={TrendingDown}
-          delta={gasDelta}
-          onClick={nav('gastos')}
-          navLabel="Ver gastos en movimientos"
-        />
-        <MetricCard
-          label="Recurrentes activos"
-          value={String(props.recurrentesCount)}
-          tone="neutral"
-          icon={Repeat}
-          sub={nextOccurrence ? `Próximo: ${nextOccurrence.date.slice(5)}` : undefined}
-          onClick={nav('recurrentes')}
-          navLabel="Ver recurrentes"
-        />
-      </div>
+      {/* 4-KPI row — reordenable con drag */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={cardOrder} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+            {cardOrder.map((id) => (
+              <SortableCard key={id} id={id}>
+                {cardDefs[id]}
+              </SortableCard>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Actividad reciente */}
       <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">

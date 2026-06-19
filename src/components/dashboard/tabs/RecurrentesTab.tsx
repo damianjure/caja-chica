@@ -306,9 +306,38 @@ export default function RecurrentesTab({
     );
   }
 
+  // Resumen por frecuencia (mensual-equivalent impact per frequency type)
+  const freqSummary = FRECUENCIA_OPTIONS.map((freq) => {
+    const items = recurrentes.filter((r) => r.frecuencia === freq && r.is_active);
+    const multiplier: Record<Frecuencia, number> = {
+      diario: 30, semanal: 4.33, quincenal: 2, mensual: 1, anual: 1 / 12,
+    };
+    const monthlyArs = items.reduce((acc, r) => {
+      const sign = r.tipo === 'egreso' ? -1 : 1;
+      return r.moneda === 'ARS' ? acc + sign * r.monto * multiplier[freq] : acc;
+    }, 0);
+    return { freq, count: items.length, monthlyArs };
+  }).filter((f) => f.count > 0);
+
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
+      {/* Desktop: compact 3-cell KPI row */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-3">
+        {[
+          { label: 'Impacto mensual', value: formatMonto(summary.impactoMensualArs, 'ARS'), tone: summary.impactoMensualArs < 0 },
+          { label: 'Próximo vencimiento', value: summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—', sub: summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined, tone: false },
+          { label: 'Activos', value: String(summary.activos), tone: false },
+        ].map(({ label, value, sub, tone }) => (
+          <div key={label} className="rounded-xl border border-[var(--app-border)] px-4 py-3">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">{label}</div>
+            <div className={`text-xl font-bold tabular-nums ${tone ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]'}`}>{value}</div>
+            {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5">{sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: full cards */}
+      <div className="space-y-3 lg:hidden">
         <MetricCard hero label="Impacto proyectado · 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} sub="con recurrentes activos" />
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard label="Impacto mensual" value={formatMonto(summary.impactoMensualArs, 'ARS')} sub="Promedio" tone={summary.impactoMensualArs < 0 ? 'danger' : 'success'} />
@@ -352,7 +381,67 @@ export default function RecurrentesTab({
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-[var(--app-border)] divide-y divide-[var(--app-border)]">
+          {/* Desktop: dense table */}
+          <div className="hidden lg:block overflow-hidden rounded-xl border border-[var(--app-border)]">
+            {filtered.length === 0 ? (
+              <p className="px-3.5 py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--app-surface-2)] border-b border-[var(--app-border)]">
+                  <tr>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Descripción</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Frecuencia</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Próxima</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Monto</th>
+                    {canWriteData && <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Acciones</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--app-border)]">
+                  {filtered.map((r) => (
+                    <tr key={r.id} className={`transition-colors hover:bg-[var(--app-surface-2)] ${r.is_active ? '' : 'opacity-60'}`}>
+                      <td className="px-3 py-2.5 min-w-0">
+                        <div className="font-medium text-xs text-[var(--app-text-1)] truncate max-w-[160px]">
+                          {r.descripcion || r.empresa_nombre || 'Recurrente'}
+                        </div>
+                        <div className="text-[11px] text-[var(--app-text-3)]">
+                          {r.tipo === 'egreso' ? 'Gasto' : 'Ingreso'}
+                          {!r.is_active && <span className="ml-1 text-[var(--app-text-3)]">· Pausado</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">
+                        {FRECUENCIA_LABELS[r.frecuencia]}
+                        {r.frecuencia === 'mensual' && r.day_of_month ? ` / día ${r.day_of_month}` : ''}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">{formatNextRun(r.next_run_at)}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className={`text-xs font-semibold tabular-nums ${r.tipo === 'egreso' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+                          {signedMonto(r)}
+                        </span>
+                      </td>
+                      {canWriteData && (
+                        <td className="px-2 py-1 text-right">
+                          <div className="flex items-center justify-end gap-0">
+                            <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar' : 'Activar'}>
+                              {togglingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : r.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            </button>
+                            <button onClick={() => setEditing(r)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors" title="Editar" aria-label="Editar">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Mobile: card list */}
+          <div className="lg:hidden overflow-hidden rounded-xl border border-[var(--app-border)] divide-y divide-[var(--app-border)]">
             {filtered.length === 0 && (
               <p className="px-3.5 py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
             )}
@@ -378,30 +467,13 @@ export default function RecurrentesTab({
                   </span>
                   {canWriteData && (
                     <div className="flex items-center gap-0.5">
-                      <button
-                        onClick={() => handleToggle(r.id)}
-                        disabled={togglingId === r.id}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
-                        title={r.is_active ? 'Pausar' : 'Activar'}
-                        aria-label={r.is_active ? 'Pausar recurrente' : 'Activar recurrente'}
-                      >
+                      <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar recurrente' : 'Activar recurrente'}>
                         {r.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
-                      <button
-                        onClick={() => setEditing(r)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors"
-                        title="Editar"
-                        aria-label="Editar recurrente"
-                      >
+                      <button onClick={() => setEditing(r)} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors" title="Editar" aria-label="Editar recurrente">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => setDeleteTarget(r.id)}
-                        disabled={deletingId === r.id}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50"
-                        title="Eliminar"
-                        aria-label="Eliminar recurrente"
-                      >
+                      <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar recurrente">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -456,6 +528,25 @@ export default function RecurrentesTab({
           </div>
         </SectionCard>
       </section>
+
+      {freqSummary.length > 0 && (
+        <SectionCard title="Resumen por frecuencia" description="Impacto mensual estimado (solo ARS activos).">
+          <div className="divide-y divide-[var(--app-border)]">
+            {freqSummary.map(({ freq, count, monthlyArs }) => (
+              <div key={freq} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[var(--app-text-1)]">{FRECUENCIA_LABELS[freq]}</span>
+                  <span className="text-xs text-[var(--app-text-3)]">{count} activo{count !== 1 ? 's' : ''}</span>
+                </div>
+                <span className={`text-sm font-semibold tabular-nums ${monthlyArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+                  {formatMonto(monthlyArs, 'ARS')}
+                  <span className="text-[11px] font-normal text-[var(--app-text-3)] ml-1">/mes</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {creating && (
         <RecurrenteModal

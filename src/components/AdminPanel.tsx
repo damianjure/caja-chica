@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { MaintenanceSection } from "./dashboard/tabs/configuracion/MaintenanceSection";
 import { EmailSection } from "./dashboard/tabs/configuracion/EmailSection";
 import { AiHealthCard } from "./AiHealthCard";
@@ -12,6 +11,7 @@ import {
   LogOut,
   MailCheck,
   Pause,
+  Search,
   Shield,
   ShieldCheck,
   Trash2,
@@ -95,7 +95,7 @@ const INVITATION_STATUS_LABELS: Record<string, string> = {
 };
 
 export function AdminPanel({ viewer }: AdminPanelProps) {
-  const [adminTab, setAdminTab] = useState<"usuarios" | "sistema">("usuarios");
+  const [adminTab, setAdminTab] = useState<"usuarios" | "invitaciones" | "sistema">("usuarios");
   const [users, setUsers] = useState<AppUser[]>([]);
   const [tree, setTree] = useState<AdminDashboardsTree | null>(null);
   const [invitations, setInvitations] = useState<AppInvitation[]>([]);
@@ -110,8 +110,17 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [invitationStatusFilter, setInvitationStatusFilter] = useState<string>("all");
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<AppRole | "all">("all");
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
 
   const isSuperadmin = viewer.role === "superadmin";
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -417,269 +426,461 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
     });
   };
 
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      !userSearch || u.email.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const kpiCounts = {
+    total: users.length,
+    active: users.filter((u) => u.status === "active").length,
+    paused: users.filter((u) => u.status === "paused").length,
+    blocked: users.filter((u) => u.status === "blocked").length,
+  };
+
+  const commonDetailProps = {
+    detail,
+    viewerId: viewer.id,
+    actingKey,
+    onStatusChange: requestStatusChange,
+    onForceLogout: requestForceLogout,
+    onRoleChange: requestRoleChange,
+    onRevokeTelegramLink: requestRevokeTelegramLink,
+    onDeleteAccount: requestDeleteAccount,
+  };
+
+  const filteredInvitations = invitations.filter((inv) => {
+    if (invitationStatusFilter === "all") return inv.status === "pending";
+    if (invitationStatusFilter === "expired") {
+      return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
+    }
+    if (invitationStatusFilter === "deleted") return inv.user_deleted === true;
+    if (invitationStatusFilter === "accepted") return inv.status === "accepted" && !inv.user_deleted;
+    return inv.status === invitationStatusFilter;
+  });
+
   return (
     <div className="space-y-6">
-    {/* Admin tabs */}
-    <div className="flex gap-1 border-b border-[var(--app-border)]">
-      {(["usuarios", "sistema"] as const).map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          onClick={() => setAdminTab(tab)}
-          className={[
-            "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-            adminTab === tab
-              ? "border-[var(--app-text-1)] text-[var(--app-text-1)]"
-              : "border-transparent text-[var(--app-text-3)] hover:text-[var(--app-text-2)]",
-          ].join(" ")}
-        >
-          {tab === "usuarios" ? "Usuarios" : "Sistema"}
-        </button>
-      ))}
-    </div>
-
-    {adminTab === "usuarios" && (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
-          <Shield className="w-4 h-4" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold">Super Admin · Cuentas y dashboards</h2>
-          <p className="text-sm text-[var(--app-text-2)]">
-            Cada invitación crea una cuenta independiente con su propio dashboard. Solo vos ves esta tabla.
-          </p>
-        </div>
+      {/* Tab nav */}
+      <div className="flex gap-1 border-b border-[var(--app-border)]">
+        {(["usuarios", "invitaciones", "sistema"] as const).map((tab) => {
+          const labels = { usuarios: "Usuarios", invitaciones: "Invitaciones", sistema: "Sistema" };
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setAdminTab(tab)}
+              className={[
+                "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                adminTab === tab
+                  ? "border-[var(--app-text-1)] text-[var(--app-text-1)]"
+                  : "border-transparent text-[var(--app-text-3)] hover:text-[var(--app-text-2)]",
+              ].join(" ")}
+            >
+              {labels[tab]}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(160px,200px)_auto] items-center gap-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="usuario@empresa.com"
-          aria-label="Email a invitar"
-          className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
-        />
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as AppRole)}
-          aria-label="Rol de la invitación"
-          className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white"
-        >
-          <option value="member">{APP_ROLE_LABELS.member}</option>
-          <option value="admin">{APP_ROLE_LABELS.admin}</option>
-          {isSuperadmin && <option value="superadmin">{APP_ROLE_LABELS.superadmin}</option>}
-        </select>
-        <button
-          type="button"
-          onClick={() => void handleInvite()}
-          disabled={submitting || !email.trim()}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Invitando...
-            </>
+      {/* ── Usuarios tab ─────────────────────────────────────────────────── */}
+      {adminTab === "usuarios" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Usuarios</h2>
+              <p className="text-sm text-[var(--app-text-2)]">
+                Cuentas registradas en el sistema. Solo vos ves esta sección.
+              </p>
+            </div>
+          </div>
+
+          {/* KPI row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Total", value: kpiCounts.total, cls: "" },
+              { label: "Activos", value: kpiCounts.active, cls: "border-green-300 bg-green-50 text-green-800" },
+              { label: "Pausados", value: kpiCounts.paused, cls: "border-amber-300 bg-amber-50 text-[var(--app-amber-text)]" },
+              { label: "Bloqueados", value: kpiCounts.blocked, cls: "border-red-300 bg-red-50 text-red-800" },
+            ].map(({ label, value, cls }) => (
+              <div key={label} className={`rounded-xl border px-4 py-3 ${cls || "border-[var(--app-border-strong)] bg-[var(--app-surface-1)]"}`}>
+                <div className="text-2xl font-bold">{value}</div>
+                <div className="text-xs uppercase tracking-widest mt-0.5 opacity-70">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search + role filter */}
+          <div className="flex gap-2 flex-col sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--app-text-3)]" aria-hidden="true" />
+              <input
+                type="search"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Buscar por email…"
+                aria-label="Buscar usuarios"
+                className="w-full rounded-md border border-[var(--app-border-strong)] pl-8 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+              />
+            </div>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as AppRole | "all")}
+              aria-label="Filtrar por rol"
+              className="rounded-md border border-[var(--app-border-strong)] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white sm:w-48"
+            >
+              <option value="all">Todos los roles</option>
+              <option value="member">{APP_ROLE_LABELS.member}</option>
+              <option value="admin">{APP_ROLE_LABELS.admin}</option>
+              <option value="superadmin">{APP_ROLE_LABELS.superadmin}</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div className="py-8 flex items-center justify-center text-[var(--app-text-3)]">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
           ) : (
             <>
-              <UserPlus className="w-4 h-4" />
-              Invitar
+              {/* Desktop: two-column master-detail */}
+              <div className="hidden lg:flex border border-[var(--app-border)] rounded-xl overflow-hidden" style={{ minHeight: 400 }}>
+                {/* Left: users table */}
+                <div className="w-[320px] shrink-0 border-r border-[var(--app-border)] overflow-y-auto">
+                  {filteredUsers.length === 0 ? (
+                    <p className="px-4 py-6 text-sm text-[var(--app-text-3)] text-center">Sin resultados.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Email</th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--app-border)]">
+                        {filteredUsers.map((u) => {
+                          const badge = statusBadge[u.status] ?? statusBadge.active;
+                          const isSelf = u.user_id === viewer.id;
+                          const isSelected = selectedUserId === u.user_id;
+                          return (
+                            <tr
+                              key={u.user_id}
+                              onClick={() => setSelectedUserId(u.user_id)}
+                              className={`cursor-pointer transition-colors ${isSelected ? "bg-[var(--app-surface-3)]" : "hover:bg-[var(--app-surface-2)]"}`}
+                            >
+                              <td className="px-4 py-2.5 min-w-0">
+                                <div className="text-xs font-medium truncate max-w-[180px] text-[var(--app-text-1)]">
+                                  {u.email}
+                                  {isSelf && <span className="ml-1 text-[var(--app-text-3)]">(vos)</span>}
+                                </div>
+                                <div className="text-[11px] text-[var(--app-text-3)] mt-0.5">{APP_ROLE_LABELS[u.role as AppRole] ?? u.role}</div>
+                              </td>
+                              <td className="px-3 py-2.5 shrink-0">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] border ${badge.className}`}>
+                                  {badge.label}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Right: detail panel */}
+                <div className="flex-1 overflow-y-auto bg-[var(--app-surface-1)]">
+                  {!selectedUserId ? (
+                    <div className="flex flex-col items-center justify-center h-full py-16 text-center px-8">
+                      <ShieldCheck className="w-10 h-10 text-[var(--app-text-3)] mb-3" />
+                      <p className="text-sm text-[var(--app-text-3)]">Seleccioná un usuario para ver su detalle.</p>
+                    </div>
+                  ) : detailLoading || !detail ? (
+                    <div className="flex items-center justify-center h-full py-16">
+                      <Loader2 className="w-6 h-6 animate-spin text-[var(--app-text-3)]" />
+                    </div>
+                  ) : (
+                    <UserDetailPanel
+                      {...commonDetailProps}
+                      detail={detail}
+                      onClose={() => setSelectedUserId(null)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile: card list */}
+              <div className="lg:hidden space-y-3">
+                {filteredUsers.length === 0 ? (
+                  <p className="text-sm text-[var(--app-text-2)]">Sin resultados.</p>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const badge = statusBadge[u.status] ?? statusBadge.active;
+                    const isSelf = u.user_id === viewer.id;
+                    const clickable = isSuperadmin && !isSelf;
+                    return (
+                      <div key={u.user_id} className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm text-[var(--app-text-1)] [overflow-wrap:anywhere]">
+                            {u.email}
+                            {isSelf && <span className="ml-2 text-xs text-[var(--app-text-3)]">(vos)</span>}
+                          </div>
+                          <div className="text-xs text-[var(--app-text-2)] mt-1 flex items-center gap-2 flex-wrap">
+                            <span>{APP_ROLE_LABELS[u.role as AppRole] ?? u.role}</span>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs border ${badge.className}`}>{badge.label}</span>
+                          </div>
+                        </div>
+                        {clickable && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUserId(u.user_id)}
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border-strong)] px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
+                            aria-label={`Administrar ${u.email}`}
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            Administrar
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </>
           )}
-        </button>
-      </div>
 
-      {loading ? (
-        <div className="py-8 flex items-center justify-center text-[var(--app-text-3)]">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          {/* Mobile modal (hidden on desktop via JS) */}
+          {selectedUserId && !isDesktop && (
+            <UserDetailModal
+              loading={detailLoading}
+              detail={detail}
+              {...commonDetailProps}
+              onClose={() => setSelectedUserId(null)}
+            />
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <DashboardTreeView
-            tree={tree}
-            viewerId={viewer.id}
-            onSelectUser={setSelectedUserId}
-          />
+      )}
 
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-              Invitaciones
-            </h3>
-
-            {/* Status filter chips — REQ-S4.3 */}
-            <div
-              role="group"
-              aria-label="Filtrar por estado"
-              className="flex flex-wrap gap-2"
-            >
-              {(["all", "pending", "accepted", "revoked", "expired", "deleted"] as const).map((status) => {
-                const isSelected = invitationStatusFilter === status;
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setInvitationStatusFilter(status)}
-                    className={[
-                      "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
-                      isSelected
-                        ? "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]"
-                        : "bg-white text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-neutral-500",
-                    ].join(" ")}
-                  >
-                    {INVITATION_STATUS_LABELS[status]}
-                  </button>
-                );
-              })}
+      {/* ── Invitaciones tab ─────────────────────────────────────────────── */}
+      {adminTab === "invitaciones" && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
+              <UserPlus className="w-4 h-4" />
             </div>
+            <div>
+              <h2 className="text-xl font-bold">Invitaciones</h2>
+              <p className="text-sm text-[var(--app-text-2)]">
+                Gestioná el acceso a la aplicación. Cada invitación crea una cuenta independiente.
+              </p>
+            </div>
+          </div>
 
-            <div className="space-y-3">
-              {invitations
-                .filter((inv) => {
-                  if (invitationStatusFilter === "all") return inv.status === "pending";
-                  if (invitationStatusFilter === "expired") {
-                    return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
-                  }
-                  if (invitationStatusFilter === "deleted") return inv.user_deleted === true;
-                  if (invitationStatusFilter === "accepted") return inv.status === "accepted" && !inv.user_deleted;
-                  return inv.status === invitationStatusFilter;
-                })
-                .map((invitation) => {
-                  const canResend = invitation.status !== "accepted" && invitation.status !== "revoked";
-                  const isResending = resendingId === invitation.id;
-                  const reminderText = relativeTimeShort(invitation.last_reminder_at);
-                  return (
-                    <div
-                      key={invitation.id}
-                      className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 space-y-3"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-[var(--app-text-1)] [overflow-wrap:anywhere]">
-                            {invitation.email}
-                          </div>
-                          <div className="text-xs text-[var(--app-text-2)]">
-                            {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
-                          </div>
-                          {reminderText && (
-                            <div className="text-xs text-[var(--app-text-3)] mt-0.5">
-                              Último recordatorio: {reminderText}
-                            </div>
-                          )}
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {invitation.invited_by_email && (
-                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
-                                Invitada por {invitation.invited_by_email}
-                              </span>
-                            )}
-                            {invitation.membership_of && invitation.membership_of.length > 0 ? (
-                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
-                                Miembro de: {invitation.membership_of.join(", ")}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-3)]">
-                                Cuenta independiente
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* Resend button — hidden for accepted invitations */}
-                          {invitation.status !== "accepted" && (
-                            <button
-                              type="button"
-                              onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
-                              disabled={!canResend || isResending}
-                              className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
-                              aria-label={`Reenviar invitación a ${invitation.email}`}
-                              title="Reenviar"
-                            >
-                              {isResending
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <MailCheck className="w-4 h-4" />
-                              }
-                            </button>
-                          )}
-                          {invitation.status !== "accepted" && invitation.invite_url && (
-                            <button
-                              type="button"
-                              onClick={() => void handleCopy(invitation)}
-                              className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]"
-                              aria-label={`Copiar link de ${invitation.email}`}
-                              title="Copiar link"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                          )}
-                          {invitation.status === "pending" && (
-                            <button
-                              type="button"
-                              onClick={() => void handleRevokeInvitation(invitation.id)}
-                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
-                              aria-label={`Revocar invitación de ${invitation.email}`}
-                              title="Revocar"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                          {(invitation.status === "revoked" || invitation.status === "expired" || invitation.user_deleted) && (
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteInvitation(invitation.id)}
-                              className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
-                              aria-label={`Eliminar invitación de ${invitation.email}`}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+          {/* Invite form */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(160px,200px)_auto] items-center gap-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="usuario@empresa.com"
+              aria-label="Email a invitar"
+              className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+            />
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as AppRole)}
+              aria-label="Rol de la invitación"
+              className="rounded-md border border-[var(--app-border-strong)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white"
+            >
+              <option value="member">{APP_ROLE_LABELS.member}</option>
+              <option value="admin">{APP_ROLE_LABELS.admin}</option>
+              {isSuperadmin && <option value="superadmin">{APP_ROLE_LABELS.superadmin}</option>}
+            </select>
+            <button
+              type="button"
+              onClick={() => void handleInvite()}
+              disabled={submitting || !email.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Invitando...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  Invitar
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Status filter chips */}
+          <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-2">
+            {(["all", "pending", "accepted", "revoked", "expired", "deleted"] as const).map((status) => {
+              const isSelected = invitationStatusFilter === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setInvitationStatusFilter(status)}
+                  className={[
+                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                    isSelected
+                      ? "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] border-[var(--app-strong-surface)]"
+                      : "bg-white text-[var(--app-text-2)] border-[var(--app-border-strong)] hover:border-neutral-500",
+                  ].join(" ")}
+                >
+                  {INVITATION_STATUS_LABELS[status]}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Invitations list */}
+          <div className="space-y-3">
+            {filteredInvitations.map((invitation) => {
+              const canResend = invitation.status !== "accepted" && invitation.status !== "revoked";
+              const isResending = resendingId === invitation.id;
+              const reminderText = relativeTimeShort(invitation.last_reminder_at);
+              return (
+                <div
+                  key={invitation.id}
+                  className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 space-y-3"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-[var(--app-text-1)] [overflow-wrap:anywhere]">
+                        {invitation.email}
                       </div>
-                      {invitation.status !== "accepted" && invitation.invite_url && (
-                        <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
-                          {invitation.invite_url}
+                      <div className="text-xs text-[var(--app-text-2)]">
+                        {APP_ROLE_LABELS[invitation.role as AppRole] ?? invitation.role} · {VOCAB_STATUS[invitation.status as keyof typeof VOCAB_STATUS] ?? invitation.status}
+                      </div>
+                      {reminderText && (
+                        <div className="text-xs text-[var(--app-text-3)] mt-0.5">
+                          Último recordatorio: {reminderText}
                         </div>
                       )}
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {invitation.invited_by_email && (
+                          <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
+                            Invitada por {invitation.invited_by_email}
+                          </span>
+                        )}
+                        {invitation.membership_of && invitation.membership_of.length > 0 ? (
+                          <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-2)]">
+                            Miembro de: {invitation.membership_of.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-0.5 text-[11px] text-[var(--app-text-3)]">
+                            Cuenta independiente
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
-              {invitations.filter((inv) => {
-                if (invitationStatusFilter === "all") return inv.status === "pending";
-                if (invitationStatusFilter === "expired") {
-                  return inv.status === "pending" && inv.expires_at != null && inv.expires_at < new Date().toISOString();
-                }
-                if (invitationStatusFilter === "deleted") return inv.user_deleted === true;
-                if (invitationStatusFilter === "accepted") return inv.status === "accepted" && !inv.user_deleted;
-                return inv.status === invitationStatusFilter;
-              }).length === 0 && (
-                <p className="text-sm text-[var(--app-text-2)]">
-                  {invitationStatusFilter === "all"
-                    ? "No hay invitaciones pendientes."
-                    : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
-                </p>
-              )}
-            </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {invitation.status !== "accepted" && (
+                        <button
+                          type="button"
+                          onClick={() => canResend && !isResending ? void handleResend(invitation) : undefined}
+                          disabled={!canResend || isResending}
+                          className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label={`Reenviar invitación a ${invitation.email}`}
+                          title="Reenviar"
+                        >
+                          {isResending
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <MailCheck className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {invitation.status !== "accepted" && invitation.invite_url && (
+                        <button
+                          type="button"
+                          onClick={() => void handleCopy(invitation)}
+                          className="w-11 h-11 flex items-center justify-center rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)]"
+                          aria-label={`Copiar link de ${invitation.email}`}
+                          title="Copiar link"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
+                      {invitation.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRevokeInvitation(invitation.id)}
+                          className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
+                          aria-label={`Revocar invitación de ${invitation.email}`}
+                          title="Revocar"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      {(invitation.status === "revoked" || invitation.status === "expired" || invitation.user_deleted) && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteInvitation(invitation.id)}
+                          className="w-11 h-11 flex items-center justify-center rounded-md border border-red-300 text-[var(--chart-expense)] hover:border-red-400"
+                          aria-label={`Eliminar invitación de ${invitation.email}`}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {invitation.status !== "accepted" && invitation.invite_url && (
+                    <div className="text-xs text-[var(--app-text-2)] [overflow-wrap:anywhere] leading-relaxed">
+                      {invitation.invite_url}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filteredInvitations.length === 0 && (
+              <p className="text-sm text-[var(--app-text-2)]">
+                {invitationStatusFilter === "all"
+                  ? "No hay invitaciones pendientes."
+                  : `No hay invitaciones con estado "${INVITATION_STATUS_LABELS[invitationStatusFilter]}".`}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {selectedUserId && (
-        <UserDetailModal
-          loading={detailLoading}
-          detail={detail}
-          viewerId={viewer.id}
-          actingKey={actingKey}
-          onClose={() => setSelectedUserId(null)}
-          onStatusChange={requestStatusChange}
-          onForceLogout={requestForceLogout}
-          onRoleChange={requestRoleChange}
-          onRevokeTelegramLink={requestRevokeTelegramLink}
-          onDeleteAccount={requestDeleteAccount}
-        />
+      {/* ── Sistema tab ──────────────────────────────────────────────────── */}
+      {adminTab === "sistema" && (
+        <>
+          <MaintenanceSection
+            showNotice={(msg) => toast.success(msg)}
+            setError={(msg) => { if (msg) toast.error(msg); }}
+          />
+
+          {isSuperadmin && (
+            <>
+              <AiHealthCard />
+              <EmailSection />
+              <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+                <header className="mb-6">
+                  <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
+                  <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
+                    Registro de todos los emails transaccionales enviados por el sistema.
+                  </p>
+                </header>
+                <EmailLogView />
+              </section>
+            </>
+          )}
+        </>
       )}
 
+      {/* Global confirm dialog (used from any tab) */}
       {pendingConfirm && (
         <ConfirmModal
           title={pendingConfirm.title}
@@ -693,33 +894,6 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           onCancel={() => setPendingConfirm(null)}
         />
       )}
-    </section>
-    )}
-
-    {adminTab === "sistema" && (
-      <>
-        <MaintenanceSection
-          showNotice={(msg) => toast.success(msg)}
-          setError={(msg) => { if (msg) toast.error(msg); }}
-        />
-
-        {isSuperadmin && (
-          <>
-            <AiHealthCard />
-            <EmailSection />
-            <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
-              <header className="mb-6">
-                <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Log de emails</h2>
-                <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
-                  Registro de todos los emails transaccionales enviados por el sistema.
-                </p>
-              </header>
-              <EmailLogView />
-            </section>
-          </>
-        )}
-      </>
-    )}
     </div>
   );
 }
@@ -902,125 +1076,12 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
   );
 }
 
-interface UsersListProps {
-  users: AppUser[];
-  viewerId: string;
-  isSuperadmin: boolean;
-  actingKey: string | null;
-  onSelect: (userId: string) => void;
-  onQuickStatus: (userId: string, email: string, newStatus: ActionableStatus) => void;
-}
+// ── User detail content (shared between modal and inline panel) ───────────────
 
-function UsersList({ users, viewerId, isSuperadmin, actingKey, onSelect, onQuickStatus }: UsersListProps) {
-  return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-        Usuarios
-      </h3>
-      <div className="space-y-3">
-        {users.map((user) => {
-          const badge = statusBadge[user.status] ?? statusBadge.active;
-          const isSelf = user.user_id === viewerId;
-          const clickable = isSuperadmin && !isSelf;
-          return (
-            <div
-              key={user.user_id}
-              className="border border-[var(--app-border-strong)] rounded-xl px-4 py-3 min-w-0 flex flex-col gap-3"
-            >
-              <div className="flex items-center justify-between gap-3 min-w-0">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-[var(--app-text-1)] [overflow-wrap:anywhere]">
-                    {user.email}
-                    {isSelf && (
-                      <span className="ml-2 text-xs text-[var(--app-text-3)]">(vos)</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-[var(--app-text-2)] mt-1 flex items-center gap-2 flex-wrap">
-                    <span>{APP_ROLE_LABELS[user.role as AppRole] ?? user.role}</span>
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-xs border ${badge.className}`}
-                      aria-label={`Estado: ${badge.label}`}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                </div>
-                {clickable ? (
-                  <button
-                    type="button"
-                    onClick={() => onSelect(user.user_id)}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[var(--app-border-strong)] px-3 py-2 text-sm font-medium hover:border-[var(--app-text-2)]"
-                    aria-label={`Administrar ${user.email}`}
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Administrar
-                  </button>
-                ) : (
-                  <span
-                    className="shrink-0 text-xs text-[var(--app-text-3)] italic"
-                    title="No podés administrar tu propia cuenta"
-                  >
-                    protegido
-                  </span>
-                )}
-              </div>
-              {clickable && (
-                <div className="flex gap-2" role="group" aria-label={`Estado de ${user.email}`}>
-                  {([
-                    { status: "active" as const, icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: "Activar", tone: "green" },
-                    { status: "paused" as const, icon: <Pause className="w-3.5 h-3.5" />, label: "Pausar", tone: "amber" },
-                    { status: "blocked" as const, icon: <Ban className="w-3.5 h-3.5" />, label: "Bloquear", tone: "red" },
-                  ] as const).map(({ status, icon, label, tone }) => {
-                    const isCurrent = user.status === status;
-                    const isActing = actingKey === "status";
-                    const activeClass = {
-                      green: "bg-green-600 border-green-600 text-white ring-2 ring-green-200",
-                      amber: "bg-[var(--app-amber-surface)]0 border-amber-500 text-white ring-2 ring-amber-200",
-                      red: "bg-red-600 border-red-600 text-white ring-2 ring-red-200",
-                    }[tone];
-                    const inactiveClass = {
-                      green: "bg-white border-green-300 text-green-800 hover:border-green-400",
-                      amber: "bg-white border-amber-300 text-[var(--app-amber-text)] hover:border-amber-400",
-                      red: "bg-white border-red-300 text-red-800 hover:border-red-400",
-                    }[tone];
-                    return (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => !isCurrent && onQuickStatus(user.user_id, user.email, status)}
-                        disabled={isActing || isCurrent}
-                        aria-pressed={isCurrent}
-                        aria-label={isCurrent ? `${label} (estado actual)` : `Cambiar a ${label}`}
-                        className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-60 disabled:cursor-default ${isCurrent ? activeClass : inactiveClass}`}
-                      >
-                        {isActing && isCurrent ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          icon
-                        )}
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {users.length === 0 && (
-          <p className="text-sm text-[var(--app-text-2)]">Todavía no hay usuarios activos.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface UserDetailModalProps {
-  loading: boolean;
-  detail: AdminUserDetail | null;
+interface UserDetailContentProps {
+  detail: AdminUserDetail;
   viewerId: string;
   actingKey: string | null;
-  onClose: () => void;
   onStatusChange: (status: ActionableStatus) => void;
   onForceLogout: () => void;
   onRoleChange: (role: AppRole) => void;
@@ -1028,23 +1089,250 @@ interface UserDetailModalProps {
   onDeleteAccount: () => void;
 }
 
-function UserDetailModal({
-  loading,
+function UserDetailContent({
   detail,
   viewerId,
   actingKey,
-  onClose,
   onStatusChange,
   onForceLogout,
   onRoleChange,
   onRevokeTelegramLink,
   onDeleteAccount,
-}: UserDetailModalProps) {
+}: UserDetailContentProps) {
   const acting = actingKey !== null;
-  // Self-deletion and deleting a superadmin are blocked server-side
-  // (cannot_delete_self / last_superadmin). Hide the affordance so the modal
-  // can't even be opened for those targets.
-  const canDelete = !!detail && detail.user.user_id !== viewerId && detail.user.role !== "superadmin";
+  const canDelete = detail.user.user_id !== viewerId && detail.user.role !== "superadmin";
+
+  return (
+    <div className="space-y-6">
+      {detail.user.status_reason && (
+        <p className="text-xs text-[var(--app-text-2)] italic">
+          Motivo del último cambio: {detail.user.status_reason}
+        </p>
+      )}
+      {detail.user.status_changed_at && (
+        <p className="text-xs text-[var(--app-text-3)] -mt-4">
+          Último cambio: {new Date(detail.user.status_changed_at).toLocaleString()}
+        </p>
+      )}
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+        <Stat label="Movimientos" value={detail.stats.movimientos} />
+        <Stat label="Dashboards" value={detail.dashboards.length} />
+        <Stat label="Telegram" value={detail.telegramLinks.length} />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
+          Estado
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          <StatusButton
+            icon={<CheckCircle2 className="w-4 h-4" />}
+            label="Activo"
+            active={detail.user.status === "active"}
+            onClick={() => onStatusChange("active")}
+            disabled={acting}
+            tone="green"
+          />
+          <StatusButton
+            icon={<Pause className="w-4 h-4" />}
+            label="Pausado"
+            active={detail.user.status === "paused"}
+            onClick={() => onStatusChange("paused")}
+            disabled={acting}
+            tone="amber"
+          />
+          <StatusButton
+            icon={<Ban className="w-4 h-4" />}
+            label="Bloqueado"
+            active={detail.user.status === "blocked"}
+            onClick={() => onStatusChange("blocked")}
+            disabled={acting}
+            tone="red"
+          />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
+          Sesión
+        </h3>
+        <button
+          type="button"
+          onClick={onForceLogout}
+          disabled={acting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--app-border-strong)] px-3 py-2.5 text-sm font-medium text-[var(--app-text-1)] hover:border-[var(--app-text-2)] disabled:opacity-50"
+        >
+          <LogOut className="w-4 h-4" />
+          Forzar logout (cerrar sesiones)
+        </button>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
+          Rol del sistema
+        </h3>
+        <div className="flex gap-2 flex-wrap">
+          {(["member", "admin", "superadmin"] as AppRole[]).map((r) => {
+            const isCurrent = detail.user.role === r;
+            const isRoleActing = actingKey === "role";
+            const roleColor = {
+              member: {
+                active: "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
+                inactive: "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-neutral-500",
+              },
+              admin: {
+                active: "bg-blue-600 border-blue-600 text-white",
+                inactive: "bg-white border-blue-300 text-blue-800 hover:border-blue-500",
+              },
+              superadmin: {
+                active: "bg-red-600 border-red-600 text-white",
+                inactive: "bg-white border-red-300 text-red-800 hover:border-red-500",
+              },
+            }[r];
+            const roleLabel = APP_ROLE_LABELS[r];
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => !isCurrent && onRoleChange(r)}
+                disabled={acting || isCurrent}
+                aria-pressed={isCurrent}
+                className={`px-3 py-2 rounded-xl border text-sm font-medium transition inline-flex items-center gap-1.5 disabled:cursor-default ${
+                  isCurrent ? roleColor.active : `${roleColor.inactive} disabled:opacity-50`
+                }`}
+              >
+                {isRoleActing && isCurrent ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isCurrent ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <ShieldCheck className="w-4 h-4" />
+                )}
+                {roleLabel}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {detail.telegramLinks.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
+            Vínculos de Telegram
+          </h3>
+          <div className="space-y-2">
+            {detail.telegramLinks.map((link) => (
+              <div
+                key={link.id}
+                className="flex items-center justify-between gap-3 border border-[var(--app-border-strong)] rounded-xl px-3 py-2 text-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-mono text-xs text-[var(--app-text-1)]">
+                    chat {link.chat_id ?? "—"}
+                  </div>
+                  <div className="text-xs text-[var(--app-text-2)]">{link.status}</div>
+                </div>
+                {link.status === "active" && (
+                  <button
+                    type="button"
+                    onClick={() => onRevokeTelegramLink(link.id, link.chat_id)}
+                    disabled={acting}
+                    className="p-2 rounded-lg border border-red-300 text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-50"
+                    aria-label={`Revocar vínculo de chat ${link.chat_id ?? "—"}`}
+                    title="Revocar"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {canDelete && (
+        <section className="space-y-3 rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-red-text)]">
+            Zona peligrosa
+          </h3>
+          <p className="text-xs text-[var(--app-text-2)]">
+            Eliminar la cuenta borra el acceso (login y membresías). Los movimientos y empresas se conservan. Irreversible.
+          </p>
+          <button
+            type="button"
+            onClick={onDeleteAccount}
+            disabled={acting}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--app-red-text)] px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Eliminar cuenta definitivamente
+          </button>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// ── Inline right panel (desktop) ─────────────────────────────────────────────
+
+interface UserDetailPanelProps extends UserDetailContentProps {
+  onClose: () => void;
+}
+
+function UserDetailPanel({ onClose, ...contentProps }: UserDetailPanelProps) {
+  const { detail } = contentProps;
+  const badge = statusBadge[detail.user.status] ?? statusBadge.active;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[var(--app-border)] shrink-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-[var(--app-text-1)] [overflow-wrap:anywhere]">
+            {detail.user.email}
+          </p>
+          <p className="text-xs text-[var(--app-text-2)] mt-0.5 flex items-center gap-2">
+            <span>{APP_ROLE_LABELS[detail.user.role as AppRole] ?? detail.user.role}</span>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] border ${badge.className}`}>
+              {badge.label}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar detalle"
+          className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[var(--app-border-strong)] hover:border-[var(--app-text-2)] text-[var(--app-text-2)] shrink-0"
+        >
+          <XCircle className="w-4 h-4" />
+        </button>
+      </header>
+      <div className="overflow-y-auto px-6 py-5 flex-1">
+        <UserDetailContent {...contentProps} />
+      </div>
+    </div>
+  );
+}
+
+// ── Modal (mobile) ────────────────────────────────────────────────────────────
+
+interface UserDetailModalProps extends UserDetailContentProps {
+  loading: boolean;
+  onClose: () => void;
+}
+
+function UserDetailModal({
+  loading,
+  onClose,
+  detail,
+  ...contentProps
+}: UserDetailModalProps) {
   return (
     <ModalShell
       title={detail?.user.email ?? "Detalle de usuario"}
@@ -1057,174 +1345,7 @@ function UserDetailModal({
           <Loader2 className="w-6 h-6 animate-spin text-[var(--app-text-3)]" />
         </div>
       ) : (
-        <div className="space-y-6">
-          {detail.user.status_reason && (
-            <p className="text-xs text-[var(--app-text-2)] italic">
-              Motivo del último cambio: {detail.user.status_reason}
-            </p>
-          )}
-          {detail.user.status_changed_at && (
-            <p className="text-xs text-[var(--app-text-3)] -mt-4">
-              Último cambio: {new Date(detail.user.status_changed_at).toLocaleString()}
-            </p>
-          )}
-
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-            <Stat label="Movimientos" value={detail.stats.movimientos} />
-            <Stat label="Dashboards" value={detail.dashboards.length} />
-            <Stat label="Telegram" value={detail.telegramLinks.length} />
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-              Estado
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              <StatusButton
-                icon={<CheckCircle2 className="w-4 h-4" />}
-                label="Activo"
-                active={detail.user.status === "active"}
-                onClick={() => onStatusChange("active")}
-                disabled={acting}
-                tone="green"
-              />
-              <StatusButton
-                icon={<Pause className="w-4 h-4" />}
-                label="Pausado"
-                active={detail.user.status === "paused"}
-                onClick={() => onStatusChange("paused")}
-                disabled={acting}
-                tone="amber"
-              />
-              <StatusButton
-                icon={<Ban className="w-4 h-4" />}
-                label="Bloqueado"
-                active={detail.user.status === "blocked"}
-                onClick={() => onStatusChange("blocked")}
-                disabled={acting}
-                tone="red"
-              />
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-              Sesión
-            </h3>
-            <button
-              type="button"
-              onClick={onForceLogout}
-              disabled={acting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--app-border-strong)] px-3 py-2.5 text-sm font-medium text-[var(--app-text-1)] hover:border-[var(--app-text-2)] disabled:opacity-50"
-            >
-              <LogOut className="w-4 h-4" />
-              Forzar logout (cerrar sesiones)
-            </button>
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-              Rol del sistema
-            </h3>
-            <div className="flex gap-2 flex-wrap">
-              {(["member", "admin", "superadmin"] as AppRole[]).map((r) => {
-                const isCurrent = detail.user.role === r;
-                const isRoleActing = actingKey === "role";
-                const roleColor = {
-                  member: {
-                    active: "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
-                    inactive: "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-neutral-500",
-                  },
-                  admin: {
-                    active: "bg-blue-600 border-blue-600 text-white",
-                    inactive: "bg-white border-blue-300 text-blue-800 hover:border-blue-500",
-                  },
-                  superadmin: {
-                    active: "bg-red-600 border-red-600 text-white",
-                    inactive: "bg-white border-red-300 text-red-800 hover:border-red-500",
-                  },
-                }[r];
-                const roleLabel = APP_ROLE_LABELS[r];
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => !isCurrent && onRoleChange(r)}
-                    disabled={acting || isCurrent}
-                    aria-pressed={isCurrent}
-                    className={`px-3 py-2 rounded-xl border text-sm font-medium transition inline-flex items-center gap-1.5 disabled:cursor-default ${
-                      isCurrent ? roleColor.active : `${roleColor.inactive} disabled:opacity-50`
-                    }`}
-                  >
-                    {isRoleActing && isCurrent ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : isCurrent ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <ShieldCheck className="w-4 h-4" />
-                    )}
-                    {roleLabel}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {detail.telegramLinks.length > 0 && (
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-text-2)]">
-                Vínculos de Telegram
-              </h3>
-              <div className="space-y-2">
-                {detail.telegramLinks.map((link) => (
-                  <div
-                    key={link.id}
-                    className="flex items-center justify-between gap-3 border border-[var(--app-border-strong)] rounded-xl px-3 py-2 text-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-mono text-xs text-[var(--app-text-1)]">
-                        chat {link.chat_id ?? "—"}
-                      </div>
-                      <div className="text-xs text-[var(--app-text-2)]">{link.status}</div>
-                    </div>
-                    {link.status === "active" && (
-                      <button
-                        type="button"
-                        onClick={() => onRevokeTelegramLink(link.id, link.chat_id)}
-                        disabled={acting}
-                        className="p-2 rounded-lg border border-red-300 text-[var(--chart-expense)] hover:border-red-400 disabled:opacity-50"
-                        aria-label={`Revocar vínculo de chat ${link.chat_id ?? "—"}`}
-                        title="Revocar"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {canDelete && (
-            <section className="space-y-3 rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--app-red-text)]">
-                Zona peligrosa
-              </h3>
-              <p className="text-xs text-[var(--app-text-2)]">
-                Eliminar la cuenta borra el acceso (login y membresías). Los movimientos y empresas se conservan. Irreversible.
-              </p>
-              <button
-                type="button"
-                onClick={onDeleteAccount}
-                disabled={acting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--app-red-text)] px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Eliminar cuenta definitivamente
-              </button>
-            </section>
-          )}
-        </div>
+        <UserDetailContent detail={detail} {...contentProps} />
       )}
     </ModalShell>
   );
@@ -1258,7 +1379,7 @@ interface StatusButtonProps {
 function StatusButton({ icon, label, active, onClick, disabled, tone }: StatusButtonProps) {
   const activeClass = {
     green: "bg-green-600 border-green-600 text-white shadow-md ring-2 ring-green-200",
-    amber: "bg-[var(--app-amber-surface)]0 border-amber-500 text-white shadow-md ring-2 ring-amber-200",
+    amber: "bg-amber-500 border-amber-500 text-white shadow-md ring-2 ring-amber-200",
     red: "bg-red-600 border-red-600 text-white shadow-md ring-2 ring-red-200",
   }[tone];
   const inactiveClass = {

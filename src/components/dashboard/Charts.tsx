@@ -163,6 +163,83 @@ export function AreaTrendChart({
 }
 
 /**
+ * Grouped bar chart: two bars per month (income / expense) + net marker line.
+ * Uses same data shape as AreaTrendChart.
+ */
+export function GroupedBarChart({
+  data,
+  currency = 'ARS',
+}: {
+  data: Array<{ label: string; income: number; expense: number; net: number }>;
+  currency?: 'ARS' | 'USD';
+}) {
+  const n = data.length;
+  if (n === 0) return null;
+
+  const W = 720, padL = 28, padR = 16, padT = 36, padB = 32;
+  const H = Math.min(220, Math.max(140, 100 + n * 16));
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const base = H - padB;
+
+  const maxV = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1) * 1.12;
+  const yv = (v: number) => padT + (1 - Math.max(0, v) / maxV) * chartH;
+
+  const groupW = chartW / n;
+  const barW = Math.min(groupW * 0.32, 28);
+  const gap = barW * 0.2;
+  const groupCx = (i: number) => padL + groupW * i + groupW / 2;
+  const incX = (i: number) => groupCx(i) - gap / 2 - barW;
+  const expX = (i: number) => groupCx(i) + gap / 2;
+
+  const netPts = data.map((d, i) => ({ x: groupCx(i), y: yv(d.net) }));
+  const netPath = netPts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
+
+  const summary = `Ingresos y gastos mensuales en ${currency}. ${data.map((d) => `${d.label}: ingreso ${formatCompact(d.income, currency)}, gasto ${formatCompact(d.expense, currency)}, neto ${formatCompact(d.net, currency)}`).join('; ')}.`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto overflow-visible anim-fade-in" role="img" aria-label={summary}>
+      {/* Baseline */}
+      <line x1={padL} y1={base} x2={W - padR} y2={base} stroke="var(--chart-baseline)" strokeWidth={1} />
+
+      {data.map((d, i) => {
+        const incH = Math.max(0, (d.income / maxV) * chartH);
+        const expH = Math.max(0, (d.expense / maxV) * chartH);
+        return (
+          <g key={d.label}>
+            {/* Income bar */}
+            <rect x={incX(i)} y={base - incH} width={barW} height={incH} rx={3} fill="var(--chart-income)" fillOpacity={0.75} />
+            {/* Expense bar */}
+            <rect x={expX(i)} y={base - expH} width={barW} height={expH} rx={3} fill="var(--chart-expense)" fillOpacity={0.75} />
+            {/* Month label */}
+            <text x={groupCx(i)} y={H - 10} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--app-text-3)">{d.label}</text>
+          </g>
+        );
+      })}
+
+      {/* Net line */}
+      <path d={netPath} fill="none" stroke="var(--chart-net)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      {netPts.map((p, i) => {
+        const net = data[i].net;
+        const showLabel = n <= 6;
+        return (
+          <g key={`net-${i}`}>
+            <circle cx={p.x} cy={p.y} r={4} fill="var(--app-surface-1)" stroke="var(--chart-net)" strokeWidth={2.5} />
+            {showLabel && (
+              <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={10} fontWeight={700}
+                fill={net >= 0 ? 'var(--chart-net)' : 'var(--chart-expense)'}
+                style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {formatCompact(net, currency)}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/**
  * Puente de caja (waterfall). Ingresos (start) → resta categorías (down) → Saldo (end).
  * SVG puro + tokens. Segmentos de buildCashflowBridge (from/to por barra).
  */

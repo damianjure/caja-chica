@@ -20,9 +20,24 @@
   font-display: swap;
   src: url("/fonts/InterVariable-Italic.woff2") format("woff2-variations");
 }
+/* Public Sans Variable self-hosted (OFL). Brand typeface from the design system. */
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/PublicSans-Variable.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Public Sans";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/PublicSans-Variable-Italic.woff2") format("woff2-variations");
+}
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Public Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -74,25 +89,25 @@
      Marca/acción primaria = mint via --app-strong-surface (theme-aware).
      Semantic pills (red/green/amber/blue) conservan sus hues para diferenciar tipos. */
   :root {
-    --app-canvas: #F1E8DE;
-    --app-surface-1: #FBF6EF;
-    --app-surface-2: #EBE0D3;
-    --app-surface-3: #E2D5C6;
-    --app-surface-4: #D8CABB;
-    --app-border: #D8CABB;
-    --app-border-strong: #B09A82;
-    --app-text-1: #211B14;
-    --app-text-2: #574B3E;
-    --app-text-3: #80715F;
-    --app-text-4: #9C8E7C;
-    --app-strong-surface: #147E60;
-    --app-strong-text: #FBF6EF;
-    --app-red-surface: oklch(95.7% 0.018 25);
-    --app-red-border: oklch(84.7% 0.052 25);
-    --app-red-text: oklch(51.5% 0.150 30);
-    --app-green-surface: oklch(96.2% 0.024 145);
-    --app-green-border: oklch(88.1% 0.058 150);
-    --app-green-text: oklch(49.1% 0.115 150);
+    --app-canvas: #EDEAE4;
+    --app-surface-1: #FBFAF7;
+    --app-surface-2: #F5F3EF;
+    --app-surface-3: #ECE8E0;
+    --app-surface-4: #E2DDD4;
+    --app-border: #E0DBD2;
+    --app-border-strong: #BDB6A9;
+    --app-text-1: #211F1C;
+    --app-text-2: #4A463F;
+    --app-text-3: #6A665E;
+    --app-text-4: #9C978E;
+    --app-strong-surface: #2F6B4F;
+    --app-strong-text: #FBFAF7;
+    --app-red-surface: oklch(95.5% 0.019 32);
+    --app-red-border: oklch(84% 0.054 32);
+    --app-red-text: #B04A3F;
+    --app-green-surface: oklch(96% 0.022 150);
+    --app-green-border: oklch(87.5% 0.05 150);
+    --app-green-text: #2F6B4F;
     --app-amber-surface: oklch(97.4% 0.022 85);
     --app-amber-border: oklch(88% 0.062 85);
     --app-amber-text: oklch(49% 0.108 70);
@@ -100,36 +115,36 @@
     --app-blue-border: oklch(86.4% 0.054 252);
     --app-blue-text: oklch(47% 0.110 258);
     /* Elevation tokens — theme-aware (sombra cálida en light). */
-    --app-shadow-sm: 0 1px 2px rgba(60, 42, 24, 0.08);
-    --app-shadow-md: 0 4px 12px -2px rgba(60, 42, 24, 0.12), 0 1px 3px rgba(60, 42, 24, 0.07);
-    --app-shadow-panel: 0 8px 24px -6px rgba(60, 42, 24, 0.16), 0 2px 6px rgba(60, 42, 24, 0.08);
+    --app-shadow-sm: 0 1px 2px rgba(40, 38, 33, 0.07);
+    --app-shadow-md: 0 4px 12px -2px rgba(40, 38, 33, 0.10), 0 1px 3px rgba(40, 38, 33, 0.06);
+    --app-shadow-panel: 0 8px 24px -6px rgba(40, 38, 33, 0.14), 0 2px 6px rgba(40, 38, 33, 0.07);
     /* Chart tokens — semantic, theme-aware. */
-    --chart-income: #147E60;
-    --chart-expense: #C9534C;
+    --chart-income: #2F6B4F;
+    --chart-expense: #B04A3F;
     --chart-net: #2563EB;
-    --chart-baseline: #D8CABB;
+    --chart-baseline: #E0DBD2;
   }
 
   [data-theme="dark"] {
-    --app-canvas: #07100D;
-    --app-surface-1: #111D18;
-    --app-surface-2: #17261F;
-    --app-surface-3: #1D3028;
-    --app-surface-4: #243A30;
-    --app-border: #2A4036;
-    --app-border-strong: #4C7363;
-    --app-text-1: #F3FBF6;
-    --app-text-2: #B9C7BE;
-    --app-text-3: #8A998F;
-    --app-text-4: #708179;
-    --app-strong-surface: #5EE9B5;
-    --app-strong-text: #04130C;
-    --app-red-surface: oklch(26.2% 0.025 30);
-    --app-red-border: oklch(38.5% 0.054 30);
-    --app-red-text: oklch(81.5% 0.080 30);
-    --app-green-surface: oklch(29% 0.034 155);
+    --app-canvas: #141618;
+    --app-surface-1: #1D2023;
+    --app-surface-2: #23272B;
+    --app-surface-3: #2A2F33;
+    --app-surface-4: #333A3F;
+    --app-border: #2E3438;
+    --app-border-strong: #474E53;
+    --app-text-1: #E9E7E2;
+    --app-text-2: #B6B3AC;
+    --app-text-3: #87847D;
+    --app-text-4: #66635D;
+    --app-strong-surface: #57B083;
+    --app-strong-text: #08140D;
+    --app-red-surface: oklch(27% 0.027 32);
+    --app-red-border: oklch(39% 0.056 32);
+    --app-red-text: oklch(80% 0.082 32);
+    --app-green-surface: oklch(29% 0.034 152);
     --app-green-border: oklch(40.5% 0.058 150);
-    --app-green-text: oklch(84.6% 0.108 150);
+    --app-green-text: oklch(82% 0.10 150);
     --app-amber-surface: oklch(26.2% 0.024 70);
     --app-amber-border: oklch(42% 0.055 70);
     --app-amber-text: oklch(86% 0.090 80);
@@ -139,8 +154,8 @@
     --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --app-shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.4);
     --app-shadow-panel: 0 10px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
-    --chart-income: #5EE9B5;
-    --chart-expense: #F47C72;
+    --chart-income: #57B083;
+    --chart-expense: #DD8B7E;
     --chart-net: #6DA8FF;
     --chart-baseline: #2A4036;
   }

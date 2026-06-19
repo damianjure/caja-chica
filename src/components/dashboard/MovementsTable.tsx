@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useMemo, useRef, useState } from 'react';
 import {
   TrendingDown, TrendingUp, Loader2, Copy, Check, Pencil, Trash2, ChevronLeft, ChevronRight,
   ChevronUp, ChevronDown, ChevronsUpDown, ReceiptText, PenLine, FileText, Send, Repeat, Sparkles, MessageSquareText, X, Plus,
@@ -177,9 +177,8 @@ function MovementsTableImpl({
               const src = sourceMeta(item.source);
               const isExpanded = expandedId === item.id;
               return (
-                <>
+                <Fragment key={item.id}>
                   <tr
-                    key={item.id}
                     onClick={onSelect ? () => onSelect(item) : undefined}
                     aria-selected={selectedId === item.id || undefined}
                     className={`group transition-colors ${onSelect ? 'cursor-pointer' : ''} ${selectedId === item.id ? 'bg-[var(--app-surface-3)]' : 'hover:bg-[var(--app-surface-2)]'}`}
@@ -227,7 +226,7 @@ function MovementsTableImpl({
                     )}
                   </tr>
                   {item.has_lineas && isExpanded && (
-                    <tr key={`${item.id}-lines`}>
+                    <tr>
                       <td colSpan={canWriteData ? 7 : 6} className="px-3 pb-3 pt-0 bg-[var(--app-surface-2)]">
                         <MovementLines
                           movimientoId={item.id}
@@ -238,7 +237,7 @@ function MovementsTableImpl({
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>

@@ -11,7 +11,6 @@ import {
 import { resolveTelegramCompany, normalizeEmpresaName, type TelegramCompanyOption } from "../../server/telegramCompanyResolution.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse, type ReceiptItemsResult } from "../../server/gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiWithFallback.ts";
-import { registerMovementCallbacks } from "./movements-callbacks.ts";
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { buildUndoKeyboard } from "../quickActions.ts";
 import { parseIntentResult, resolveIntentAction, parseReminderSlots } from "../voiceIntent.ts";
@@ -779,5 +778,4 @@ export function registerMovementHandlers(bot: Bot, deps: BotDeps) {
     }
   });
 
-  registerMovementCallbacks(bot, deps);
 }

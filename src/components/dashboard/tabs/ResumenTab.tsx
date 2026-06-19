@@ -1,13 +1,13 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { BarChart2, TrendingUp, TrendingDown, Repeat, GripVertical } from 'lucide-react';
+import { BarChart2, TrendingUp, TrendingDown, Repeat, GripHorizontal } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext, sortableKeyboardCoordinates, useSortable,
-  arrayMove, rectSortingStrategy,
+  arrayMove, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChartCard, HorizontalBarList, WaterfallChart } from '../Charts';
@@ -49,37 +49,37 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
-const CARD_IDS = ['utilidad', 'ingresos', 'gastos', 'recurrentes'] as const;
-type CardId = (typeof CARD_IDS)[number];
+const SECTION_IDS = ['actividad', 'charts', 'proyeccion'] as const;
+type SectionId = (typeof SECTION_IDS)[number];
 
-function loadCardOrder(): CardId[] {
+function loadSectionOrder(): SectionId[] {
   try {
-    const raw = localStorage.getItem('resumen-card-order');
+    const raw = localStorage.getItem('resumen-section-order');
     if (raw) {
-      const parsed = JSON.parse(raw) as CardId[];
-      if (Array.isArray(parsed) && parsed.length === CARD_IDS.length && CARD_IDS.every((id) => parsed.includes(id))) return parsed;
+      const parsed = JSON.parse(raw) as SectionId[];
+      if (Array.isArray(parsed) && parsed.length === SECTION_IDS.length && SECTION_IDS.every((id) => parsed.includes(id))) return parsed;
     }
   } catch { /* ignore */ }
-  return [...CARD_IDS];
+  return [...SECTION_IDS];
 }
 
-function SortableCard({ id, children }: { id: string; children: React.ReactNode; key?: React.Key | null }) {
+function SortableSection({ id, children }: { id: string; children: React.ReactNode; key?: React.Key | null }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative group${isDragging ? ' opacity-50 z-50' : ''}`}
+      className={`relative group pt-3${isDragging ? ' opacity-50 z-50' : ''}`}
     >
       <button
         ref={setActivatorNodeRef}
         type="button"
-        aria-label="Reordenar tarjeta"
-        className="absolute top-2.5 right-2.5 z-10 flex h-6 w-6 items-center justify-center rounded opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-50 transition-opacity cursor-grab active:cursor-grabbing text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)]"
+        aria-label="Reordenar sección"
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-3 h-5 rounded-full opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-60 transition-opacity cursor-grab active:cursor-grabbing text-[var(--app-text-3)] bg-[var(--app-surface-2)] border border-[var(--app-border)] shadow-sm hover:text-[var(--app-text-1)]"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="w-3.5 h-3.5" aria-hidden="true" />
+        <GripHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
       {children}
     </div>
@@ -117,7 +117,7 @@ function CompanyFilterPills({
 export default function ResumenTab(props: ResumenTabProps) {
   const [chartCurrency, setChartCurrency] = useState<'ARS' | 'USD'>('ARS');
   const [hiddenCompanies, setHiddenCompanies] = useState<Set<string>>(new Set());
-  const [cardOrder, setCardOrder] = useState<CardId[]>(loadCardOrder);
+  const [sectionOrder, setSectionOrder] = useState<SectionId[]>(loadSectionOrder);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -127,9 +127,9 @@ export default function ResumenTab(props: ResumenTabProps) {
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      setCardOrder((prev) => {
-        const next = arrayMove(prev, prev.indexOf(active.id as CardId), prev.indexOf(over.id as CardId));
-        localStorage.setItem('resumen-card-order', JSON.stringify(next));
+      setSectionOrder((prev) => {
+        const next = arrayMove(prev, prev.indexOf(active.id as SectionId), prev.indexOf(over.id as SectionId));
+        localStorage.setItem('resumen-section-order', JSON.stringify(next));
         return next;
       });
     }
@@ -188,69 +188,8 @@ export default function ResumenTab(props: ResumenTabProps) {
 
   const recentMovements = props.history.slice(0, 8);
 
-  const cardDefs: Record<CardId, React.ReactNode> = {
-    utilidad: (
-      <MetricCard
-        label="Saldo total"
-        value={props.arsNeto}
-        tone={props.netPositive ? 'success' : 'danger'}
-        critical={!props.netPositive}
-        sub={`${props.companyCount} empresa${props.companyCount !== 1 ? 's' : ''}`}
-        onClick={nav('utilidad')}
-        navLabel="Ver todos los movimientos"
-      />
-    ),
-    ingresos: (
-      <MetricCard
-        label="Ingresos del mes"
-        value={props.arsIngreso}
-        tone="success"
-        icon={TrendingUp}
-        delta={ingDelta}
-        onClick={nav('ingresos')}
-        navLabel="Ver ingresos en movimientos"
-      />
-    ),
-    gastos: (
-      <MetricCard
-        label="Gastos del mes"
-        value={props.arsEgreso}
-        tone="danger"
-        icon={TrendingDown}
-        delta={gasDelta}
-        onClick={nav('gastos')}
-        navLabel="Ver gastos en movimientos"
-      />
-    ),
-    recurrentes: (
-      <MetricCard
-        label="Recurrentes activos"
-        value={String(props.recurrentesCount)}
-        tone="neutral"
-        icon={Repeat}
-        sub={nextOccurrence ? `Próximo: ${nextOccurrence.date.slice(5)}` : undefined}
-        onClick={nav('recurrentes')}
-        navLabel="Ver recurrentes"
-      />
-    ),
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 4-KPI row — reordenable con drag */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={cardOrder} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-            {cardOrder.map((id) => (
-              <SortableCard key={id} id={id}>
-                {cardDefs[id]}
-              </SortableCard>
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      {/* Actividad reciente */}
+  const sectionContent: Record<SectionId, React.ReactNode> = {
+    actividad: (
       <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
         <h3 className="text-sm font-bold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
         {recentMovements.length === 0 ? (
@@ -265,9 +204,7 @@ export default function ResumenTab(props: ResumenTabProps) {
                     : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[var(--app-text-1)] truncate">
-                    {m.descripcion || '—'}
-                  </div>
+                  <div className="text-sm font-medium text-[var(--app-text-1)] truncate">{m.descripcion || '—'}</div>
                   <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
                 </div>
                 <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
@@ -278,8 +215,8 @@ export default function ResumenTab(props: ResumenTabProps) {
           </ul>
         )}
       </div>
-
-      {/* Flujo de caja + Gastos que más pesan */}
+    ),
+    charts: (
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Flujo de caja" description="Cómo cada categoría reduce la caja.">
           {companyNames.length > 1 && (
@@ -293,13 +230,12 @@ export default function ResumenTab(props: ResumenTabProps) {
             <WaterfallChart segments={bridgeData} currency={chartCurrency} />
           )}
         </ChartCard>
-
         <ChartCard title="Gastos que más pesan" description="Top categorías por gasto.">
           <HorizontalBarList items={props.topExpenseCategories.map((item) => ({ ...item, accent: 'danger' as const }))} emptyLabel="Todavía no hay gastos cargados." />
         </ChartCard>
       </section>
-
-      {/* Proyección */}
+    ),
+    proyeccion: (
       <SectionCard title="Proyección a 30 días" description="Saldo estimado con los recurrentes activos (no incluye imprevistos).">
         {props.forecast.occurrences.length === 0 ? (
           <EmptyState title="Sin recurrentes activos para proyectar." hint="Activá o creá recurrentes en la pestaña Recurrentes para ver la proyección." canWrite={props.canWriteData} />
@@ -326,6 +262,61 @@ export default function ResumenTab(props: ResumenTabProps) {
           </div>
         )}
       </SectionCard>
+    ),
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 4-KPI row — fijo, sin drag */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <MetricCard
+          label="Saldo total"
+          value={props.arsNeto}
+          tone={props.netPositive ? 'success' : 'danger'}
+          critical={!props.netPositive}
+          sub={`${props.companyCount} empresa${props.companyCount !== 1 ? 's' : ''}`}
+          onClick={nav('utilidad')}
+          navLabel="Ver todos los movimientos"
+        />
+        <MetricCard
+          label="Ingresos del mes"
+          value={props.arsIngreso}
+          tone="success"
+          icon={TrendingUp}
+          delta={ingDelta}
+          onClick={nav('ingresos')}
+          navLabel="Ver ingresos en movimientos"
+        />
+        <MetricCard
+          label="Gastos del mes"
+          value={props.arsEgreso}
+          tone="danger"
+          icon={TrendingDown}
+          delta={gasDelta}
+          onClick={nav('gastos')}
+          navLabel="Ver gastos en movimientos"
+        />
+        <MetricCard
+          label="Recurrentes activos"
+          value={String(props.recurrentesCount)}
+          tone="neutral"
+          icon={Repeat}
+          sub={nextOccurrence ? `Próximo: ${nextOccurrence.date.slice(5)}` : undefined}
+          onClick={nav('recurrentes')}
+          navLabel="Ver recurrentes"
+        />
+      </div>
+
+      {/* Secciones reordenables */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+          {sectionOrder.map((id) => (
+            <SortableSection key={id} id={id}>
+              {sectionContent[id]}
+            </SortableSection>
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

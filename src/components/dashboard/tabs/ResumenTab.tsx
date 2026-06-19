@@ -1,10 +1,10 @@
 
 import { useMemo, useState } from 'react';
 import { BarChart2, TrendingUp, TrendingDown, Building2, Repeat } from 'lucide-react';
-import { ChartCard, HorizontalBarList, GroupedBarChart, WaterfallChart } from '../Charts';
+import { ChartCard, HorizontalBarList, WaterfallChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
-import { buildMonthlyChartData, buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
+import { buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
@@ -82,11 +82,6 @@ export default function ResumenTab(props: ResumenTabProps) {
 
   const visibleCompanies = useMemo(() => companyNames.filter((c) => !hiddenCompanies.has(c)), [companyNames, hiddenCompanies]);
 
-  const pulseData = useMemo(() => {
-    const visible = companyNames.filter((c) => !hiddenCompanies.has(c));
-    return buildMonthlyChartData(props.history, chartCurrency, hiddenCompanies.size ? visible : null);
-  }, [props.history, chartCurrency, hiddenCompanies, companyNames]);
-
   const bridgeData = useMemo(
     () => buildCashflowBridge(props.history, chartCurrency, hiddenCompanies.size ? visibleCompanies : null),
     [props.history, chartCurrency, hiddenCompanies, visibleCompanies],
@@ -128,7 +123,7 @@ export default function ResumenTab(props: ResumenTabProps) {
     </div>
   );
 
-  const recentMovements = props.history.slice(0, 6);
+  const recentMovements = props.history.slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -172,57 +167,33 @@ export default function ResumenTab(props: ResumenTabProps) {
         />
       </div>
 
-      {/* 2-col: chart + actividad reciente */}
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <ChartCard title="Flujo de los últimos 6 meses" description="Ingresos y gastos mensuales + línea de saldo neto.">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {companyNames.length > 1 ? (
-              <CompanyFilterPills companyNames={companyNames} hiddenCompanies={hiddenCompanies} onReset={() => setHiddenCompanies(new Set())} onToggle={toggleCompany} />
-            ) : <span />}
-            <div className="flex items-center gap-3 justify-end">
-              <div className="flex items-center gap-3 text-xs text-[var(--app-text-3)]">
-                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-income)', opacity: 0.75 }} />Ingreso</span>
-                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-expense)', opacity: 0.75 }} />Gasto</span>
-                <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-net)' }} />Saldo</span>
-              </div>
-              {currencyToggle}
-            </div>
-          </div>
-          {pulseData.length === 0 ? (
-            <EmptyState title={chartCurrency === 'ARS' ? 'Aún no hay historia en pesos.' : 'Aún no hay historia en dólares.'} hint="Cargá movimientos y el gráfico aparece acá." canWrite={props.canWriteData} icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />} />
-          ) : (
-            <GroupedBarChart data={pulseData} currency={chartCurrency} />
-          )}
-        </ChartCard>
-
-        {/* Actividad reciente */}
-        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
-          <h3 className="text-sm font-bold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
-          {recentMovements.length === 0 ? (
-            <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
-          ) : (
-            <ul className="divide-y divide-[var(--app-border)]" role="list">
-              {recentMovements.map((m) => (
-                <li key={m.id} role="listitem" className="flex items-center gap-3 py-2.5">
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)]' : 'bg-[var(--app-red-surface)]'}`}>
-                    {m.tipo === 'ingreso'
-                      ? <TrendingUp className="w-3.5 h-3.5 text-[var(--app-green-text)]" aria-hidden="true" />
-                      : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
+      {/* Actividad reciente */}
+      <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
+        <h3 className="text-sm font-bold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
+        {recentMovements.length === 0 ? (
+          <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
+        ) : (
+          <ul className="divide-y divide-[var(--app-border)]" role="list">
+            {recentMovements.map((m) => (
+              <li key={m.id} role="listitem" className="flex items-center gap-3 py-2.5">
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)]' : 'bg-[var(--app-red-surface)]'}`}>
+                  {m.tipo === 'ingreso'
+                    ? <TrendingUp className="w-3.5 h-3.5 text-[var(--app-green-text)]" aria-hidden="true" />
+                    : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-[var(--app-text-1)] truncate">
+                    {m.descripcion || '—'}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[var(--app-text-1)] truncate">
-                      {m.descripcion || '—'}
-                    </div>
-                    <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
-                  </div>
-                  <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
-                    {m.tipo === 'ingreso' ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(m.monto)} {m.moneda}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
+                </div>
+                <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
+                  {m.tipo === 'ingreso' ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(m.monto)} {m.moneda}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Flujo de caja + Gastos que más pesan */}

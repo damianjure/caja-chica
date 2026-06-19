@@ -1,6 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { useBackClose } from '../../../hooks/useBackClose';
-import { Pause, Play, Pencil, Trash2, Plus, Loader2, Repeat } from 'lucide-react';
+import { BellDot, CalendarDays, Pause, Play, Pencil, Trash2, Plus, Loader2, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Recurrente, type RecurrenteRequest, type Frecuencia, type AppViewer } from '../../../services/api';
 import { SectionCard, MetricCard, MetricChip } from '../primitives';
@@ -176,6 +176,7 @@ export default function RecurrentesTab({
   const [typeFilter, setTypeFilter] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [empresaFilter, setEmpresaFilter] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused'>('all');
   useBackClose(creating, () => setCreating(false));
   useBackClose(Boolean(editing), () => setEditing(null));
   useBackClose(Boolean(deleteTarget), () => setDeleteTarget(null));
@@ -276,6 +277,20 @@ export default function RecurrentesTab({
     (empresaFilter === 'all' || (r.empresa_nombre || 'Personal') === empresaFilter),
   );
   const hasRecurrenteFilters = typeFilter !== 'all' || empresaFilter !== 'all';
+
+  const desktopFiltered = useMemo(() => {
+    return proximos.filter((r) => {
+      if (statusFilter === 'active') return r.is_active;
+      if (statusFilter === 'paused') return !r.is_active;
+      return true;
+    });
+  }, [proximos, statusFilter]);
+
+  const now = Date.now();
+  const next30Days = useMemo(
+    () => proximos.filter((r) => r.is_active && new Date(r.next_run_at).getTime() - now <= 30 * 86_400_000),
+    [proximos, now],
+  );
   const signedMonto = (r: Recurrente) => formatMonto(r.tipo === 'egreso' ? -r.monto : r.monto, r.moneda);
   const formatNextRun = (iso: string) =>
     new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }).replace('.', '');
@@ -321,22 +336,27 @@ export default function RecurrentesTab({
 
   return (
     <div className="space-y-6">
-      {/* Desktop: compact 3-cell KPI row */}
-      <div className="hidden lg:grid lg:grid-cols-3 gap-3">
+      {/* ── Desktop KPI row (icon-badge style) ──────────────────────────── */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
         {[
-          { label: 'Impacto mensual', value: formatMonto(summary.impactoMensualArs, 'ARS'), tone: summary.impactoMensualArs < 0 },
-          { label: 'Próximo vencimiento', value: summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—', sub: summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined, tone: false },
-          { label: 'Activos', value: String(summary.activos), tone: false },
-        ].map(({ label, value, sub, tone }) => (
-          <div key={label} className="rounded-xl border border-[var(--app-border)] px-4 py-3">
-            <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">{label}</div>
-            <div className={`text-xl font-bold tabular-nums ${tone ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]'}`}>{value}</div>
-            {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5">{sub}</div>}
+          { label: 'Impacto mensual', value: formatMonto(summary.impactoMensualArs, 'ARS'), tone: summary.impactoMensualArs < 0 ? 'danger' as const : undefined, Icon: CalendarDays },
+          { label: 'Próximo vencimiento', value: summary.proximaFechaIso ? formatImpactDate(summary.proximaFechaIso) : '—', sub: summary.proximaFechaIso ? daysUntilLabel(summary.proximaFechaIso) : undefined, tone: undefined, Icon: BellDot },
+          { label: 'Activos', value: String(summary.activos), tone: undefined, Icon: Repeat },
+        ].map(({ label, value, sub, tone, Icon }) => (
+          <div key={label} className="flex items-center gap-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-4 shadow-[var(--app-shadow-sm)]">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--app-surface-3)] flex items-center justify-center">
+              <Icon className="w-5 h-5 text-[var(--app-text-3)]" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs text-[var(--app-text-3)] mb-0.5">{label}</div>
+              <div className={`text-xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : 'text-[var(--app-text-1)]'}`}>{value}</div>
+              {sub && <div className="text-xs text-[var(--app-text-3)] mt-0.5">{sub}</div>}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Mobile: full cards */}
+      {/* ── Mobile KPI cards ─────────────────────────────────────────────── */}
       <div className="space-y-3 lg:hidden">
         <MetricCard hero label="Impacto proyectado · 30 días" value={formatMonto(summary.proyeccion30dArs, 'ARS')} tone={summary.proyeccion30dArs < 0 ? 'danger' : 'success'} critical={summary.proyeccion30dArs < 0} sub="con recurrentes activos" />
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -348,7 +368,137 @@ export default function RecurrentesTab({
         </div>
       </div>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* ── Desktop 2-col layout [3fr 2fr] ─────────────────────────────── */}
+      <section className="hidden lg:grid lg:grid-cols-[3fr_2fr] gap-6 items-start">
+        {/* Left: table */}
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--app-border)]">
+            {canWriteData && (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-medium text-[var(--app-strong-text)] shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nuevo recurrente
+              </button>
+            )}
+            <div className="flex items-center gap-1 ml-auto">
+              {(['all', 'active', 'paused'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(s)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === s ? 'bg-[color-mix(in_srgb,var(--app-strong-surface)_14%,transparent)] text-[var(--app-text-1)] border border-[var(--app-border-strong)]' : 'text-[var(--app-text-3)] hover:text-[var(--app-text-1)]'}`}
+                >
+                  {s === 'all' ? 'Todos' : s === 'active' ? 'Activos' : 'Pausados'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Table */}
+          {desktopFiltered.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-[var(--app-surface-2)] border-b border-[var(--app-border)]">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Descripción</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Tipo</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Frecuencia</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Próxima</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Monto</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Estado</th>
+                  {canWriteData && <th className="px-2 py-2.5" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--app-border)]">
+                {desktopFiltered.map((r) => (
+                  <tr key={r.id} className={`transition-colors hover:bg-[var(--app-surface-2)] ${r.is_active ? '' : 'opacity-60'}`}>
+                    <td className="px-4 py-2.5 min-w-0">
+                      <span className="font-medium text-sm text-[var(--app-text-1)] truncate block max-w-[150px]">
+                        {r.descripcion || r.empresa_nombre || 'Recurrente'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                      <span className={r.tipo === 'egreso' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}>
+                        {r.tipo === 'egreso' ? 'Gasto' : 'Ingreso'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">
+                      {FRECUENCIA_LABELS[r.frecuencia]}
+                      {r.frecuencia === 'mensual' && r.day_of_month ? ` / d${r.day_of_month}` : ''}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">{formatNextRun(r.next_run_at)}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={`text-xs font-semibold tabular-nums ${r.tipo === 'egreso' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+                        {signedMonto(r)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {r.is_active ? (
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-green-surface)] text-[var(--app-green-text)]">Activo</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[color-mix(in_srgb,var(--app-amber-text)_12%,var(--app-surface-2))] text-[var(--app-amber-text)]">Pausado</span>
+                      )}
+                    </td>
+                    {canWriteData && (
+                      <td className="px-2 py-1 text-right">
+                        <div className="flex items-center justify-end gap-0">
+                          <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar' : 'Activar'}>
+                            {togglingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : r.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                          </button>
+                          <button onClick={() => setEditing(r)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)] transition-colors" title="Editar" aria-label="Editar">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-3)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Right: próximos 30 días list */}
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
+          <div className="px-4 py-3 border-b border-[var(--app-border)]">
+            <h3 className="text-sm font-bold text-[var(--app-text-1)]">Próximos 30 días</h3>
+          </div>
+          <div className="divide-y divide-[var(--app-border)] overflow-y-auto" style={{ maxHeight: 340 }}>
+            {next30Days.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes activos en los próximos 30 días.</p>
+            ) : (
+              next30Days.map((r) => (
+                <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="h-1.5 w-1.5 rounded-full border border-[var(--app-text-3)] shrink-0" aria-hidden="true" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[var(--app-text-1)] truncate">{r.descripcion || r.empresa_nombre || 'Recurrente'}</p>
+                    <p className="text-[11px] text-[var(--app-text-3)]">{formatNextRun(r.next_run_at)}</p>
+                  </div>
+                  <span className={`text-xs font-semibold tabular-nums shrink-0 ${r.tipo === 'egreso' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+                    {signedMonto(r)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="px-4 py-3 border-t border-[var(--app-border)] flex items-center justify-between">
+            <span className="text-xs text-[var(--app-text-3)]">Impacto neto proyectado</span>
+            <span className={`text-sm font-bold tabular-nums ${summary.proyeccion30dArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+              {formatMonto(summary.proyeccion30dArs, 'ARS')}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Mobile: filters + card list ─────────────────────────────────── */}
+      <section className="lg:hidden">
         <SectionCard
           title="Próximos recurrentes"
           description="Ordenados por próxima carga."
@@ -356,7 +506,6 @@ export default function RecurrentesTab({
             <Button size="sm" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> Nuevo</Button>
           ) : undefined}
         >
-          {/* Filtros — mismo formato que Movimientos */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Segmented
               value={typeFilter}
@@ -380,68 +529,7 @@ export default function RecurrentesTab({
               </button>
             )}
           </div>
-
-          {/* Desktop: dense table */}
-          <div className="hidden lg:block overflow-hidden rounded-xl border border-[var(--app-border)]">
-            {filtered.length === 0 ? (
-              <p className="px-3.5 py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-[var(--app-surface-2)] border-b border-[var(--app-border)]">
-                  <tr>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Descripción</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Frecuencia</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Próxima</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Monto</th>
-                    {canWriteData && <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Acciones</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--app-border)]">
-                  {filtered.map((r) => (
-                    <tr key={r.id} className={`transition-colors hover:bg-[var(--app-surface-2)] ${r.is_active ? '' : 'opacity-60'}`}>
-                      <td className="px-3 py-2.5 min-w-0">
-                        <div className="font-medium text-xs text-[var(--app-text-1)] truncate max-w-[160px]">
-                          {r.descripcion || r.empresa_nombre || 'Recurrente'}
-                        </div>
-                        <div className="text-[11px] text-[var(--app-text-3)]">
-                          {r.tipo === 'egreso' ? 'Gasto' : 'Ingreso'}
-                          {!r.is_active && <span className="ml-1 text-[var(--app-text-3)]">· Pausado</span>}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">
-                        {FRECUENCIA_LABELS[r.frecuencia]}
-                        {r.frecuencia === 'mensual' && r.day_of_month ? ` / día ${r.day_of_month}` : ''}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[var(--app-text-2)] whitespace-nowrap">{formatNextRun(r.next_run_at)}</td>
-                      <td className="px-3 py-2.5 text-right">
-                        <span className={`text-xs font-semibold tabular-nums ${r.tipo === 'egreso' ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
-                          {signedMonto(r)}
-                        </span>
-                      </td>
-                      {canWriteData && (
-                        <td className="px-2 py-1 text-right">
-                          <div className="flex items-center justify-end gap-0">
-                            <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar' : 'Activar'}>
-                              {togglingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : r.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                            </button>
-                            <button onClick={() => setEditing(r)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors" title="Editar" aria-label="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Mobile: card list */}
-          <div className="lg:hidden overflow-hidden rounded-xl border border-[var(--app-border)] divide-y divide-[var(--app-border)]">
+          <div className="overflow-hidden rounded-xl border border-[var(--app-border)] divide-y divide-[var(--app-border)]">
             {filtered.length === 0 && (
               <p className="px-3.5 py-6 text-center text-sm text-[var(--app-text-3)]">Sin recurrentes para este filtro.</p>
             )}
@@ -483,67 +571,37 @@ export default function RecurrentesTab({
             ))}
           </div>
         </SectionCard>
-
-        <SectionCard title="Calendario de impactos" description="Próximos 30 días — qué días vienen pesados.">
-          <div className="grid grid-cols-7 gap-1.5">
-            {summary.dias.map((d) => {
-              const cls = d.level === 'high'
-                ? 'bg-[color-mix(in_srgb,var(--chart-expense)_24%,var(--app-surface-2))] text-[var(--chart-expense)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))]'
-                : d.level === 'med'
-                  ? 'bg-[color-mix(in_srgb,var(--app-amber-text)_20%,var(--app-surface-2))] text-[var(--app-amber-text)] border-[var(--app-border)]'
-                  : d.level === 'low'
-                    ? 'bg-[color-mix(in_srgb,var(--chart-income)_18%,var(--app-surface-2))] text-[var(--chart-income)] border-[var(--app-border)]'
-                    : 'bg-[var(--app-surface-2)] text-[var(--app-text-3)] border-[var(--app-border)]';
-              return (
-                <button
-                  key={d.date}
-                  type="button"
-                  onClick={() => setSelectedDay((p) => (p === d.date ? null : d.date))}
-                  aria-pressed={selectedDay === d.date}
-                  title={`${d.date}: ${formatMonto(d.total, 'ARS')}`}
-                  className={`grid aspect-square place-items-center rounded-md border text-xs transition ${cls} ${selectedDay === d.date ? 'ring-2 ring-[var(--app-text-1)]' : ''}`}
-                >
-                  {Number(d.date.slice(8, 10))}
-                </button>
-              );
-            })}
-          </div>
-          {selectedDay && (() => {
-            const day = summary.dias.find((x) => x.date === selectedDay);
-            if (!day) return null;
-            return (
-              <div className="mt-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-2)] px-3 py-2 text-sm">
-                <span className="text-[var(--app-text-2)]">{formatShortDate(selectedDay)}: </span>
-                <span className={`font-semibold tabular-nums ${day.total < 0 ? 'text-[var(--chart-expense)]' : day.total > 0 ? 'text-[var(--chart-income)]' : 'text-[var(--app-text-3)]'}`}>
-                  {day.total === 0 ? 'sin impacto' : formatMonto(day.total, 'ARS')}
-                </span>
-              </div>
-            );
-          })()}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--app-text-3)]">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)]" />Sin impacto</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-income)]" />Bajo</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--app-amber-text)]" />Medio</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--chart-expense)]" />Alto</span>
-          </div>
-        </SectionCard>
       </section>
 
+      {/* ── Resumen por frecuencia — 2-col grid with progress bars ──────── */}
       {freqSummary.length > 0 && (
         <SectionCard title="Resumen por frecuencia" description="Impacto mensual estimado (solo ARS activos).">
-          <div className="divide-y divide-[var(--app-border)]">
-            {freqSummary.map(({ freq, count, monthlyArs }) => (
-              <div key={freq} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-[var(--app-text-1)]">{FRECUENCIA_LABELS[freq]}</span>
-                  <span className="text-xs text-[var(--app-text-3)]">{count} activo{count !== 1 ? 's' : ''}</span>
-                </div>
-                <span className={`text-sm font-semibold tabular-nums ${monthlyArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
-                  {formatMonto(monthlyArs, 'ARS')}
-                  <span className="text-[11px] font-normal text-[var(--app-text-3)] ml-1">/mes</span>
-                </span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {(() => {
+              const maxAbs = Math.max(...freqSummary.map((f) => Math.abs(f.monthlyArs)));
+              return freqSummary.map(({ freq, count, monthlyArs }) => {
+                const pct = maxAbs > 0 ? Math.abs(monthlyArs) / maxAbs : 0;
+                return (
+                  <div key={freq}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div>
+                        <span className="text-sm font-medium text-[var(--app-text-1)]">{FRECUENCIA_LABELS[freq]}</span>
+                        <span className="ml-1.5 text-xs text-[var(--app-text-3)]">{count} activo{count !== 1 ? 's' : ''}</span>
+                      </div>
+                      <span className={`text-sm font-semibold tabular-nums ${monthlyArs < 0 ? 'text-[var(--chart-expense)]' : 'text-[var(--chart-income)]'}`}>
+                        {formatMonto(monthlyArs, 'ARS')}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-[var(--app-surface-3)] rounded-full overflow-hidden">
+                      <div
+                        className="h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${(pct * 100).toFixed(1)}%`, background: monthlyArs < 0 ? 'var(--chart-expense)' : 'var(--chart-income)' }}
+                      />
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </SectionCard>
       )}

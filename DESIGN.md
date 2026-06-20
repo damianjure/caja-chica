@@ -524,13 +524,16 @@ Fondo: `var(--app-surface-1)`. Padding: `px-6 py-6`. **Ya no usa `bg-white`.**
 
 ### Sticky headers
 
-Los headers sticky (filtros, toolbar) nunca usan `bg-white`. Si el bloque vive **dentro de un `SectionCard`**, el fondo en mobile debe matchear el de la card (`surface-1`) y recién en desktop (cuando se vuelve sticky bajo el topbar) pasa a `canvas`:
+Los headers sticky (filtros, toolbar) nunca usan `bg-white`. **El fondo del sticky matchea la superficie del contenedor donde vive**, en TODOS los breakpoints — si no, queda una franja de otro color (un "recuadro" más oscuro/claro) inconsistente:
+- **Dentro de un `SectionCard`** (caso típico: filtros de Movimientos) → `bg-[var(--app-surface-1)]` siempre (igual que la card y la tabla; nada de `canvas`, que se ve como un bloque oscuro sandwicheado).
+- **Directo sobre el canvas de la página** (sin card contenedora) → `bg-[var(--app-canvas)]`.
 
 ```tsx
-<div className="lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:bg-[var(--app-canvas)] lg:-mx-6 lg:px-6 ...">
+{/* sticky dentro de un SectionCard */}
+<div className="lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:-mx-6 lg:px-6 ...">
 ```
 
-(El `-mx-6 px-6` debe igualar el padding horizontal del `SectionCard` contenedor — `px-6` — para no desbordar.)
+(El `-mx-6 px-6` debe igualar el padding horizontal del `SectionCard` contenedor — `px-6` — para que el sticky cubra el ancho completo sin desbordar.)
 
 ### Badges de estado
 

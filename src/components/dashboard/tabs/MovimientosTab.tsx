@@ -311,7 +311,7 @@ export default function MovimientosTab({
         <div className="space-y-4">
           {/* Filtros: en desktop se vuelven sticky bajo el topbar para no perderlos
               al recorrer una tabla larga. En mobile/tablet quedan en flujo normal. */}
-          <div className="space-y-4 lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:bg-[var(--app-canvas)] lg:-mx-6 lg:px-6 lg:pt-1 lg:pb-3">
+          <div className="space-y-4 lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:-mx-6 lg:px-6 lg:pt-1 lg:pb-3">
           {/* Buscar: campo inline (filtra la lista) + acceso al buscador global */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">

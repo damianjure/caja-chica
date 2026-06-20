@@ -42,7 +42,7 @@ function ExportMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97] disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97] disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" aria-hidden="true" />}
         Exportar
@@ -120,7 +120,7 @@ function KpiCell({ label, value, tone = 'neutral', selected, onClick }: { label:
       aria-pressed={selected}
       className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-[border-color,background-color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-text-1)] ${selectedClass}`}
     >
-      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--app-text-3)]">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-3)]">{label}</span>
       <span className={`text-lg font-bold tabular-nums whitespace-nowrap ${valueColor}`}>{value}</span>
     </button>
   );
@@ -298,7 +298,7 @@ export default function MovimientosTab({
               <button
                 type="button"
                 onClick={onOpenCarga}
-                className="inline-flex items-center gap-1.5 rounded-md bg-[var(--app-strong-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97]"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Cargar

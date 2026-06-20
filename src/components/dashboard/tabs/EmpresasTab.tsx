@@ -385,7 +385,7 @@ export default function EmpresasTab({
             <button
               type="button"
               onClick={() => setShowCreateInput(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-medium text-[var(--app-strong-text)]"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)]"
             >
               <Plus className="w-3.5 h-3.5" />
               Nueva empresa
@@ -406,7 +406,7 @@ export default function EmpresasTab({
                 type="button"
                 onClick={() => void handleCreate()}
                 disabled={!newCompany.trim() || creating}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-medium text-[var(--app-strong-text)] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] disabled:opacity-50"
               >
                 {creating ? 'Creando…' : 'Agregar'}
               </button>
@@ -445,7 +445,7 @@ export default function EmpresasTab({
                           onClick={() => setSelectedCompany(isSelected ? null : c.name)}
                           className={`cursor-pointer transition-colors ${isSelected ? 'bg-[var(--app-surface-3)]' : 'hover:bg-[var(--app-surface-2)]'}`}
                         >
-                          <td className="px-4 py-3 min-w-0">
+                          <td className="px-4 py-2.5 min-w-0">
                             <div className="flex items-center gap-3">
                               <div className="h-7 w-7 shrink-0 rounded-md bg-[var(--app-surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--app-text-2)]">
                                 {initials(c.name)}
@@ -453,19 +453,19 @@ export default function EmpresasTab({
                               <span className="text-sm font-medium text-[var(--app-text-1)] truncate max-w-[160px]">{c.name}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className="px-3 py-2.5 text-right">
                             <span className="text-sm tabular-nums text-[var(--app-text-2)]">{c.movimientos}</span>
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className="px-3 py-2.5 text-right">
                             <span className="text-sm tabular-nums text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</span>
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className="px-3 py-2.5 text-right">
                             <span className="text-sm tabular-nums text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</span>
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className="px-3 py-2.5 text-right">
                             <span className={`text-sm font-semibold tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</span>
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-2.5 text-right">
                             <span className="text-xs text-[var(--app-text-3)] whitespace-nowrap">{lastAct ? fmtDate(lastAct) : '—'}</span>
                           </td>
                         </tr>

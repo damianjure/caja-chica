@@ -69,7 +69,7 @@ function SortableSection({ id, children }: { id: string; children: React.ReactNo
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative group pt-3${isDragging ? ' opacity-50 z-50' : ''}`}
+      className={`relative group pt-5${isDragging ? ' opacity-50 z-50' : ''}`}
     >
       <button
         ref={setActivatorNodeRef}
@@ -191,7 +191,7 @@ export default function ResumenTab(props: ResumenTabProps) {
   const sectionContent: Record<SectionId, React.ReactNode> = {
     actividad: (
       <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
-        <h3 className="text-sm font-bold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
+        <h3 className="text-base font-semibold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
         {recentMovements.length === 0 ? (
           <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
         ) : (

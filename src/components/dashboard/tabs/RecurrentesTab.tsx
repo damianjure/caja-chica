@@ -365,7 +365,7 @@ export default function RecurrentesTab({
               <button
                 type="button"
                 onClick={() => setCreating(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-medium text-[var(--app-strong-text)] shrink-0"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Nuevo recurrente
@@ -433,13 +433,13 @@ export default function RecurrentesTab({
                     {canWriteData && (
                       <td className="px-2 py-1 text-right">
                         <div className="flex items-center justify-end gap-0">
-                          <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar' : 'Activar'}>
+                          <button onClick={() => handleToggle(r.id)} disabled={togglingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title={r.is_active ? 'Pausar' : 'Activar'} aria-label={r.is_active ? 'Pausar' : 'Activar'}>
                             {togglingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : r.is_active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                           </button>
-                          <button onClick={() => setEditing(r)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-3)] transition-colors" title="Editar" aria-label="Editar">
+                          <button onClick={() => setEditing(r)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--app-text-1)] hover:bg-[var(--app-surface-2)] transition-colors" title="Editar" aria-label="Editar">
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-3)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar">
+                          <button onClick={() => setDeleteTarget(r.id)} disabled={deletingId === r.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-text-3)] hover:text-[var(--chart-expense)] hover:bg-[var(--app-surface-2)] transition-colors disabled:opacity-50" title="Eliminar" aria-label="Eliminar">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -455,7 +455,7 @@ export default function RecurrentesTab({
         {/* Right: próximos 30 días list */}
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
           <div className="px-4 py-3 border-b border-[var(--app-border)]">
-            <h3 className="text-sm font-bold text-[var(--app-text-1)]">Próximos 30 días</h3>
+            <h3 className="text-base font-semibold text-[var(--app-text-1)]">Próximos 30 días</h3>
           </div>
           <div className="divide-y divide-[var(--app-border)] overflow-y-auto" style={{ maxHeight: 340 }}>
             {next30Days.length === 0 ? (

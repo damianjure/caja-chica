@@ -721,7 +721,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
               type="button"
               onClick={() => void handleInvite()}
               disabled={submitting || !email.trim()}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-medium hover:border-[var(--app-text-2)] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] px-5 py-3 text-[var(--app-strong-text)] font-semibold hover:border-[var(--app-text-2)] disabled:opacity-50"
             >
               {submitting ? (
                 <>

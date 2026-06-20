@@ -152,13 +152,13 @@ export function PreferenciasSection({
   };
 
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] stack-relaxed">
+    <section className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)] stack-relaxed">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <SlidersHorizontal className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-xl font-bold tracking-tight dark:text-neutral-100">Preferencias</h2>
+          <h2 className="text-xl font-bold tracking-tight text-[var(--app-text-1)]">Preferencias</h2>
           <p className="text-sm text-[var(--app-text-3)]">Configuración personal del dashboard.</p>
         </div>
       </div>
@@ -207,7 +207,7 @@ export function PreferenciasSection({
                 className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
                   defaultCurrency === c
                     ? "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)]"
-                    : "bg-white border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
+                    : "bg-[var(--app-surface-1)] border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]"
                 }`}
               >
                 {c}
@@ -222,7 +222,7 @@ export function PreferenciasSection({
             value={defaultEmpresa}
             onChange={(e) => setDefaultEmpresa(e.target.value)}
             aria-label="Empresa por defecto"
-            className="rounded-xl border border-[var(--app-border-strong)] dark:border-neutral-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-white dark:bg-[var(--app-strong-surface)] dark:text-neutral-100 w-full max-w-xs"
+            className="rounded-xl border border-[var(--app-border-strong)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--app-text-1)] bg-[var(--app-surface-1)] w-full max-w-xs"
           >
             <option value="">Sin empresa (Personal)</option>
             {companies.filter((c) => !c.deleted_at).map((c) => (
@@ -272,7 +272,7 @@ export function PreferenciasSection({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="inline-flex items-center gap-0.5 rounded-md border border-[var(--app-border)] bg-white px-2 py-1.5 hover:border-[var(--app-text-2)] transition-colors">
+              <div className="inline-flex items-center gap-0.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-2 py-1.5 hover:border-[var(--app-text-2)] transition-colors">
                 <select
                   value={notifHour}
                   onChange={(e) => void saveNotif({ hour: Number(e.target.value) })}

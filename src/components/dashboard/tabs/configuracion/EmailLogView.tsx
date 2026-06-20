@@ -63,7 +63,7 @@ export function EmailLogView() {
             id="email-log-type"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as EmailLogType | "all")}
-            className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+            className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             aria-label="Filtrar por tipo de email"
           >
             {TYPE_OPTIONS.map((opt) => (
@@ -77,7 +77,7 @@ export function EmailLogView() {
             id="email-log-status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "ok" | "fail")}
-            className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+            className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
             aria-label="Filtrar por estado de envío"
           >
             {STATUS_OPTIONS.map((opt) => (
@@ -140,7 +140,7 @@ export function EmailLogView() {
               {rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border border-[var(--app-border)] rounded-lg bg-white"
+                  className="border border-[var(--app-border)] rounded-lg bg-[var(--app-surface-1)]"
                 >
                   <td className="px-3 py-2.5 text-[var(--app-text-1)] font-medium truncate max-w-[200px] rounded-l-lg">
                     {row.to_email}

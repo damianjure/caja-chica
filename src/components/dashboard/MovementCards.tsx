@@ -87,7 +87,7 @@ function MovementCardsImpl({
             <div
               key={item.id}
               style={{ animationDelay: `${Math.min(index * 40, 160)}ms` }}
-              className="anim-card-in group bg-white border border-[var(--app-border)] hover:border-[var(--app-border-strong)] rounded-xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
+              className="anim-card-in group bg-[var(--app-surface-1)] border border-[var(--app-border)] hover:border-[var(--app-border-strong)] rounded-xl p-5 shadow-sm relative overflow-hidden transition-[border-color] duration-150"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">

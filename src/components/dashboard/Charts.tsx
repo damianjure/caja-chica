@@ -21,7 +21,7 @@ export function ChartCard({
   footer?: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--app-border)] bg-white p-5 shadow-sm md:p-6">
+    <section className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] p-5 shadow-sm md:p-6">
       <div className="mb-5">
         <h3 className="text-base font-semibold text-[var(--app-text-1)] md:text-lg">{title}</h3>
         {description ? <p className="mt-1 text-sm text-[var(--app-text-3)]">{description}</p> : null}

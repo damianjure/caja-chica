@@ -7,7 +7,7 @@ import { SectionCard } from "../../primitives";
 function roleBadge(role: string) {
   const styles: Record<string, string> = {
     owner: "bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]",
-    editor: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200",
+    editor: "bg-[var(--app-blue-surface)] text-[var(--app-blue-text)]",
     viewer: "bg-[var(--app-surface-2)] text-[var(--app-text-2)]",
   };
   return (
@@ -160,7 +160,7 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
           <span className="text-xs text-[var(--app-text-3)]">{viewer.role}</span>
           {selfMembership && (
             <>
-              <span className="text-xs text-neutral-500">·</span>
+              <span className="text-xs text-[var(--app-text-3)]">·</span>
               {roleBadge(selfMembership.role)}
             </>
           )}
@@ -238,7 +238,7 @@ export function CuentaIdentidadSection({ viewer, selfMembership, showNotice, set
               type="button"
               onClick={() => void handleActivateTelegram()}
               disabled={linkingTelegram}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400 bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-700 dark:text-sky-300 hover:border-sky-500 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-blue-border)] bg-[var(--app-blue-surface)] px-3 py-1 text-xs font-medium text-[var(--app-blue-text)] hover:border-[var(--app-blue-border)] disabled:opacity-50"
             >
               {linkingTelegram ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageCircle className="w-3 h-3" />}
               Activar bot de Telegram

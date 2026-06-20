@@ -149,7 +149,7 @@ export function HeaderUserMenu({
           <button
             role="menuitem"
             onClick={() => { setOpen(false); onSignOut(); }}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--chart-expense)] hover:bg-[var(--app-red-surface)] dark:hover:bg-[var(--app-red-surface)]0/10 transition-colors"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--chart-expense)] hover:bg-[var(--app-red-surface)] transition-colors"
           >
             <LogOut className="h-4 w-4" />
             Cerrar sesión

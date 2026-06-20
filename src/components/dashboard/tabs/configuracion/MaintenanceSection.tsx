@@ -143,7 +143,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
   };
 
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
       <header className="mb-6">
         <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Mantenimiento del sistema</h2>
         <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
@@ -184,7 +184,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Mensaje para usuarios</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: Actualizando la base de datos"
                 value={activateMessage}
                 onChange={(e) => setActivateMessage(e.target.value)}
@@ -194,7 +194,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
             <div>
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
               <select
-                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 value={activateEstimated}
                 onChange={(e) => setActivateEstimated(e.target.value)}
                 disabled={isLive}
@@ -237,7 +237,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Fecha y hora de inicio</label>
               <input
                 type="datetime-local"
-                className="rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 value={scheduleAt}
                 onChange={(e) => setScheduleAt(e.target.value)}
                 disabled={isLive}
@@ -247,7 +247,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Mensaje para usuarios</label>
               <input
                 type="text"
-                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 placeholder="Ej: Actualizando la base de datos"
                 value={scheduleMessage}
                 onChange={(e) => setScheduleMessage(e.target.value)}
@@ -257,7 +257,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
             <div>
               <label className="text-xs font-medium text-[var(--app-text-2)] block mb-1">Duración estimada</label>
               <select
-                className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                 value={scheduleEstimated}
                 onChange={(e) => setScheduleEstimated(e.target.value)}
                 disabled={isLive}

@@ -122,7 +122,7 @@ export function DashboardModals({
                 const isDefault = company === readDefaultEmpresa();
                 return (
                   <button key={company} onClick={() => onAssignCompany(company)} disabled={isAssigning}
-                    className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] hover:border-[var(--app-text-2)]' : 'border-[var(--app-border)] bg-white text-[var(--app-text-1)] hover:border-[var(--app-text-2)]'}`}
+                    className={`rounded-xl border px-4 py-4 text-left font-medium transition-colors disabled:opacity-50 ${isDefault ? 'border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)] hover:border-[var(--app-text-2)]' : 'border-[var(--app-border)] bg-[var(--app-surface-1)] text-[var(--app-text-1)] hover:border-[var(--app-text-2)]'}`}
                   >
                     {company}{isDefault && <span className="ml-2 text-xs uppercase tracking-widest opacity-70">default</span>}
                   </button>
@@ -167,7 +167,7 @@ export function DashboardModals({
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                   {categoriesList.filter((c) => c !== 'all').map((cat) => (
                     <button key={cat} onClick={() => onAssignCategory(cat, false)} disabled={isAssigningCategory}
-                      className="rounded-lg border border-[var(--app-border)] bg-white px-3 py-2 text-left text-sm font-medium text-[var(--app-text-1)] transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
+                      className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-left text-sm font-medium text-[var(--app-text-1)] transition-colors hover:border-[var(--app-text-2)] disabled:opacity-50"
                     >
                       {cat}
                     </button>

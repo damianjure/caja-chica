@@ -73,7 +73,7 @@ export function DriveSection() {
       {status.connected ? (
         <button
           onClick={() => void disconnect()}
-          className="inline-flex items-center gap-2 rounded-md border border-rose-300 bg-[var(--app-surface-1)] px-4 py-2 text-sm font-medium text-rose-600 transition hover:border-rose-400 dark:border-rose-500/40"
+          className="inline-flex items-center gap-2 rounded-md border border-[var(--app-red-border)] bg-[var(--app-surface-1)] px-4 py-2 text-sm font-medium text-[var(--chart-expense)] transition hover:border-red-400"
         >
           <Unlink className="h-4 w-4" />
           Desconectar Drive

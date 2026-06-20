@@ -75,7 +75,7 @@ export function EmailSection() {
   const isLoading = settingsLoading || sendersLoading;
 
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
       <header className="mb-6">
         <h2 className="text-xl font-bold text-[var(--app-text-1)] tracking-tight">Email del sistema</h2>
         <p className="text-sm text-[var(--app-text-3)] mt-1.5 leading-relaxed max-w-prose">
@@ -110,7 +110,7 @@ export function EmailSection() {
                     id="email-sender-select"
                     value={effectiveSelected}
                     onChange={(e) => setSelectedEmail(e.target.value)}
-                    className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                    className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                     disabled={saving}
                     aria-label="Seleccionar remitente verificado"
                   >
@@ -162,7 +162,7 @@ export function EmailSection() {
                 <input
                   id="email-test-to"
                   type="email"
-                  className="w-full rounded-md border border-[var(--app-border)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
+                  className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--app-text-1)]"
                   placeholder="destinatario@ejemplo.com"
                   value={testTo}
                   onChange={(e) => {
@@ -197,7 +197,7 @@ export function EmailSection() {
               type="button"
               onClick={() => void handleTestSend()}
               disabled={sending || !testTo.trim()}
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--app-border)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-[0.97]"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-[0.97]"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Enviar prueba

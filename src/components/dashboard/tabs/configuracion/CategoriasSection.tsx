@@ -138,7 +138,7 @@ export function CategoriasSection() {
                       onClick={() => setDeleteTarget(c)}
                       disabled={deletingId === c.id}
                       aria-label={`Borrar categoría ${c.nombre}`}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--app-red-border)] text-[var(--chart-expense)] transition hover:border-red-400 disabled:opacity-50 dark:border-red-500/40 dark:hover:border-red-400"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--app-red-border)] text-[var(--chart-expense)] transition hover:border-red-400 disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

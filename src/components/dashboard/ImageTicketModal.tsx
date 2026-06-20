@@ -105,7 +105,7 @@ export function ImageTicketModal({
           <select
             value={empresa}
             onChange={(e) => setEmpresa(e.target.value)}
-            className="rounded-md border border-[var(--app-border)] px-4 py-3 bg-white"
+            className="rounded-md border border-[var(--app-border)] px-4 py-3 bg-[var(--app-surface-1)]"
           >
             {companyOptions.map((c) => (
               <option key={c} value={c}>{c}{c === defaultEmpresa.trim() ? " (default)" : ""}</option>

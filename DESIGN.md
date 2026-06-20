@@ -504,7 +504,9 @@ Uso: EmpresasTab, RecurrentesTab y AdminPanel (grid desktop). NO usar en mobile.
 />
 ```
 
-Padding: `px-5 py-4`. Valor `text-2xl` (héroe). Label `text-[var(--app-text-2)]` (no text-3). Icon badge con **tinte de marca**: `h-10 w-10 rounded-xl bg-[color-mix(in_srgb,var(--app-strong-surface)_10%,var(--app-surface-2))]` + ícono `text-[var(--app-strong-surface)]` (es el archetype horizontal; los icon-badge neutros de otras vistas siguen `surface-3`).
+Padding: `px-5 py-4`. Valor `text-2xl` (héroe). Icon badge con **tinte de marca**: `h-10 w-10 rounded-xl bg-[color-mix(in_srgb,var(--app-strong-surface)_10%,var(--app-surface-2))]` + ícono `text-[var(--app-strong-surface)]` (los icon-badge neutros de otras vistas siguen `surface-3`).
+
+**Convención de label de KPI (las 4 primitivas — `MetricCard`/`KpiBadgeCard`/`KpiCell`/`FilterCard`):** mismo eyebrow → `text-xs font-bold uppercase tracking-widest text-[var(--app-text-2)]`. Valor `text-2xl` (hero `text-4xl`). Ícono de acento en **mint** (`text-[var(--app-strong-surface)]`): inline en `MetricCard`, badge en `KpiBadgeCard`. Así mobile (`MetricCard`) y desktop (`KpiBadgeCard`) se leen como la misma familia aunque el layout difiera (apilada vs horizontal).
 
 #### `SectionCard` — contenedor de sección
 Uso: ResumenTab, EmpresasTab mobile, RecurrentesTab mobile, todas las secciones de Configuración.

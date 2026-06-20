@@ -30,8 +30,8 @@ export function MetricCard({ label, value, tone = 'neutral', icon: Icon, sub, cr
   const inner = (chevron: boolean) => (
     <div className={`flex h-full flex-col ${centered ? 'items-center justify-center text-center' : ''}`}>
       <div className={`flex items-center gap-1.5 mb-2 ${chevron ? 'pr-7' : ''} ${centered ? 'justify-center px-3' : ''}`}>
-        {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-text-3)] shrink-0" aria-hidden="true" />}
-        <span className="text-xs font-bold text-[var(--app-text-3)] uppercase tracking-widest">{label}</span>
+        {Icon && <Icon className="w-3.5 h-3.5 text-[var(--app-strong-surface)] shrink-0" aria-hidden="true" />}
+        <span className="text-xs font-bold text-[var(--app-text-2)] uppercase tracking-widest">{label}</span>
         {delta && (
           <span className={`ml-auto text-xs font-bold tabular-nums ${delta.tone === 'success' ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{delta.text}</span>
         )}
@@ -123,7 +123,7 @@ export function KpiBadgeCard({
         <Icon className="w-5 h-5 text-[var(--app-strong-surface)]" aria-hidden="true" />
       </div>
       <div className="min-w-0">
-        <div className="text-xs text-[var(--app-text-2)] mb-1">{label}</div>
+        <div className="text-xs font-bold uppercase tracking-widest text-[var(--app-text-2)] mb-1">{label}</div>
         <div className={`text-2xl font-bold tabular-nums leading-none ${tone === 'danger' ? 'text-[var(--chart-expense)]' : tone === 'success' ? 'text-[var(--chart-income)]' : tone === 'warning' ? 'text-[var(--app-amber-text)]' : 'text-[var(--app-text-1)]'}`}>
           {value}
         </div>

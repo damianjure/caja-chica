@@ -599,18 +599,18 @@ export default function EmpresasTab({
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Ingresos</div>
-                        <div className="font-medium text-[var(--chart-income)] tabular-nums">{formatCurrency(p.ing, cur)}</div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Ingresos</div>
+                        <div className="font-semibold text-[var(--chart-income)] tabular-nums text-xs leading-snug">{formatCurrency(p.ing, cur)}</div>
                       </div>
-                      <div>
-                        <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Gastos</div>
-                        <div className="font-medium text-[var(--chart-expense)] tabular-nums">{formatCurrency(p.gas, cur)}</div>
+                      <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Gastos</div>
+                        <div className="font-semibold text-[var(--chart-expense)] tabular-nums text-xs leading-snug">{formatCurrency(p.gas, cur)}</div>
                       </div>
-                      <div>
-                        <div className="text-[var(--app-text-3)] uppercase tracking-widest text-xs mb-1">Saldo</div>
-                        <div className={`font-medium tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</div>
+                      <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Saldo</div>
+                        <div className={`font-semibold tabular-nums text-xs leading-snug ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</div>
                       </div>
                     </div>
                   </div>

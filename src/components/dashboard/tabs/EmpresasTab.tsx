@@ -416,7 +416,7 @@ export default function EmpresasTab({
         </div>
 
         {/* Table + detail panel */}
-        <div className="flex border border-[var(--app-border)] rounded-xl overflow-hidden" style={{ minHeight: 460 }}>
+        <div className="flex border border-[var(--app-border)] bg-[var(--app-surface-1)] rounded-xl overflow-hidden shadow-[var(--app-shadow-sm)]" style={{ minHeight: 460 }}>
           {/* Left: wide table */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="overflow-auto flex-1">

@@ -12,6 +12,7 @@ import {
   MailCheck,
   Pause,
   Search,
+  Settings,
   Shield,
   ShieldCheck,
   Trash2,
@@ -464,28 +465,49 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
     return inv.status === invitationStatusFilter;
   });
 
+  const ADMIN_SECTIONS: { id: typeof adminTab; label: string; icon: typeof Shield }[] = [
+    { id: "usuarios", label: "Usuarios", icon: Shield },
+    { id: "invitaciones", label: "Invitaciones", icon: UserPlus },
+    { id: "sistema", label: "Sistema", icon: Settings },
+  ];
+
+  const navItemClass = (id: typeof adminTab) =>
+    `flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+      adminTab === id
+        ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-medium"
+        : "text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-text-1)]"
+    }`;
+
+  const pillClass = (id: typeof adminTab) =>
+    `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
+      adminTab === id
+        ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)]"
+        : "text-[var(--app-text-2)] hover:text-[var(--app-text-1)]"
+    }`;
+
   return (
-    <div className="space-y-6">
-      {/* Tab nav — pill style igual que Configuración */}
-      <div className="flex overflow-x-auto gap-1 pb-1 -mx-1 px-1">
-        {(["usuarios", "invitaciones", "sistema"] as const).map((tab) => {
-          const labels = { usuarios: "Usuarios", invitaciones: "Invitaciones", sistema: "Sistema" };
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setAdminTab(tab)}
-              className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                adminTab === tab
-                  ? "bg-[var(--app-surface-2)] text-[var(--app-text-1)]"
-                  : "text-[var(--app-text-2)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-text-1)]"
-              }`}
-            >
-              {labels[tab]}
-            </button>
-          );
-        })}
+    <div className="space-y-4">
+      {/* Mobile: pill bar (igual que Configuración) */}
+      <div className="flex overflow-x-auto gap-1 pb-1 -mx-1 px-1 lg:hidden">
+        {ADMIN_SECTIONS.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => setAdminTab(id)} className={pillClass(id)}>
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+            {label}
+          </button>
+        ))}
       </div>
+
+      {/* Desktop: sticky left nav + content (igual que Configuración) */}
+      <div className="lg:flex lg:gap-8 lg:items-start">
+        <nav className="hidden lg:block w-48 shrink-0 sticky top-4 space-y-0.5">
+          {ADMIN_SECTIONS.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setAdminTab(id)} className={navItemClass(id)}>
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="flex-1 min-w-0 space-y-4">
 
       {/* ── Usuarios tab ─────────────────────────────────────────────────── */}
       {adminTab === "usuarios" && (
@@ -543,7 +565,7 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           ) : (
             <>
               {/* Desktop: two-column master-detail */}
-              <div className="hidden lg:flex border border-[var(--app-border)] rounded-xl overflow-hidden" style={{ minHeight: 400 }}>
+              <div className="hidden lg:flex border border-[var(--app-border)] bg-[var(--app-surface-1)] rounded-xl overflow-hidden shadow-[var(--app-shadow-sm)]" style={{ minHeight: 400 }}>
                 {/* Left: users table */}
                 <div className="w-[320px] shrink-0 border-r border-[var(--app-border)] overflow-y-auto">
                   {filteredUsers.length === 0 ? (
@@ -868,6 +890,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
           )}
         </>
       )}
+        </div>
+      </div>
 
       {/* Global confirm dialog (used from any tab) */}
       {pendingConfirm && (

@@ -10,10 +10,10 @@ import {
   arrayMove, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChartCard, HorizontalBarList, WaterfallChart } from '../Charts';
+import { ChartCard, HorizontalBarList, WaterfallChart, GroupedBarChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
-import { buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison } from '../../../dashboard/summary';
+import { buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison, buildMonthlyChartData } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
@@ -49,7 +49,7 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
-const SECTION_IDS = ['actividad', 'charts', 'proyeccion'] as const;
+const SECTION_IDS = ['charts', 'proyeccion'] as const;
 type SectionId = (typeof SECTION_IDS)[number];
 
 function loadSectionOrder(): SectionId[] {
@@ -57,7 +57,10 @@ function loadSectionOrder(): SectionId[] {
     const raw = localStorage.getItem('resumen-section-order');
     if (raw) {
       const parsed = JSON.parse(raw) as SectionId[];
-      if (Array.isArray(parsed) && parsed.length === SECTION_IDS.length && SECTION_IDS.every((id) => parsed.includes(id))) return parsed;
+      if (Array.isArray(parsed)) {
+        const valid = parsed.filter((id): id is SectionId => (SECTION_IDS as readonly string[]).includes(id));
+        if (valid.length === SECTION_IDS.length && SECTION_IDS.every((id) => valid.includes(id))) return valid;
+      }
     }
   } catch { /* ignore */ }
   return [...SECTION_IDS];
@@ -155,6 +158,11 @@ export default function ResumenTab(props: ResumenTabProps) {
     [props.history, chartCurrency],
   );
 
+  const monthlyChartData = useMemo(
+    () => buildMonthlyChartData(props.history, chartCurrency, hiddenCompanies.size ? visibleCompanies : null),
+    [props.history, chartCurrency, hiddenCompanies, visibleCompanies],
+  );
+
   const toggleCompany = (name: string) =>
     setHiddenCompanies((prev) => {
       const next = new Set(prev);
@@ -186,36 +194,9 @@ export default function ResumenTab(props: ResumenTabProps) {
     </div>
   );
 
-  const recentMovements = props.history.slice(0, 8);
+  const recentMovements = props.history.slice(0, 6);
 
   const sectionContent: Record<SectionId, React.ReactNode> = {
-    actividad: (
-      <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
-        <h3 className="text-base font-semibold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
-        {recentMovements.length === 0 ? (
-          <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
-        ) : (
-          <ul className="divide-y divide-[var(--app-border)]" role="list">
-            {recentMovements.map((m) => (
-              <li key={m.id} role="listitem" className="flex items-center gap-3 py-2.5">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)]' : 'bg-[var(--app-red-surface)]'}`}>
-                  {m.tipo === 'ingreso'
-                    ? <TrendingUp className="w-3.5 h-3.5 text-[var(--app-green-text)]" aria-hidden="true" />
-                    : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[var(--app-text-1)] truncate">{m.descripcion || '—'}</div>
-                  <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
-                </div>
-                <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
-                  {m.tipo === 'ingreso' ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(m.monto)} {m.moneda}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    ),
     charts: (
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Flujo de caja" description="Cómo cada categoría reduce la caja.">
@@ -265,6 +246,23 @@ export default function ResumenTab(props: ResumenTabProps) {
     ),
   };
 
+  const legend = (
+    <div className="flex items-center gap-4 mt-3">
+      <span className="inline-flex items-center gap-1.5 text-xs text-[var(--app-text-3)]">
+        <span className="inline-block w-3 h-3 rounded-sm opacity-75" style={{ background: 'var(--chart-income)' }} />
+        Ingresos
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-xs text-[var(--app-text-3)]">
+        <span className="inline-block w-3 h-3 rounded-sm opacity-75" style={{ background: 'var(--chart-expense)' }} />
+        Gastos
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-xs text-[var(--app-text-3)]">
+        <span className="inline-block w-7 h-0 border-t-2 rounded" style={{ borderColor: 'var(--chart-net)' }} />
+        Neto
+      </span>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* 4-KPI row — fijo, sin drag */}
@@ -305,6 +303,57 @@ export default function ResumenTab(props: ResumenTabProps) {
           onClick={nav('recurrentes')}
           navLabel="Ver recurrentes"
         />
+      </div>
+
+      {/* Fijo: Flujo 6 meses (1.5fr) + Actividad reciente (1fr) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div>
+              <h3 className="text-base font-semibold text-[var(--app-text-1)]">Flujo de los últimos 6 meses</h3>
+              {companyNames.length > 1 && (
+                <div className="mt-2">
+                  <CompanyFilterPills companyNames={companyNames} hiddenCompanies={hiddenCompanies} onReset={() => setHiddenCompanies(new Set())} onToggle={toggleCompany} />
+                </div>
+              )}
+            </div>
+            {currencyToggle}
+          </div>
+          {monthlyChartData.length === 0 ? (
+            <EmptyState title="Sin datos para el flujo mensual." hint="Cargá movimientos para ver el historial." canWrite={props.canWriteData} icon={<BarChart2 className="w-8 h-8" strokeWidth={1.5} />} />
+          ) : (
+            <>
+              <GroupedBarChart data={monthlyChartData} currency={chartCurrency} />
+              {legend}
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] px-5 py-5 shadow-[var(--app-shadow-sm)]">
+          <h3 className="text-base font-semibold text-[var(--app-text-1)] mb-4">Actividad reciente</h3>
+          {recentMovements.length === 0 ? (
+            <EmptyState title="Sin movimientos todavía." hint="Cargá tu primer movimiento." canWrite={props.canWriteData} />
+          ) : (
+            <ul className="divide-y divide-[var(--app-border)]" role="list">
+              {recentMovements.map((m) => (
+                <li key={m.id} role="listitem" className="flex items-center gap-3 py-2.5">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.tipo === 'ingreso' ? 'bg-[var(--app-green-surface)]' : 'bg-[var(--app-red-surface)]'}`}>
+                    {m.tipo === 'ingreso'
+                      ? <TrendingUp className="w-3.5 h-3.5 text-[var(--app-green-text)]" aria-hidden="true" />
+                      : <TrendingDown className="w-3.5 h-3.5 text-[var(--app-red-text)]" aria-hidden="true" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[var(--app-text-1)] truncate">{m.descripcion || '—'}</div>
+                    <div className="text-xs text-[var(--app-text-3)]">{timeAgo(m.created_at)}</div>
+                  </div>
+                  <div className={`text-sm font-bold tabular-nums shrink-0 ${m.tipo === 'ingreso' ? 'text-[var(--app-green-text)]' : 'text-[var(--app-red-text)]'}`}>
+                    {m.tipo === 'ingreso' ? '+' : '−'}{new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(m.monto)} {m.moneda}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {/* Secciones reordenables */}

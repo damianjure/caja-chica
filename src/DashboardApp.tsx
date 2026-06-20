@@ -528,6 +528,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   useBackClose(Boolean(detailMovement), () => setDetailMovement(null));
   useBackClose(Boolean(extracted), clearExtracted);
 
+  // El drawer de detalle de movimiento vive a nivel del dashboard: cerrarlo al
+  // cambiar de pestaña o de página de paginación para que no quede colgado
+  // fuera de Movimientos.
+  useEffect(() => { setDetailMovement(null); }, [activeTab, movementsPage]);
+
   // Back on the app root (no modal open) asks before leaving, instead of
   // dropping the user straight out of the PWA.
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -716,7 +721,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}
       />
       <div
-        className={`max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6 lg:transition-[padding] lg:duration-200 ${detailMovement ? 'lg:pr-[404px]' : ''}`}
+        className={`max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6 lg:transition-[padding] lg:duration-200 ${detailMovement ? 'lg:pr-[312px]' : ''}`}
         style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition }}
       >
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}

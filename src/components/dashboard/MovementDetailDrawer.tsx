@@ -52,7 +52,7 @@ export function MovementDetailDrawer({
     <aside
       role="complementary"
       aria-label="Detalle del movimiento"
-      className="hidden lg:flex fixed inset-y-0 right-0 z-40 w-[380px] flex-col border-l border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[-12px_0_40px_rgba(0,0,0,0.18)] anim-slide-in-right"
+      className="hidden lg:flex fixed inset-y-0 right-0 z-40 w-72 flex-col border-l border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[-12px_0_40px_rgba(0,0,0,0.18)] anim-slide-in-right"
     >
       <header className="flex items-center justify-between gap-2 border-b border-[var(--app-border)] px-5 py-4">
         <h2 className="text-sm font-bold text-[var(--app-text-2)]">Detalle del movimiento</h2>

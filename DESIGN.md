@@ -535,6 +535,15 @@ Los headers sticky (filtros, toolbar) nunca usan `bg-white`. **El fondo del stic
 
 (El `-mx-6 px-6` debe igualar el padding horizontal del `SectionCard` contenedor — `px-6` — para que el sticky cubra el ancho completo sin desbordar.)
 
+### Paneles de detalle (master-detail)
+
+Todo panel de detalle que se abre al cliquear una fila/ítem usa el **mismo ancho canónico: `w-72` (288px)**. No mezclar anchos fijos con `fr` fluidos entre tabs — se ven inconsistentes.
+- **Empresas:** `CompanyDetailPanel` inline en la tabla, `w-72`.
+- **Movimientos:** `MovementDetailDrawer` fixed a la derecha, `w-72` (offset del contenido cuando está abierto: `lg:pr-[312px]` = 288 + 24 de gap).
+- **Recurrentes:** panel lateral en grid `lg:grid-cols-[minmax(0,1fr)_18rem]` (18rem = 288px).
+
+El drawer de movimiento vive a nivel de `DashboardApp`, así que se cierra al cambiar de pestaña o de página de paginación (`useEffect` sobre `[activeTab, movementsPage]`) — si no, queda colgado fuera de Movimientos.
+
 ### Badges de estado
 
 ```tsx

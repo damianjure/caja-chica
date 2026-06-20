@@ -102,7 +102,7 @@ export function ConfirmDestructive({
         aria-modal="true"
         aria-labelledby="confirm-destructive-title"
         aria-describedby="confirm-destructive-desc"
-        className="anim-scale-in w-full max-w-[400px] bg-white border border-[var(--app-border)] rounded-2xl shadow-2xl p-6"
+        className="anim-scale-in w-full max-w-[400px] bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-2xl shadow-[var(--app-shadow-md)] p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-3.5">
@@ -170,10 +170,10 @@ export function ConfirmDestructive({
             type="button"
             onClick={onConfirm}
             disabled={isWorking || !requireTextOk}
-            className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-white border active:scale-[0.97] transition disabled:opacity-50 ${
+            className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium border active:scale-[0.97] transition disabled:opacity-50 ${
               isDanger
-                ? 'bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700'
-                : 'bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] hover:bg-[var(--app-strong-surface)]'
+                ? 'bg-[var(--app-red-text)] border-[var(--app-red-text)] text-[var(--app-surface-1)] hover:opacity-90'
+                : 'bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)] hover:opacity-90'
             }`}
           >
             {isWorking ? 'Confirmando…' : state.confirmLabel}

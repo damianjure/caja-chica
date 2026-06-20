@@ -209,7 +209,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
           <button
             onClick={() => setShowActivateConfirm(true)}
             disabled={isLive || activating}
-            className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--app-amber-text)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             <Wrench className="w-4 h-4" />
             Activar mantenimiento inmediato
@@ -271,7 +271,7 @@ export function MaintenanceSection({ showNotice, setError }: MaintenanceSectionP
           <button
             onClick={() => void handleSchedule()}
             disabled={isLive || scheduling}
-            className="inline-flex items-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-4 py-2 text-sm font-semibold text-[var(--app-strong-text)] hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--app-strong-surface)] px-4 py-2 text-sm font-semibold text-[var(--app-strong-text)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             {scheduling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
             Programar mantenimiento

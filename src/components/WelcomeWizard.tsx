@@ -63,7 +63,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
         aria-modal="true"
         aria-labelledby="wizard-title"
         tabIndex={-1}
-        className="anim-scale-in bg-white dark:bg-[var(--app-strong-surface)] rounded-2xl shadow-2xl w-full max-w-md relative outline-none"
+        className="anim-scale-in bg-[var(--app-surface-1)] rounded-2xl shadow-[var(--app-shadow-md)] w-full max-w-md relative outline-none"
       >
         <button
           onClick={() => finish()}
@@ -75,7 +75,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
 
         {step === 'hero' && (
           <div className="p-7 flex flex-col items-center text-center gap-5">
-            <h2 id="wizard-title" className="text-2xl font-bold text-[var(--app-text-1)] dark:text-white">
+            <h2 id="wizard-title" className="text-2xl font-bold text-[var(--app-text-1)]">
               Cargá como hablás
             </h2>
             <p className="-mt-3 text-sm leading-relaxed text-[var(--app-text-3)]">
@@ -136,11 +136,11 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
         {step === 'linked' && (
           <div className="p-7 flex flex-col gap-5">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-sky-100 dark:bg-sky-500/15 flex items-center justify-center shrink-0">
-                <MessageCircle className="w-5 h-5 text-sky-600 dark:text-sky-300" />
+              <div className="w-11 h-11 rounded-xl bg-[var(--app-blue-surface)] flex items-center justify-center shrink-0">
+                <MessageCircle className="w-5 h-5 text-[var(--app-blue-text)]" />
               </div>
               <div>
-                <h2 id="wizard-title" className="font-bold text-[var(--app-text-1)] dark:text-white">Abrí Telegram y tocá Start</h2>
+                <h2 id="wizard-title" className="font-bold text-[var(--app-text-1)]">Abrí Telegram y tocá Start</h2>
                 <p className="text-sm text-[var(--app-text-3)]">Apenas lo hagas, ya podés cargar gastos por chat, foto o audio.</p>
               </div>
             </div>
@@ -150,7 +150,7 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
                 href={deepLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-sky-500 border border-sky-500 hover:border-sky-300 active:scale-[0.97] text-white font-medium py-3 px-6 rounded-md transition duration-150 text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-[var(--app-strong-surface)] border border-[var(--app-strong-surface)] hover:opacity-90 active:scale-[0.97] text-[var(--app-strong-text)] font-medium py-3 px-6 rounded-md transition duration-150 text-sm"
               >
                 <MessageCircle className="w-4 h-4" />
                 Abrir bot en Telegram

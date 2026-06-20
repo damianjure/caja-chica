@@ -109,7 +109,7 @@ export function CommandPalette({ open, onClose, searchInput, onSelect }: Command
       aria-label="Búsqueda global"
     >
       <div
-        className="anim-scale-in w-full max-w-xl bg-[var(--app-surface-1)] rounded-2xl shadow-2xl border border-[var(--app-border)] overflow-hidden flex flex-col max-h-[70vh]"
+        className="anim-scale-in w-full max-w-xl bg-[var(--app-surface-1)] rounded-2xl shadow-[var(--app-shadow-md)] border border-[var(--app-border)] overflow-hidden flex flex-col max-h-[70vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}

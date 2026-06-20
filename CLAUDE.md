@@ -368,6 +368,7 @@ Archivo principal:
 - `Movimientos`: filtro combinado empresa/tipo/moneda
 - lo nuevo entra `conciliado` por defecto
 - **dark mode completo** — todos los componentes responden a `[data-theme="dark"]`
+- **ResumenTab layout** — 3 zonas: (1) KPI row 4-col, (2) grid fijo `[3fr_2fr]` con `GroupedBarChart` (6 meses) + Actividad reciente (últimos 6 movimientos), (3) secciones drag-to-reorder (`['charts', 'proyeccion']`). La sección `actividad` se movió al grid fijo y se eliminó del reorder. Ver layout completo en `design.md § Layout de ResumenTab`.
 
 ---
 
@@ -694,6 +695,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 - Variables: `--app-canvas`, `--app-surface-1/2/3/4`, `--app-border`, `--app-text-1/2/3/4`
 - `@layer utilities` con `!important` mapea clases Tailwind → variables
 - Base layer: `input`, `select`, `textarea`, `option` usan variables globalmente
+- **Regla crítica:** NUNCA usar `dark:` en clases de componentes. Los tokens semánticos (`var(--app-*)`) ya cambian solos con `[data-theme=dark]` via CSS. Usar `dark:` encima de un token semántico es código muerto; encima de un color fijo es frágil. La `@custom-variant dark` existe en `index.css` pero el design system lo resuelve a nivel de CSS variable, no a nivel de clase utilitaria.
 
 ---
 

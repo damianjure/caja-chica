@@ -1023,7 +1023,7 @@ function DashboardTreeNode({ node, viewerId, onSelectUser }: DashboardTreeNodePr
                 </span>
               )}
               {isViewerOwner && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-600 text-white">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
                   Vos
                 </span>
               )}
@@ -1195,12 +1195,12 @@ function UserDetailContent({
                 inactive: "bg-[var(--app-surface-1)] border-[var(--app-border-strong)] text-[var(--app-text-2)] hover:border-[var(--app-text-2)]",
               },
               admin: {
-                active: "bg-blue-600 border-blue-600 text-white",
-                inactive: "bg-[var(--app-surface-1)] border-[color-mix(in_srgb,#3b82f6_40%,var(--app-border))] text-[color-mix(in_srgb,#3b82f6_80%,var(--app-text-1))] hover:border-[color-mix(in_srgb,#3b82f6_70%,var(--app-border))]",
+                active: "bg-[var(--app-blue-text)] border-[var(--app-blue-text)] text-[var(--app-surface-1)]",
+                inactive: "bg-[var(--app-surface-1)] border-[var(--app-blue-border)] text-[var(--app-blue-text)] hover:border-[var(--app-blue-text)]",
               },
               superadmin: {
-                active: "bg-red-600 border-red-600 text-white",
-                inactive: "bg-[var(--app-surface-1)] border-[color-mix(in_srgb,var(--chart-expense)_40%,var(--app-border))] text-[var(--chart-expense)] hover:border-[color-mix(in_srgb,var(--chart-expense)_70%,var(--app-border))]",
+                active: "bg-[var(--app-red-text)] border-[var(--app-red-text)] text-[var(--app-surface-1)]",
+                inactive: "bg-[var(--app-surface-1)] border-[var(--app-red-border)] text-[var(--app-red-text)] hover:border-[var(--app-red-text)]",
               },
             }[r];
             const roleLabel = APP_ROLE_LABELS[r];

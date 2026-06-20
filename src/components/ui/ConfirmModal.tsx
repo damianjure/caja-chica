@@ -119,7 +119,7 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
         aria-describedby="confirm-modal-desc"
-        className="anim-scale-in w-full max-w-[400px] bg-white border border-[var(--app-border)] rounded-2xl shadow-2xl p-6"
+        className="anim-scale-in w-full max-w-[400px] bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-2xl shadow-[var(--app-shadow-md)] p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Icon + title inline */}
@@ -220,10 +220,10 @@ export function ConfirmModal({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={!canConfirm}
-            className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium text-white border active:scale-[0.97] transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
+            className={`flex-1 h-[38px] px-3.5 rounded-md text-[13.5px] font-medium border active:scale-[0.97] transition disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
               isDanger
-                ? "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700"
-                : "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] hover:bg-[var(--app-strong-surface)]"
+                ? "bg-[var(--app-red-text)] border-[var(--app-red-text)] text-[var(--app-surface-1)] hover:opacity-90"
+                : "bg-[var(--app-strong-surface)] border-[var(--app-strong-surface)] text-[var(--app-strong-text)] hover:opacity-90"
             }`}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}

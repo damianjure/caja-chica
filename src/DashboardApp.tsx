@@ -731,14 +731,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
         {/* Telegram activation banner — shown only when not linked, not dismissed, and wizard not open */}
         {!showWizard && !telegramBannerDismissed && telegramLinked === false && (
-          <div role="status" className="flex items-center gap-3 rounded-xl border border-sky-200 dark:border-sky-700 bg-sky-50 dark:bg-sky-500/10 px-4 py-3 text-sky-800 dark:text-sky-200 text-sm">
-            <MessageCircle className="w-4 h-4 shrink-0 text-sky-500" aria-hidden="true" />
+          <div role="status" className="flex items-center gap-3 rounded-xl border border-[var(--app-blue-border)] bg-[var(--app-blue-surface)] px-4 py-3 text-[var(--app-blue-text)] text-sm">
+            <MessageCircle className="w-4 h-4 shrink-0 text-[var(--app-blue-text)]" aria-hidden="true" />
             <p className="flex-1">Activá el bot de Telegram para cargar gastos por texto, foto o voz.</p>
             <button
               type="button"
               onClick={() => void handleTelegramBannerActivate()}
               disabled={telegramLinkingBanner}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400 bg-white dark:bg-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:text-sky-200 hover:border-sky-500 disabled:opacity-50 shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-blue-border)] bg-[var(--app-surface-1)] px-3 py-1.5 text-xs font-semibold text-[var(--app-blue-text)] hover:border-[var(--app-blue-text)] disabled:opacity-50 shrink-0"
             >
               {telegramLinkingBanner ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
               Activar
@@ -747,7 +747,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
               type="button"
               onClick={() => setTelegramBannerDismissed(true)}
               aria-label="Cerrar"
-              className="p-1 rounded-lg text-sky-500 hover:text-sky-700 dark:hover:text-sky-200 shrink-0"
+              className="p-1 rounded-lg text-[var(--app-blue-text)] hover:opacity-70 shrink-0"
             >
               <XIcon className="w-4 h-4" />
             </button>

@@ -58,7 +58,7 @@ export function BiometricGate({ userId, theme, onToggleTheme, onSignOut, childre
   return (
     <div className="min-h-screen bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white border border-[var(--app-border)] rounded-xl shadow-sm p-8 text-center space-y-6">
+        <div className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl shadow-[var(--app-shadow-sm)] p-8 text-center space-y-6">
           <div className="flex justify-end">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} compact />
           </div>

@@ -4,7 +4,7 @@ import { api, type AiHealth } from "../services/api";
 
 const STATUS_META: Record<AiHealth["status"], { label: string; cls: string }> = {
   ok: { label: "Saludable", cls: "bg-[var(--app-green-surface)] text-[var(--chart-income)] border-[var(--app-green-border)]" },
-  warn: { label: "Atención", cls: "bg-[var(--app-amber-surface)] text-amber-700 border-[var(--app-amber-border)]" },
+  warn: { label: "Atención", cls: "bg-[var(--app-amber-surface)] text-[var(--app-amber-text)] border-[var(--app-amber-border)]" },
   critical: { label: "Crítico", cls: "bg-[var(--app-red-surface)] text-[var(--chart-expense)] border-[var(--app-red-border)]" },
 };
 
@@ -27,7 +27,7 @@ export function AiHealthCard() {
   const meta = health ? STATUS_META[health.status] : null;
 
   return (
-    <section className="bg-white border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
+    <section className="bg-[var(--app-surface-1)] border border-[var(--app-border)] rounded-xl px-6 py-7 md:px-8 md:py-9 shadow-[var(--app-shadow-sm)]">
       <header className="mb-6 flex items-start gap-3">
         <div className="p-2 rounded-xl bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]">
           <Activity className="w-5 h-5" />

@@ -456,7 +456,7 @@ Nunca color decorativo en un ícono. La Regla del Color Semántico se aplica igu
 | Monto ingreso | `text-[var(--chart-income)]` | `text-green-*` |
 | Monto gasto | `text-[var(--chart-expense)]` | `text-red-*` |
 
-**Regla absoluta:** nunca `bg-white` en componentes del dashboard — rompe dark mode. El único lugar donde `bg-white` puede aparecer es en `src/components/ui/` con su correspondiente `dark:bg-[var(--app-surface-*)]`.
+**Regla absoluta:** nunca `bg-white` ni `dark:*` en componentes del dashboard ni en `src/components/ui/`. Los tokens semánticos (`var(--app-surface-1)`, `var(--app-text-2)`, etc.) ya son theme-aware — cambian solos con `[data-theme=dark]` vía CSS. Usar `dark:` encima de un token semántico es código muerto; encima de un color fijo (`dark:bg-gray-800`) es frágil y no usa el design system. Resultado: NUNCA se usa `dark:` en las clases de componentes.
 
 ### Padding unificado de tarjetas
 
@@ -548,22 +548,49 @@ El drawer de movimiento vive a nivel de `DashboardApp`, así que se cierra al ca
 
 ### Badges de estado
 
+Usar SIEMPRE los tokens semánticos — nunca colores de Tailwind fijos (`rose-100`, `violet-800`, `sky-200`, etc.) ni `dark:` overrides. Los tokens ya son theme-aware.
+
 ```tsx
 // Activo / Éxito
-<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-green-surface)] text-[var(--app-green-text)]">
-  Activo
-</span>
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-green-surface)] text-[var(--app-green-text)]">Activo</span>
 
-// Pausado / Advertencia  
-<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[color-mix(in_srgb,var(--app-amber-text)_12%,var(--app-surface-2))] text-[var(--app-amber-text)]">
-  Pausado
-</span>
+// Pendiente / Advertencia
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-amber-surface)] text-[var(--app-amber-text)]">Pendiente</span>
 
-// Neutro
-<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-2)]">
-  Pendiente
-</span>
+// Error / Revocado / Danger
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-red-surface)] text-[var(--app-red-text)]">Revocado</span>
+
+// Info / Rol primario (owner, admin, Telegram)
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-blue-surface)] text-[var(--app-blue-text)]">Owner</span>
+
+// Neutro (viewer, vencido, sin acción)
+<span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-[var(--app-surface-2)] text-[var(--app-text-2)]">Viewer</span>
 ```
+
+**Mapeo de colores de Tailwind → tokens semánticos** (para migración o reviews):
+
+| Tailwind (prohibido) | Token correcto |
+|---|---|
+| `violet-*`, `purple-*` | `--app-blue-{surface/text/border}` |
+| `emerald-*`, `teal-*` | `--app-green-{surface/text/border}` |
+| `rose-*`, `pink-*` | `--app-red-{surface/text/border}` |
+| `sky-*`, `cyan-*` | `--app-blue-{surface/text/border}` |
+| `amber-*`, `yellow-*` | `--app-amber-{surface/text/border}` |
+| `red-*`, `orange-*` | `--app-red-{surface/text/border}` |
+| `green-*`, `lime-*` | `--app-green-{surface/text/border}` |
+| `blue-600`, `indigo-*` | `--app-blue-{surface/text/border}` |
+
+Para anillos de badge: `ring-1 ring-[var(--app-{color}-border)]/60`.
+
+**Botones de acción destructiva (danger):**
+```tsx
+className="bg-[var(--app-red-text)] border-[var(--app-red-text)] text-[var(--app-surface-1)] hover:opacity-90"
+```
+**Botones de advertencia (activate/schedule):**
+```tsx
+className="bg-[var(--app-amber-text)] text-white hover:opacity-90"
+```
+(Amber usa `text-white` — el token `--app-amber-text` es oscuro en light y más oscuro aún en dark, así que blanco tiene mejor contraste.)
 
 ### Progress bars
 
@@ -633,6 +660,22 @@ El drawer de movimiento vive a nivel de `DashboardApp`, así que se cierra al ca
   </div>
 </div>
 ```
+
+### Layout de ResumenTab
+
+**Estructura de tres zonas (desde arriba):**
+
+1. **KPI row** — `grid grid-cols-2 md:grid-cols-4 gap-4`, primitivo `MetricCard`.
+2. **Grid fijo** — siempre visible, no reordenable:
+   ```tsx
+   <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
+     {/* Left: GroupedBarChart "Flujo de los últimos 6 meses" */}
+     {/* Right: Actividad reciente — últimos 6 movimientos */}
+   </div>
+   ```
+   Columna izquierda (3fr): `GroupedBarChart` con datos de `buildMonthlyChartData()` de `src/dashboard/summary.ts`.
+   Columna derecha (2fr): lista de movimientos `history.slice(0, 6)`, icono semantico por tipo, metadata (empresa · categoría · tiempo).
+3. **Secciones drag-to-reorder** (`SECTION_IDS = ['charts', 'proyeccion']`) — desplazables debajo del grid fijo. La sección `actividad` fue eliminada del reorder (vive en el grid fijo) — el localStorage con la key `resumen-section-order` se migra filtrando IDs obsoletos en `loadSectionOrder()`.
 
 ## 12. Do's and Don'ts
 

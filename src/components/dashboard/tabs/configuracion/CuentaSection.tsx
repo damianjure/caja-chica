@@ -169,7 +169,7 @@ export function CuentaSection({
             <button
               onClick={() => void handlePurgeDemo()}
               disabled={purgingDemo}
-              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-amber-border)] px-4 py-3 text-sm font-medium text-amber-700 hover:border-amber-400 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-amber-border)] px-4 py-3 text-sm font-medium text-[var(--app-amber-text)] hover:border-[var(--app-amber-text)] transition-colors disabled:opacity-50"
             >
               {purgingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Limpiar datos de ejemplo
@@ -203,7 +203,7 @@ export function CuentaSection({
             <button
               onClick={() => setShowLeaveConfirm(true)}
               disabled={leavingDashboard}
-              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--app-red-text)] hover:border-[var(--app-red-text)] transition-colors disabled:opacity-50"
             >
               {leavingDashboard ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
               Abandonar este dashboard
@@ -218,10 +218,10 @@ export function CuentaSection({
             Cerrar sesión
           </button>
 
-          <div className="border-t border-red-100 pt-3">
+          <div className="border-t border-[var(--app-red-border)] pt-3">
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--chart-expense)] hover:border-red-400 transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl border border-[var(--app-red-border)] px-4 py-3 text-sm font-medium text-[var(--app-red-text)] hover:border-[var(--app-red-text)] transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               Borrar mi cuenta

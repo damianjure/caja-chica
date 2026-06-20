@@ -105,6 +105,19 @@ components:
 
 # Design System: Caja Chica
 
+> ## 📐 Cómo usar este documento (source of truth)
+>
+> Este archivo es **la fuente de verdad de UI/UX de Caja Chica**. Ante **cualquier** tarea de diseño, layout, estilo, color, tipografía, componentes o estados visuales: **leer esto primero y ajustarse a las reglas de acá** antes de escribir o cambiar UI.
+>
+> **Separación de responsabilidades (regla anti-drift):**
+> - **`src/index.css` = valores exactos de tokens** (los `--app-*`: colores, sombras, radios, duraciones). Es el **canon de runtime**. Si un valor de este doc no coincide con `index.css`, **gana `index.css`**.
+> - **`design.md` (este archivo) = reglas, filosofía y convenciones de componente.** Atemporal. No duplica valores hex/OKLCH que vivan en `index.css` (por eso driftean).
+> - **`src/components/dashboard/primitives.tsx` + `src/components/ui/` = implementación.** Las primitivas son la forma canónica; ver §11.
+>
+> **El frontmatter de arriba (`colors`/`components`) es ILUSTRATIVO/legacy** (valores "Bosque y Niebla" previos) — NO es el canon. Para valores reales, ir a `index.css`.
+>
+> **Al cerrar una tarea de UI:** si establecés una convención nueva o cambiás una regla, actualizá la sección correspondiente acá en la misma pasada (adopción incremental, sin sweeps masivos).
+
 ## 1. Overview
 
 **Creative North Star: "Petróleo y Terracota"** *(evolución de "Bosque y Niebla" — decisión 2026-05-31)*
@@ -113,12 +126,12 @@ Caja Chica es un dashboard financiero para registrar y consultar movimientos en 
 
 La densidad es media: aire generoso entre grupos conceptuales, filas compactas dentro de las tarjetas. La jerarquía se construye con escala y peso tipográfico, no con color. El color semántico (rojo, verde, ámbar, azul) está reservado exclusivamente para diferenciar tipos de movimiento y estados; nunca decora. El acento de marca (mint) marca la acción primaria y la pestaña activa.
 
-El sistema usa **glass + gradiente con moderación** (decisión 2026-05-31): el efecto vidrio (`backdrop-blur` translúcido) va SOLO en el "chrome" (header/app-bar y barra de pestañas), donde casi no hay texto detrás; las tarjetas de datos son SÓLIDAS para no comprometer contraste ni performance. El gradiente radial sutil va SOLO en el fondo de la app, nunca por tarjeta. Sigue rechazando: glass sobre tarjetas de datos, gradientes pesados detrás de cifras, la plantilla hero-métrica, y la iluminación de fondo en hover (el feedback de hover sigue siendo el resalte de borde).
+El sistema usa **glass con moderación** (decisión 2026-05-31): el efecto vidrio (`backdrop-blur` translúcido) va SOLO en el "chrome" (header/app-bar y barra de pestañas), donde casi no hay texto detrás; las tarjetas de datos son SÓLIDAS para no comprometer contraste ni performance. El fondo de la app es un **canvas plano** (`--app-canvas`, sin gradiente). Sigue rechazando: glass sobre tarjetas de datos, gradientes detrás de cifras, la plantilla hero-métrica, y la iluminación de fondo en hover (el feedback de hover sigue siendo el resalte de borde).
 
 **Key Characteristics:**
 - Dos modos paralelos: dark "Petróleo Mint" y light "Terracota cálida", no una inversión
 - Acento de marca mint; color semántico (rojo/verde/ámbar/azul) reservado para significado financiero
-- Glass SOLO en chrome (header + tabs); tarjetas de datos sólidas; gradiente solo en el fondo de la app
+- Glass SOLO en chrome (header + tabs); tarjetas de datos sólidas; fondo de app plano (sin gradiente)
 - Jerarquía por escala y peso; hover = resalte de borde, nunca relleno
 - Radios y formas SIN cambio respecto del sistema previo (rounded-md botones, rounded-xl tarjetas)
 - Tipografía única (Inter Variable, self-hosted); peso de pills reforzado (bold)
@@ -150,21 +163,15 @@ Neutrales sage perceptualmente uniformes con cuatro acentos semánticos de baja 
 
 **La Regla de la Superficie Fuerte.** El acento de marca (mint) y/o la tinta fuerte aparecen solo en la acción primaria y la pestaña activa. Su rareza es lo que la hace legible como "lo importante".
 
-### Paleta aplicada — v2 "Petróleo / Terracota" (2026-05-31)
+### Paleta aplicada — v2 "Petróleo / Terracota"
 
-Reemplaza los valores "Bosque y Niebla" en `index.css` (mismos nombres de token `--app-*`; Fase 1 dialará OKLCH exacto + verificará contraste AA en cifras/tablas). Origen: mockup `mockups/app-full-redesign-v2.html`. Fuente: paletas "Oscura A · Petróleo Mint" + "Clara A · Terracota cálida".
+**Los valores exactos de cada token viven en `src/index.css`** (los `--app-*`, por modo claro/oscuro, más los bloques `data-palette`). Este doc NO los duplica para no driftear. La intención de marca:
 
-**Dark · Petróleo Mint**
-- canvas `#07100D` · surface-1 `#111D18` · surface-2 `#17261F` · surface-3 `#1D3028`
-- border `#2A4036` · border-strong `#385348` · text-1 `#F3FBF6` · text-2 `#A9B9B0` · text-3 `#708179`
-- marca/ingreso (mint) `#5EE9B5` · gasto (coral) `#F47C72` · pendiente (ámbar) `#F2B84B` · info (azul) `#6DA8FF`
+- **Dark · "Petróleo Mint":** fondo petróleo profundo (casi negro verdoso) + acento **mint** brillante para marca/acción. Neutrales tintados a verde, nunca gris plano.
+- **Light · "Terracota cálida":** off-white tibio tintado a terracota (**nunca** blanco puro) + acento mint un poco más oscuro para AA sobre crema.
+- **Semánticos** (rojo gasto / verde ingreso / ámbar pendiente / azul info): el hue se conserva en ambos modos; en dark son versiones más claras y desaturadas.
 
-**Light · Terracota cálida** (off-white tibio, NO blanco puro)
-- canvas `#F1E8DE` · surface-1 `#FBF6EF` · surface-2 `#EBE0D3` · surface-3 `#E0D3C3`
-- border `#D8CABB` · border-strong `#C9B9A6` · text-1 `#211B14` · text-2 `#6E6155` · text-3 `#8A7C6E`
-- marca/ingreso `#147E60` · gasto `#C9534C` · pendiente `#B5760F` · info `#2563EB` (acentos un poco más oscuros que en dark, para AA sobre crema)
-
-**Gradiente de fondo** (solo `body`): radial mint suave arriba-izquierda + radial azul tenue arriba-derecha + linear vertical del canvas. Nunca por tarjeta.
+**Fondo de la app:** `--app-canvas` **plano** (un solo color por modo, sin gradiente). Nunca gradiente por tarjeta.
 
 ### Paletas opcionales (capa `data-palette`) — 2026-06-03
 
@@ -224,8 +231,8 @@ Sistema híbrido: capas tonales por defecto, sombra como respuesta a estado o je
 ## 5. Components
 
 ### Buttons
-- **Shape:** esquinas suaves (`rounded-md`, 0.5rem) para botones; `rounded-lg`/`rounded-xl` para elementos tipo tarjeta cliqueable.
-- **Primary:** fondo `strong-surface`, texto `strong-text`, borde del mismo color que el fondo, `shadow-md`. Padding `0.625rem 1.5rem`.
+- **Shape:** `rounded-lg` para botones; `rounded-xl` para elementos tipo tarjeta cliqueable.
+- **Primary (canónico):** fondo `strong-surface`, texto `strong-text`. **Toolbar/acción de tarjeta:** `rounded-lg px-3 py-2 text-xs font-semibold` (Cargar, Exportar, Nuevo recurrente, Nueva empresa). **En fila de formulario** (al lado de inputs): mantiene `px-5 py-3` para igualar la altura del input, mismo `rounded-lg font-semibold`. El componente `Button` (`ui/Button.tsx`) es la forma preferida; los botones inline se migran a esta receta al tocar el archivo.
 - **Ghost:** fondo `surface-1`, borde `border`, texto `text-2`, `shadow-sm`.
 - **Danger:** outline rojo (`border-red-200`, `bg-red-50`, `text-red-600`); reservado para acciones destructivas.
 - **Hover / Focus:** el borde pasa a `border-strong` (o al tono fuerte del color en botones semánticos). Sin cambio de fondo. `active:scale-[0.97]` da el feedback de click. Focus visible: outline de 2px.
@@ -283,6 +290,7 @@ Cada pestaña lleva **un número que manda** arriba, no una fila plana de cards 
 - **Bottom-nav (mobile, 2026-06-15):** `sm:hidden fixed bottom-0`, ícono + label corto por pestaña, `aria-current="page"`. Target ≥44px (`py-2`). Montada **fuera** del wrapper transformado del pull-to-refresh (si no, `fixed` queda atrapado). Respeta `safe-area-inset-bottom`. En mobile el título de pantalla vive en el header sticky, no en la tab bar.
 - **Swipe entre secciones (mobile):** `useSwipeNav` (gesto horizontal en `window`, umbral 50px, dominancia 1.3, ignora scrollers horizontales internos) cambia de pestaña con transición direccional (`anim-slide-in-right/left` según `navDir`).
 - **Back cierra modal (`useBackClose`):** al abrir un modal se hace `history.pushState`; el Back de Android/navegador lo cierra en vez de salir de la página. Aplicado a todos los modales de `DashboardApp` + create/edit/delete de Recurrentes.
+- **Páginas multi-sección (Configuración + Super Admin) — mismo patrón:** en **desktop**, sidebar vertical sticky a la izquierda (`hidden lg:block w-48 shrink-0 sticky top-4`, item activo `bg-[var(--app-surface-2)] text-[var(--app-text-1)] font-medium`) + contenido en columna `flex-1 min-w-0`. En **mobile**, barra de pills horizontal scrolleable (`lg:hidden`, pill activa `bg-[var(--app-surface-2)]`). Render del contenido **una sola vez** dentro de `lg:flex` (no duplicar mobile/desktop, para no portalar modales dos veces). Es el layout canónico de toda página con 3+ sub-secciones.
 
 ### PWA / Safe areas (2026-06-15)
 `viewport-fit=cover` en `index.html` es **requisito** para que `env(safe-area-inset-*)` valga distinto de 0 en iOS con notch — sin él, toda la chamba de safe-area (bottom-nav, ScrollToTop, pull-to-refresh, OfflineBanner) queda inerte. El contenedor del dashboard lleva `pt-[max(1rem,env(safe-area-inset-top))]` para que el header no quede bajo la barra de estado en standalone (status-bar `black-translucent`). PWA: `vite-plugin-pwa` (manifest + icono maskable, precache del app-shell, `NetworkOnly` para `/api`/Supabase/Cloud Run — la data financiera nunca se cachea).
@@ -384,7 +392,7 @@ Ritmo vertical por tokens, no por números mágicos (tokens en frontmatter: tigh
 A11y es parte del sistema, no un parche. Auditado en 3 rondas (2026-05).
 
 - **Touch targets:** mínimo 44×44px en todo control interactivo (botones icon-only, pills editar/eliminar, revoke).
-- **ARIA:** `aria-label` en inputs y botones icon-only; `aria-pressed` en filter chips; `role="tablist"/"tab"` + `aria-selected` en tab nav; `role="switch"`+`aria-checked` en toggles; `role="menu"` en dropdowns; `aria-live`/`role="status"`/`role="alert"` en regiones dinámicas.
+- **ARIA:** `aria-label` en inputs y botones icon-only; `aria-pressed` en filter chips; `role="navigation"` + `aria-current="page"` en tab nav (NO `tablist`/`tab` — ver §5 Navigation); `role="switch"`+`aria-checked` en toggles; `role="menu"` en dropdowns; `aria-live`/`role="status"`/`role="alert"` en regiones dinámicas.
 - **Foco:** `:focus-visible` con outline 2px tintado (`color-mix` con `--app-text-1`); nunca `outline: none` sin reemplazo.
 - **Contraste:** texto crítico ≥ WCAG AA (4.5:1).
 - **Teclado:** dropdowns navegables con flechas + Escape; modales con focus-on-mount + Escape; back button del browser nunca se rompe.
@@ -393,7 +401,7 @@ A11y es parte del sistema, no un parche. Auditado en 3 rondas (2026-05).
 ### Named Rules
 **La Regla del Contraste Mínimo.** Texto significativo nunca baja de `text-3`. `text-4` es solo decoración/separadores, jamás contenido legible.
 
-## 11. Iconografía
+## 10. Iconografía
 
 **Regla central: "Icono = reconocimiento, no decoración."** Espejo de la Regla del Color Semántico. Un ícono existe para que el usuario identifique el contexto sin leer la etiqueta. Si la sola presencia del ícono no acelera el reconocimiento, no va.
 
@@ -429,7 +437,7 @@ Nunca color decorativo en un ícono. La Regla del Color Semántico se aplica igu
 
 **La Regla del Ícono Silencioso.** El ícono apoya al texto; nunca reemplaza la etiqueta para el 100% de los casos. Todo ícono interactivo tiene `aria-label` en el botón padre. Todo ícono decorativo tiene `aria-hidden="true"`.
 
-## 10. Implementation conventions (source of truth para código)
+## 11. Implementation conventions (canon de código)
 
 ### Tokens de color — reglas de uso en código
 
@@ -459,8 +467,8 @@ Nunca color decorativo en un ícono. La Regla del Color Semántico se aplica igu
 | `SectionCard` | `px-6 py-6` | Primitivo en `primitives.tsx` |
 | `CompanyDetailPanel` header/body | `px-5 py-4` | |
 | Toolbar de tabla | `px-4 py-3` | |
-| Celda de tabla (primera/última col) | `px-4 py-2.5` / `px-4 py-3` | |
-| Celda de tabla (col interior) | `px-3 py-2.5` / `px-3 py-3` | |
+| Celda de tabla (primera/última col) | `px-4 py-2.5` | header y body misma densidad |
+| Celda de tabla (col interior) | `px-3 py-2.5` | |
 | Footer de paginación | `px-4 py-3` | |
 | Detalle panel header | `px-5 py-4` | |
 | Detalle panel body | `px-5 py-4` | |
@@ -484,19 +492,19 @@ Uso: ResumenTab (4-col grid), ResumenTab proyección, RecurrentesTab mobile.
 ```
 
 #### `KpiBadgeCard` — KPI con badge de ícono
-Uso: EmpresasTab y RecurrentesTab (3-col grid desktop). NO usar en mobile.
+Uso: EmpresasTab, RecurrentesTab y AdminPanel (grid desktop). NO usar en mobile.
 
 ```tsx
 <KpiBadgeCard
   label="Empresas activas"
   value="10"
-  tone="danger"           // opcional: 'danger' | 'success'
+  tone="danger"           // opcional: 'danger' | 'success' | 'warning'
   sub="mayor deuda: Delta"
   icon={Building2}        // LucideIcon
 />
 ```
 
-Padding: `px-5 py-4`. Icon badge: `h-10 w-10 rounded-xl bg-[var(--app-surface-3)]`.
+Padding: `px-5 py-4`. Valor `text-2xl` (héroe). Label `text-[var(--app-text-2)]` (no text-3). Icon badge con **tinte de marca**: `h-10 w-10 rounded-xl bg-[color-mix(in_srgb,var(--app-strong-surface)_10%,var(--app-surface-2))]` + ícono `text-[var(--app-strong-surface)]` (es el archetype horizontal; los icon-badge neutros de otras vistas siguen `surface-3`).
 
 #### `SectionCard` — contenedor de sección
 Uso: ResumenTab, EmpresasTab mobile, RecurrentesTab mobile, todas las secciones de Configuración.
@@ -516,11 +524,13 @@ Fondo: `var(--app-surface-1)`. Padding: `px-6 py-6`. **Ya no usa `bg-white`.**
 
 ### Sticky headers
 
-Los headers sticky (filtros, toolbar) usan `bg-[var(--app-canvas)]`, no `bg-white`.
+Los headers sticky (filtros, toolbar) nunca usan `bg-white`. Si el bloque vive **dentro de un `SectionCard`**, el fondo en mobile debe matchear el de la card (`surface-1`) y recién en desktop (cuando se vuelve sticky bajo el topbar) pasa a `canvas`:
 
 ```tsx
-<div className="lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-canvas)] ...">
+<div className="lg:sticky lg:top-[60px] lg:z-10 bg-[var(--app-surface-1)] lg:bg-[var(--app-canvas)] lg:-mx-6 lg:px-6 ...">
 ```
+
+(El `-mx-6 px-6` debe igualar el padding horizontal del `SectionCard` contenedor — `px-6` — para no desbordar.)
 
 ### Badges de estado
 
@@ -568,6 +578,14 @@ Los headers sticky (filtros, toolbar) usan `bg-[var(--app-canvas)]`, no `bg-whit
 
 ### Tabla estándar
 
+**Contenedor de tabla (receta unificada — usar SIEMPRE la misma):** toda tabla/master-detail va envuelta en una caja idéntica para que Recurrentes, Empresas y Super Admin se lean iguales:
+
+```tsx
+<div className="border border-[var(--app-border)] bg-[var(--app-surface-1)] rounded-xl overflow-hidden shadow-[var(--app-shadow-sm)]">
+  {/* toolbar opcional (border-b) + <table> + footer de paginación */}
+</div>
+```
+
 ```tsx
 <table className="w-full text-sm">
   <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
@@ -582,8 +600,8 @@ Los headers sticky (filtros, toolbar) usan `bg-[var(--app-canvas)]`, no `bg-whit
   </thead>
   <tbody className="divide-y divide-[var(--app-border)]">
     <tr className="cursor-pointer transition-colors hover:bg-[var(--app-surface-2)]">
-      <td className="px-4 py-3">...</td>
-      <td className="px-3 py-3 text-right">...</td>
+      <td className="px-4 py-2.5">...</td>
+      <td className="px-3 py-2.5 text-right">...</td>
     </tr>
   </tbody>
 </table>
@@ -602,7 +620,7 @@ Los headers sticky (filtros, toolbar) usan `bg-[var(--app-canvas)]`, no `bg-whit
 </div>
 ```
 
-## 10. Do's and Don'ts
+## 12. Do's and Don'ts
 
 ### Do:
 - **Do** tintar todo neutral hacia hue 155-165. Usar tokens `var(--app-*)`, nunca `bg-neutral-*` con opacidad (`/60`, `/90`) porque no son theme-aware.

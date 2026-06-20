@@ -18,6 +18,7 @@ En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa
 - **CHANGELOG.md** — historial cronológico de cambios. NO autocargado, consultar on-demand.
 - **RUNBOOK.md** — URLs, deploy, infra, env vars, rotación de secretos. NO autocargado.
 - **ROADMAP.md** — backlog y features pendientes/futuras. **Cuando el owner pregunte "¿qué queda pendiente?", "¿qué hay para hacer?" o "¿qué sumamos?" → leé y respondé desde ROADMAP.md** (fuente de verdad del backlog; espejado en engram `future-features/backlog`). Al guardar una idea nueva, agregala a ROADMAP.md Y a engram.
+- **design.md** — **fuente de verdad de UI/UX** (sistema de diseño: filosofía, reglas, tokens, componentes, estados). **REGLA: ante CUALQUIER tarea de diseño/UI/UX (estilo, layout, color, tipografía, componentes, tablas, KPIs, estados visuales) → leé `design.md` PRIMERO y ajustate a sus reglas.** Los valores exactos de tokens viven en `src/index.css` (canon de runtime; si difiere de design.md, gana index.css). Al establecer una convención visual nueva, actualizá `design.md` en la misma pasada.
 
 > **Mapa de nombres:** producto/proyecto = **Caja Chica** · repo GitHub = `caja-chica` (renombrado desde `balancediario` el 2026-06-03; GitHub redirige las URLs viejas) · carpeta local = `Boteado` (histórico). OJO: `balancediario` también fue un **proyecto GCP** viejo (roto/sin uso) — cuando aparezca en docs de infra refiere a eso, no al repo.
 > **Familia de nombres alineada:** repo `caja-chica` · Firebase `caja-chica-bot` · Cloud Run `caja-chica`.

@@ -138,8 +138,10 @@ export function getCurrentPeriod(date = new Date()) {
 }
 
 export function getCurrencyTotals(history: Movimiento[], currency: 'ARS' | 'USD'): CurrencyTotals {
-  return history.reduce<CurrencyTotals>((acc, item) => {
-    if (item.moneda !== currency) return acc;
+  const acc: CurrencyTotals = { ingreso: 0, egreso: 0, neto: 0 };
+
+  for (const item of history) {
+    if (item.moneda !== currency) continue;
     const amount = Number(item.monto || 0);
 
     if (item.tipo === 'ingreso') {
@@ -149,9 +151,9 @@ export function getCurrencyTotals(history: Movimiento[], currency: 'ARS' | 'USD'
       acc.egreso += amount;
       acc.neto -= amount;
     }
+  }
 
-    return acc;
-  }, { ingreso: 0, egreso: 0, neto: 0 });
+  return acc;
 }
 
 export function getCompanySummaries(history: Movimiento[], extraCompanies: string[] = []) {
@@ -169,11 +171,11 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
   });
 
   // Empresas sin movimientos también deben aparecer (recién creadas).
-  extraCompanies.forEach((name) => {
+  for (const name of extraCompanies) {
     if (name && !map.has(name)) map.set(name, blank(name));
-  });
+  }
 
-  history.forEach((item) => {
+  for (const item of history) {
     const name = item.empresa_nombre || 'Personal';
     const summary = map.get(name) ?? {
       name,
@@ -203,7 +205,7 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
 
     summary.movimientos += 1;
     map.set(name, summary);
-  });
+  }
 
   return [...map.values()].sort((a, b) => (b.saldoArs + b.saldoUsd) - (a.saldoArs + a.saldoUsd));
 }
@@ -211,19 +213,19 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
 export function getCategorySummaries(history: Movimiento[], companyName?: string) {
   const map = new Map<string, CategorySummary>();
 
-  history
-    .filter((item) => item.tipo === 'egreso')
-    .filter((item) => !companyName || item.empresa_nombre === companyName)
-    .forEach((item) => {
-      const name = item.categoria || 'Otros';
-      const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  for (const item of history) {
+    if (item.tipo !== 'egreso') continue;
+    if (companyName && item.empresa_nombre !== companyName) continue;
 
-      if (item.moneda === 'ARS') summary.egresoArs += amount;
-      if (item.moneda === 'USD') summary.egresoUsd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.categoria || 'Otros';
+    const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.egresoArs += amount;
+    if (item.moneda === 'USD') summary.egresoUsd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.egresoArs - a.egresoArs || b.egresoUsd - a.egresoUsd);
 }
@@ -231,18 +233,18 @@ export function getCategorySummaries(history: Movimiento[], companyName?: string
 export function getIncomeSummaries(history: Movimiento[]) {
   const map = new Map<string, IncomeSummary>();
 
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
-      const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
 
-      if (item.moneda === 'ARS') summary.ars += amount;
-      if (item.moneda === 'USD') summary.usd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
+    const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.ars += amount;
+    if (item.moneda === 'USD') summary.usd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd);
 }
@@ -250,28 +252,36 @@ export function getIncomeSummaries(history: Movimiento[]) {
 export function getIncomeTagSummaries(history: Movimiento[]) {
   const map = new Map<string, IncomeTagSummary>();
 
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      const matchedTags = INCOME_TAG_LIBRARY.filter((tag) =>
-        tag.keywords.some((keyword) => haystack.includes(keyword)),
-      );
-      const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
 
-      tags.forEach((tag) => {
-        const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
-        const amount = Number(item.monto || 0);
+    const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
 
-        if (item.moneda === 'ARS') summary.ars += amount;
-        if (item.moneda === 'USD') summary.usd += amount;
-        summary.movimientos += 1;
-        map.set(tag.label, summary);
-      });
-    });
+    const matchedTags = [];
+    for (const tag of INCOME_TAG_LIBRARY) {
+      for (const keyword of tag.keywords) {
+        if (haystack.includes(keyword)) {
+          matchedTags.push(tag);
+          break; // Avoid adding the same tag multiple times if multiple keywords match
+        }
+      }
+    }
+
+    const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
+
+    for (const tag of tags) {
+      const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
+      const amount = Number(item.monto || 0);
+
+      if (item.moneda === 'ARS') summary.ars += amount;
+      if (item.moneda === 'USD') summary.usd += amount;
+      summary.movimientos += 1;
+      map.set(tag.label, summary);
+    }
+  }
 
   return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd || b.movimientos - a.movimientos);
 }
@@ -279,7 +289,7 @@ export function getIncomeTagSummaries(history: Movimiento[]) {
 export function getMonthlySummaries(history: Movimiento[]) {
   const map = new Map<string, MonthlySummary>();
 
-  history.forEach((item) => {
+  for (const item of history) {
     const date = new Date(item.created_at);
     const period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const summary = map.get(period) ?? {
@@ -314,7 +324,7 @@ export function getMonthlySummaries(history: Movimiento[]) {
     }
 
     map.set(period, summary);
-  });
+  }
 
   return [...map.values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
 }

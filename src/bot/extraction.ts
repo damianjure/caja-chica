@@ -1,6 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { BotDeps } from "./deps.ts";
-import { requireTelegramCan, sendTyping, escapeMd } from "./utils.ts";
+import { requireTelegramCan, sendTyping, escapeMd, insertBotAuditLog } from "./utils.ts";
 import { assertBotWritable } from "./maintenance-gate.ts";
 import {
   applyTelegramDataScope,
@@ -526,6 +526,15 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         await ctx.editMessageText("❌ Error al guardar los cambios. Intentá de nuevo.", { parse_mode: "Markdown" });
         return;
       }
+      await insertBotAuditLog(supabase, {
+        linked,
+        actorUserId: linked.userId,
+        action: "update",
+        entityType: "movimiento",
+        entityId: entry.editMovementId,
+        beforeData: { id: entry.editMovementId },
+        afterData: { id: entry.editMovementId, monto: e.monto, tipo: e.tipo, moneda: e.moneda, categoria: e.categoria, empresa_nombre: e.empresa, descripcion: e.descripcion },
+      });
       const editMontoStr = e.monto !== null ? `$${e.monto.toLocaleString("es-AR")} ${e.moneda}` : "monto desconocido";
       await ctx.editMessageText(`✅ *Movimiento actualizado:* ${editMontoStr} — ${escapeMd(e.descripcion ?? "")}`, { parse_mode: "Markdown" });
       return;
@@ -633,6 +642,8 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     }
 
     if (action === "create") {
+      const linked = await requireTelegramCan(supabase, ctx, "manage_empresas");
+      if (!linked) return;
       const nameToCreate = entry.pendingNewCompanyName;
       if (!nameToCreate) {
         await ctx.answerCallbackQuery("Error: nombre no disponible.");
@@ -708,6 +719,8 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     }
 
     if (action === "create") {
+      const linked = await requireTelegramCan(supabase, ctx, "manage_categorias");
+      if (!linked) return;
       const nameToCreate = entry.pendingNewCategoriaName;
       if (!nameToCreate) {
         await ctx.answerCallbackQuery("Error: nombre no disponible.");
@@ -715,17 +728,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       }
       await ctx.answerCallbackQuery("➕ Creando categoría...");
       const { createCategoriaFromBot } = await import("./commands/entities.ts");
-      const linked = {
-        dashboardId: entry.dashboardId,
-        ownerUserId: entry.ownerUserId,
-        userId: entry.userId,
-        role: null,
-        permissions: {},
-        username: null,
-        remindersEnabled: true,
-        linkTokenExpiresAt: null,
-      } as any;
-      const result = await createCategoriaFromBot(supabase, linked, nameToCreate);
+      const result = await createCategoriaFromBot(supabase, linked as any, nameToCreate);
       if (!result.ok) {
         await ctx.reply("❌ No se pudo crear la categoría. Intentá de nuevo.");
         return;

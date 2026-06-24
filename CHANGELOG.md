@@ -5,6 +5,17 @@
 
 ---
 
+### Cambios 2026-06-24 (drawers consistentes + sort Empresas + headers unificados)
+
+Commit `3906113`. Solo frontend, sin backend/SQL/env vars.
+
+- **`MovementDetailDrawer` rediseñado** — ancho default 400px (antes 288px), drag-to-resize borde izquierdo (rango 280–640px), `onWidthChange` callback para que `DashboardApp` ajuste `paddingRight` dinámico. Posicionado bajo el topbar (`top: var(--desktop-topbar-h)`). `EmpresasTab` eliminó el panel inline anterior.
+- **`CompanyDetailDrawer`** (nuevo, en `EmpresasTab.tsx`) — mismo patrón que `MovementDetailDrawer`. Renderizado con **`createPortal(document.body)`** para evitar que el `transition: transform` del pull-to-refresh capture el `position: fixed` y corte la altura. Drag-to-resize, `onWidthChange` para `paddingRight` en la tabla.
+- **Sort en Empresas** — 6 columnas sortables: Empresa (asc default), Movim., Ingresos, Gastos, Saldo (desc default), Última actividad (asc default). Íconos `ChevronsUpDown`/`ChevronUp`/`ChevronDown` igual que Movimientos.
+- **Sort icons Movimientos** — opacidad de ícono inactivo `opacity-40 → opacity-70` para que sea visible sin hover.
+- **Headers de card unificados** — `RecurrentesTab` card izquierda: agregado título "Recurrentes" + descripción (antes era toolbar sin título). Card derecha "Próximos 30 días": `font-semibold → font-bold`. `EmpresasTab` ya tenía el patrón correcto. Regla: `text-base font-bold` + descripción `text-xs` + acciones a la derecha.
+- **`design.md`** actualizado: sección "Paneles de detalle" reescrita (portal rule, ancho 400px, drag-to-resize), nuevas secciones "Headers de card unificados" y "Sort en tablas".
+
 ### Cambios 2026-06-11 (Dashboards personal/pyme + switcher)
 
 **Separar finanzas personales de pyme en la misma app, con switcher.** El modelo multi-dashboard (`dashboards` + `dashboard_members`, datos scopeados por `dashboard_id`) ya existía; esto agrega el eje personal/pyme y el "dashboard activo" elegible. INERTE hasta aplicar el SQL.

@@ -539,12 +539,43 @@ Los headers sticky (filtros, toolbar) nunca usan `bg-white`. **El fondo del stic
 
 ### Paneles de detalle (master-detail)
 
-Todo panel de detalle que se abre al cliquear una fila/ítem usa el **mismo ancho canónico: `w-72` (288px)**. No mezclar anchos fijos con `fr` fluidos entre tabs — se ven inconsistentes.
-- **Empresas:** `CompanyDetailPanel` inline en la tabla, `w-72`.
-- **Movimientos:** `MovementDetailDrawer` fixed a la derecha, `w-72` (offset del contenido cuando está abierto: `lg:pr-[312px]` = 288 + 24 de gap).
-- **Recurrentes:** panel lateral en grid `lg:grid-cols-[minmax(0,1fr)_18rem]` (18rem = 288px).
+Los drawers de detalle son `position: fixed`, van de `top: var(--desktop-topbar-h)` a `bottom: 0`, ancla derecha. Ancho default **400px**, drag-to-resize 280–640px. **Siempre se renderizan con `createPortal(document.body)`** — sin portal, el `fixed` queda atrapado en ancestros con `transform` (pull-to-refresh) y no ocupa el alto correcto.
 
-El drawer de movimiento vive a nivel de `DashboardApp`, así que se cierra al cambiar de pestaña o de página de paginación (`useEffect` sobre `[activeTab, movementsPage]`) — si no, queda colgado fuera de Movimientos.
+- **`MovementDetailDrawer`** — nivel `DashboardApp` (no portal, ya está fuera del pull-to-refresh div). Se cierra al cambiar de pestaña o página (`useEffect` sobre `[activeTab, movementsPage]`).
+- **`CompanyDetailDrawer`** — nivel `EmpresasTab`, renderizado con `createPortal(document.body)` para evitar el stacking context del div con `transition: transform`. `onWidthChange` comunica el ancho al padre, que ajusta `paddingRight`.
+- **Recurrentes:** panel lateral derecho en grid `lg:grid-cols-[minmax(0,1fr)_24rem]` (no drawer, no portal — no hay problema de stacking porque es layout estático).
+
+Offset del contenido principal cuando el drawer está abierto: `paddingRight: ${width + 24}px` (inline style, no clase Tailwind — el ancho es dinámico por drag).
+
+**Portal rule para drawers:** Todo drawer `position: fixed` que vive dentro de un componente hijo (no directamente en `DashboardApp`) DEBE usar `createPortal(JSX, document.body)`. Sin esto, el `transform` del pull-to-refresh (o cualquier otro `transform`/`will-change` en el árbol) cambia el "containing block" del fixed y el drawer no llega al borde del viewport.
+
+### Headers de card unificados
+
+Todas las cards de tabla desktop usan el mismo patrón de header:
+
+```tsx
+<div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--app-border)]">
+  <div>
+    <h3 className="text-base font-bold text-[var(--app-text-1)]">{título}</h3>
+    <p className="text-xs text-[var(--app-text-3)]">{descripción}</p>
+  </div>
+  <div className="flex items-center gap-2 shrink-0">
+    {/* toggles / botones de acción */}
+  </div>
+</div>
+```
+
+`text-base font-bold` para el título de card (distinto de `SectionCard` que usa `text-xl` — el `SectionCard` es un contenedor de sección completa, no de una card interna).
+
+### Sort en tablas
+
+**Columnas sortables:** usan un `<button>` dentro del `<th>` con icono `ChevronsUpDown` (inactivo, `opacity-70`) o `ChevronUp`/`ChevronDown` (activo). Alinear el icono a la derecha del label en columnas `left`, a la izquierda (con `flex-row-reverse`) en columnas `right`.
+
+**Tablas con sort implementado:**
+- `MovementsTable` — Fecha ↕ (default desc), Descripción ↕, Empresa ↕, Monto ↕. Categoría y Fuente: estáticas (no sortables, sin ícono).
+- `EmpresasTab` — Empresa ↕, Movim. ↕ (default desc), Ingresos ↕, Gastos ↕, Saldo ↕, Última actividad ↕.
+
+**Convención de `sortDir` default por key:** columnas numéricas y de fecha → `desc` (el mayor primero); columnas de texto → `asc` (A → Z).
 
 ### Badges de estado
 

@@ -554,10 +554,11 @@ test("GET /api/personas — invite_url uses publicAppUrl for app invitations", a
   );
 });
 
-test("GET /api/personas — dashboard invite_url uses ?invite format", async () => {
+test("GET /api/personas — dashboard invite_url uses ?invite format for inviter", async () => {
+  const inviterDashboardInvite = { ...pendingDashboardInvite, invited_by_user_id: ownerSession.userId };
   await withPersonasServer(
     {
-      dashboardInvitations: [pendingDashboardInvite],
+      dashboardInvitations: [inviterDashboardInvite],
       dashboardMembers: [ownerDashboardMember],
     },
     ownerSession,

@@ -645,7 +645,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
       if ((!scopeFilter || scopeFilter === "dashboard") && scope.dashboardId) {
         const { data: diRows, error: diErr } = await supabase
           .from("dashboard_invitations")
-          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, accepted_user_id, last_reminder_at, telegram_preauth, telegram_invite_token_id")
+          .select("id, email, role, status, invite_token, expires_at, created_at, accepted_at, accepted_user_id, last_reminder_at, telegram_preauth, telegram_invite_token_id, invited_by_user_id")
           .eq("dashboard_id", scope.dashboardId)
           .order("created_at", { ascending: false })
           .limit(500);
@@ -691,6 +691,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
             ? ("active" as const)
             : null;
           const profile = row.accepted_user_id ? profilesByUserId.get(row.accepted_user_id) : null;
+          const canSeeToken = session.role === "superadmin" || row.invited_by_user_id === session.userId;
           personas.push({
             id: row.id,
             email: row.email,
@@ -702,7 +703,7 @@ export function createDashboardRouter(deps: DashboardDeps) {
             created_at: row.created_at,
             last_action_at,
             telegram_link_status: tgStatus,
-            invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}`,
+            ...(canSeeToken ? { invite_url: `${publicAppUrl || ""}/?invite=${row.invite_token}` } : {}),
           });
         }
       }

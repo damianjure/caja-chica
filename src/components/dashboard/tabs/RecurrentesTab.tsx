@@ -356,7 +356,7 @@ export default function RecurrentesTab({
       </div>
 
       {/* ── Desktop 2-col layout [3fr 2fr] ─────────────────────────────── */}
-      <section className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] gap-6 items-start">
+      <section className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
         {/* Left: table */}
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
           {/* Toolbar */}

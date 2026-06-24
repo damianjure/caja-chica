@@ -1,7 +1,7 @@
 import {
-  Building2, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet, X,
+  Building2, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet, X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 
 import type { Empresa, Movimiento } from '../../../services/api';
 import { SectionCard, MetricCard, MetricChip, KpiBadgeCard } from '../primitives';
@@ -9,7 +9,9 @@ import { Input } from '../../ui/Field';
 import { Button } from '../../ui/Button';
 import { topCategoriesByType, formatNumber, type TopCategory } from '../../../dashboard/summary';
 
-const PAGE_SIZE = 8;
+const DEFAULT_DRAWER_WIDTH = 400;
+const MIN_DRAWER_WIDTH = 280;
+const MAX_DRAWER_WIDTH = 640;
 
 interface CompanySummaryView {
   name: string;
@@ -66,21 +68,9 @@ function CurToggle({ cur, setCur }: { cur: 'ARS' | 'USD'; setCur: (c: 'ARS' | 'U
   );
 }
 
-// ── Company detail panel (desktop right column) ───────────────────────────────
+// ── Company detail drawer (fixed, resizable — same pattern as MovementDetailDrawer) ──
 
-function CompanyDetailPanel({
-  summary,
-  empresa,
-  recentHistory,
-  topCategories,
-  canWriteData,
-  cur,
-  formatCurrency,
-  onEdit,
-  onDelete,
-  onViewAll,
-  onClose,
-}: {
+interface CompanyDetailDrawerProps {
   summary: CompanySummaryView;
   empresa: Empresa | undefined;
   recentHistory: Movimiento[];
@@ -92,13 +82,66 @@ function CompanyDetailPanel({
   onDelete: () => void;
   onViewAll: () => void;
   onClose: () => void;
-}) {
+  onWidthChange?: (w: number) => void;
+}
+
+function CompanyDetailDrawer({
+  summary, empresa, recentHistory, topCategories, canWriteData, cur, formatCurrency,
+  onEdit, onDelete, onViewAll, onClose, onWidthChange,
+}: CompanyDetailDrawerProps) {
+  const [width, setWidth] = useState(DEFAULT_DRAWER_WIDTH);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  useEffect(() => { onWidthChange?.(width); }, [width, onWidthChange]);
+
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    isDragging.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    const delta = startX.current - e.clientX;
+    setWidth(Math.max(MIN_DRAWER_WIDTH, Math.min(MAX_DRAWER_WIDTH, startWidth.current + delta)));
+  };
+
+  const handlePointerUp = () => { isDragging.current = false; };
+
   const p = pick(summary, cur);
   const canEdit = canWriteData && !!empresa && summary.name !== 'Personal';
   const catTotal = topCategories.reduce((acc, c) => acc + c.ars, 0);
 
   return (
-    <div className="flex flex-col h-full">
+    <aside
+      role="complementary"
+      aria-label="Detalle de empresa"
+      className="hidden lg:flex fixed right-0 bottom-0 z-40 flex-col border-l border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[-12px_0_40px_rgba(0,0,0,0.18)] anim-slide-in-right"
+      style={{ top: 'var(--desktop-topbar-h)', width }}
+    >
+      {/* Drag-to-resize handle */}
+      <div
+        role="separator"
+        aria-label="Redimensionar panel"
+        aria-orientation="vertical"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize group"
+      >
+        <div className="absolute inset-y-0 left-0 w-1 group-hover:bg-[var(--app-strong-surface)] group-hover:opacity-50 transition-colors duration-150" />
+      </div>
+
       {/* Header */}
       <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--app-border)] shrink-0">
         <div className="min-w-0 flex-1">
@@ -141,21 +184,19 @@ function CompanyDetailPanel({
       <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
         {/* Mini KPI row */}
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
-            <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Ingresos</div>
-            <div className="font-semibold text-[var(--chart-income)] tabular-nums text-xs leading-snug">{formatCurrency(p.ing, cur)}</div>
-          </div>
-          <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
-            <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Gastos</div>
-            <div className="font-semibold text-[var(--chart-expense)] tabular-nums text-xs leading-snug">{formatCurrency(p.gas, cur)}</div>
-          </div>
-          <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
-            <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">Saldo</div>
-            <div className={`font-semibold tabular-nums text-xs leading-snug ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</div>
-          </div>
+          {[
+            { label: 'Ingresos', value: formatCurrency(p.ing, cur), cls: 'text-[var(--chart-income)]' },
+            { label: 'Gastos', value: formatCurrency(p.gas, cur), cls: 'text-[var(--chart-expense)]' },
+            { label: 'Saldo', value: formatCurrency(p.sal, cur), cls: p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]' },
+          ].map(({ label, value, cls }) => (
+            <div key={label} className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] p-2.5">
+              <div className="text-[10px] uppercase tracking-widest text-[var(--app-text-3)] mb-1">{label}</div>
+              <div className={`font-semibold tabular-nums text-xs leading-snug ${cls}`}>{value}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Top categories with progress bars */}
+        {/* Top categories */}
         {topCategories.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-[var(--app-text-1)] mb-3">Gastos por categoría</h4>
@@ -172,10 +213,7 @@ function CompanyDetailPanel({
                       </div>
                     </div>
                     <div className="h-1 bg-[var(--app-surface-3)] rounded-full overflow-hidden">
-                      <div
-                        className="h-1 rounded-full transition-all duration-300"
-                        style={{ width: `${pct}%`, background: 'var(--chart-income)' }}
-                      />
+                      <div className="h-1 rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: 'var(--chart-income)' }} />
                     </div>
                   </div>
                 );
@@ -205,7 +243,7 @@ function CompanyDetailPanel({
         )}
       </div>
 
-      {/* Footer CTA */}
+      {/* Footer */}
       <footer className="px-5 py-3.5 border-t border-[var(--app-border)] shrink-0">
         <button
           type="button"
@@ -215,7 +253,7 @@ function CompanyDetailPanel({
           Ver movimientos filtrados
         </button>
       </footer>
-    </div>
+    </aside>
   );
 }
 
@@ -253,7 +291,7 @@ export default function EmpresasTab({
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [companySearch, setCompanySearch] = useState('');
   const [withMovementsFilter, setWithMovementsFilter] = useState(false);
-  const [page, setPage] = useState(0);
+  const [companyDrawerWidth, setCompanyDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
 
   const sortedByActivity = useMemo(
     () => [...companySummaries].sort((a, b) => b.movimientos - a.movimientos),
@@ -269,9 +307,6 @@ export default function EmpresasTab({
       .filter((c) => !withMovementsFilter || c.movimientos > 0)
       .filter((c) => !companySearch || c.name.toLowerCase().includes(companySearch.toLowerCase()));
   }, [sortedByActivity, withMovementsFilter, companySearch]);
-
-  const pageCount = Math.ceil(filteredDesktop.length / PAGE_SIZE);
-  const paginatedRows = filteredDesktop.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const lastActivityByCompany = useMemo(() => {
     const map = new Map<string, string>();
@@ -322,7 +357,6 @@ export default function EmpresasTab({
     }
   };
 
-  // Mobile sort (same as before)
   const salud = useMemo(
     () => [...companySummaries].sort((a, b) => pick(a, cur).sal - pick(b, cur).sal),
     [companySummaries, cur],
@@ -341,8 +375,11 @@ export default function EmpresasTab({
   return (
     <div className="space-y-6">
       {/* ── Desktop ──────────────────────────────────────────────────────── */}
-      <div className="hidden lg:block space-y-4">
-        {/* 3-col KPI row with icon badge */}
+      <div
+        className="hidden lg:block space-y-4"
+        style={{ paddingRight: selectedSummary ? `${companyDrawerWidth + 24}px` : undefined }}
+      >
+        {/* 3-col KPI row */}
         <div className="grid grid-cols-3 gap-4">
           <KpiBadgeCard label="Empresas activas" value={String(companySummaries.length)} icon={Building2} />
           <KpiBadgeCard
@@ -360,39 +397,33 @@ export default function EmpresasTab({
           />
         </div>
 
-        {/* Toolbar */}
-        <div className="flex gap-2 items-center flex-wrap">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--app-text-3)]" aria-hidden="true" />
-            <input
-              type="search"
-              value={companySearch}
-              onChange={(e) => { setCompanySearch(e.target.value); setPage(0); }}
-              placeholder="Buscar empresa…"
-              aria-label="Buscar empresa"
-              className="w-full rounded-lg border border-[var(--app-border)] pl-8 pr-4 py-2 text-sm outline-none focus:border-[var(--app-border-strong)] bg-[var(--app-surface-1)]"
-            />
+        {/* Table card — toolbar + rows inside the box */}
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
+
+          {/* Card header: title + CurToggle + Nueva empresa */}
+          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--app-border)]">
+            <div>
+              <h3 className="text-base font-bold text-[var(--app-text-1)]">Empresas</h3>
+              <p className="text-xs text-[var(--app-text-3)]">Ordenadas por actividad</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <CurToggle cur={cur} setCur={setCur} />
+              {canWriteData && !showCreateInput && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateInput(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nueva empresa
+                </button>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => { setWithMovementsFilter((p) => !p); setPage(0); }}
-            className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${withMovementsFilter ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_14%,transparent)] text-[var(--app-text-1)]' : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'}`}
-          >
-            Con movimientos
-          </button>
-          <CurToggle cur={cur} setCur={setCur} />
-          {canWriteData && !showCreateInput && (
-            <button
-              type="button"
-              onClick={() => setShowCreateInput(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)]"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Nueva empresa
-            </button>
-          )}
+
+          {/* Inline create row */}
           {canWriteData && showCreateInput && (
-            <>
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--app-border)] bg-[var(--app-surface-2)]">
               <input
                 type="text"
                 value={newCompany}
@@ -400,7 +431,7 @@ export default function EmpresasTab({
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate(); if (e.key === 'Escape') setShowCreateInput(false); }}
                 placeholder="Nombre de la empresa…"
                 autoFocus
-                className="rounded-lg border border-[var(--app-border-strong)] px-3 py-2 text-sm outline-none focus:border-[var(--app-strong-surface)] w-44 bg-[var(--app-surface-1)]"
+                className="rounded-lg border border-[var(--app-border-strong)] px-3 py-2 text-sm outline-none focus:border-[var(--app-strong-surface)] w-52 bg-[var(--app-surface-1)]"
               />
               <button
                 type="button"
@@ -411,132 +442,108 @@ export default function EmpresasTab({
                 {creating ? 'Creando…' : 'Agregar'}
               </button>
               <button type="button" onClick={() => setShowCreateInput(false)} className="text-xs text-[var(--app-text-3)] hover:text-[var(--app-text-1)]">Cancelar</button>
-            </>
-          )}
-        </div>
-
-        {/* Table + detail panel */}
-        <div className="flex border border-[var(--app-border)] bg-[var(--app-surface-1)] rounded-xl overflow-hidden shadow-[var(--app-shadow-sm)]" style={{ minHeight: 460 }}>
-          {/* Left: wide table */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="overflow-auto flex-1">
-              {paginatedRows.length === 0 ? (
-                <p className="px-4 py-10 text-sm text-[var(--app-text-3)] text-center">Sin resultados.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Empresa</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Movim.</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Ingresos</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Gastos</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Saldo</th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Última actividad</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--app-border)]">
-                    {paginatedRows.map((c) => {
-                      const p = pick(c, cur);
-                      const isSelected = selectedCompany === c.name;
-                      const lastAct = lastActivityByCompany.get(c.name);
-                      return (
-                        <tr
-                          key={c.name}
-                          onClick={() => setSelectedCompany(isSelected ? null : c.name)}
-                          className={`cursor-pointer transition-colors ${isSelected ? 'bg-[var(--app-surface-3)]' : 'hover:bg-[var(--app-surface-2)]'}`}
-                        >
-                          <td className="px-4 py-2.5 min-w-0">
-                            <div className="flex items-center gap-3">
-                              <div className="h-7 w-7 shrink-0 rounded-md bg-[var(--app-surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--app-text-2)]">
-                                {initials(c.name)}
-                              </div>
-                              <span className="text-sm font-medium text-[var(--app-text-1)] truncate max-w-[160px]">{c.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <span className="text-sm tabular-nums text-[var(--app-text-2)]">{c.movimientos}</span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <span className="text-sm tabular-nums text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <span className="text-sm tabular-nums text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <span className={`text-sm font-semibold tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className="text-xs text-[var(--app-text-3)] whitespace-nowrap">{lastAct ? fmtDate(lastAct) : '—'}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
             </div>
+          )}
 
-            {/* Pagination footer */}
-            {filteredDesktop.length > 0 && (
-              <div className="border-t border-[var(--app-border)] bg-[var(--app-surface-1)] px-4 py-3 flex items-center justify-between shrink-0">
-                <span className="text-xs text-[var(--app-text-3)]">
-                  Mostrando {page * PAGE_SIZE + 1} a {Math.min((page + 1) * PAGE_SIZE, filteredDesktop.length)} de {filteredDesktop.length} empresa{filteredDesktop.length !== 1 ? 's' : ''}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Página anterior"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  {Array.from({ length: pageCount }, (_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setPage(i)}
-                      className={`inline-flex items-center justify-center h-7 w-7 rounded-md border text-xs font-medium transition-colors ${i === page ? 'border-[var(--app-strong-surface)] bg-[var(--app-strong-surface)] text-[var(--app-strong-text)]' : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'}`}
-                      aria-current={i === page ? 'page' : undefined}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                    disabled={page >= pageCount - 1}
-                    className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Página siguiente"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right: detail panel */}
-          {selectedSummary && (
-            <div className="w-72 shrink-0 border-l border-[var(--app-border)] overflow-y-auto bg-[var(--app-surface-1)]">
-              <CompanyDetailPanel
-                summary={selectedSummary}
-                empresa={selectedEmpresa}
-                recentHistory={selectedHistory}
-                topCategories={selectedCategories}
-                canWriteData={canWriteData}
-                cur={cur}
-                formatCurrency={formatCurrency}
-                onEdit={() => { if (selectedEmpresa) onEditCompany(selectedEmpresa); }}
-                onDelete={() => { if (selectedEmpresa) onDeleteCompany(selectedEmpresa); }}
-                onViewAll={() => onDrilldown(selectedSummary.name, 'all')}
-                onClose={() => setSelectedCompany(null)}
+          {/* Search + filter row */}
+          <div className="flex gap-2 items-center px-4 py-3 border-b border-[var(--app-border)]">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--app-text-3)]" aria-hidden="true" />
+              <input
+                type="search"
+                value={companySearch}
+                onChange={(e) => { setCompanySearch(e.target.value); }}
+                placeholder="Buscar empresa…"
+                aria-label="Buscar empresa"
+                className="w-full rounded-lg border border-[var(--app-border)] pl-8 pr-4 py-2 text-sm outline-none focus:border-[var(--app-border-strong)] bg-[var(--app-surface-1)]"
               />
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setWithMovementsFilter((p) => !p)}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${withMovementsFilter ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_14%,transparent)] text-[var(--app-text-1)]' : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'}`}
+            >
+              Con movimientos
+            </button>
+          </div>
+
+          {/* Table — shows all filtered rows, card grows naturally */}
+          <div className="overflow-x-auto">
+            {filteredDesktop.length === 0 ? (
+              <p className="px-4 py-10 text-sm text-[var(--app-text-3)] text-center">Sin resultados.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Empresa</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Movim.</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Ingresos</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Gastos</th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Saldo</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Última actividad</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--app-border)]">
+                  {filteredDesktop.map((c) => {
+                    const p = pick(c, cur);
+                    const isSelected = selectedCompany === c.name;
+                    const lastAct = lastActivityByCompany.get(c.name);
+                    return (
+                      <tr
+                        key={c.name}
+                        onClick={() => setSelectedCompany(isSelected ? null : c.name)}
+                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-[var(--app-surface-3)]' : 'hover:bg-[var(--app-surface-2)]'}`}
+                      >
+                        <td className="px-4 py-2.5 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <div className="h-7 w-7 shrink-0 rounded-md bg-[var(--app-surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--app-text-2)]">
+                              {initials(c.name)}
+                            </div>
+                            <span className="text-sm font-medium text-[var(--app-text-1)] truncate max-w-[160px]">{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="text-sm tabular-nums text-[var(--app-text-2)]">{c.movimientos}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="text-sm tabular-nums text-[var(--chart-income)]">{formatCurrency(p.ing, cur)}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="text-sm tabular-nums text-[var(--chart-expense)]">{formatCurrency(p.gas, cur)}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className={`text-sm font-semibold tabular-nums ${p.sal >= 0 ? 'text-[var(--chart-income)]' : 'text-[var(--chart-expense)]'}`}>{formatCurrency(p.sal, cur)}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <span className="text-xs text-[var(--app-text-3)] whitespace-nowrap">{lastAct ? fmtDate(lastAct) : '—'}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Company detail drawer ─────────────────────────────────────────── */}
+      {selectedSummary && (
+        <CompanyDetailDrawer
+          summary={selectedSummary}
+          empresa={selectedEmpresa}
+          recentHistory={selectedHistory}
+          topCategories={selectedCategories}
+          canWriteData={canWriteData}
+          cur={cur}
+          formatCurrency={formatCurrency}
+          onEdit={() => { if (selectedEmpresa) onEditCompany(selectedEmpresa); }}
+          onDelete={() => { if (selectedEmpresa) onDeleteCompany(selectedEmpresa); }}
+          onViewAll={() => onDrilldown(selectedSummary.name, 'all')}
+          onClose={() => setSelectedCompany(null)}
+          onWidthChange={setCompanyDrawerWidth}
+        />
+      )}
 
       {/* ── Mobile ───────────────────────────────────────────────────────── */}
       <div className="lg:hidden space-y-6">

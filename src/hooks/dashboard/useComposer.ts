@@ -16,6 +16,7 @@ export interface ComposerOpts {
   canWriteData: boolean;
   onCommit: (event: ComposerCommitEvent) => void;
   onWarning: (msg: string) => void;
+  onQueued?: () => void;
 }
 
 export interface ComposerResult {
@@ -91,7 +92,13 @@ export function useComposer(opts: ComposerOpts): ComposerResult {
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 503) {
-        setError('La IA no está disponible ahora mismo. Intentá en unos minutos.');
+        try {
+          await api.enqueueWebText(inputText);
+          setInputText('');
+          opts.onQueued?.();
+        } catch {
+          setError('La IA no está disponible ahora mismo. Intentá en unos minutos.');
+        }
       } else {
         setError(err instanceof Error ? err.message : 'Error al procesar.');
       }

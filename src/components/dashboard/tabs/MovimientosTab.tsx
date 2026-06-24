@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2, Search, Check } from 'lucide-react';
+import { useEffect, useRef, useState, Fragment, type ReactNode } from 'react';
+import { X, Share2, ChevronDown, Loader2, FileText, FileSpreadsheet, HardDriveUpload, Plus, Trash2, Search, Check, Clock, Image, FileScan } from 'lucide-react';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
-import type { OnboardingState } from '../../../services/api';
+import type { OnboardingState, PendingQueueItem } from '../../../services/api';
 
 function ExportMenu({
   onCsv, onPdf, onDrive, driveConnected, busy,
@@ -150,6 +150,37 @@ function FilterCard({ label, value, tone = 'neutral', selected, onClick }: { lab
   );
 }
 
+const KIND_LABEL: Record<PendingQueueItem["kind"], string> = {
+  text: "Texto",
+  photo: "Foto",
+  pdf: "PDF",
+  album: "Fotos",
+  web_text: "Texto",
+};
+
+function PendingRow({ item }: { item: PendingQueueItem }) {
+  const isMedia = item.kind === "photo" || item.kind === "pdf" || item.kind === "album";
+  const preview = item.text_content
+    ? item.text_content.length > 60
+      ? item.text_content.slice(0, 60) + "…"
+      : item.text_content
+    : isMedia
+      ? `${KIND_LABEL[item.kind]} pendiente de procesamiento`
+      : "—";
+  const Icon = item.kind === "photo" || item.kind === "album" ? Image : item.kind === "pdf" ? FileScan : Clock;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3">
+      <Icon className="h-4 w-4 shrink-0 text-[var(--app-amber-text)]" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <span className="text-sm text-[var(--app-amber-text)] truncate block">{preview}</span>
+      </div>
+      <span className="shrink-0 rounded-full border border-[var(--app-amber-border)] px-2 py-0.5 text-xs font-semibold text-[var(--app-amber-text)]">
+        Pendiente
+      </span>
+    </div>
+  );
+}
+
 export default function MovimientosTab({
   totalCount,
   arsIngreso,
@@ -187,6 +218,7 @@ export default function MovimientosTab({
   exporting,
   onboardingState,
   onDemoDeleted,
+  pendingItems = [],
   historyCards,
 }: {
   totalCount: number;
@@ -225,6 +257,7 @@ export default function MovimientosTab({
   exporting: boolean;
   onboardingState?: OnboardingState;
   onDemoDeleted?: () => void;
+  pendingItems?: PendingQueueItem[];
   historyCards: ReactNode;
 }) {
   const dateLabel = DATE_OPTS.find((o) => o.id === datePeriod)?.label ?? 'Todo';
@@ -384,6 +417,20 @@ export default function MovimientosTab({
             </div>
           )}
           </div>
+
+          {pendingItems.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-[var(--app-amber-text)]" aria-hidden="true" />
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--app-amber-text)]">
+                  En cola de IA ({pendingItems.length})
+                </span>
+              </div>
+              {pendingItems.map((item) => (
+                <Fragment key={item.id}><PendingRow item={item} /></Fragment>
+              ))}
+            </div>
+          )}
 
           {historyCards}
         </div>

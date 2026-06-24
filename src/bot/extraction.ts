@@ -26,6 +26,7 @@ import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
 import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
+import { enqueueAiItem } from "../server/aiQueue.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 import { setPendingLineMontoEdit } from "./lineMontoEdit.ts";
@@ -383,7 +384,26 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
           } catch (err) {
             try { await firstCtx.api.deleteMessage(firstCtx.chat.id, processingMsg.message_id); } catch (e) {}
             if (err instanceof GeminiUnavailableError) {
-              await firstCtx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+              const fileIds = items.map((it) => {
+                const photos = (it.chatCtx as any).message?.photo;
+                return photos?.[photos.length - 1]?.file_id as string | undefined;
+              }).filter((id): id is string => !!id);
+              const queued = fileIds.length > 0 && await enqueueAiItem(supabase, {
+                dashboard_id: linked2.dashboardId ?? null,
+                owner_user_id: linked2.ownerUserId ?? null,
+                channel: "telegram",
+                chat_id: firstCtx.chat.id,
+                kind: "album",
+                text_content: null,
+                file_ids: fileIds,
+                mime_types: fileIds.map(() => "image/jpeg"),
+              });
+              await firstCtx.reply(
+                queued
+                  ? "⚠️ La IA no está disponible\\. Tus fotos quedaron guardadas como *pendientes* y se procesarán automáticamente cuando vuelva\\."
+                  : "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.",
+                { parse_mode: "MarkdownV2" },
+              );
             } else {
               console.error("Telegram photo processing error:", err);
               await firstCtx.reply("❌ No pude procesar las fotos. Mandá una por vez o probá con mejor iluminación.");
@@ -419,7 +439,24 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {
-        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+        const photoArr = ctx.message.photo;
+        const fileId = photoArr?.[photoArr.length - 1]?.file_id;
+        const queued = fileId && await enqueueAiItem(supabase, {
+          dashboard_id: linked.dashboardId ?? null,
+          owner_user_id: linked.ownerUserId ?? null,
+          channel: "telegram",
+          chat_id: ctx.chat.id,
+          kind: "photo",
+          text_content: null,
+          file_ids: [fileId],
+          mime_types: ["image/jpeg"],
+        });
+        await ctx.reply(
+          queued
+            ? "⚠️ La IA no está disponible\\. Tu foto quedó guardada como *pendiente* y se procesará automáticamente cuando vuelva\\."
+            : "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.",
+          { parse_mode: "MarkdownV2" },
+        );
       } else {
         console.error("Telegram photo processing error:", err);
         await ctx.reply("❌ No pude procesar la foto. Probá con mejor iluminación o mandá el texto directamente.");
@@ -470,7 +507,22 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
     } catch (err) {
       try { await ctx.api.deleteMessage(ctx.chat.id, processingMsg.message_id); } catch (e) {}
       if (err instanceof GeminiUnavailableError) {
-        await ctx.reply("⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.", { parse_mode: "MarkdownV2" });
+        const queued = await enqueueAiItem(supabase, {
+          dashboard_id: linked.dashboardId ?? null,
+          owner_user_id: linked.ownerUserId ?? null,
+          channel: "telegram",
+          chat_id: ctx.chat.id,
+          kind: "pdf",
+          text_content: null,
+          file_ids: [doc.file_id],
+          mime_types: [mimeType],
+        });
+        await ctx.reply(
+          queued
+            ? "⚠️ La IA no está disponible\\. Tu documento quedó guardado como *pendiente* y se procesará automáticamente cuando vuelva\\."
+            : "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá en unos minutos\\.",
+          { parse_mode: "MarkdownV2" },
+        );
       } else {
         console.error("Telegram document processing error:", err);
         await ctx.reply("❌ No pude procesar el documento.");

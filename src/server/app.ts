@@ -95,6 +95,8 @@ import { createInformesRouter } from "./routes/informes.ts";
 import { createDashboardRouter } from "./routes/dashboard.ts";
 import { createCronsRouter } from "./routes/crons.ts";
 import { createImageExtractRouter } from "./routes/imageExtract.ts";
+import { getPendingWebItems, enqueueAiItem } from "./aiQueue.ts";
+import { runDrainAiQueue } from "./cronJobs/drainAiQueue.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
 
@@ -126,7 +128,8 @@ export interface AppDeps {
   googleDriveClientSecret?: string;
   googleDriveRedirectUri?: string;
   tokenEncryptionKey?: string;
-  bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
+  bot?: { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown>; getFile(fileId: string): Promise<{ file_path?: string }> } } | null;
+  botToken?: string;
   cronSecret?: string;
   adminEmailDeps?: AdminEmailDeps;
 }
@@ -181,6 +184,7 @@ export function createApp({
   googleDriveRedirectUri,
   tokenEncryptionKey,
   bot,
+  botToken,
   cronSecret,
   adminEmailDeps,
 }: AppDeps) {
@@ -596,11 +600,61 @@ export function createApp({
     tierResend,
     tierWrite,
   }));
+  // Pending AI queue — items queued while Gemini was unavailable
+  app.get("/api/queue/pending", requireSession, tierRead, async (req, res) => {
+    const session = getSession(req);
+    const scope = await resolveDataAccessScope(session);
+    const items = await getPendingWebItems(supabase, {
+      dashboardId: scope.dashboardId,
+      ownerUserId: session.userId,
+    });
+    res.json({ items: items.map((i) => ({ id: i.id, kind: i.kind, text_content: i.text_content, created_at: i.created_at })) });
+  });
+
+  // Superadmin: trigger drain manually (e.g. from the AI health panel after the AI recovers)
+  app.post("/api/admin/drain-ai-queue", requireSession, requireSuperadmin, async (_req, res) => {
+    if (!genAI) return void res.status(503).json({ error: "genai_not_configured" });
+    try {
+      const result = await runDrainAiQueue({
+        supabase: supabase as any,
+        genAI,
+        genAI2: genAI2 ?? null,
+        bot: bot as any,
+        botToken,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[admin:drain-ai-queue]", err);
+      res.status(500).json({ error: "internal_error" });
+    }
+  });
+
+  app.post("/api/queue/enqueue", requireSession, tierWrite, async (req, res) => {
+    const session = getSession(req);
+    const scope = await resolveDataAccessScope(session);
+    const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 2000).trim() : "";
+    if (!text) return void res.status(400).json({ error: "text_required" });
+    const id = await enqueueAiItem(supabase, {
+      dashboard_id: scope.dashboardId ?? null,
+      owner_user_id: session.userId,
+      channel: "web",
+      chat_id: null,
+      kind: "web_text",
+      text_content: text,
+      file_ids: null,
+      mime_types: null,
+    });
+    res.json({ id });
+  });
+
   app.use(createCronsRouter({
     supabase,
     bot: bot ?? null,
     dashboardUrl: publicAppUrl ?? "",
     cronSecret,
+    genAI,
+    genAI2,
+    botToken,
   }));
   app.use(createImageExtractRouter({
     genAI,

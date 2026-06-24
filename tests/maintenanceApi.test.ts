@@ -316,6 +316,7 @@ test("POST /api/maintenance/activate calls bot.api.sendMessage when bot is provi
         sendMessageCalled = true;
         return {};
       },
+      getFile: async (_fileId: string) => ({ file_path: undefined }),
     },
   };
 

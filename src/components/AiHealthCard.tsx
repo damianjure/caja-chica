@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Activity, Loader2, RefreshCw } from "lucide-react";
+import { Activity, Loader2, RefreshCw, Play } from "lucide-react";
 import { api, type AiHealth } from "../services/api";
+import { toast } from "sonner";
 
 const STATUS_META: Record<AiHealth["status"], { label: string; cls: string }> = {
   ok: { label: "Saludable", cls: "bg-[var(--app-green-surface)] text-[var(--chart-income)] border-[var(--app-green-border)]" },
@@ -16,13 +17,41 @@ const STATUS_META: Record<AiHealth["status"], { label: string; cls: string }> = 
 export function AiHealthCard() {
   const [health, setHealth] = useState<AiHealth | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [draining, setDraining] = useState(false);
 
   const load = () => {
     setLoading(true);
     api.getAiHealth().then(setHealth).catch(() => setHealth(null)).finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  const loadPending = () => {
+    api.getPendingQueue().then((items) => setPendingCount(items.length)).catch(() => {});
+  };
+
+  useEffect(() => { load(); loadPending(); }, []);
+
+  const handleDrain = async () => {
+    setDraining(true);
+    try {
+      const res = await api.adminTriggerDrain();
+      if (res.stopped) {
+        toast.warning("La IA sigue caída. Los items quedan en cola.");
+      } else if (res.processed === 0 && res.failed === 0) {
+        toast.success("La cola ya estaba vacía.");
+      } else {
+        const parts: string[] = [];
+        if (res.processed > 0) parts.push(`${res.processed} procesado${res.processed !== 1 ? "s" : ""}`);
+        if (res.failed > 0) parts.push(`${res.failed} fallido${res.failed !== 1 ? "s" : ""}`);
+        toast.success(`Cola procesada: ${parts.join(", ")}.`);
+      }
+      loadPending();
+    } catch {
+      toast.error("No se pudo procesar la cola.");
+    } finally {
+      setDraining(false);
+    }
+  };
 
   const meta = health ? STATUS_META[health.status] : null;
 
@@ -69,6 +98,26 @@ export function AiHealthCard() {
           ))}
         </div>
       )}
+
+      {/* Manual drain: process the pending queue right now instead of waiting for the cron */}
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--app-text-1)]">Cola de mensajes pendientes</p>
+          <p className="text-xs text-[var(--app-text-3)] mt-0.5">
+            {pendingCount === null ? "Cargando…" : pendingCount === 0 ? "Sin mensajes en cola." : `${pendingCount} mensaje${pendingCount !== 1 ? "s" : ""} esperando ser procesado${pendingCount !== 1 ? "s" : ""}.`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleDrain()}
+          disabled={draining || pendingCount === 0}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] transition duration-150 active:scale-[0.97] disabled:opacity-50"
+        >
+          {draining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+          Procesar ahora
+        </button>
+      </div>
+
       <p className="text-xs text-[var(--app-text-4)] mt-4 leading-snug">
         "Fallback usado" = la key primaria se agotó (429/503) y entró la de respaldo. "Caídas duras" = se agotaron las dos y el usuario vio "IA no disponible". La cuota restante real vive en Google Cloud, no acá.
       </p>

@@ -99,6 +99,7 @@ const app = createApp({
   googleDriveRedirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
   tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
   bot: bot ?? null,
+  botToken: botToken ?? undefined,
   cronSecret: process.env.CRON_SECRET,
   adminEmailDeps: {
     brevoApiKey: process.env.BREVO_API_KEY,

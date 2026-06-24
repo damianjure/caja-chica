@@ -470,6 +470,13 @@ export type RecurrenteRequest = {
   day_of_month?: number | null;
 };
 
+export interface PendingQueueItem {
+  id: string;
+  kind: "text" | "photo" | "pdf" | "album" | "web_text";
+  text_content: string | null;
+  created_at: string;
+}
+
 export type PhotoSourceType = "photo" | "handwritten" | "pdf" | "multi";
 
 export interface ImageExtractionResult {
@@ -1107,6 +1114,22 @@ export const api = {
     return fetchApi("/api/admin/email-settings/test-send", {
       method: "POST",
       body: JSON.stringify({ to }),
+    });
+  },
+
+  async getPendingQueue(): Promise<PendingQueueItem[]> {
+    const res: { items: PendingQueueItem[] } = await fetchApi("/api/queue/pending");
+    return res.items;
+  },
+
+  async adminTriggerDrain(): Promise<{ ok: boolean; processed: number; failed: number; expired: number; stopped: boolean }> {
+    return fetchApi("/api/admin/drain-ai-queue", { method: "POST" });
+  },
+
+  async enqueueWebText(text: string): Promise<{ id: string | null }> {
+    return fetchApi("/api/queue/enqueue", {
+      method: "POST",
+      body: JSON.stringify({ text }),
     });
   },
 

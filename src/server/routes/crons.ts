@@ -2,19 +2,24 @@ import crypto from "node:crypto";
 import express, { type RequestHandler } from "express";
 import { runDailyReminders } from "../cronJobs/reminders.ts";
 import { runRecurrentes } from "../cronJobs/recurrentes.ts";
+import { runDrainAiQueue } from "../cronJobs/drainAiQueue.ts";
 import { reconcileTransitions } from "../maintenance.ts";
 import { processInviteReminders } from "../inviteReminders.ts";
 import { notifyMaintenance } from "../maintenanceNotify.ts";
 import { alertSuperadmin } from "../alertSuperadmin.ts";
+import type { GenAILike } from "../contracts.ts";
 
 type SupabaseLike = { from(table: string): any };
-type BotLike = { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown> } } | null;
+type BotLike = { api: { sendMessage(chatId: string | number, text: string, opts?: unknown): Promise<unknown>; getFile(fileId: string): Promise<{ file_path?: string }> } } | null;
 
 export interface CronsDeps {
   supabase: SupabaseLike;
   bot: BotLike;
   dashboardUrl: string;
   cronSecret?: string;
+  genAI?: GenAILike;
+  genAI2?: GenAILike | null;
+  botToken?: string;
 }
 
 function requireCronSecret(cronSecret: string | undefined): RequestHandler {
@@ -46,6 +51,7 @@ function requireCronSecret(cronSecret: string | undefined): RequestHandler {
 export function createCronsRouter(deps: CronsDeps) {
   const router = express.Router();
   const auth = requireCronSecret(deps.cronSecret);
+
 
   router.post("/api/crons/reminders", auth, async (_req, res) => {
     try {
@@ -88,6 +94,23 @@ export function createCronsRouter(deps: CronsDeps) {
       res.json({ ok: true, sent });
     } catch (err) {
       console.error("[cron:invite-reminders] failed:", err);
+      res.status(500).json({ error: "internal_error" });
+    }
+  });
+
+  router.post("/api/crons/drain-ai-queue", auth, async (_req, res) => {
+    if (!deps.genAI) return void res.status(503).json({ error: "genai_not_configured" });
+    try {
+      const result = await runDrainAiQueue({
+        supabase: deps.supabase as any,
+        genAI: deps.genAI,
+        genAI2: deps.genAI2 ?? null,
+        bot: deps.bot as any,
+        botToken: deps.botToken,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[cron:drain-ai-queue] failed:", err);
       res.status(500).json({ error: "internal_error" });
     }
   });

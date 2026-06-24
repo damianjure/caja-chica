@@ -7,7 +7,7 @@ import { ConfirmModal } from './components/ui/ConfirmModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
-import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus } from './services/api';
+import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus, type PendingQueueItem } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -318,6 +318,11 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const { inputText, setInputText, isProcessing, error, handleProcess } = useComposer({
     categories, customCompanies, canWriteData,
     onWarning: (msg) => showToast(msg, 'warning'),
+    onQueued: () => {
+      setIsCargaOpen(false);
+      toast.warning('La IA no está disponible. Tu mensaje quedó en cola y se procesará automáticamente cuando vuelva.');
+      void api.getPendingQueue().then(setPendingQueueItems).catch(() => {});
+    },
     onCommit: (event) => {
       switch (event.type) {
         case 'GESTIONAR_EMPRESA':
@@ -364,6 +369,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [driveStatus, setDriveStatus] = useState<DriveStatus>({ connected: false, enabled: false });
   const [exporting, setExporting] = useState(false);
+  const [pendingQueueItems, setPendingQueueItems] = useState<PendingQueueItem[]>([]);
 
   useEffect(() => {
     if (!canUseDrive) return;
@@ -371,6 +377,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     void api.getDriveStatus().then((s) => { if (active) setDriveStatus(s); }).catch(() => {});
     return () => { active = false; };
   }, [canUseDrive]);
+
+  useEffect(() => {
+    let active = true;
+    const fetch = () => { void api.getPendingQueue().then((items) => { if (active) setPendingQueueItems(items); }).catch(() => {}); };
+    fetch();
+    const id = setInterval(fetch, 30_000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -854,7 +868,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           <div key={activeTab} className={navDir === 'next' ? 'anim-slide-in-right' : 'anim-slide-in-left'}>
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} arsNeto={formatNumber(arsTotals.neto)} usdNeto={formatNumber(usdTotals.neto)} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} recurrentesCount={recurrentes.filter((r) => r.is_active && !r.deleted_at).length} onMetricNavigate={(m) => { if (m === 'empresas') { setActiveTab('empresas'); return; } if (m === 'recurrentes') { setActiveTab('recurrentes'); return; } setSelectedCompany('all'); setSelectedCategory('all'); setDatePeriod('all'); setMovementType(m === 'ingresos' ? 'ingreso' : m === 'gastos' ? 'egreso' : 'all'); setMovementCurrency(m === 'usd' ? 'USD' : 'all'); setActiveTab('movimientos'); }} />}
-                {activeTab === 'movimientos' && <MovimientosTab totalCount={history.length} arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} usdNeto={formatNumber(usdTotals.neto)} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} searchText={searchText} setSearchText={setSearchText} selectedSource={selectedSource} setSelectedSource={setSelectedSource} onOpenSearch={() => setIsPaletteOpen(true)} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} historyCards={<>
+                {activeTab === 'movimientos' && <MovimientosTab totalCount={history.length} arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} usdNeto={formatNumber(usdTotals.neto)} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} searchText={searchText} setSearchText={setSearchText} selectedSource={selectedSource} setSelectedSource={setSelectedSource} onOpenSearch={() => setIsPaletteOpen(true)} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} pendingItems={pendingQueueItems} historyCards={<>
                   <div className="lg:hidden">
                     <MovementCards filteredHistory={filteredHistory} hasActiveFilters={hasActiveFilters} onResetFilters={resetFilters} onOpenCarga={() => setIsCargaOpen(true)} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} onLinesChanged={(id, total, hasLines) => patchMovement(id, { monto: total, has_lineas: hasLines })} />
                   </div>

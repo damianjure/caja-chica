@@ -14,6 +14,7 @@ import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiW
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { buildUndoKeyboard } from "../quickActions.ts";
 import { parseIntentResult, resolveIntentAction, parseReminderSlots } from "../voiceIntent.ts";
+import { enqueueAiItem } from "../../server/aiQueue.ts";
 import { readReminder, writeReminder } from "../reminderPrefs.ts";
 import { buildReminderStatusText, buildReminderKeyboard } from "../reminderText.ts";
 import { buildGestionarKeyboard, buildMainKeyboard, buildIntentConfirmKeyboard } from "../keyboards.ts";
@@ -615,10 +616,27 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
     }
   } catch (err) {
     if (err instanceof GeminiUnavailableError) {
-      await ctx.reply(
-        "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá de nuevo en unos minutos o cargá el movimiento desde el dashboard web\\.",
-        { parse_mode: "MarkdownV2" },
-      );
+      const queued = await enqueueAiItem(supabase, {
+        dashboard_id: linked.dashboardId ?? null,
+        owner_user_id: linked.ownerUserId ?? null,
+        channel: "telegram",
+        chat_id: ctx.chat?.id ?? null,
+        kind: "text",
+        text_content: args.text,
+        file_ids: null,
+        mime_types: null,
+      });
+      if (queued) {
+        await ctx.reply(
+          "⚠️ La IA no está disponible ahora mismo\\. Tu mensaje quedó guardado como *pendiente* y se procesará automáticamente cuando vuelva\\.",
+          { parse_mode: "MarkdownV2" },
+        );
+      } else {
+        await ctx.reply(
+          "⚠️ La IA no está disponible ahora mismo \\(cuota agotada\\)\\. Intentá de nuevo en unos minutos o cargá el movimiento desde el dashboard web\\.",
+          { parse_mode: "MarkdownV2" },
+        );
+      }
       return;
     }
     console.error(err);

@@ -575,6 +575,7 @@ Los crons ya NO corren in-process con `node-cron`. Cloud Scheduler dispara los e
 | Recurrentes | `POST /api/crons/recurrentes` | `0 8 * * *` (08:00 UTC) | `X-Cron-Secret` |
 | Maintenance reconcile | `POST /api/crons/maintenance` | `* * * * *` | `X-Cron-Secret` |
 | Invite reminders | `POST /api/crons/invite-reminders` | `0 10 * * *` (10:00 UTC) | `X-Cron-Secret` |
+| Drain AI queue | `POST /api/crons/drain-ai-queue` | `*/5 * * * *` (cada 5 min) | `X-Cron-Secret` |
 
 ### Rotación de CRON_SECRET
 Actualizar `CRON_SECRET` en Cloud Run env vars y en el header del Cloud Scheduler job simultáneamente. No hay mecanismo in-app de rotación.

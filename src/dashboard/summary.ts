@@ -169,11 +169,13 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
   });
 
   // Empresas sin movimientos también deben aparecer (recién creadas).
-  extraCompanies.forEach((name) => {
+  // ⚡ Bolt Performance Optimization: Replace .forEach() with for...of to reduce iteration overhead.
+  for (const name of extraCompanies) {
     if (name && !map.has(name)) map.set(name, blank(name));
-  });
+  }
 
-  history.forEach((item) => {
+  // ⚡ Bolt Performance Optimization: Replace .forEach() with for...of to reduce iteration overhead.
+  for (const item of history) {
     const name = item.empresa_nombre || 'Personal';
     const summary = map.get(name) ?? {
       name,
@@ -203,7 +205,7 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
 
     summary.movimientos += 1;
     map.set(name, summary);
-  });
+  }
 
   return [...map.values()].sort((a, b) => (b.saldoArs + b.saldoUsd) - (a.saldoArs + a.saldoUsd));
 }
@@ -211,19 +213,21 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
 export function getCategorySummaries(history: Movimiento[], companyName?: string) {
   const map = new Map<string, CategorySummary>();
 
-  history
-    .filter((item) => item.tipo === 'egreso')
-    .filter((item) => !companyName || item.empresa_nombre === companyName)
-    .forEach((item) => {
-      const name = item.categoria || 'Otros';
-      const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  // ⚡ Bolt Performance Optimization: Replace chained .filter().filter().forEach() with a single for...of loop
+  // to avoid intermediate array allocations and reduce iteration overhead.
+  for (const item of history) {
+    if (item.tipo !== 'egreso') continue;
+    if (companyName && item.empresa_nombre !== companyName) continue;
 
-      if (item.moneda === 'ARS') summary.egresoArs += amount;
-      if (item.moneda === 'USD') summary.egresoUsd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.categoria || 'Otros';
+    const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.egresoArs += amount;
+    if (item.moneda === 'USD') summary.egresoUsd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.egresoArs - a.egresoArs || b.egresoUsd - a.egresoUsd);
 }
@@ -231,18 +235,20 @@ export function getCategorySummaries(history: Movimiento[], companyName?: string
 export function getIncomeSummaries(history: Movimiento[]) {
   const map = new Map<string, IncomeSummary>();
 
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
-      const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  // ⚡ Bolt Performance Optimization: Replace chained .filter().forEach() with a single for...of loop
+  // to avoid intermediate array allocations and reduce iteration overhead.
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
 
-      if (item.moneda === 'ARS') summary.ars += amount;
-      if (item.moneda === 'USD') summary.usd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.empresa_nombre || item.descripcion || 'Sin clasificar';
+    const summary = map.get(name) ?? { name, ars: 0, usd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.ars += amount;
+    if (item.moneda === 'USD') summary.usd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd);
 }
@@ -250,28 +256,30 @@ export function getIncomeSummaries(history: Movimiento[]) {
 export function getIncomeTagSummaries(history: Movimiento[]) {
   const map = new Map<string, IncomeTagSummary>();
 
-  history
-    .filter((item) => item.tipo === 'ingreso')
-    .forEach((item) => {
-      const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      const matchedTags = INCOME_TAG_LIBRARY.filter((tag) =>
-        tag.keywords.some((keyword) => haystack.includes(keyword)),
-      );
-      const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
+  // ⚡ Bolt Performance Optimization: Replace chained .filter().forEach() with a single for...of loop
+  // to avoid intermediate array allocations and reduce iteration overhead.
+  for (const item of history) {
+    if (item.tipo !== 'ingreso') continue;
 
-      tags.forEach((tag) => {
-        const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
-        const amount = Number(item.monto || 0);
+    const haystack = [item.descripcion, item.categoria, item.empresa_nombre]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const matchedTags = INCOME_TAG_LIBRARY.filter((tag) =>
+      tag.keywords.some((keyword) => haystack.includes(keyword)),
+    );
+    const tags = matchedTags.length > 0 ? matchedTags : [{ label: 'Cobro de cliente' } as const];
 
-        if (item.moneda === 'ARS') summary.ars += amount;
-        if (item.moneda === 'USD') summary.usd += amount;
-        summary.movimientos += 1;
-        map.set(tag.label, summary);
-      });
-    });
+    for (const tag of tags) {
+      const summary = map.get(tag.label) ?? { label: tag.label, ars: 0, usd: 0, movimientos: 0 };
+      const amount = Number(item.monto || 0);
+
+      if (item.moneda === 'ARS') summary.ars += amount;
+      if (item.moneda === 'USD') summary.usd += amount;
+      summary.movimientos += 1;
+      map.set(tag.label, summary);
+    }
+  }
 
   return [...map.values()].sort((a, b) => b.ars - a.ars || b.usd - a.usd || b.movimientos - a.movimientos);
 }
@@ -279,7 +287,8 @@ export function getIncomeTagSummaries(history: Movimiento[]) {
 export function getMonthlySummaries(history: Movimiento[]) {
   const map = new Map<string, MonthlySummary>();
 
-  history.forEach((item) => {
+  // ⚡ Bolt Performance Optimization: Replace .forEach() with for...of to reduce iteration overhead.
+  for (const item of history) {
     const date = new Date(item.created_at);
     const period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const summary = map.get(period) ?? {
@@ -314,7 +323,7 @@ export function getMonthlySummaries(history: Movimiento[]) {
     }
 
     map.set(period, summary);
-  });
+  }
 
   return [...map.values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
 }
@@ -443,9 +452,16 @@ export function buildMonthlyChartData(
 }
 
 export function getRecentExpenses(history: Movimiento[], companyName?: string, limit = 5): RecentExpenseItem[] {
-  return history
-    .filter((item) => item.tipo === 'egreso')
-    .filter((item) => !companyName || item.empresa_nombre === companyName)
+  // ⚡ Bolt Performance Optimization: Filter items in a single pass before sorting,
+  // avoiding intermediate array allocations from multiple .filter() calls.
+  const filtered: Movimiento[] = [];
+  for (const item of history) {
+    if (item.tipo === 'egreso' && (!companyName || item.empresa_nombre === companyName)) {
+      filtered.push(item);
+    }
+  }
+
+  return filtered
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit)
     .map((item) => ({
@@ -460,8 +476,16 @@ export function getRecentExpenses(history: Movimiento[], companyName?: string, l
 }
 
 export function getRecentIncomes(history: Movimiento[], limit = 5): RecentIncomeItem[] {
-  return history
-    .filter((item) => item.tipo === 'ingreso')
+  // ⚡ Bolt Performance Optimization: Filter items in a single pass before sorting,
+  // avoiding intermediate array allocations from .filter() calls.
+  const filtered: Movimiento[] = [];
+  for (const item of history) {
+    if (item.tipo === 'ingreso') {
+      filtered.push(item);
+    }
+  }
+
+  return filtered
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit)
     .map((item) => ({

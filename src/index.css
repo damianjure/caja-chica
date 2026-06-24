@@ -89,6 +89,7 @@
      Marca/acción primaria = mint via --app-strong-surface (theme-aware).
      Semantic pills (red/green/amber/blue) conservan sus hues para diferenciar tipos. */
   :root {
+    --desktop-topbar-h: 73px;
     --app-canvas: #EDEAE4;
     --app-surface-1: #FBFAF7;
     --app-surface-2: #F5F3EF;

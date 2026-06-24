@@ -1,14 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { TrendingDown, TrendingUp, X, Pencil, Copy, Check, Trash2, Building2, Tag, Calendar, CheckCircle2 } from 'lucide-react';
 import { type Movimiento } from '../../services/api';
 import { MovementLines } from './MovementLines';
 import { sourceMeta } from './MovementsTable';
 
+const DEFAULT_WIDTH = 400;
+const MIN_WIDTH = 280;
+const MAX_WIDTH = 640;
+
 /**
  * Desktop master-detail panel (≥ lg). Slides in from the right when a table row
  * is selected, showing the full movement without leaving the list. Non-modal:
  * no backdrop, so the user keeps scanning the table; Escape / X close it.
- * Edit/Copy/Delete reuse the dashboard's existing handlers.
+ * Starts below the DesktopTopbar (top: var(--desktop-topbar-h)) so the header
+ * is always visible. Width is resizable by dragging the left edge.
  */
 interface MovementDetailDrawerProps {
   movement: Movimiento | null;
@@ -19,17 +24,47 @@ interface MovementDetailDrawerProps {
   onCopy: (item: Movimiento) => void;
   onDelete: (id: string) => void;
   onLinesChanged?: (id: string, total: number, hasLines: boolean) => void;
+  onWidthChange?: (width: number) => void;
 }
 
 export function MovementDetailDrawer({
-  movement, canWriteData, copiedId, onClose, onEdit, onCopy, onDelete, onLinesChanged,
+  movement, canWriteData, copiedId, onClose, onEdit, onCopy, onDelete, onLinesChanged, onWidthChange,
 }: MovementDetailDrawerProps) {
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
   useEffect(() => {
     if (!movement) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [movement, onClose]);
+
+  // Notify parent of width changes so it can adjust content padding
+  useEffect(() => {
+    onWidthChange?.(width);
+  }, [width, onWidthChange]);
+
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    isDragging.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    const delta = startX.current - e.clientX;
+    const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth.current + delta));
+    setWidth(newWidth);
+  };
+
+  const handlePointerUp = () => {
+    isDragging.current = false;
+  };
 
   if (!movement) return null;
   const isIncome = movement.tipo === 'ingreso';
@@ -52,8 +87,22 @@ export function MovementDetailDrawer({
     <aside
       role="complementary"
       aria-label="Detalle del movimiento"
-      className="hidden lg:flex fixed inset-y-0 right-0 z-40 w-72 flex-col border-l border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[-12px_0_40px_rgba(0,0,0,0.18)] anim-slide-in-right"
+      className="hidden lg:flex fixed right-0 bottom-0 z-40 flex-col border-l border-[var(--app-border-strong)] bg-[var(--app-surface-1)] shadow-[-12px_0_40px_rgba(0,0,0,0.18)] anim-slide-in-right"
+      style={{ top: 'var(--desktop-topbar-h)', width }}
     >
+      {/* Drag-to-resize handle on the left edge */}
+      <div
+        role="separator"
+        aria-label="Redimensionar panel"
+        aria-orientation="vertical"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize group"
+      >
+        <div className="absolute inset-y-0 left-0 w-1 group-hover:bg-[var(--app-strong-surface)] group-hover:opacity-50 transition-colors duration-150" />
+      </div>
+
       <header className="flex items-center justify-between gap-2 border-b border-[var(--app-border)] px-5 py-4">
         <h2 className="text-sm font-bold text-[var(--app-text-2)]">Detalle del movimiento</h2>
         <button
@@ -128,7 +177,7 @@ export function MovementDetailDrawer({
             type="button"
             onClick={() => onDelete(movement.id)}
             aria-label="Borrar movimiento"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--app-border)] text-[var(--app-text-3)] hover:border-red-400 hover:text-[var(--chart-expense)]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--app-border)] text-[var(--app-text-2)] hover:border-red-400 hover:text-[var(--chart-expense)]"
           >
             <Trash2 className="h-4 w-4" />
           </button>

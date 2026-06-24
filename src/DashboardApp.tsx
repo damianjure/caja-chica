@@ -351,6 +351,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [detailMovement, setDetailMovement] = useState<Movimiento | null>(null);
+  const [drawerWidth, setDrawerWidth] = useState(400);
   const [editingMovement, setEditingMovement] = useState<Movimiento | null>(null);
   const [movementEditForm, setMovementEditForm] = useState<MovementEditForm | null>(null);
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
@@ -721,8 +722,8 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         onInstallApp={!pwa.standalone ? () => void pwa.promptInstall() : undefined}
       />
       <div
-        className={`max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6 lg:transition-[padding] lg:duration-200 ${detailMovement ? 'lg:pr-[312px]' : ''}`}
-        style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition }}
+        className="max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6 lg:transition-[padding] lg:duration-200"
+        style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition, paddingRight: detailMovement ? `${drawerWidth + 24}px` : undefined }}
       >
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
         {apiStatus === 'load_error' && <div role="alert" className="bg-[var(--app-red-surface)] border border-[var(--app-red-border)] p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
@@ -916,6 +917,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           onCopy={copyJson}
           onDelete={(id) => { setDetailMovement(null); deleteItem(id); }}
           onLinesChanged={(id, total, hasLines) => patchMovement(id, { monto: total, has_lineas: hasLines })}
+          onWidthChange={setDrawerWidth}
         />
 
         <DashboardModals

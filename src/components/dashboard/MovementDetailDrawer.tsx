@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { TrendingDown, TrendingUp, X, Pencil, Copy, Check, Trash2, Building2, Tag, Calendar, CheckCircle2 } from 'lucide-react';
 import { type Movimiento } from '../../services/api';
 import { MovementLines } from './MovementLines';
@@ -83,7 +84,7 @@ export function MovementDetailDrawer({
     </div>
   );
 
-  return (
+  return createPortal(
     <aside
       role="complementary"
       aria-label="Detalle del movimiento"
@@ -183,6 +184,7 @@ export function MovementDetailDrawer({
           </button>
         )}
       </footer>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

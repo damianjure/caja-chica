@@ -514,7 +514,19 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
   // Memoize these complex aggregations (totals, summaries, and lists) to prevent
   // them from recalculating on every render (e.g., when typing in search or opening modals).
   // Impact: Reduces blocking render time on the main thread significantly as the movement history grows.
-  const companiesList = useMemo(() => ['all', ...Array.from(new Set([...customCompanies.map((c) => c.nombre), ...history.map((i) => i.empresa_nombre).filter(Boolean)])) as string[]], [customCompanies, history]);
+  const companiesList = useMemo(() => {
+    // ⚡ Bolt Performance Optimization: Use a single for...of loop instead of .map().filter()
+    // to prevent intermediate array allocations when building the unique companies list.
+    // Impact: Lower memory pressure and faster iteration over large history datasets.
+    const uniqueCompanies = new Set<string>();
+    for (const company of customCompanies) {
+      if (company.nombre) uniqueCompanies.add(company.nombre);
+    }
+    for (const item of history) {
+      if (item.empresa_nombre) uniqueCompanies.add(item.empresa_nombre);
+    }
+    return ['all', ...Array.from(uniqueCompanies)];
+  }, [customCompanies, history]);
 
   const arsTotals = useMemo(() => getCurrencyTotals(history, 'ARS'), [history]);
   const usdTotals = useMemo(() => getCurrencyTotals(history, 'USD'), [history]);

@@ -1,7 +1,8 @@
 import {
-  Building2, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet, X,
+  Building2, ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { Empresa, Movimiento } from '../../../services/api';
 import { SectionCard, MetricCard, MetricChip, KpiBadgeCard } from '../primitives';
@@ -68,6 +69,9 @@ function CurToggle({ cur, setCur }: { cur: 'ARS' | 'USD'; setCur: (c: 'ARS' | 'U
   );
 }
 
+type EmpresasSortKey = 'nombre' | 'movimientos' | 'ingresos' | 'gastos' | 'saldo' | 'ultima_actividad';
+type SortDir = 'asc' | 'desc';
+
 // ── Company detail drawer (fixed, resizable — same pattern as MovementDetailDrawer) ──
 
 interface CompanyDetailDrawerProps {
@@ -122,7 +126,7 @@ function CompanyDetailDrawer({
   const canEdit = canWriteData && !!empresa && summary.name !== 'Personal';
   const catTotal = topCategories.reduce((acc, c) => acc + c.ars, 0);
 
-  return (
+  return createPortal(
     <aside
       role="complementary"
       aria-label="Detalle de empresa"
@@ -253,7 +257,8 @@ function CompanyDetailDrawer({
           Ver movimientos filtrados
         </button>
       </footer>
-    </aside>
+    </aside>,
+    document.body,
   );
 }
 
@@ -292,6 +297,17 @@ export default function EmpresasTab({
   const [companySearch, setCompanySearch] = useState('');
   const [withMovementsFilter, setWithMovementsFilter] = useState(false);
   const [companyDrawerWidth, setCompanyDrawerWidth] = useState(DEFAULT_DRAWER_WIDTH);
+  const [sortKey, setSortKey] = useState<EmpresasSortKey>('movimientos');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const toggleSort = (key: EmpresasSortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'nombre' || key === 'ultima_actividad' ? 'asc' : 'desc');
+    }
+  };
 
   const sortedByActivity = useMemo(
     () => [...companySummaries].sort((a, b) => b.movimientos - a.movimientos),
@@ -302,12 +318,6 @@ export default function EmpresasTab({
   const enRojo = companySummaries.filter((c) => pick(c, cur).sal < 0).length;
   const totalSaldo = companySummaries.reduce((acc, c) => acc + pick(c, cur).sal, 0);
 
-  const filteredDesktop = useMemo(() => {
-    return sortedByActivity
-      .filter((c) => !withMovementsFilter || c.movimientos > 0)
-      .filter((c) => !companySearch || c.name.toLowerCase().includes(companySearch.toLowerCase()));
-  }, [sortedByActivity, withMovementsFilter, companySearch]);
-
   const lastActivityByCompany = useMemo(() => {
     const map = new Map<string, string>();
     for (const m of history) {
@@ -317,6 +327,28 @@ export default function EmpresasTab({
     }
     return map;
   }, [history]);
+
+  const filteredDesktop = useMemo(() => {
+    const base = sortedByActivity
+      .filter((c) => !withMovementsFilter || c.movimientos > 0)
+      .filter((c) => !companySearch || c.name.toLowerCase().includes(companySearch.toLowerCase()));
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...base].sort((a, b) => {
+      switch (sortKey) {
+        case 'nombre': return dir * a.name.localeCompare(b.name, 'es');
+        case 'movimientos': return dir * (a.movimientos - b.movimientos);
+        case 'ingresos': return dir * (pick(a, cur).ing - pick(b, cur).ing);
+        case 'gastos': return dir * (pick(a, cur).gas - pick(b, cur).gas);
+        case 'saldo': return dir * (pick(a, cur).sal - pick(b, cur).sal);
+        case 'ultima_actividad': {
+          const aDate = lastActivityByCompany.get(a.name) ?? '';
+          const bDate = lastActivityByCompany.get(b.name) ?? '';
+          return dir * aDate.localeCompare(bDate);
+        }
+        default: return 0;
+      }
+    });
+  }, [sortedByActivity, withMovementsFilter, companySearch, sortKey, sortDir, cur, lastActivityByCompany]);
 
   const selectedSummary = useMemo(
     () => companySummaries.find((c) => c.name === selectedCompany) ?? null,
@@ -471,16 +503,34 @@ export default function EmpresasTab({
           <div className="overflow-x-auto">
             {filteredDesktop.length === 0 ? (
               <p className="px-4 py-10 text-sm text-[var(--app-text-3)] text-center">Sin resultados.</p>
-            ) : (
+            ) : (() => {
+              const SortTh = ({ label, col, align = 'left', px = 'px-3' }: { label: string; col: EmpresasSortKey; align?: 'left' | 'right'; px?: string }) => {
+                const active = sortKey === col;
+                return (
+                  <th className={`${px} py-2.5 text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider ${align === 'right' ? 'text-right' : 'text-left'}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col)}
+                      className={`inline-flex items-center gap-1 hover:text-[var(--app-text-1)] transition-colors ${align === 'right' ? 'flex-row-reverse' : ''} ${active ? 'text-[var(--app-text-1)]' : ''}`}
+                    >
+                      {label}
+                      {active
+                        ? (sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)
+                        : <ChevronsUpDown className="h-3.5 w-3.5 opacity-70" />}
+                    </button>
+                  </th>
+                );
+              };
+              return (
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-[var(--app-surface-2)] border-b border-[var(--app-border)] z-10">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Empresa</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Movim.</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Ingresos</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Gastos</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Saldo</th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-[var(--app-text-2)] uppercase tracking-wider">Última actividad</th>
+                    <SortTh label="Empresa" col="nombre" px="px-4" />
+                    <SortTh label="Movim." col="movimientos" align="right" />
+                    <SortTh label="Ingresos" col="ingresos" align="right" />
+                    <SortTh label="Gastos" col="gastos" align="right" />
+                    <SortTh label="Saldo" col="saldo" align="right" />
+                    <SortTh label="Última actividad" col="ultima_actividad" align="right" px="px-4" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--app-border)]">
@@ -522,7 +572,8 @@ export default function EmpresasTab({
                   })}
                 </tbody>
               </table>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -359,19 +359,13 @@ export default function RecurrentesTab({
       <section className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] gap-6 items-start">
         {/* Left: table */}
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--app-border)]">
-            {canWriteData && (
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)] shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Nuevo recurrente
-              </button>
-            )}
-            <div className="flex items-center gap-1 ml-auto">
+          {/* Card header */}
+          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--app-border)]">
+            <div>
+              <h3 className="text-base font-bold text-[var(--app-text-1)]">Recurrentes</h3>
+              <p className="text-xs text-[var(--app-text-3)]">Gastos e ingresos automáticos</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
               {(['all', 'active', 'paused'] as const).map((s) => (
                 <button
                   key={s}
@@ -382,6 +376,16 @@ export default function RecurrentesTab({
                   {s === 'all' ? 'Todos' : s === 'active' ? 'Activos' : 'Pausados'}
                 </button>
               ))}
+              {canWriteData && (
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--app-strong-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-strong-text)]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nuevo
+                </button>
+              )}
             </div>
           </div>
           {/* Table */}
@@ -455,7 +459,7 @@ export default function RecurrentesTab({
         {/* Right: próximos 30 días list */}
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
           <div className="px-4 py-3 border-b border-[var(--app-border)]">
-            <h3 className="text-base font-semibold text-[var(--app-text-1)]">Próximos 30 días</h3>
+            <h3 className="text-base font-bold text-[var(--app-text-1)]">Próximos 30 días</h3>
           </div>
           <div className="divide-y divide-[var(--app-border)] overflow-y-auto" style={{ maxHeight: 340 }}>
             {next30Days.length === 0 ? (

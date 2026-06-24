@@ -119,7 +119,7 @@ function MovementsTableImpl({
           className={`inline-flex items-center gap-1 hover:text-[var(--app-text-1)] transition-colors ${align === 'right' ? 'flex-row-reverse' : ''} ${active ? 'text-[var(--app-text-1)]' : ''}`}
         >
           {label}
-          {active ? (sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />) : <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />}
+          {active ? (sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />) : <ChevronsUpDown className="h-3.5 w-3.5 opacity-70" />}
         </button>
       </th>
     );

@@ -25,6 +25,19 @@ export function isGeminiCapacityError(err: unknown): boolean {
 }
 
 /**
+ * True when Gemini rejects the call due to an invalid or revoked API key.
+ *   - 400 / API_KEY_INVALID
+ *   - 401 / 403 (unauthenticated / forbidden)
+ */
+export function isGeminiAuthError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { status?: number; message?: string };
+  if (e.status === 400 || e.status === 401 || e.status === 403) return true;
+  if (typeof e.message !== "string") return false;
+  return /API_KEY_INVALID|invalid.*key|permission.*denied|UNAUTHENTICATED/i.test(e.message);
+}
+
+/**
  * Wraps a media extraction (photo/PDF/audio) with fallback to a second API
  * key. Files API uploads are key-scoped, so `run` must perform the WHOLE
  * operation (download + upload + generateContent) with the client it
@@ -39,10 +52,37 @@ export async function withMediaKeyFallback<C, T>(
   try {
     return await run(primary);
   } catch (err) {
+    if (isGeminiAuthError(err)) {
+      recordAiEvent({ code: "gemini:media-auth-error", kind: "media", outcome: "both_exhausted", context: { hasFallback: fallback ? "sí" : "no" } });
+      alertSuperadmin({
+        code: "gemini:media-auth-error",
+        title: "Gemini: key inválida o revocada (media)",
+        problem: "La key primaria de Gemini devolvió un error de autenticación (401/403/API_KEY_INVALID) procesando una foto, PDF o audio.",
+        impact: "Las extracciones de media están completamente caídas hasta que se rote la key.",
+        context: { hasFallback: fallback ? "sí" : "no" },
+        steps: [
+          "Verificar que GEMINI_API_KEY sea válida en Google AI Studio.",
+          "Si fue revocada, crear una nueva key y actualizarla en Cloud Run → Settings → Variables.",
+          "Revisar también GEMINI_API_KEY_2 (fallback).",
+        ],
+      });
+      throw new GeminiUnavailableError();
+    }
     const capacity = err instanceof GeminiUnavailableError || isGeminiCapacityError(err);
     if (!capacity) throw err;
     if (!fallback) {
       recordAiEvent({ code: "gemini:media", kind: "media", outcome: "both_exhausted", context: { hasFallback: "no" } });
+      alertSuperadmin({
+        code: "gemini:media-both-exhausted-no-fallback",
+        title: "Gemini: cuota agotada, sin fallback (media)",
+        problem: "La key primaria agotó su cuota procesando media y no hay key de fallback configurada.",
+        impact: "Las extracciones de foto, PDF y audio están caídas.",
+        context: { hasFallback: "no" },
+        steps: [
+          "Configurar GEMINI_API_KEY_2 como fallback en Cloud Run.",
+          "Revisar el uso de cuota en Google AI Studio para GEMINI_API_KEY.",
+        ],
+      });
       throw err instanceof GeminiUnavailableError ? err : new GeminiUnavailableError();
     }
     console.warn("[gemini] Primary key exhausted on media call — retrying with fallback key");
@@ -63,6 +103,18 @@ export async function withMediaKeyFallback<C, T>(
     } catch (err2) {
       if (err2 instanceof GeminiUnavailableError || isGeminiCapacityError(err2)) {
         recordAiEvent({ code: "gemini:media", kind: "media", outcome: "both_exhausted", context: { hasFallback: "sí" } });
+        alertSuperadmin({
+          code: "gemini:media-both-exhausted",
+          title: "Gemini: ambas keys agotadas — IA de media caída",
+          problem: "La key primaria Y la de fallback agotaron su cuota procesando media. El servicio está completamente caído.",
+          impact: "Las extracciones de foto, PDF y audio no funcionan para ningún usuario hasta que se restablezca la cuota o se roten las keys.",
+          context: { hasFallback: "sí" },
+          steps: [
+            "Revisar el uso de cuota en Google AI Studio para AMBAS keys.",
+            "Rotar las keys o esperar a que se resetee la cuota diaria.",
+            "Considerar subir los límites de cuota en la consola de Google AI.",
+          ],
+        });
         throw new GeminiUnavailableError();
       }
       throw err2;
@@ -81,6 +133,22 @@ export async function geminiGenerateText(
   try {
     return await primary.models.generateContent(args);
   } catch (err) {
+    if (isGeminiAuthError(err)) {
+      recordAiEvent({ code: "gemini:text-auth-error", kind: "text", outcome: "both_exhausted", context: { hasFallback: fallback ? "sí" : "no" } });
+      alertSuperadmin({
+        code: "gemini:text-auth-error",
+        title: "Gemini: key inválida o revocada (texto)",
+        problem: "La key primaria de Gemini devolvió un error de autenticación (401/403/API_KEY_INVALID) en una extracción de texto.",
+        impact: "La carga de movimientos por texto y el asistente de consultas están caídos para todos los usuarios.",
+        context: { hasFallback: fallback ? "sí" : "no" },
+        steps: [
+          "Verificar que GEMINI_API_KEY sea válida en Google AI Studio.",
+          "Si fue revocada, crear una nueva key y actualizarla en Cloud Run → Settings → Variables.",
+          "Revisar también GEMINI_API_KEY_2 (fallback).",
+        ],
+      });
+      throw new GeminiUnavailableError();
+    }
     if (!isGeminiCapacityError(err)) throw err;
     console.warn("[gemini] Primary key quota exhausted — trying fallback key");
     alertSuperadmin({
@@ -99,6 +167,17 @@ export async function geminiGenerateText(
     });
     if (!fallback) {
       recordAiEvent({ code: "gemini:text", kind: "text", outcome: "both_exhausted", context: { hasFallback: "no" } });
+      alertSuperadmin({
+        code: "gemini:text-both-exhausted-no-fallback",
+        title: "Gemini: cuota agotada, sin fallback — IA de texto caída",
+        problem: "La key primaria agotó su cuota y no hay key de fallback configurada.",
+        impact: "La carga de movimientos por texto y el asistente de consultas están caídos.",
+        context: { hasFallback: "no" },
+        steps: [
+          "Configurar GEMINI_API_KEY_2 como fallback en Cloud Run.",
+          "Revisar el uso de cuota en Google AI Studio para GEMINI_API_KEY.",
+        ],
+      });
       throw new GeminiUnavailableError();
     }
     recordAiEvent({ code: "gemini:primary-quota-exhausted", kind: "text", outcome: "fallback_used" });
@@ -107,6 +186,18 @@ export async function geminiGenerateText(
     } catch (err2) {
       if (isGeminiCapacityError(err2)) {
         recordAiEvent({ code: "gemini:text", kind: "text", outcome: "both_exhausted", context: { hasFallback: "sí" } });
+        alertSuperadmin({
+          code: "gemini:text-both-exhausted",
+          title: "Gemini: ambas keys agotadas — IA de texto caída",
+          problem: "La key primaria Y la de fallback agotaron su cuota en extracciones de texto. El servicio está completamente caído.",
+          impact: "La carga de movimientos por texto y el asistente de consultas no funcionan para ningún usuario.",
+          context: { hasFallback: "sí" },
+          steps: [
+            "Revisar el uso de cuota en Google AI Studio para AMBAS keys.",
+            "Rotar las keys o esperar a que se resetee la cuota diaria.",
+            "Considerar subir los límites de cuota en la consola de Google AI.",
+          ],
+        });
         throw new GeminiUnavailableError();
       }
       throw err2;

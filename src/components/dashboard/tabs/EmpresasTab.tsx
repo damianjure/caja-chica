@@ -433,10 +433,10 @@ export default function EmpresasTab({
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
 
           {/* Card header: title + CurToggle + Nueva empresa */}
-          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--app-border)]">
+          <div className="flex items-start justify-between gap-4 px-6 py-5">
             <div>
-              <h3 className="text-base font-bold text-[var(--app-text-1)]">Empresas</h3>
-              <p className="text-xs text-[var(--app-text-3)]">Ordenadas por actividad</p>
+              <h3 className="text-xl font-bold tracking-tight text-[var(--app-text-1)]">Empresas</h3>
+              <p className="text-sm text-[var(--app-text-3)]">Ordenadas por actividad</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <CurToggle cur={cur} setCur={setCur} />
@@ -477,9 +477,9 @@ export default function EmpresasTab({
             </div>
           )}
 
-          {/* Search + filter row */}
-          <div className="flex gap-2 items-center px-4 py-3 border-b border-[var(--app-border)]">
-            <div className="relative flex-1 min-w-[180px]">
+          {/* Search row */}
+          <div className="px-6 pb-3">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--app-text-3)]" aria-hidden="true" />
               <input
                 type="search"
@@ -487,13 +487,16 @@ export default function EmpresasTab({
                 onChange={(e) => { setCompanySearch(e.target.value); }}
                 placeholder="Buscar empresa…"
                 aria-label="Buscar empresa"
-                className="w-full rounded-lg border border-[var(--app-border)] pl-8 pr-4 py-2 text-sm outline-none focus:border-[var(--app-border-strong)] bg-[var(--app-surface-1)]"
+                className="w-full rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-1)] pl-8 pr-4 py-2 text-sm outline-none focus:border-[var(--app-border-strong)]"
               />
             </div>
+          </div>
+          {/* Filter row */}
+          <div className="flex items-center gap-2 px-6 pb-4">
             <button
               type="button"
               onClick={() => setWithMovementsFilter((p) => !p)}
-              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${withMovementsFilter ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_14%,transparent)] text-[var(--app-text-1)]' : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'}`}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${withMovementsFilter ? 'border-[var(--app-strong-surface)] bg-[color-mix(in_srgb,var(--app-strong-surface)_14%,transparent)] text-[var(--app-text-1)]' : 'border-[var(--app-border)] text-[var(--app-text-2)] hover:border-[var(--app-border-strong)]'}`}
             >
               Con movimientos
             </button>

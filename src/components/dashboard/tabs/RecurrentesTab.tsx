@@ -360,10 +360,10 @@ export default function RecurrentesTab({
         {/* Left: table */}
         <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-1)] overflow-hidden shadow-[var(--app-shadow-sm)]">
           {/* Card header */}
-          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[var(--app-border)]">
+          <div className="flex items-start justify-between gap-4 px-6 py-5">
             <div>
-              <h3 className="text-base font-bold text-[var(--app-text-1)]">Recurrentes</h3>
-              <p className="text-xs text-[var(--app-text-3)]">Gastos e ingresos automáticos</p>
+              <h3 className="text-xl font-bold tracking-tight text-[var(--app-text-1)]">Recurrentes</h3>
+              <p className="text-sm text-[var(--app-text-3)]">Gastos e ingresos automáticos</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {(['all', 'active', 'paused'] as const).map((s) => (

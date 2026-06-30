@@ -211,19 +211,22 @@ export function getCompanySummaries(history: Movimiento[], extraCompanies: strin
 export function getCategorySummaries(history: Movimiento[], companyName?: string) {
   const map = new Map<string, CategorySummary>();
 
-  history
-    .filter((item) => item.tipo === 'egreso')
-    .filter((item) => !companyName || item.empresa_nombre === companyName)
-    .forEach((item) => {
-      const name = item.categoria || 'Otros';
-      const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
-      const amount = Number(item.monto || 0);
+  // ⚡ Bolt Performance Optimization:
+  // Using a single for...of loop avoids allocating intermediate arrays via .filter().filter().forEach()
+  // Impact: Reduces GC pressure and iteration overhead when parsing large history arrays.
+  for (const item of history) {
+    if (item.tipo !== 'egreso') continue;
+    if (companyName && item.empresa_nombre !== companyName) continue;
 
-      if (item.moneda === 'ARS') summary.egresoArs += amount;
-      if (item.moneda === 'USD') summary.egresoUsd += amount;
-      summary.movimientos += 1;
-      map.set(name, summary);
-    });
+    const name = item.categoria || 'Otros';
+    const summary = map.get(name) ?? { name, egresoArs: 0, egresoUsd: 0, movimientos: 0 };
+    const amount = Number(item.monto || 0);
+
+    if (item.moneda === 'ARS') summary.egresoArs += amount;
+    if (item.moneda === 'USD') summary.egresoUsd += amount;
+    summary.movimientos += 1;
+    map.set(name, summary);
+  }
 
   return [...map.values()].sort((a, b) => b.egresoArs - a.egresoArs || b.egresoUsd - a.egresoUsd);
 }

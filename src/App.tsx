@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 
 import DashboardApp from "./DashboardApp";
-import { buildGoogleAuthRedirect, getInviteTokenFromUrl } from "./authRedirect";
+import { buildGoogleAuthRedirect, getInviteTokenFromUrl, getLoginErrorFromUrl, stripLoginErrorFromUrl } from "./authRedirect";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { BiometricGate } from "./components/BiometricGate";
@@ -37,6 +37,15 @@ export default function App() {
   const [loadingSession, setLoadingSession] = useState(true);
   const [viewerLoading, setViewerLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  // Sign-in rejected by the auth hook (e.g. email not invited): Supabase sends the
+  // reason back in the redirect URL. Read it once, then clean the URL.
+  const [loginError, setLoginError] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : getLoginErrorFromUrl(new URL(window.location.href)),
+  );
+  useEffect(() => {
+    if (!loginError || typeof window === "undefined") return;
+    window.history.replaceState(window.history.state, "", stripLoginErrorFromUrl(new URL(window.location.href)));
+  }, [loginError]);
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(resolvePreference);
   const [theme, setTheme] = useState<ThemeMode>(() => preferenceToTheme(resolvePreference()));
   const queryClient = useQueryClient();
@@ -165,6 +174,7 @@ export default function App() {
 
   const handleLogin = async () => {
     if (!supabase) return;
+    setLoginError(null);
     setAuthLoading(true);
     try {
       const redirectTo = buildGoogleAuthRedirect(new URL(window.location.href));
@@ -237,6 +247,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           blocked={!!session}
+          errorMessage={session ? undefined : loginError ?? undefined}
           buttonLabel={session ? "Reintentar acceso con Google" : "Continuar con Google"}
           secondaryActionLabel={session ? "Salir y usar otra cuenta" : undefined}
           onSecondaryAction={session ? handleSignOut : undefined}

@@ -26,8 +26,8 @@ Approved plan: `~/.claude/plans/dame-el-plan-que-generic-dijkstra.md`.
 
 | ID | Specs | Route | Status | Commit / evidence |
 |---|---|---|---|---|
-| T1 | S1 | inline | pending | |
-| T2 | S2 | inline | pending | |
+| T1 | S1 | inline | done | `6816df1` — RED: 6 new tests failed (missing export); GREEN: suite 1004 pass / 0 fail, tsc ok. Visual check pending deploy (local dev points to old Supabase). |
+| T2 | S2 | inline | done | RED: 5 new tests failed (missing export); GREEN: suite 1009 pass / 0 fail, tsc ok; verified in local preview: alert shows the hook message, URL cleaned keeping `?invite=` , no console errors. |
 | T3 | S3 | inline | pending | |
 | T4 | S4 | inline (high risk: persisted format + permissions → own commit + independent verifier) | pending | |
 | T5 | S5–S12 | inline | pending | |
@@ -41,4 +41,8 @@ Route evidence: units share files (`tests/api.test.ts`, `src/server/app.ts`) and
 - **L1 (2026-10-23, verbatim):** "Dame el plan que vas a utilizar para hacer todos esos cambios."
 - **L2 (2026-10-23, owner decisions):** carga sin IA → cola robusta con resumen al usuario (see S4); historial → "Mostrarlo en la web (Recommended)"; recurrentes → "Aviso al owner por Telegram (Recommended)"; alcance → "Nada más por ahora (Recommended)". Plan approved.
 - **L3:** Exploration found an extra bug: Telegram items queued by `telegram_links` members store `owner_user_id = null` (`telegramAccess.ts:111`). Added to T4.
-- **Next:** T1.
+- **L4 (T1):** Cards now use `buildCurrentMonthComparison(history, 'ARS')` (independent of the chart currency toggle, which used to drive the delta while the value was ARS). Tapping Ingresos/Gastos filters Movimientos to `mes`. Note: `periodToRange('mes')` is UTC-based while month summaries are local time — pre-existing, may differ for movements after 21:00 on the last day of a month.
+- **L5:** Pre-existing flaky tests seen once under full-suite concurrency (404 instead of 400/200): `tests/imageExtract.test.ts` "400 unsupported mime type" and `tests/invitations.test.ts` "Fix D: resend ... telegram_preauth=true". Pass in isolation and in 2 further full runs. Advisory, not caused by this feature.
+- **L6 (T1 review):** `gentle-ai review assess` on 6816df1 → medium, `under_budget` (stays pending in the slice).
+- **L7 (T2):** `getLoginErrorFromUrl` shows only the 3 known hook messages (checked live in the new DB's `hook_authorize_google_invited_users`); any other provider error gets a generic Spanish message, never raw text. Still to confirm with a real non-invited Google account after deploy.
+- **Next:** T3.

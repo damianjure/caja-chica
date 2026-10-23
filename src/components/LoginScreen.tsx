@@ -30,6 +30,8 @@ interface LoginScreenProps {
   onLogin: () => Promise<void> | void;
   /** When true: user is logged into Google but that account has no app access. */
   blocked?: boolean;
+  /** Why the last sign-in attempt was rejected (e.g. email not invited). */
+  errorMessage?: string;
 }
 
 export function LoginScreen({
@@ -41,6 +43,7 @@ export function LoginScreen({
   onSecondaryAction,
   onLogin,
   blocked = false,
+  errorMessage,
 }: LoginScreenProps) {
   const [showHelp, setShowHelp] = useState(false);
   return (
@@ -96,6 +99,15 @@ export function LoginScreen({
                 ))}
               </div>
             </div>
+          )}
+
+          {errorMessage && (
+            <p
+              role="alert"
+              className="rounded-xl border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-4 py-3 text-center text-sm text-[var(--chart-expense)]"
+            >
+              {errorMessage}
+            </p>
           )}
 
           <button

@@ -29,6 +29,10 @@ interface RecRow {
 function makeSupabase(opts: {
   recurrentes?: RecRow[];
   insertError?: Error | null;
+  /** dashboard_members owner rows returned for the owner lookup */
+  owners?: Array<{ user_id: string }>;
+  usuarios?: Array<{ user_id: string; chat_id: number }>;
+  links?: Array<{ app_user_id: string; telegram_user_id: number }>;
 }) {
   const rows = opts.recurrentes ?? [];
   const insertError = opts.insertError ?? null;
@@ -54,8 +58,16 @@ function makeSupabase(opts: {
           if (table === "recurrentes") {
             return Promise.resolve({ data: rows, error: null }).then(resolve as any);
           }
-          return Promise.resolve({ data: [], error: null }).then(resolve as any);
+          const byTable: Record<string, unknown[]> = {
+            dashboard_members: opts.owners ?? [],
+            usuarios: opts.usuarios ?? [],
+            telegram_links: opts.links ?? [],
+          };
+          return Promise.resolve({ data: byTable[table] ?? [], error: null }).then(resolve as any);
         },
+        not: () => self,
+        in: () => self,
+        limit: () => self,
         insert(data: unknown) {
           insertedMovimientos.push(data);
           return Promise.resolve({ data: null, error: insertError });
@@ -122,10 +134,11 @@ const BASE_REC: RecRow = {
 // Tests
 // ---------------------------------------------------------------------------
 
-test("runRecurrentes: bot=null returns {processed:0}", async () => {
-  const supabase = makeSupabase({});
+test("runRecurrentes: bot=null still generates the movements (only the notices are skipped)", async () => {
+  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null }] });
   const result = await runRecurrentes({ supabase: supabase as any, bot: null });
-  assert.deepStrictEqual(result, { processed: 0 });
+  assert.deepStrictEqual(result, { processed: 1, failed: 0 });
+  assert.strictEqual(supabase._insertedMovimientos.length, 1);
 });
 
 test("runRecurrentes: is_active=false entry is skipped", async () => {
@@ -133,7 +146,7 @@ test("runRecurrentes: is_active=false entry is skipped", async () => {
   const supabase = makeSupabase({ recurrentes: [rec] });
   const bot = makeBot();
   const result = await runRecurrentes({ supabase: supabase as any, bot: bot as any });
-  assert.deepStrictEqual(result, { processed: 0 });
+  assert.deepStrictEqual(result, { processed: 0, failed: 0 });
   assert.strictEqual(supabase._insertedMovimientos.length, 0);
 });
 
@@ -142,7 +155,7 @@ test("runRecurrentes: deleted_at set entry is skipped", async () => {
   const supabase = makeSupabase({ recurrentes: [rec] });
   const bot = makeBot();
   const result = await runRecurrentes({ supabase: supabase as any, bot: bot as any });
-  assert.deepStrictEqual(result, { processed: 0 });
+  assert.deepStrictEqual(result, { processed: 0, failed: 0 });
   assert.strictEqual(supabase._insertedMovimientos.length, 0);
 });
 
@@ -170,7 +183,7 @@ test("runRecurrentes: frecuencia=diario, days<1 → skipped", async () => {
   const supabase = makeSupabase({ recurrentes: [rec] });
   const bot = makeBot();
   const result = await runRecurrentes({ supabase: supabase as any, bot: bot as any });
-  assert.deepStrictEqual(result, { processed: 0 });
+  assert.deepStrictEqual(result, { processed: 0, failed: 0 });
 });
 
 test("runRecurrentes: insertErr thrown → caught per-recurrente, loop continues", async () => {
@@ -208,6 +221,7 @@ test("runRecurrentes: insertErr thrown → caught per-recurrente, loop continues
   const result = await runRecurrentes({ supabase: customSupabase as any, bot: bot as any });
   // rec-1 fails (insertErr), rec-2 succeeds
   assert.strictEqual(result.processed, 1);
+  assert.strictEqual(result.failed, 1);
   assert.strictEqual(insertCallCount, 2);
 });
 
@@ -234,4 +248,37 @@ test("runRecurrentes: chat_id present → bot.api.sendMessage called", async () 
   await runRecurrentes({ supabase: supabase as any, bot: bot as any });
   assert.strictEqual(bot.calls.length, 1);
   assert.strictEqual(bot.calls[0].chatId, 99999);
+});
+
+test("runRecurrentes: a failed recurrente alerts the superadmin once", async () => {
+  const alerts: Array<{ code: string }> = [];
+  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null }], insertError: new Error("insert failed") });
+  const result = await runRecurrentes({ supabase: supabase as any, bot: makeBot() as any, alert: (a) => alerts.push(a) });
+  assert.deepStrictEqual(result, { processed: 0, failed: 1 });
+  assert.strictEqual(alerts.length, 1);
+  assert.strictEqual(alerts[0].code, "cron:recurrentes-failed");
+});
+
+test("runRecurrentes: without chat_id, the dashboard owner's Telegram chat is notified", async () => {
+  const rec = { ...BASE_REC, last_processed: null, owner_user_id: null, dashboard_id: "dash-1", created_by_user_id: "editor-1", chat_id: null };
+  const supabase = makeSupabase({ recurrentes: [rec], owners: [{ user_id: "owner-1" }], links: [{ app_user_id: "owner-1", telegram_user_id: 555 }] });
+  const bot = makeBot();
+  await runRecurrentes({ supabase: supabase as any, bot: bot as any });
+  assert.strictEqual(bot.calls.length, 1);
+  assert.strictEqual(bot.calls[0].chatId, 555);
+  assert.match(bot.calls[0].text, /Netflix/);
+});
+
+test("runRecurrentes: legacy recurrente without chat_id notifies its owner's chat", async () => {
+  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null }], usuarios: [{ user_id: "user-1", chat_id: 777 }] });
+  const bot = makeBot();
+  await runRecurrentes({ supabase: supabase as any, bot: bot as any });
+  assert.deepStrictEqual(bot.calls.map((c) => c.chatId), [777]);
+});
+
+test("runRecurrentes: a Telegram send failure does not fail the recurrente", async () => {
+  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null, chat_id: 99999 }] });
+  const bot = { api: { async sendMessage() { throw new Error("blocked by user"); } } };
+  const result = await runRecurrentes({ supabase: supabase as any, bot: bot as any });
+  assert.deepStrictEqual(result, { processed: 1, failed: 0 });
 });

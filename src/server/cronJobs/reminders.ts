@@ -1,4 +1,5 @@
 import { sendViaBrevo } from "../email.ts";
+import { resolveTelegramChatIds } from "../telegramChats.ts";
 
 type SupabaseLike = {
   from(table: string): any;
@@ -47,39 +48,9 @@ export async function runDailyReminders({
     .map((u: any) => u.user_id)
     .filter(Boolean) as string[];
 
-  const chatByUserId = new Map<string, string | number>();
-  if (bot && telegramUserIds.length > 0) {
-    // Owners linked via the legacy one-shot flow live in `usuarios`.
-    const { data: telegramUsers } = await supabase
-      .from("usuarios")
-      .select("chat_id, user_id")
-      .eq("reminders_enabled", true)
-      .not("chat_id", "is", null)
-      .in("user_id", telegramUserIds);
-
-    for (const u of (telegramUsers ?? []) as any[]) {
-      if (u.user_id && u.chat_id) chatByUserId.set(u.user_id, u.chat_id);
-    }
-
-    // Editors/viewers linked via the multi-user flow live in `telegram_links`
-    // (keyed by telegram_user_id = chat id). Without this, members who enable
-    // their reminder from the bot would never receive it.
-    const unresolved = telegramUserIds.filter((id) => !chatByUserId.has(id));
-    if (unresolved.length > 0) {
-      const { data: links } = await supabase
-        .from("telegram_links")
-        .select("app_user_id, telegram_user_id")
-        .eq("status", "active")
-        .not("telegram_user_id", "is", null)
-        .in("app_user_id", unresolved);
-
-      for (const l of (links ?? []) as any[]) {
-        if (l.app_user_id && l.telegram_user_id && !chatByUserId.has(l.app_user_id)) {
-          chatByUserId.set(l.app_user_id, l.telegram_user_id);
-        }
-      }
-    }
-  }
+  const chatByUserId = bot
+    ? await resolveTelegramChatIds(supabase, telegramUserIds, { remindersOnly: true })
+    : new Map<string, string | number>();
 
   let sent = 0;
   const emailSender: SendReminderEmail = sendEmail ?? ((to, subject, html) => sendViaBrevo(to, subject, html, { emailType: "reminder" }));

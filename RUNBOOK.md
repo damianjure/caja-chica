@@ -17,14 +17,16 @@
 - `caja-chica-bot`
 
 ### Supabase real usado por la app
-- proyecto: `dezgusgxotihxkfkxico`
+- proyecto: `mpftromgukqqpnpuhaie` ("Caja Chica", org `damianjuregpt`, región `us-east-1`) — desde 2026-10-23.
+- Migrado desde `dezgusgxotihxkfkxico` (cuenta anterior, pausado) con `supabase db dump` (roles/schema/data) + `psql` restore + `supabase config pull/push` para auth (hook `before_user_created` → `hook_authorize_google_invited_users`, Google provider, Site/Redirect URLs).
+- Keys en prod: GitHub secrets `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` (build frontend) y Cloud Run (`SUPABASE_URL`/`VITE_SUPABASE_URL` literales; `SUPABASE_SERVICE_ROLE_KEY`/`VITE_SUPABASE_ANON_KEY` desde Secret Manager `CAJACHICA_SUPABASE_SERVICE_ROLE_KEY`/`CAJACHICA_SUPABASE_ANON_KEY` @latest). Para rotar una key de Cloud Run: `gcloud secrets versions add` (con `jq -j`, sin newline) + nueva revisión; `--update-env-vars` sobre esas dos falla porque son secret refs.
 
 ### Google OAuth credentials (Google Sign-In)
-- Las credenciales OAuth 2.0 (Client ID / Secret) para Google Sign-In están en el proyecto GCP **`caja-chica-bot`** (no en `balancediario`).
-- El Authorized redirect URI configurado en la consola de Google es: `https://dezgusgxotihxkfkxico.supabase.co/auth/v1/callback`
+- Las credenciales OAuth 2.0 (Client ID / Secret) para Google Sign-In están en el proyecto GCP **`caja-chica-bot`** (no en `balancediario`), cliente "Balance Diario Supabase".
+- Authorized redirect URIs: `https://mpftromgukqqpnpuhaie.supabase.co/auth/v1/callback` (actual) y `https://dezgusgxotihxkfkxico.supabase.co/auth/v1/callback` (proyecto viejo, borrar cuando se elimine).
 
 ### OJO
-NO usar `mlvounduwzfnkldbahnl` para esta app.
+NO usar `mlvounduwzfnkldbahnl` ni `dezgusgxotihxkfkxico` para esta app.
 NO usar `unidos-para-servir` — es otro proyecto Firebase, no el de Caja Chica.
 `balancediario` — proyecto GCP restaurado (undelete 2026-05-12 durante troubleshooting OAuth), pero no se usa para nada activo. Las credenciales OAuth están en `caja-chica-bot`.
 

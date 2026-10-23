@@ -66,6 +66,6 @@ Fases shippeables: **0)** refactor media Buffer-first + keys de sesión prefijad
 ---
 
 ## 🧹 Deuda técnica / operativa (chica)
-- Rotar la anon key de Supabase (quedó expuesta en la sesión de CI/CD).
+- ~~Rotar la anon key de Supabase~~ ✔ resuelto 2026-10-23 por la migración a un proyecto Supabase nuevo (keys nuevas; el proyecto viejo quedó pausado).
 - ~~Actualizar GitHub Actions a Node 24~~ ✔ hecho 2026-06-10 (`deploy.yml` node-version 24; Dockerfile runtime sigue en node 22).
 - ~~Mover deps de frontend a `devDependencies`~~ ✔ hecho 2026-06-10 (commit `6081242`). Movidas: vite, @vitejs/plugin-react, @tailwindcss/vite, react, react-dom, lucide-react, sonner, @tanstack/react-query. Verificado: el backend (`tsx server.ts`) no importa ninguna en runtime — el grafo carga con `npm ci --omit=dev`.

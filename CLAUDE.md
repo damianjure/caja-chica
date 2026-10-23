@@ -22,6 +22,7 @@ En sesiones desktop/CLI: proceder directamente sin requerir confirmación previa
 
 > **Mapa de nombres:** producto/proyecto = **Caja Chica** · repo GitHub = `caja-chica` (renombrado desde `balancediario` el 2026-06-03; GitHub redirige las URLs viejas) · carpeta local = `Boteado` (histórico). OJO: `balancediario` también fue un **proyecto GCP** viejo (roto/sin uso) — cuando aparezca en docs de infra refiere a eso, no al repo.
 > **Familia de nombres alineada:** repo `caja-chica` · Firebase `caja-chica-bot` · Cloud Run `caja-chica`.
+> **Supabase:** proyecto `mpftromgukqqpnpuhaie` (cuenta nueva, desde 2026-10-23). El viejo `dezgusgxotihxkfkxico` quedó pausado y NO se usa — detalle de la migración y de dónde viven las keys en RUNBOOK.
 > Las rutas en este archivo son **relativas a la raíz del repo**.
 > Datos volátiles (conteo de tests, revisión de Cloud Run, commit HEAD) NO se hardcodean acá — se chequean en vivo.
 

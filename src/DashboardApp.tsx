@@ -717,6 +717,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
       {showWizard && !viewer.is_dashboard_joiner && (
         <WelcomeWizard
           onFinish={finishOnboarding}
+          demoUnavailable={viewer.demo_seed_failed === true}
           canInstall={pwa.available}
           onInstall={() => void pwa.promptInstall()}
         />

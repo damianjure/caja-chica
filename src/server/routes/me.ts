@@ -2,6 +2,7 @@ import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
 import { sendViaBrevo } from "../email.ts";
 import { tierSupportReport } from "../rateLimit.ts";
+import { alertSuperadmin } from "../alertSuperadmin.ts";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -54,6 +55,7 @@ export function createMeRouter(deps: MeDeps) {
     }
 
     let currentOnboardingState: string | undefined;
+    let demoSeedFailed = false;
 
     if (session.role === "member") {
       const { data: userRow } = await supabase
@@ -68,12 +70,29 @@ export function createMeRouter(deps: MeDeps) {
           // wizard PATCHes /api/me with onboarding_state='completed'.
           currentOnboardingState = "pending";
         } else {
+          let dashboardId: string | null = null;
           try {
-            const dashboardId = await ensurePersonalDashboard(supabase, session);
+            dashboardId = await ensurePersonalDashboard(supabase, session);
             await seedDemoData(supabase, session, dashboardId);
             currentOnboardingState = "seeded";
           } catch (seedErr) {
             console.error("Onboarding seed error:", seedErr);
+            demoSeedFailed = true;
+            // A partial seed (e.g. the demo empresa without its movements) would be
+            // duplicated by the retry on the next /api/me: remove it first.
+            if (dashboardId) {
+              await purgeDemoData(supabase, session, dashboardId).catch((purgeErr) =>
+                console.error("Onboarding seed cleanup error:", purgeErr),
+              );
+            }
+            alertSuperadmin({
+              code: "onboarding:demo-seed-failed",
+              title: "Onboarding: no se pudieron cargar los datos de ejemplo",
+              problem: "La carga de datos demo de una cuenta nueva falló; se limpió lo que se había cargado y se reintenta en el próximo ingreso.",
+              impact: "El usuario nuevo empieza sin datos de ejemplo (el onboarding sigue funcionando).",
+              context: { userId: session.userId },
+              steps: ["Revisar los logs de 'Onboarding seed error' en Cloud Run."],
+            });
           }
         }
       }
@@ -117,6 +136,7 @@ export function createMeRouter(deps: MeDeps) {
       notification_email: data?.notification_email ?? false,
       onboarding_state: currentOnboardingState ?? data?.onboarding_state ?? "completed",
       is_dashboard_joiner: isDashboardJoiner,
+      ...(demoSeedFailed ? { demo_seed_failed: true } : {}),
     });
   });
 

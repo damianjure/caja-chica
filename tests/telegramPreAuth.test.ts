@@ -26,6 +26,8 @@ type TelegramPreAuthSeed = {
   dashboardInvitations?: unknown[];
   dashboardMembers?: unknown[];
   telegramInviteTokens?: unknown[];
+  /** Tables whose insert fails (to simulate a broken demo seed). */
+  failInsertFor?: string[];
 };
 
 function createPreAuthStub(seed: TelegramPreAuthSeed = {}) {
@@ -34,8 +36,10 @@ function createPreAuthStub(seed: TelegramPreAuthSeed = {}) {
   let dashboardMembersRows = (seed.dashboardMembers ?? []) as any[];
   const telegramInviteTokensRows = (seed.telegramInviteTokens ?? []) as any[];
 
-  // Track inserted/upserted rows for assertions
+  // Track inserted/upserted/deleted rows for assertions
   const inserted: Record<string, unknown[]> = {};
+  const deleted: Array<{ table: string; filters: Record<string, unknown> }> = [];
+  const failInsertFor = new Set(seed.failInsertFor ?? []);
 
   const builder = (table: string) => {
     const getRows = () => {
@@ -93,6 +97,13 @@ function createPreAuthStub(seed: TelegramPreAuthSeed = {}) {
         if (!inserted[table]) inserted[table] = [];
         inserted[table].push(payload);
         const newRow = { id: `gen-${table}-${inserted[table].length}`, ...(payload as object) };
+        if (failInsertFor.has(table)) {
+          const failed = { data: null, error: { message: `${table} insert failed` } };
+          const r: any = Promise.resolve(failed);
+          r.select = () => ({ single: () => Promise.resolve(failed) });
+          r.single = () => Promise.resolve(failed);
+          return r;
+        }
         if (table === "dashboard_members") dashboardMembersRows = [...dashboardMembersRows, newRow];
         return {
           select() {
@@ -133,9 +144,13 @@ function createPreAuthStub(seed: TelegramPreAuthSeed = {}) {
         };
       },
       delete() {
-        return {
-          eq(_c: string, _v: unknown) { return Promise.resolve({ error: null }); },
+        const entry = { table, filters: {} as Record<string, unknown> };
+        deleted.push(entry);
+        const db: any = {
+          eq(c: string, v: unknown) { entry.filters[c] = v; return db; },
+          then(resolve: (v: unknown) => void) { resolve({ error: null }); },
         };
+        return db;
       },
     };
     return api;
@@ -152,6 +167,7 @@ function createPreAuthStub(seed: TelegramPreAuthSeed = {}) {
       },
     },
     getInserted: (table: string) => inserted[table] ?? [],
+    getDeleted: () => deleted,
   };
 }
 
@@ -424,6 +440,31 @@ test("syncPendingDashboardInvitations upserts invited_by_user_id into dashboard_
       const memberRow = upserted.find((r: any) => r.dashboard_id === "dash-1") as any;
       assert.ok(memberRow, "should upsert a dashboard_members row");
       assert.equal(memberRow.invited_by_user_id, "owner-1", "invited_by_user_id should be propagated from dashboard_invitations");
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Demo seed failure is reported and cleaned up
+// ---------------------------------------------------------------------------
+
+test("GET /api/me — demo seed failure is reported and the partial demo data is removed", async () => {
+  await withPreAuthServer(
+    {
+      appUsers: [{ ...ownerAppUser, onboarding_state: "pending" }],
+      dashboardMembers: [],
+      failInsertFor: ["movimientos"],
+    },
+    ownerSession,
+    async (base, stub) => {
+      const res = await fetch(`${base}/api/me`, { headers: bearer() });
+      assert.equal(res.status, 200);
+      const body = await res.json() as any;
+      assert.equal(body.demo_seed_failed, true);
+      assert.equal(body.onboarding_state, "pending");
+      // The demo empresa was inserted before the failure: it must be purged so a retry does not duplicate it.
+      const purged = stub.getDeleted().filter((d) => d.filters.is_demo === true).map((d) => d.table).sort();
+      assert.deepEqual(purged, ["empresas", "movimientos"]);
     },
   );
 });

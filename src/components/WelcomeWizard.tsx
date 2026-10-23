@@ -8,6 +8,8 @@ interface WelcomeWizardProps {
   canInstall?: boolean;
   /** Triggers the install flow (native prompt on Android, manual instructions on iOS). */
   onInstall?: () => void;
+  /** True when the server could not load the demo data for this new account. */
+  demoUnavailable?: boolean;
 }
 
 type Step = 'hero' | 'linked';
@@ -16,7 +18,7 @@ type Step = 'hero' | 'linked';
 // (load by talking to a bot), so it leads the screen instead of being an
 // optional last step after a demo-data tour. Exploring with sample data is the
 // secondary path, not the default.
-export default function WelcomeWizard({ onFinish, canInstall = false, onInstall }: WelcomeWizardProps) {
+export default function WelcomeWizard({ onFinish, canInstall = false, onInstall, demoUnavailable = false }: WelcomeWizardProps) {
   const [step, setStep] = useState<Step>('hero');
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState<string | null>(null);
@@ -118,8 +120,13 @@ export default function WelcomeWizard({ onFinish, canInstall = false, onInstall 
                 disabled={finishing}
                 className="w-full py-2.5 px-4 rounded-md text-sm font-medium text-[var(--app-text-3)] hover:text-[var(--app-text-1)] transition disabled:opacity-50"
               >
-                Explorar con datos de ejemplo
+                {demoUnavailable ? 'Empezar sin datos de ejemplo' : 'Explorar con datos de ejemplo'}
               </button>
+              {demoUnavailable && (
+                <p role="status" className="text-xs text-center text-[var(--app-text-3)]">
+                  No pudimos cargar los datos de ejemplo. Podés empezar igual: lo que cargues aparece acá.
+                </p>
+              )}
             </div>
 
             <div className="w-full flex gap-2 pt-4 border-t border-[var(--app-border)] text-[var(--app-text-3)]">

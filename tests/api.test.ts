@@ -255,7 +255,8 @@ function createSupabaseStub(
       },
       single() {
         callLog.push({ table, type: "single", args: [] });
-        return Promise.resolve({ data: null, error: null });
+        // app_users returns the filtered row so tests can model an existing member.
+        return Promise.resolve({ data: table === "app_users" ? rows[0] ?? null : null, error: null });
       },
     };
 
@@ -372,6 +373,8 @@ test("requiere sesión para consultar el perfil", async () => {
 test("devuelve perfil para usuario autenticado activo", async () => {
   await withServer(
     {
+      // An existing member (onboarding done): no demo seed is attempted.
+      supabase: createSupabaseStub({ appUsers: [{ user_id: "user-1", onboarding_state: "completed" }] }).client as AppDeps["supabase"],
       resolveSession: async () => memberSession,
     },
     async (baseUrl) => {

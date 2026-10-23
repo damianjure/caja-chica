@@ -224,6 +224,8 @@ export interface AppViewer {
   notification_email?: boolean;
   onboarding_state?: OnboardingState;
   is_dashboard_joiner?: boolean;
+  /** Only present (true) when the demo data for a new account could not be loaded. */
+  demo_seed_failed?: boolean;
 }
 
 export interface UserSession {

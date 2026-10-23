@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { api, type Movimiento, type Empresa, type Categoria, type Recurrente, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
 import { supabase } from '../../services/supabase';
+import { fetchAllPages } from '../../dashboard/pagination';
 
 function normalizeMovement(item: Movimiento): Movimiento {
   return { ...item, conciliado: item.conciliado ?? true };
@@ -75,7 +76,10 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     string | null
   >({
     queryKey: ['movimientos'] as const,
-    queryFn: ({ pageParam }) => api.getMovimientos(50, pageParam),
+    // Resumen, charts and totals are computed from `history`, so it must hold
+    // every movement — not just the first page (it used to stop at 50).
+    queryFn: ({ pageParam }) =>
+      fetchAllPages((cursor) => api.getMovimientos(100, cursor), { startCursor: pageParam }),
     initialPageParam: null,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: !apiMissing,

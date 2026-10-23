@@ -179,3 +179,43 @@ test("runDailyReminders: sendMessage throws is caught, loop continues, sent not 
   // Only the successful send counts
   assert.strictEqual(result.sent, 1);
 });
+
+function dueEmailUser(id: string) {
+  const now = new Date();
+  return {
+    user_id: id,
+    email: `${id}@example.com`,
+    notification_hour: now.getUTCHours(),
+    notification_minute: now.getUTCMinutes(),
+    notification_enabled: true,
+    notification_telegram: false,
+    notification_email: true,
+  };
+}
+
+test("runDailyReminders: an email Brevo did not accept is not counted as sent, and alerts the superadmin", async () => {
+  const alerts: Array<{ code: string }> = [];
+  const supabase = makeSupabase({ appUsers: [dueEmailUser("u-fail")] });
+  const result = await runDailyReminders({
+    supabase: supabase as any,
+    bot: null,
+    sendEmail: async () => ({ ok: false }),
+    alert: (a) => alerts.push(a),
+  });
+  assert.deepStrictEqual(result, { sent: 0 });
+  assert.strictEqual(alerts.length, 1);
+  assert.strictEqual(alerts[0].code, "cron:reminders-failed");
+});
+
+test("runDailyReminders: successful sends do not alert", async () => {
+  const alerts: unknown[] = [];
+  const supabase = makeSupabase({ appUsers: [dueEmailUser("u-ok")] });
+  const result = await runDailyReminders({
+    supabase: supabase as any,
+    bot: null,
+    sendEmail: async () => ({ ok: true }),
+    alert: (a) => alerts.push(a),
+  });
+  assert.deepStrictEqual(result, { sent: 1 });
+  assert.strictEqual(alerts.length, 0);
+});

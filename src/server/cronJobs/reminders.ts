@@ -1,5 +1,6 @@
 import { sendViaBrevo } from "../email.ts";
 import { resolveTelegramChatIds } from "../telegramChats.ts";
+import { alertSuperadmin } from "../alertSuperadmin.ts";
 
 type SupabaseLike = {
   from(table: string): any;
@@ -21,10 +22,12 @@ export async function runDailyReminders({
   supabase,
   bot,
   sendEmail,
+  alert = alertSuperadmin,
 }: {
   supabase: SupabaseLike;
   bot: BotLike;
   sendEmail?: SendReminderEmail;
+  alert?: typeof alertSuperadmin;
 }): Promise<{ sent: number }> {
   const now = new Date();
   const currentHour = now.getUTCHours();
@@ -53,6 +56,7 @@ export async function runDailyReminders({
     : new Map<string, string | number>();
 
   let sent = 0;
+  let failed = 0;
   const emailSender: SendReminderEmail = sendEmail ?? ((to, subject, html) => sendViaBrevo(to, subject, html, { emailType: "reminder" }));
   const emailHtml = reminderEmailHtml();
 
@@ -68,6 +72,7 @@ export async function runDailyReminders({
           );
           sent++;
         } catch (err) {
+          failed++;
           console.error(`[cron:reminder] failed to send telegram to user_id=${u.user_id}:`, err);
         }
       }
@@ -75,12 +80,33 @@ export async function runDailyReminders({
 
     if (u.notification_email === true && u.email) {
       try {
-        await emailSender(u.email, "Recordatorio diario de Caja Chica", emailHtml);
-        sent++;
+        // sendViaBrevo never throws: a rejected email comes back as { ok: false }.
+        const result = await emailSender(u.email, "Recordatorio diario de Caja Chica", emailHtml);
+        if ((result as { ok?: boolean } | undefined)?.ok === false) {
+          failed++;
+          console.error(`[cron:reminder] email not accepted for user_id=${u.user_id}`);
+        } else {
+          sent++;
+        }
       } catch (err) {
+        failed++;
         console.error(`[cron:reminder] failed to send email to user_id=${u.user_id}:`, err);
       }
     }
+  }
+
+  if (failed > 0) {
+    alert({
+      code: "cron:reminders-failed",
+      title: "Recordatorio diario: envíos fallidos",
+      problem: `${failed} recordatorio(s) no se pudieron enviar en esta corrida.`,
+      impact: "Esos usuarios no recibieron el recordatorio de hoy.",
+      context: { failed: String(failed), sent: String(sent) },
+      steps: [
+        "Revisar los logs de [cron:reminder] en Cloud Run.",
+        "Si fallan los emails, revisar BREVO_API_KEY y el email log en Super Admin.",
+      ],
+    });
   }
 
   return { sent };

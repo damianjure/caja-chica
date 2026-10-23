@@ -1,0 +1,119 @@
+Caja Chica
+
+Anotá gastos como hablás. Entendé tus números sin abrir una planilla.
+
+Caja Chica es una app para registrar ingresos, gastos y tickets en segundos.
+Escribís, mandás una foto o hablás por Telegram, y la app ordena todo por vos.
+
+El problema
+
+Entre tickets, audios, transferencias, efectivo y pagos chicos, la plata se desordena rápido.
+
+Después querés saber:
+- cuánto gastaste este mes
+- en qué se fue la plata
+- qué pagaste a cada proveedor
+- cuánto entró
+- qué pasarle al contador
+
+Y terminás revisando chats, notas, planillas o memoria.
+
+La solución
+
+Con Caja Chica podés cargar movimientos de la forma más natural posible:
+
+“pagué 12 lucas de nafta”
+“cobré 300 mil del cliente”
+“compré caramelos por 3 palos verdes”
+
+También podés mandar una foto del ticket, subir un PDF o usar el bot de Telegram.
+
+La app interpreta, ordena y guarda todo.
+
+Lo que podés hacer
+
+Cargar en segundos
+Escribí como hablás. Caja Chica detecta monto, moneda, categoría, empresa y tipo de movimiento.
+
+Mandar tickets
+Sacale una foto al ticket o subí un PDF. La app lee los renglones y vos elegís qué guardar.
+
+Usar Telegram
+No necesitás abrir el dashboard. Mandás texto, foto o audio al bot y queda cargado.
+
+Preguntarle a tus números
+Consultá cosas como:
+- “¿Cuánto gasté en mayo?”
+- “¿En qué categoría gasté más?”
+- “¿Cuánto gasté en caramelos?”
+- “¿Cómo viene este mes contra el anterior?”
+
+Y recibís una respuesta directa, sin fórmulas.
+
+Exportar informes
+Generá CSV o PDF para revisar, compartir o pasarle al contador.
+
+Trabajar en equipo
+Invitá a otras personas con permisos: pueden cargar, editar, ver o exportar según lo que habilites.
+
+Para quién es
+
+Caja Chica es ideal para:
+- freelancers
+- monotributistas
+- comercios chicos
+- equipos que manejan gastos compartidos
+- emprendedores
+- personas que odian las planillas
+- cualquiera que quiera saber dónde se va la plata
+
+Por qué es diferente
+
+No te obliga a cargar formularios eternos.
+No necesitás aprender contabilidad.
+No tenés que mantener una planilla.
+
+Usás lenguaje natural, tickets, Telegram e IA.
+
+La app hace el trabajo pesado.
+
+Privacidad primero
+
+Tus datos financieros son tuyos.
+El historial del asistente queda en tu navegador, no en el servidor.
+Vos elegís si querés mantenerlo solo durante la sesión o en tu dispositivo.
+
+Frase principal
+
+Caja Chica convierte tus gastos sueltos en información clara.
+
+Variantes cortas
+
+Opción 1
+La app que entiende tus gastos como los contás.
+Escribí, hablá o mandá una foto. Caja Chica ordena tus movimientos y te responde cuánto gastaste, dónde y cuándo.
+
+Opción 2
+Menos planillas. Más claridad.
+Registrá gastos por texto, ticket o Telegram, y preguntale a la IA cómo vienen tus números.
+
+Opción 3
+Tu caja, ordenada sin esfuerzo.
+Caja Chica lee tickets, entiende frases como “pagué 4500 de luz” y te ayuda a saber dónde se va la plata.
+
+Opción 4
+Para saber en qué se fue la plata, sin hacer cuentas.
+Cargá movimientos como hablás y preguntale a tus números.
+
+Claim para landing
+
+Registrá gastos en lenguaje natural.
+Sacale foto a los tickets.
+Preguntale a tus números.
+
+Todo desde web o Telegram.
+
+CTA
+
+Probá Caja Chica.
+Empezá cargando tu primer gasto en menos de 10 segundos.

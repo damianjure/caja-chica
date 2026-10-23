@@ -1,0 +1,372 @@
+PRD simple — Caja Chica
+Actualizado hasta GitHub main, commit c179dce — 10/06/2026
+App: Caja Chica
+Repo: damianjure/caja-chica
+
+1. Resumen
+
+Caja Chica es una aplicación financiera para registrar, consultar y organizar movimientos de plata usando lenguaje natural, tickets, voz y Telegram.
+
+El objetivo es que una persona o equipo chico pueda cargar gastos e ingresos de forma rápida, sin planillas, y después consultar sus números desde un dashboard o desde el bot.
+
+Ejemplos:
+- “pagué 4500 de luz”
+- “cobré 300 lucas por diseño”
+- subir foto o PDF de ticket
+- preguntar: “¿cuánto gasté en mayo en caramelos?”
+
+2. Problema
+
+Los usuarios suelen registrar gastos de forma desordenada:
+- WhatsApp propio
+- notas
+- planillas
+- tickets físicos
+- memoria
+
+Eso hace difícil saber:
+- cuánto gastaron
+- en qué categoría
+- con qué empresa
+- si un gasto fue cargado o no
+- cómo viene el mes
+- qué exportar para contabilidad
+
+Caja Chica busca reducir esa fricción con carga asistida por IA y consultas simples.
+
+3. Usuarios principales
+
+Dueño / owner
+Persona que administra su caja o dashboard. Puede cargar movimientos, invitar personas, conectar Drive, exportar informes, administrar Telegram, gestionar categorías y empresas.
+
+Editor
+Usuario invitado con permisos parciales. Puede cargar o editar datos si tiene permiso, exportar si se le habilita y usar Telegram si se le permite.
+
+Viewer
+Usuario de solo lectura. Puede ver movimientos, consultar datos y usar el asistente IA en modo lectura.
+
+Superadmin
+Rol interno para administración operativa. Puede gestionar usuarios, revisar invitaciones, configurar emails, ver logs de email y operar mantenimiento.
+
+4. Objetivos del producto
+
+1. Registrar gastos e ingresos en segundos.
+2. Entender movimientos usando lenguaje natural.
+3. Consultar números sin armar fórmulas.
+4. Cargar tickets con foto/PDF.
+5. Trabajar con equipos chicos.
+6. Mantener privacidad financiera.
+7. Exportar información útil para seguimiento o contador.
+
+5. Funcionalidades actuales
+
+5.1 Dashboard web
+
+El dashboard permite ver y gestionar:
+- Resumen financiero
+- Movimientos
+- Empresas
+- Recurrentes
+- Configuración
+- Panel superadmin, si aplica
+
+Incluye:
+- dark mode
+- temas/paletas
+- responsive mobile
+- búsqueda global
+- carga rápida de movimientos
+- exportación CSV/PDF
+- conexión con Google Drive
+
+5.2 Carga por texto
+
+El usuario puede escribir frases naturales como:
+- “pagué 4500 de luz”
+- “cobré 150000 de cliente”
+- “gasté 20 dólares en Netflix”
+
+La IA extrae:
+- monto
+- moneda
+- tipo: ingreso/gasto
+- empresa
+- categoría
+- descripción
+
+5.3 Carga por ticket / imagen / PDF
+
+El usuario puede subir foto o PDF de un ticket.
+
+La app detecta:
+- comercio
+- total
+- fecha
+- moneda
+- renglones del ticket
+- categorías sugeridas
+
+En web se muestra un modal para revisar el ticket antes de guardar.
+
+El flujo actual prioriza privacidad y control:
+- no se auto-crea empresa desde el merchant
+- el usuario elige empresa
+- se guardan líneas editables
+- el total se recalcula si se editan líneas
+
+5.4 Bot de Telegram
+
+Desde Telegram el usuario puede:
+- cargar movimientos por texto
+- cargar tickets/fotos/PDF
+- cargar audio/voz
+- consultar saldos
+- buscar movimientos
+- crear empresas/categorías
+- recurrentes
+- informes
+- exportaciones
+- preguntas al asistente IA
+
+También tiene soporte multiusuario: owner, editor, viewer y permisos granulares.
+
+5.5 Asistente IA de consultas
+
+El dashboard incluye un chat flotante: “Preguntale a tus números”.
+
+Permite preguntas como:
+- “¿Cuánto gasté este mes?”
+- “¿En qué categoría gasté más?”
+- “¿Cuánto gasté en mayo en caramelos?”
+- “¿Cómo vienen los ingresos vs el mes pasado?”
+
+Actualización reciente:
+- Se agregó selector de historial: “Solo esta sesión” o “Este dispositivo”.
+- El historial queda únicamente en el navegador del usuario.
+- No se guarda en servidor.
+- No lo puede leer un admin.
+- No se persisten montos financieros fuera del cliente.
+
+También se mejoró el agente para evitar falsos negativos cuando el usuario pregunta por una categoría/rubro.
+
+5.6 Informes y exportaciones
+
+La app permite generar informes con filtros:
+- día
+- semana
+- mes
+- año
+- rango personalizado
+- empresa
+- tipo
+- moneda
+
+Formatos:
+- CSV
+- PDF
+
+Destinos:
+- descarga local
+- Google Drive, si está conectado y permitido
+
+5.7 Google Drive
+
+Los dueños pueden conectar Google Drive. Los editores pueden exportar a Drive si tienen permiso.
+
+Seguridad:
+- OAuth con scope drive.file
+- tokens cifrados
+- lectura legacy de tokens viejos
+- viewers no pueden subir a Drive
+
+5.8 Invitaciones y equipo
+
+Caja Chica permite invitar personas al dashboard.
+
+Incluye:
+- invitaciones por email
+- roles
+- permisos
+- preautorización de Telegram
+- revocación
+- reenvío
+- listado unificado de personas
+
+5.9 Emails
+
+La app usa Brevo para emails transaccionales.
+
+Soporta:
+- invitaciones de app
+- invitaciones a dashboard
+- gestión de remitente verificado
+- logs de email para superadmin
+- envío de prueba
+
+5.10 Recurrentes
+
+Permite crear movimientos recurrentes.
+
+Frecuencias:
+- diario
+- semanal
+- quincenal
+- mensual
+- anual
+
+El usuario puede crear, pausar, activar, borrar y ver próxima ejecución.
+
+5.11 Modo mantenimiento
+
+Existe modo mantenimiento para bloquear escrituras cuando sea necesario. Afecta web, bot y endpoints de escritura.
+
+6. Privacidad y seguridad
+
+Principios clave:
+- No exponer secretos.
+- No guardar historial financiero del asistente en servidor.
+- No mostrar errores internos al usuario.
+- Aplicar scope por usuario/dashboard.
+- Viewers solo lectura.
+- Soft delete para movimientos y empresas.
+- Auditoría de cambios importantes.
+- Rate limit en endpoints sensibles.
+- Tokens cifrados.
+- Webhook y cron protegidos con secretos.
+
+7. Arquitectura técnica
+
+Frontend:
+- React
+- Vite
+- TypeScript
+- Tailwind
+- React Query
+- Firebase Hosting
+
+Backend:
+- Express
+- TypeScript
+- Node / tsx
+- Cloud Run
+- Routers separados por dominio
+
+Bot:
+- grammY
+- Telegram Bot API
+- handlers modularizados
+
+Datos:
+- Supabase
+- Postgres
+- Auth
+- Realtime
+
+IA:
+- Gemini
+- fallback con GEMINI_API_KEY_2 para texto y media
+
+Infra:
+- GitHub Actions
+- Workload Identity Federation
+- Firebase Hosting
+- Cloud Run
+- Cloud Scheduler
+- Secret Manager
+
+8. Deploy
+
+El deploy actual se dispara con push a main.
+
+Pipeline:
+1. Build frontend
+2. Deploy Firebase Hosting
+3. Build Docker backend
+4. Deploy Cloud Run
+
+Último deploy confirmado:
+- commit: c179dce
+- frontend: OK
+- backend: OK
+- Cloud Run revision: caja-chica-00121-sp4
+- healthcheck: OK
+
+9. Requerimientos funcionales principales
+
+RF1 — Registrar movimiento
+El usuario puede registrar un ingreso o gasto desde web, Telegram, voz o ticket.
+
+RF2 — Consultar movimientos
+El usuario puede filtrar y buscar movimientos por fecha, empresa, categoría, tipo y moneda.
+
+RF3 — Preguntar a la IA
+El usuario puede hacer preguntas financieras y recibir respuestas calculadas desde sus movimientos.
+
+RF4 — Controlar historial del chat IA
+El usuario puede elegir si el historial queda solo en sesión o en este dispositivo.
+
+RF5 — Invitar equipo
+El owner puede invitar usuarios y asignar roles/permisos.
+
+RF6 — Exportar informes
+El usuario puede exportar CSV/PDF local o Drive según permisos.
+
+RF7 — Operar desde Telegram
+El usuario puede usar el bot para cargar, consultar y exportar.
+
+10. Requerimientos no funcionales
+
+- Responder rápido en mobile.
+- Evitar cálculos pesados innecesarios.
+- Mantener privacidad financiera.
+- No guardar transcripts financieros en backend.
+- Mantener logs operativos sin datos sensibles.
+- Soportar degradación si Gemini no está disponible.
+- Mantener tests automatizados.
+- Evitar dependencias externas innecesarias.
+
+11. Métricas sugeridas
+
+- Movimientos cargados por usuario/mes
+- Uso de carga por ticket
+- Uso del asistente IA
+- Tasa de respuestas útiles del asistente
+- Errores de extracción IA
+- Exportaciones generadas
+- Invitaciones aceptadas
+- Tiempo de respuesta del dashboard
+- Fallos de deploy
+
+12. Pendientes conocidos
+
+Producto:
+- AFIP / ARCA Monotributo
+- Export para contador
+- Cotización dólar
+- Guest mode
+- Mejor QA visual del chat IA en producción
+
+Técnico:
+- Revisar PR de seguridad #40
+- Revisar PR de performance #41
+- Cerrar PR obsoleto #38
+- Cerrar issue de prueba #39 si no sirve
+- Decidir si se sube el cambio local pendiente de búsqueda por descripción en el Ask agent
+
+13. Fuera de alcance por ahora
+
+- Guardar historial del asistente en servidor
+- Admin leyendo conversaciones financieras
+- Exponer datos financieros en logs
+- Integración bancaria automática completa
+- AFIP automático con credenciales del usuario
+- Multiempresa contable avanzada
+
+14. Criterio de éxito
+
+Caja Chica funciona bien si el usuario puede:
+1. Cargar un gasto en menos de 10 segundos.
+2. Subir un ticket y guardar líneas sin editar demasiado.
+3. Preguntar algo como “¿cuánto gasté en mayo en caramelos?” y recibir una respuesta correcta.
+4. Exportar información útil.
+5. Sentir que sus datos financieros siguen siendo privados.

@@ -5,6 +5,16 @@
 
 ---
 
+### Cambios 2026-06-24 (AI Queue — cola automática cuando Gemini cae)
+
+Commit `bb02e39`. SQL: `db/patches/pending_ai_queue.sql` (aplicado en prod, commiteado después).
+
+- **Tabla `pending_ai_queue`** con RLS (lectura para owner/miembros activos; escrituras solo vía service role). TTL 72h, guarda `file_id` de Telegram (no `file_path`, que expira).
+- **Bot**: `GeminiUnavailableError` en texto/foto/PDF/álbum → encola y avisa al usuario.
+- **Web**: `CargaModal` con 503 → auto-encola + toast; `MovimientosTab` muestra los pendientes en una sección amber. Rutas `GET /api/queue/pending` + `POST /api/queue/enqueue`.
+- **Drain**: `src/server/cronJobs/drainAiQueue.ts`, disparado por `POST /api/crons/drain-ai-queue` (Cloud Scheduler cada 5 min) o manual vía `POST /api/admin/drain-ai-queue` (botón "Procesar ahora" en `AiHealthCard`).
+- **Entregables** de producto en `docs/entregables/`: PRD, resumen funcional y texto comercial.
+
 ### Cambios 2026-06-24 (drawers consistentes + sort Empresas + headers unificados)
 
 Commit `3906113`. Solo frontend, sin backend/SQL/env vars.

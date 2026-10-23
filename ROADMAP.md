@@ -12,6 +12,7 @@
 - **Agente LLM para preguntas sobre gastos** (2026-06-10): `answerQuestion()` con loop tool-calling JSON sobre tools scopeadas en memoria (`src/server/askAgent.ts`). Web: `POST /api/ask` (con `history` multi-turno) + `AskChat` flotante disponible en todos los tabs. Telegram: `/preguntar` + intent `consultar` por voz/texto (single-turn). ⏳ pendiente verificación del owner en prod.
 - **Resúmenes de tarjeta/banco** (2026-06-10): `document_kind` en el prompt de tickets → routing a `CREDIT_CARD_SUMMARY_SYSTEM_PROMPT` → transacciones al flujo batch del bot con fecha real. ⏳ pendiente verificación del owner en prod (mandar un PDF de resumen real).
 - **Insight de salud IA** (2026-06-12, migración aplicada): tabla `ai_events` + `GET /api/admin/ai-health` + card en Super Admin → Sistema. Mide cuánto se agota la key primaria de Gemini (fallback) y cuántas caídas duras hubo. Empieza a registrar desde ahora.
+- **AI Queue** (2026-06-24): si Gemini cae, texto/fotos/PDFs (bot) y cargas web se encolan en `pending_ai_queue` y un cron los reprocesa cuando vuelve la IA.
 - **Canal WhatsApp** (ports & adapters) — construido y testeado SIN Meta; INERTE hasta la plomería de Meta (ver CLAUDE.md "Canal WhatsApp" y la sección WhatsApp abajo).
 
 ---

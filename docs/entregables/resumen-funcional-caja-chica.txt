@@ -1,0 +1,114 @@
+Resumen funcional — Caja Chica
+
+Caja Chica es una app para registrar, ordenar, consultar y exportar movimientos financieros usando web, Telegram e IA.
+
+Medios disponibles
+
+1. Web / Dashboard
+
+Desde el dashboard web el usuario puede:
+- Ver resumen de ingresos, gastos y saldo.
+- Cargar movimientos escribiendo en lenguaje natural.
+- Subir foto o PDF de tickets.
+- Revisar renglones del ticket antes de guardar.
+- Ver historial de movimientos.
+- Editar o borrar movimientos.
+- Editar líneas de tickets.
+- Gestionar empresas.
+- Gestionar categorías.
+- Crear y administrar gastos/ingresos recurrentes.
+- Filtrar por fecha, empresa, categoría, tipo y moneda.
+- Exportar informes en CSV o PDF.
+- Exportar a Google Drive.
+- Invitar miembros al equipo.
+- Administrar permisos.
+- Conectar o desconectar Telegram.
+- Configurar preferencias de usuario.
+- Cambiar tema visual.
+- Usar el asistente IA “Preguntale a tus números”.
+
+2. Bot de Telegram
+
+Desde Telegram el usuario puede:
+- Cargar gastos o ingresos por texto.
+- Mandar fotos de tickets.
+- Mandar PDFs.
+- Mandar audios/voz.
+- Consultar saldos.
+- Buscar movimientos.
+- Crear empresas.
+- Crear categorías.
+- Cargar recurrentes.
+- Pedir informes.
+- Exportar CSV/PDF.
+- Recibir links o archivos.
+- Usar /preguntar para consultarle a la IA.
+- Vincular usuarios al dashboard.
+- Operar según permisos: owner, editor o viewer.
+
+3. IA / Gemini
+
+La IA se usa para:
+- Interpretar texto libre.
+- Extraer datos de tickets.
+- Leer PDFs.
+- Leer fotos.
+- Transcribir/interpretar audio.
+- Detectar renglones de tickets.
+- Detectar resúmenes de tarjeta o banco.
+- Responder preguntas financieras sobre movimientos.
+- Clasificar categorías y empresas.
+- Entender jerga rioplatense como “lucas”, “palo”, etc.
+
+Tiene fallback con segunda key si Gemini falla por cuota o sobrecarga.
+
+4. Google Drive
+
+Google Drive sirve para:
+- Conectar la cuenta del owner.
+- Subir informes.
+- Compartir links de exportación.
+- Permitir que editores exporten si tienen permiso.
+
+5. Email
+
+La app manda emails para:
+- Invitaciones a la app.
+- Invitaciones a dashboards.
+- Reenvío de invitaciones.
+- Emails operativos al superadmin.
+- Emails de prueba/configuración.
+
+Usa Brevo.
+
+6. Panel Superadmin
+
+El superadmin puede:
+- Ver usuarios.
+- Gestionar invitaciones.
+- Cambiar estados de usuarios.
+- Forzar logout.
+- Configurar emails.
+- Ver logs de email.
+- Activar mantenimiento.
+- Revisar estructura de dashboards/personas.
+
+7. Cloud / Automatizaciones
+
+En infraestructura hace:
+- Deploy automático desde GitHub Actions.
+- Frontend en Firebase Hosting.
+- Backend en Cloud Run.
+- Crons con Cloud Scheduler.
+- Secretos en Secret Manager.
+- Jobs para recordatorios, recurrentes, mantenimiento e invitaciones.
+
+En resumen
+
+Caja Chica permite manejar finanzas desde:
+- Web: dashboard completo.
+- Telegram: carga rápida y consultas.
+- IA: extracción, interpretación y preguntas.
+- Drive: exportación.
+- Email: invitaciones y alertas.
+- Superadmin: operación interna.

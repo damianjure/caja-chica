@@ -7,7 +7,7 @@ import { ConfirmModal } from './components/ui/ConfirmModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { AlertCircle, ShieldCheck, LayoutGrid, Building2, ArrowUpDown, Settings, Repeat, Search, MessageCircle, X as XIcon, Loader2, RefreshCw } from 'lucide-react';
-import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus, type PendingQueueItem } from './services/api';
+import { api, type Movimiento, type Empresa, type AppViewer, type PaginatedMovimientos, type MaintenanceStatus, type DriveStatus, type PendingQueueItem, type QueueSummary } from './services/api';
 import { CommandPalette } from './components/CommandPalette';
 import { CargaModal } from './components/CargaModal';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -50,6 +50,8 @@ import { useCategoryAssignment } from './hooks/dashboard/useCategoryAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
 import { useImageExtract } from './hooks/dashboard/useImageExtract';
 import { ImageTicketModal } from './components/dashboard/ImageTicketModal';
+import { QueueSummaryNotice } from './components/dashboard/QueueSummaryNotice';
+import { describeQueueSummary } from './dashboard/queueSummary';
 import type { SaveTicketPayload } from './services/api';
 import { type MovementEditForm, type ConfirmationModalState } from './types/dashboard';
 
@@ -378,9 +380,23 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     return () => { active = false; };
   }, [canUseDrive]);
 
+  // Results of messages this user queued while the AI was down (saved / failed).
+  const [queueSummary, setQueueSummary] = useState<QueueSummary | null>(null);
+  const queueSummaryView = useMemo(() => (queueSummary ? describeQueueSummary(queueSummary) : null), [queueSummary]);
+  const dismissQueueSummary = () => {
+    if (!queueSummaryView) return;
+    const ids = queueSummaryView.ids;
+    setQueueSummary(null);
+    // If this fails the notice comes back on the next poll, nothing is lost.
+    void api.markQueueSummarySeen(ids).catch(() => {});
+  };
+
   useEffect(() => {
     let active = true;
-    const fetch = () => { void api.getPendingQueue().then((items) => { if (active) setPendingQueueItems(items); }).catch(() => {}); };
+    const fetch = () => {
+      void api.getPendingQueue().then((items) => { if (active) setPendingQueueItems(items); }).catch(() => {});
+      void api.getQueueSummary().then((summary) => { if (active) setQueueSummary(summary); }).catch(() => {});
+    };
     fetch();
     const id = setInterval(fetch, 30_000);
     return () => { active = false; clearInterval(id); };
@@ -739,6 +755,14 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
         className="max-w-7xl mx-auto space-y-8 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:pb-0 lg:max-w-none lg:px-8 lg:pt-6 lg:transition-[padding] lg:duration-200"
         style={{ transform: (ptrPull > 0 || ptrRefreshing) ? `translateY(${ptrShift}px)` : undefined, transition: ptrTransition, paddingRight: detailMovement ? `${drawerWidth + 24}px` : undefined }}
       >
+        {queueSummaryView && (
+          <QueueSummaryNotice
+            view={queueSummaryView}
+            canWriteData={canWriteData}
+            onRetry={(text) => { setInputText(text); setIsCargaOpen(true); }}
+            onDismiss={dismissQueueSummary}
+          />
+        )}
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
         {apiStatus === 'load_error' && <div role="alert" className="bg-[var(--app-red-surface)] border border-[var(--app-red-border)] p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}
 

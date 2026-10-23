@@ -481,6 +481,24 @@ export interface PendingQueueItem {
   created_at: string;
 }
 
+/** Caller's queued web messages that were processed or failed and not seen yet. */
+export interface QueueSummary {
+  processed: Array<{
+    id: string;
+    text_content: string | null;
+    description: string | null;
+    tipo: string | null;
+    count: number;
+    processed_at: string | null;
+  }>;
+  failed: Array<{
+    id: string;
+    text_content: string | null;
+    reason: string;
+    processed_at: string | null;
+  }>;
+}
+
 export type PhotoSourceType = "photo" | "handwritten" | "pdf" | "multi";
 
 export interface ImageExtractionResult {
@@ -1124,6 +1142,17 @@ export const api = {
   async getPendingQueue(): Promise<PendingQueueItem[]> {
     const res: { items: PendingQueueItem[] } = await fetchApi("/api/queue/pending");
     return res.items;
+  },
+
+  async getQueueSummary(): Promise<QueueSummary> {
+    return fetchApi("/api/queue/summary");
+  },
+
+  async markQueueSummarySeen(ids: string[]): Promise<{ ok: boolean }> {
+    return fetchApi("/api/queue/summary/seen", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
   },
 
   async adminTriggerDrain(): Promise<{ ok: boolean; processed: number; failed: number; expired: number; stopped: boolean; busy?: boolean }> {

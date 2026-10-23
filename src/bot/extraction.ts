@@ -26,7 +26,7 @@ import type { PendingExtractionData } from "../server/validation.ts";
 import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/telegramCompanyResolution.ts";
 import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
-import { enqueueAiItem } from "../server/aiQueue.ts";
+import { enqueueAiItem, queueAuthorId } from "../server/aiQueue.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 import { setPendingLineMontoEdit } from "./lineMontoEdit.ts";
@@ -390,7 +390,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
               }).filter((id): id is string => !!id);
               const queued = fileIds.length > 0 && await enqueueAiItem(supabase, {
                 dashboard_id: linked2.dashboardId ?? null,
-                owner_user_id: linked2.ownerUserId ?? null,
+                owner_user_id: queueAuthorId(linked2),
                 channel: "telegram",
                 chat_id: firstCtx.chat.id,
                 kind: "album",
@@ -443,7 +443,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
         const fileId = photoArr?.[photoArr.length - 1]?.file_id;
         const queued = fileId && await enqueueAiItem(supabase, {
           dashboard_id: linked.dashboardId ?? null,
-          owner_user_id: linked.ownerUserId ?? null,
+          owner_user_id: queueAuthorId(linked),
           channel: "telegram",
           chat_id: ctx.chat.id,
           kind: "photo",
@@ -509,7 +509,7 @@ export function registerExtractionHandlers(bot: Bot, deps: BotDeps) {
       if (err instanceof GeminiUnavailableError) {
         const queued = await enqueueAiItem(supabase, {
           dashboard_id: linked.dashboardId ?? null,
-          owner_user_id: linked.ownerUserId ?? null,
+          owner_user_id: queueAuthorId(linked),
           channel: "telegram",
           chat_id: ctx.chat.id,
           kind: "pdf",

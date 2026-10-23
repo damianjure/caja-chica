@@ -95,7 +95,7 @@ import { createInformesRouter } from "./routes/informes.ts";
 import { createDashboardRouter } from "./routes/dashboard.ts";
 import { createCronsRouter } from "./routes/crons.ts";
 import { createImageExtractRouter } from "./routes/imageExtract.ts";
-import { getPendingWebItems, enqueueAiItem } from "./aiQueue.ts";
+import { getPendingWebItems, enqueueAiItem, getUnseenWebResults, markWebResultsSeen } from "./aiQueue.ts";
 import { runDrainAiQueue } from "./cronJobs/drainAiQueue.ts";
 
 type QueryBuilderResult<T> = Promise<{ data: T; error: { message: string } | null }>;
@@ -609,6 +609,38 @@ export function createApp({
       ownerUserId: session.userId,
     });
     res.json({ items: items.map((i) => ({ id: i.id, kind: i.kind, text_content: i.text_content, created_at: i.created_at })) });
+  });
+
+  // Results of the caller's queued web messages that the caller has not seen yet:
+  // what was saved once the AI came back, and what could not be processed.
+  app.get("/api/queue/summary", requireSession, tierRead, async (req, res) => {
+    const session = getSession(req);
+    const items = await getUnseenWebResults(supabase, session.userId);
+    res.json({
+      processed: items
+        .filter((i) => i.status === "processed")
+        .map((i) => ({
+          id: i.id,
+          text_content: i.text_content,
+          description: i.result?.description ?? null,
+          tipo: i.result?.tipo ?? null,
+          count: i.result?.count ?? 1,
+          processed_at: i.processed_at,
+        })),
+      failed: items
+        .filter((i) => i.status === "failed")
+        .map((i) => ({ id: i.id, text_content: i.text_content, reason: i.result?.reason ?? "processing_failed", processed_at: i.processed_at })),
+    });
+  });
+
+  app.post("/api/queue/summary/seen", requireSession, tierWrite, async (req, res) => {
+    const session = getSession(req);
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100 || !ids.every((id) => typeof id === "string")) {
+      return void res.status(400).json({ error: "ids_required" });
+    }
+    await markWebResultsSeen(supabase, session.userId, ids);
+    res.json({ ok: true });
   });
 
   // Superadmin: trigger drain manually (e.g. from the AI health panel after the AI recovers)

@@ -1,13 +1,17 @@
 import {
   getAllPendingItems,
   markItemProcessed,
+  markItemFailed,
+  markItemsSeen,
   incrementRetry,
-  purgeExpired,
+  expirePendingItems,
+  purgeFinishedItems,
   type AiQueueItem,
 } from "../aiQueue.ts";
+import { alertSuperadmin } from "../alertSuperadmin.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../geminiWithFallback.ts";
-import { applyTelegramDataScope } from "../telegramAccess.ts";
+import { applyTelegramDataScope, resolveDashboardRole } from "../telegramAccess.ts";
 import { persistTelegramMovement, persistTelegramTicket } from "../../bot/commands/movements.ts";
 import { extractReceiptWithItems } from "../telegramMedia.ts";
 import type { GenAILike, SupabaseLike } from "../contracts.ts";
@@ -156,7 +160,7 @@ async function processMediaItem(
 async function processWebTextItem(
   deps: DrainAiQueueDeps,
   item: AiQueueItem,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; description?: string; tipo?: string; count?: number }> {
   const linked = linkedFromItem(item);
   const catList = await getCategories(deps.supabase, linked);
   const text = item.text_content ?? "";
@@ -202,7 +206,66 @@ async function processWebTextItem(
     return { ok: false };
   }
 
-  return { ok: true };
+  return { ok: true, description: rows.map((r) => r.descripcion).join(", ").slice(0, 120), tipo: rows[0].tipo, count: rows.length };
+}
+
+/**
+ * Re-checks, at drain time, that the author can still write to the item's
+ * dashboard: a role change or removal after queueing must not let the item
+ * through. Items without a dashboard belong to legacy single-owner accounts.
+ */
+async function authorCanWrite(deps: DrainAiQueueDeps, item: AiQueueItem): Promise<boolean> {
+  if (!item.dashboard_id) return !!item.owner_user_id;
+  if (!item.owner_user_id) return false;
+  const role = await resolveDashboardRole(deps.supabase as any, item.owner_user_id, item.dashboard_id);
+  return role === "owner" || role === "editor";
+}
+
+/** Escapes Telegram legacy-Markdown control characters in user text. */
+function escapeMarkdown(text: string): string {
+  return text.replace(/([_*`[])/g, "\\$1");
+}
+
+function quoteForChat(item: AiQueueItem): string {
+  const text = item.text_content?.trim();
+  if (text) return `“${escapeMarkdown(text.slice(0, 80))}”`;
+  return item.kind === "pdf" ? "un PDF" : item.kind === "album" ? "un álbum de fotos" : "una foto";
+}
+
+interface ChatSummary {
+  saved: string[];
+  failed: string[];
+  ids: string[];
+}
+
+function chatSummary(summaries: Map<number, ChatSummary>, chatId: number): ChatSummary {
+  const existing = summaries.get(chatId);
+  if (existing) return existing;
+  const created: ChatSummary = { saved: [], failed: [], ids: [] };
+  summaries.set(chatId, created);
+  return created;
+}
+
+function buildChatSummaryText(summary: ChatSummary): string {
+  const parts: string[] = [];
+  if (summary.saved.length > 0) {
+    const n = summary.saved.length;
+    const list = summary.saved.slice(0, 10).join("\n");
+    const more = n > 10 ? `\n_… y ${n - 10} más_` : "";
+    parts.push(
+      `✅ *La IA está disponible de nuevo.*\n` +
+        `Se guardaron ${n} mensaje${n !== 1 ? "s" : ""} que tenías pendiente${n !== 1 ? "s" : ""}:\n\n${list}${more}`,
+    );
+  }
+  if (summary.failed.length > 0) {
+    const n = summary.failed.length;
+    const list = summary.failed.slice(0, 10).map((line) => `• ${line}`).join("\n");
+    const more = n > 10 ? `\n_… y ${n - 10} más_` : "";
+    parts.push(
+      `⚠️ No pude procesar ${n} mensaje${n !== 1 ? "s" : ""}. Mandal${n !== 1 ? "os" : "o"} de nuevo:\n\n${list}${more}`,
+    );
+  }
+  return parts.join("\n\n");
 }
 
 // In-process lock. The cron (every 5 min) and the superadmin "Procesar ahora"
@@ -222,20 +285,36 @@ export async function runDrainAiQueue(deps: DrainAiQueueDeps): Promise<DrainResu
 }
 
 async function drainOnce(deps: DrainAiQueueDeps): Promise<DrainResult> {
-  const expired = await purgeExpired(deps.supabase);
+  await purgeFinishedItems(deps.supabase);
+  const expiredItems = await expirePendingItems(deps.supabase);
   const items = await getAllPendingItems(deps.supabase);
 
-  if (items.length === 0) return { processed: 0, failed: 0, expired, stopped: false };
-
-  const summaries = new Map<number, string[]>();
+  // One Telegram summary per chat: what was saved and what failed for good.
+  const summaries = new Map<number, ChatSummary>();
+  const noteFailed = (item: AiQueueItem) => {
+    if (item.channel !== "telegram" || !item.chat_id) return;
+    const summary = chatSummary(summaries, item.chat_id);
+    summary.failed.push(quoteForChat(item));
+    summary.ids.push(item.id);
+  };
+  expiredItems.forEach(noteFailed);
 
   let processed = 0;
   let failed = 0;
+  let failedForGood = expiredItems.length;
   let stopped = false;
 
   for (const item of items) {
     try {
-      let outcome: { ok: boolean; description?: string; tipo?: string };
+      if (!(await authorCanWrite(deps, item))) {
+        await markItemFailed(deps.supabase, item.id, "forbidden");
+        failed++;
+        failedForGood++;
+        noteFailed(item);
+        continue;
+      }
+
+      let outcome: { ok: boolean; description?: string; tipo?: string; count?: number };
 
       if (item.kind === "text" && item.channel === "telegram") {
         outcome = await processTextItem(deps, item);
@@ -244,24 +323,33 @@ async function drainOnce(deps: DrainAiQueueDeps): Promise<DrainResult> {
       } else if (item.kind === "web_text" || item.channel === "web") {
         outcome = await processWebTextItem(deps, item);
       } else {
-        await incrementRetry(deps.supabase, item.id, item.retry_count);
+        // Albums are queued but there is no batch reprocessing for them.
+        await markItemFailed(deps.supabase, item.id, "unsupported");
         failed++;
+        failedForGood++;
+        noteFailed(item);
         continue;
       }
 
       if (outcome.ok) {
-        await markItemProcessed(deps.supabase, item.id);
+        await markItemProcessed(deps.supabase, item.id, {
+          description: outcome.description,
+          tipo: outcome.tipo,
+          count: outcome.count ?? 1,
+        });
         processed++;
-        if (item.chat_id) {
+        if (item.channel === "telegram" && item.chat_id) {
           const icon = outcome.tipo === "ingreso" ? "🟢" : "🔴";
-          const label = outcome.description ? `${icon} ${outcome.description}` : `${icon} Movimiento`;
-          const list = summaries.get(item.chat_id) ?? [];
-          list.push(label);
-          summaries.set(item.chat_id, list);
+          const summary = chatSummary(summaries, item.chat_id);
+          summary.saved.push(`${icon} ${escapeMarkdown(outcome.description || "Movimiento")}`);
+          summary.ids.push(item.id);
         }
       } else {
-        await incrementRetry(deps.supabase, item.id, item.retry_count);
         failed++;
+        if (await incrementRetry(deps.supabase, item.id, item.retry_count)) {
+          failedForGood++;
+          noteFailed(item);
+        }
       }
     } catch (err) {
       if (err instanceof GeminiUnavailableError) {
@@ -270,29 +358,38 @@ async function drainOnce(deps: DrainAiQueueDeps): Promise<DrainResult> {
         break;
       }
       console.error(`[drainAiQueue] error processing item ${item.id}:`, err);
-      await incrementRetry(deps.supabase, item.id, item.retry_count);
       failed++;
+      if (await incrementRetry(deps.supabase, item.id, item.retry_count)) {
+        failedForGood++;
+        noteFailed(item);
+      }
     }
   }
 
-  // Send ONE summary per chat_id
+  if (failedForGood > 0) {
+    alertSuperadmin({
+      code: "ai-queue:items-failed",
+      title: "Cola de IA: mensajes que no se pudieron procesar",
+      problem: `${failedForGood} mensaje(s) de la cola de IA terminaron como fallidos (vencidos, sin permiso, no soportados o con error al procesar).`,
+      impact: "Los autores reciben el aviso para reenviarlos; los datos no se guardaron.",
+      context: { failedForGood: String(failedForGood) },
+      steps: [
+        "Revisar en pending_ai_queue las filas con status = 'failed' y su result.reason.",
+        "Si el motivo es processing_failed repetido, revisar los logs de [drainAiQueue] en Cloud Run.",
+      ],
+    });
+  }
+
   if (deps.bot && summaries.size > 0) {
-    for (const [chatId, lines] of summaries) {
-      const count = lines.length;
-      const lineList = lines.slice(0, 10).join("\n");
-      const more = lines.length > 10 ? `\n_… y ${lines.length - 10} más_` : "";
-      const text =
-        `✅ *La IA está disponible de nuevo.*\n` +
-        `Se procesaron ${count} mensaje${count !== 1 ? "s" : ""} que tenías pendiente${count !== 1 ? "s" : ""}:\n\n` +
-        lineList +
-        more;
+    for (const [chatId, summary] of summaries) {
       try {
-        await deps.bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
+        await deps.bot.api.sendMessage(chatId, buildChatSummaryText(summary), { parse_mode: "Markdown" });
+        await markItemsSeen(deps.supabase, summary.ids);
       } catch (err) {
         console.error(`[drainAiQueue] failed to notify chat_id=${chatId}:`, err);
       }
     }
   }
 
-  return { processed, failed, expired, stopped };
+  return { processed, failed, expired: expiredItems.length, stopped };
 }

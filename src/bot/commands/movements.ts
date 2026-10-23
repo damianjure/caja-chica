@@ -14,7 +14,7 @@ import { geminiGenerateText, GeminiUnavailableError } from "../../server/geminiW
 import { assertBotWritable } from "../maintenance-gate.ts";
 import { buildUndoKeyboard } from "../quickActions.ts";
 import { parseIntentResult, resolveIntentAction, parseReminderSlots } from "../voiceIntent.ts";
-import { enqueueAiItem } from "../../server/aiQueue.ts";
+import { enqueueAiItem, queueAuthorId } from "../../server/aiQueue.ts";
 import { readReminder, writeReminder } from "../reminderPrefs.ts";
 import { buildReminderStatusText, buildReminderKeyboard } from "../reminderText.ts";
 import { buildGestionarKeyboard, buildMainKeyboard, buildIntentConfirmKeyboard } from "../keyboards.ts";
@@ -618,7 +618,7 @@ export async function processTelegramFinancialText(supabase: BotDeps["supabase"]
     if (err instanceof GeminiUnavailableError) {
       const queued = await enqueueAiItem(supabase, {
         dashboard_id: linked.dashboardId ?? null,
-        owner_user_id: linked.ownerUserId ?? null,
+        owner_user_id: queueAuthorId(linked),
         channel: "telegram",
         chat_id: ctx.chat?.id ?? null,
         kind: "text",

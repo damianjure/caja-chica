@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { KpiBadgeCard, SectionCard } from "./dashboard/primitives";
 import { toast } from "sonner";
+import { invitationEmailFeedback } from "../dashboard/inviteFeedback";
 
 import {
   api,
@@ -174,7 +175,8 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
       ]);
       setEmail("");
       setRole("member");
-      toast.success(`Invitación creada para ${invitation.email}`);
+      const feedback = invitationEmailFeedback("invite", invitation.email, invitation.email_sent);
+      toast[feedback.tone](feedback.message);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo crear la invitación.");
     } finally {
@@ -217,14 +219,15 @@ export function AdminPanel({ viewer }: AdminPanelProps) {
   const handleResend = async (invitation: AppInvitation) => {
     setResendingId(invitation.id);
     try {
-      await api.resendInvitation(invitation.id);
+      const result = await api.resendInvitation(invitation.id);
       const now = new Date().toISOString();
       setInvitations((prev) =>
         prev.map((item) =>
           item.id === invitation.id ? { ...item, last_reminder_at: now } : item,
         ),
       );
-      toast.success(`Invitación reenviada a ${invitation.email}`);
+      const feedback = invitationEmailFeedback("resend", invitation.email, result.email_sent);
+      toast[feedback.tone](feedback.message);
     } catch (err: any) {
       if (err?.status === 409) {
         toast.error("La invitación ya fue aceptada o fue revocada.");

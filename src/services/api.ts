@@ -196,6 +196,8 @@ export interface AppInvitation {
   /** Bearer secrets — present only for the superadmin or the inviting admin. */
   invite_token?: string;
   invite_url?: string;
+  /** Only on create: whether the invitation email went out. */
+  email_sent?: boolean;
   expires_at: string | null;
   created_at: string;
   accepted_at: string | null;
@@ -265,6 +267,8 @@ export interface DashboardInvitation {
   status: InvitationStatus;
   invite_token: string;
   invite_url: string;
+  /** Only on create: whether the invitation email went out. */
+  email_sent?: boolean;
   expires_at: string | null;
   created_at: string;
   accepted_at: string | null;
@@ -1029,7 +1033,7 @@ export const api = {
     return fetchApi(`/api/personas${suffix}`);
   },
 
-  async resendInvitation(id: string): Promise<{ ok: boolean }> {
+  async resendInvitation(id: string): Promise<{ ok: boolean; email_sent?: boolean }> {
     return fetchApi(`/api/personas/${id}/resend`, { method: "POST" });
   },
 

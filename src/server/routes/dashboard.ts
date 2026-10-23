@@ -23,8 +23,8 @@ export interface DashboardDeps {
     telegramDeepLink?: string,
     emailType?: import("../email.ts").EmailType,
     inviterDisplayName?: string | null,
-  ) => Promise<void>;
-  sendAppInvitationEmail: (to: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<void>;
+  ) => Promise<import("../email.ts").SendResult>;
+  sendAppInvitationEmail: (to: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<import("../email.ts").SendResult>;
   purgeDemoData: (supabase: SupabaseLike, session: AppSession, dashboardId: string) => Promise<void>;
   tierRead: RequestHandler;
   tierResend: RequestHandler;
@@ -296,13 +296,14 @@ export function createDashboardRouter(deps: DashboardDeps) {
       }
 
       const inviteUrl = `${publicAppUrl || ""}/?invite=${data.invite_token}`;
+      const inviterDisplayName = await resolveInviterDisplayName(session);
+      const emailResult = await sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email, telegramDeepLink, undefined, inviterDisplayName);
       res.status(201).json({
         ...data,
         invite_url: inviteUrl,
+        email_sent: emailResult.ok,
         ...(telegramDeepLink ? { telegram_deep_link: telegramDeepLink } : {}),
       });
-      const inviterDisplayName = await resolveInviterDisplayName(session);
-      void sendDashboardInvitationEmail(data.email, inviteUrl, data.role, session.email, telegramDeepLink, undefined, inviterDisplayName);
 
       // Auto-purge demo data when owner invites their first collaborator
       void (async () => {
@@ -808,10 +809,11 @@ export function createDashboardRouter(deps: DashboardDeps) {
       }
 
       // Dispatch email based on table type
+      let emailSent = false;
       if (table === "user_invitations") {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         const inviterDisplayName = await resolveInviterDisplayName(session);
-        void sendAppInvitationEmail(row.email, inviteUrl, undefined, inviterDisplayName ?? session.email.split("@")[0]);
+        emailSent = (await sendAppInvitationEmail(row.email, inviteUrl, undefined, inviterDisplayName ?? session.email.split("@")[0])).ok;
       } else {
         const inviteUrl = `${publicAppUrl || ""}/?invite=${currentToken}`;
         const inviterDisplayName = await resolveInviterDisplayName(session);
@@ -862,10 +864,10 @@ export function createDashboardRouter(deps: DashboardDeps) {
           }
         }
 
-        void sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, resendTelegramDeepLink, undefined, inviterDisplayName);
+        emailSent = (await sendDashboardInvitationEmail(row.email, inviteUrl, row.role, session.email, resendTelegramDeepLink, undefined, inviterDisplayName)).ok;
       }
 
-      return res.json({ ok: true });
+      return res.json({ ok: true, email_sent: emailSent });
     } catch (err) {
       console.error("POST /api/personas/:id/resend:", err);
       return res.status(500).json({ error: "internal" });

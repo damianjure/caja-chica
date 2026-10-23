@@ -26,6 +26,7 @@ import {
 } from "../../../../services/api";
 import { DASHBOARD_ROLE_LABELS } from "../../../../services/labels";
 import { ConfirmModal } from "../../../ui/ConfirmModal";
+import { invitationEmailFeedback } from "../../../../dashboard/inviteFeedback";
 
 // ---------------------------------------------------------------------------
 // Permission definitions (only non-default ones = require explicit grant)
@@ -207,11 +208,12 @@ function InviteForm({ onInvited }: InviteFormProps) {
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      await api.inviteDashboardMember(trimmed, role, telegramPreauth);
+      const invitation = await api.inviteDashboardMember(trimmed, role, telegramPreauth);
       setEmail("");
       setRole("viewer");
       setTelegramPreauth(false);
-      toast.success(`Invitación enviada a ${trimmed}`);
+      const feedback = invitationEmailFeedback("invite", trimmed, invitation.email_sent);
+      toast[feedback.tone](feedback.message);
       onInvited();
     } catch (err) {
       const code = api.isApiError(err) ? err.message : undefined;
@@ -1061,8 +1063,9 @@ export function MiembrosSection({
   const handleResend = async (persona: PersonaRecord) => {
     setResendingId(persona.id);
     try {
-      await api.resendInvitation(persona.id);
-      toast.success(`Recordatorio enviado a ${persona.email}`);
+      const result = await api.resendInvitation(persona.id);
+      const feedback = invitationEmailFeedback("resend", persona.email, result.email_sent);
+      toast[feedback.tone](feedback.message);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo reenviar.");
     } finally {

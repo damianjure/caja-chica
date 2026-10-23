@@ -386,8 +386,8 @@ function sanitizeHeader(value: string): string {
 
 // ---------------------------------------------------------------------------
 // sendViaBrevo — the single Brevo transport seam.
-// Returns { ok, messageId? } so test-send can echo messageId.
-// Existing callers (sendAppInvitationEmail, sendDashboardInvitationEmail) ignore the return value.
+// Returns { ok, messageId? } so test-send can echo messageId and the invitation
+// senders can report whether the email actually went out (`email_sent`).
 // ---------------------------------------------------------------------------
 
 export interface SendResult {
@@ -411,6 +411,18 @@ export async function sendViaBrevo(
   const apiKey = getApiKey();
   if (!apiKey) {
     console.warn("[email] BREVO_API_KEY not set — skipping email to", to);
+    // Logged like any other failed send so the admin email log shows it.
+    if (_injectedDeps) {
+      void writeEmailLog({
+        supabase: _injectedDeps.supabase,
+        toEmail: to,
+        subject,
+        emailType: opts?.emailType ?? "app_invite",
+        ok: false,
+        errorBody: "BREVO_API_KEY not set",
+        invitationId: opts?.invitationId ?? null,
+      });
+    }
     return { ok: false };
   }
 
@@ -522,8 +534,8 @@ export async function sendAppInvitationEmail(
   inviteUrl: string,
   emailType?: EmailType,
   inviterName?: string,
-): Promise<void> {
-  await sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl, inviterName), {
+): Promise<SendResult> {
+  return sendViaBrevo(to, "Te invitaron a Caja Chica", appInvitationHtml(inviteUrl, inviterName), {
     emailType: emailType ?? "app_invite",
   });
 }
@@ -536,9 +548,9 @@ export async function sendDashboardInvitationEmail(
   telegramDeepLink?: string,
   emailType?: EmailType,
   inviterDisplayName?: string | null,
-): Promise<void> {
+): Promise<SendResult> {
   const inviterName = inviterDisplayName?.trim() || inviterEmail.split("@")[0] || inviterEmail;
-  await sendViaBrevo(
+  return sendViaBrevo(
     to,
     `${inviterName} te invitó a su dashboard en Caja Chica`,
     dashboardInvitationHtml(inviteUrl, role, inviterEmail, telegramDeepLink, inviterDisplayName),

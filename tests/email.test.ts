@@ -377,3 +377,50 @@ test("email_log: throwing supabase insert does NOT reject sendAppInvitationEmail
     globalThis.fetch = origFetch;
   }
 });
+
+test("invitation senders return the Brevo send result", async () => {
+  const { sendAppInvitationEmail, sendDashboardInvitationEmail } = await import("../src/server/email.ts");
+  const origFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = mockFetch(201, { messageId: "brevo-ok" });
+    assert.deepEqual(await sendAppInvitationEmail("a@test.com", "https://invite"), { ok: true, messageId: "brevo-ok" });
+    globalThis.fetch = mockFetch(500, { message: "down" });
+    assert.equal((await sendDashboardInvitationEmail("b@test.com", "https://invite", "editor", "owner@test.com")).ok, false);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test("missing BREVO_API_KEY is written to the email log as a failed send", async () => {
+  const { configureEmail, sendAppInvitationEmail } = await import("../src/server/email.ts");
+  const inserted: Array<Record<string, unknown>> = [];
+  const supabase = {
+    from(table: string) {
+      return {
+        insert(row: Record<string, unknown>) {
+          if (table === "email_log") inserted.push(row);
+          return Promise.resolve({ error: null });
+        },
+        select() { return this; },
+        eq() { return this; },
+        limit() { return Promise.resolve({ data: [], error: null }); },
+        maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+        single() { return Promise.resolve({ data: null, error: null }); },
+      };
+    },
+  };
+  configureEmail({ supabase: supabase as any });
+  const prevKey = process.env.BREVO_API_KEY;
+  delete process.env.BREVO_API_KEY;
+  try {
+    const result = await sendAppInvitationEmail("nokey@test.com", "https://invite");
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(result.ok, false);
+    const row = inserted.find((r) => r.to_email === "nokey@test.com");
+    assert.ok(row, "a failed send must be logged");
+    assert.equal(row.ok, false);
+    assert.equal(row.error_body, "BREVO_API_KEY not set");
+  } finally {
+    process.env.BREVO_API_KEY = prevKey;
+  }
+});

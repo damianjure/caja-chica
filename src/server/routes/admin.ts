@@ -28,7 +28,7 @@ export interface AdminDeps {
   publicAppUrl?: string;
   botActive: boolean;
   parseInvitationRequest: (body: unknown) => { email: string; role: string } | null;
-  sendAppInvitationEmail: (email: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<void>;
+  sendAppInvitationEmail: (email: string, inviteUrl: string, emailType?: import("../email.ts").EmailType, inviterName?: string) => Promise<import("../email.ts").SendResult>;
   emailDeps?: AdminEmailDeps;
 }
 
@@ -331,9 +331,9 @@ export function createAdminRouter(deps: AdminDeps) {
       if (error) throw error;
 
       const inviteUrl = `${publicAppUrl || ""}/?invite=${data.invite_token}`;
-      res.status(201).json({ ...data, invite_url: inviteUrl });
       const inviterName = await resolveInviterDisplayName(session);
-      void sendAppInvitationEmail(data.email, inviteUrl, undefined, inviterName ?? session.email.split("@")[0]);
+      const emailResult = await sendAppInvitationEmail(data.email, inviteUrl, undefined, inviterName ?? session.email.split("@")[0]);
+      res.status(201).json({ ...data, invite_url: inviteUrl, email_sent: emailResult.ok });
     } catch (err) {
       console.error("Invitation error:", err);
       res.status(500).json({ error: "failed_to_save" });

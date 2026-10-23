@@ -631,3 +631,111 @@ test("Fix E: syncPendingDashboardInvitations still accepts invitations without e
   assert.ok(acceptUpdate, "invitation without expiry must still be accepted");
   assert.equal(acceptUpdate.payload.status, "accepted");
 });
+
+// ---------------------------------------------------------------------------
+// email_sent: invitation endpoints report whether the email actually went out
+// ---------------------------------------------------------------------------
+
+/** Runs fn with BREVO configured and Brevo answering `status`; other requests go through. */
+async function withBrevo(status: number, fn: () => Promise<void>) {
+  const realFetch = globalThis.fetch;
+  const prevKey = process.env.BREVO_API_KEY;
+  process.env.BREVO_API_KEY = "test-key";
+  globalThis.fetch = (async (input: any, init?: any) => {
+    const url = typeof input === "string" ? input : input.url ?? String(input);
+    if (url.includes("brevo.com")) {
+      return new Response(JSON.stringify({ messageId: "m-1" }), { status, headers: { "content-type": "application/json" } });
+    }
+    return realFetch(input, init);
+  }) as typeof fetch;
+  try {
+    await fn();
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prevKey === undefined) delete process.env.BREVO_API_KEY;
+    else process.env.BREVO_API_KEY = prevKey;
+  }
+}
+
+function pendingResendRow(id: string) {
+  return {
+    id,
+    dashboard_id: "dash-1",
+    email: `${id}@example.com`,
+    role: "editor",
+    status: "pending",
+    invite_token: `tok-${id}`,
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    accepted_at: null,
+    accepted_user_id: null,
+    last_reminder_at: null,
+    invited_by_user_id: "owner-1",
+    telegram_preauth: false,
+    telegram_invite_token_id: null,
+  };
+}
+
+test("email_sent: POST /api/admin/invitations reports true when Brevo accepts the email", async () => {
+  await withBrevo(201, async () => {
+    await withServer(superadminSession, makeHttpStub({}), async (base) => {
+      const res = await fetch(`${base}/api/admin/invitations`, {
+        method: "POST", headers: H, body: JSON.stringify({ email: "ok@example.com", role: "member" }),
+      });
+      assert.equal(res.status, 201);
+      assert.equal(((await res.json()) as any).email_sent, true);
+    });
+  });
+});
+
+test("email_sent: POST /api/admin/invitations reports false when Brevo fails", async () => {
+  await withBrevo(500, async () => {
+    await withServer(superadminSession, makeHttpStub({}), async (base) => {
+      const res = await fetch(`${base}/api/admin/invitations`, {
+        method: "POST", headers: H, body: JSON.stringify({ email: "fail@example.com", role: "member" }),
+      });
+      assert.equal(res.status, 201);
+      assert.equal(((await res.json()) as any).email_sent, false);
+    });
+  });
+});
+
+test("email_sent: POST /api/dashboard/invitations reports false when Brevo fails, true when it works", async () => {
+  await withBrevo(500, async () => {
+    await withServer(ownerSession, makeHttpStub({ dashboardMembers: [ownerMember] }), async (base) => {
+      const res = await fetch(`${base}/api/dashboard/invitations`, {
+        method: "POST", headers: H, body: JSON.stringify({ email: "x@example.com", role: "editor" }),
+      });
+      assert.equal(res.status, 201);
+      assert.equal(((await res.json()) as any).email_sent, false);
+    });
+  });
+  await withBrevo(201, async () => {
+    await withServer(ownerSession, makeHttpStub({ dashboardMembers: [ownerMember] }), async (base) => {
+      const res = await fetch(`${base}/api/dashboard/invitations`, {
+        method: "POST", headers: H, body: JSON.stringify({ email: "y@example.com", role: "editor" }),
+      });
+      assert.equal(res.status, 201);
+      assert.equal(((await res.json()) as any).email_sent, true);
+    });
+  });
+});
+
+test("email_sent: resend reports whether the email went out", async () => {
+  await withBrevo(500, async () => {
+    const stub = makeHttpStub({ dashboardMembers: [ownerMember], dashboardInvitations: [pendingResendRow("rs-fail")] });
+    await withServer(ownerSession, stub, async (base) => {
+      const res = await fetch(`${base}/api/personas/rs-fail/resend`, { method: "POST", headers: H });
+      assert.equal(res.status, 200);
+      const body = (await res.json()) as any;
+      assert.equal(body.ok, true);
+      assert.equal(body.email_sent, false);
+    });
+  });
+  await withBrevo(201, async () => {
+    const stub = makeHttpStub({ dashboardMembers: [ownerMember], dashboardInvitations: [pendingResendRow("rs-ok")] });
+    await withServer(ownerSession, stub, async (base) => {
+      const res = await fetch(`${base}/api/personas/rs-ok/resend`, { method: "POST", headers: H });
+      assert.equal(((await res.json()) as any).email_sent, true);
+    });
+  });
+});

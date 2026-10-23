@@ -28,7 +28,7 @@ Approved plan: `~/.claude/plans/dame-el-plan-que-generic-dijkstra.md`.
 |---|---|---|---|---|
 | T1 | S1 | inline | done | `6816df1` — RED: 6 new tests failed (missing export); GREEN: suite 1004 pass / 0 fail, tsc ok. Visual check pending deploy (local dev points to old Supabase). |
 | T2 | S2 | inline | done | RED: 5 new tests failed (missing export); GREEN: suite 1009 pass / 0 fail, tsc ok; verified in local preview: alert shows the hook message, URL cleaned keeping `?invite=` , no console errors. |
-| T3 | S3 | inline | pending | |
+| T3 | S3 | inline | done | RED: 5 route/email tests + missing-key log test + 3 feedback tests failed; GREEN: suite 1018 pass / 0 fail, tsc + lint:arch ok. |
 | T4 | S4 | inline (high risk: persisted format + permissions → own commit + independent verifier) | pending | |
 | T5 | S5–S12 | inline | pending | |
 | T6 | S13 | inline (high risk: identity + data migration → own commit + independent verifier) | pending | |
@@ -45,4 +45,6 @@ Route evidence: units share files (`tests/api.test.ts`, `src/server/app.ts`) and
 - **L5:** Pre-existing flaky tests seen once under full-suite concurrency (404 instead of 400/200): `tests/imageExtract.test.ts` "400 unsupported mime type" and `tests/invitations.test.ts` "Fix D: resend ... telegram_preauth=true". Pass in isolation and in 2 further full runs. Advisory, not caused by this feature.
 - **L6 (T1 review):** `gentle-ai review assess` on 6816df1 → medium, `under_budget` (stays pending in the slice).
 - **L7 (T2):** `getLoginErrorFromUrl` shows only the 3 known hook messages (checked live in the new DB's `hook_authorize_google_invited_users`); any other provider error gets a generic Spanish message, never raw text. Still to confirm with a real non-invited Google account after deploy.
-- **Next:** T3.
+- **L8 (T2 review):** assess on the slice after 31f3539 → medium, `under_budget`.
+- **L9 (T3):** Invitation create (admin + dashboard) and resend now await the email and return `email_sent`; responses wait up to the 10s Brevo timeout. `resolveInviterDisplayName` and `sendViaBrevo` never throw, so a created invitation cannot turn into a 500. Missing `BREVO_API_KEY` is now logged in `email_log`. UI copy lives in `src/dashboard/inviteFeedback.ts` (AdminPanel, MiembrosSection). `PersonasPanel.tsx` is not mounted anywhere (dead code) and was left untouched.
+- **Next:** T4 (high risk).

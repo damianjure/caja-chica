@@ -632,6 +632,7 @@ export function createApp({
   app.post("/api/queue/enqueue", requireSession, tierWrite, async (req, res) => {
     const session = getSession(req);
     const scope = await resolveDataAccessScope(session);
+    if (!canWriteToScope(scope)) return void res.status(403).json({ error: "forbidden" });
     const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 2000).trim() : "";
     if (!text) return void res.status(400).json({ error: "text_required" });
     const id = await enqueueAiItem(supabase, {

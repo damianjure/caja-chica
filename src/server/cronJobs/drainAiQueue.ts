@@ -33,6 +33,8 @@ export interface DrainResult {
   failed: number;
   expired: number;
   stopped: boolean;
+  /** True when another drain was already running and this call did nothing. */
+  busy?: boolean;
 }
 
 function linkedFromItem(item: AiQueueItem): TelegramLinkRecord {
@@ -176,28 +178,50 @@ async function processWebTextItem(
     return { ok: false };
   }
 
-  for (const rawItem of extracted.items as any[]) {
-    const ownership: Record<string, string> = {};
-    if (item.dashboard_id) ownership.dashboard_id = item.dashboard_id;
-    if (item.owner_user_id) ownership.owner_user_id = item.owner_user_id;
-    await (deps.supabase as any).from("movimientos").insert([{
-      ...ownership,
-      tipo: rawItem.tipo === "ingreso" ? "ingreso" : "egreso",
-      moneda: rawItem.moneda === "USD" ? "USD" : "ARS",
-      monto: Math.abs(rawItem.monto || 0),
-      categoria: rawItem.categoria || "Otros",
-      empresa_nombre: rawItem.empresa || "Personal",
-      descripcion: rawItem.descripcion || text.slice(0, 120),
-      original_text: text,
-      source: "web",
-      conciliado: true,
-    }]);
+  const ownership: Record<string, string> = {};
+  if (item.dashboard_id) ownership.dashboard_id = item.dashboard_id;
+  if (item.owner_user_id) ownership.owner_user_id = item.owner_user_id;
+  const rows = (extracted.items as any[]).map((rawItem) => ({
+    ...ownership,
+    tipo: rawItem.tipo === "ingreso" ? "ingreso" : "egreso",
+    moneda: rawItem.moneda === "USD" ? "USD" : "ARS",
+    monto: Math.abs(rawItem.monto || 0),
+    categoria: rawItem.categoria || "Otros",
+    empresa_nombre: rawItem.empresa || "Personal",
+    descripcion: rawItem.descripcion || text.slice(0, 120),
+    original_text: text,
+    source: "web",
+    conciliado: true,
+  }));
+
+  // One insert for all rows: either every movement is saved or none is, so a
+  // retry never duplicates part of the message.
+  const { error } = await (deps.supabase as any).from("movimientos").insert(rows);
+  if (error) {
+    console.error(`[drainAiQueue] insert failed for item ${item.id}:`, error);
+    return { ok: false };
   }
 
   return { ok: true };
 }
 
+// In-process lock. The cron (every 5 min) and the superadmin "Procesar ahora"
+// button can overlap; without it both runs read the same items and save each
+// movement twice. Enough because of the single-instance invariant
+// (Cloud Run max-instances=1).
+let drainInFlight = false;
+
 export async function runDrainAiQueue(deps: DrainAiQueueDeps): Promise<DrainResult> {
+  if (drainInFlight) return { processed: 0, failed: 0, expired: 0, stopped: false, busy: true };
+  drainInFlight = true;
+  try {
+    return await drainOnce(deps);
+  } finally {
+    drainInFlight = false;
+  }
+}
+
+async function drainOnce(deps: DrainAiQueueDeps): Promise<DrainResult> {
   const expired = await purgeExpired(deps.supabase);
   const items = await getAllPendingItems(deps.supabase);
 

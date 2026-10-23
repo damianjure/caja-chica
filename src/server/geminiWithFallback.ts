@@ -26,13 +26,15 @@ export function isGeminiCapacityError(err: unknown): boolean {
 
 /**
  * True when Gemini rejects the call due to an invalid or revoked API key.
- *   - 400 / API_KEY_INVALID
  *   - 401 / 403 (unauthenticated / forbidden)
+ *   - API_KEY_INVALID in the message (Gemini sends it with status 400)
+ * A bare 400 is NOT an auth error: it is a bad request (invalid argument,
+ * unreadable file…) and must not be reported as a key outage.
  */
 export function isGeminiAuthError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as { status?: number; message?: string };
-  if (e.status === 400 || e.status === 401 || e.status === 403) return true;
+  if (e.status === 401 || e.status === 403) return true;
   if (typeof e.message !== "string") return false;
   return /API_KEY_INVALID|invalid.*key|permission.*denied|UNAUTHENTICATED/i.test(e.message);
 }

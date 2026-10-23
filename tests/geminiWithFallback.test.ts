@@ -153,6 +153,13 @@ test("geminiGenerateText — primary non-capacity error rethrows original (no fa
   );
 });
 
+test("geminiGenerateText — 400 API_KEY_INVALID is still treated as an auth outage", async () => {
+  await assert.rejects(
+    () => geminiGenerateText(clientThatThrows(err(400, "API key not valid. [API_KEY_INVALID]")), null, args),
+    (thrown: unknown) => thrown instanceof GeminiUnavailableError,
+  );
+});
+
 test("geminiGenerateText — fallback non-capacity error rethrows that error", async () => {
   const fallbackErr = err(400, "Invalid argument from fallback");
   await assert.rejects(

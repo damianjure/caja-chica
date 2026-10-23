@@ -1122,7 +1122,7 @@ export const api = {
     return res.items;
   },
 
-  async adminTriggerDrain(): Promise<{ ok: boolean; processed: number; failed: number; expired: number; stopped: boolean }> {
+  async adminTriggerDrain(): Promise<{ ok: boolean; processed: number; failed: number; expired: number; stopped: boolean; busy?: boolean }> {
     return fetchApi("/api/admin/drain-ai-queue", { method: "POST" });
   },
 

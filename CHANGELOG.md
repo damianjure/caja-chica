@@ -5,6 +5,14 @@
 
 ---
 
+### Cambios 2026-10-23 (fix AI Queue + fallback Gemini — post auditoría)
+
+- **400 ya no es "key revocada"**: `isGeminiAuthError` solo matchea 401/403 o `API_KEY_INVALID`. Antes un 400 cualquiera (argumento inválido, archivo ilegible) disparaba alerta falsa al superadmin, ensuciaba `ai_events` y cortaba el drain entero en ese ítem (bloqueaba la cola).
+- **Viewer no puede encolar**: `POST /api/queue/enqueue` chequea `canWriteToScope` → 403.
+- **Drain web**: un solo insert con todas las filas y chequeo de `{error}`; si falla, el ítem queda en cola con retry (antes se borraba y el movimiento se perdía).
+- **Lock del drain**: cron y botón "Procesar ahora" ya no corren en paralelo (duplicaban movimientos). La segunda llamada devuelve `busy: true`; `AiHealthCard` lo avisa.
+- Tests: `tests/drainAiQueue.test.ts` (nuevo) + casos en `api.test.ts` y `geminiWithFallback.test.ts`.
+
 ### Cambios 2026-06-24 (AI Queue — cola automática cuando Gemini cae)
 
 Commit `bb02e39`. SQL: `db/patches/pending_ai_queue.sql` (aplicado en prod, commiteado después).

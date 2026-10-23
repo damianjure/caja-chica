@@ -35,7 +35,9 @@ export function AiHealthCard() {
     setDraining(true);
     try {
       const res = await api.adminTriggerDrain();
-      if (res.stopped) {
+      if (res.busy) {
+        toast.info("Ya se está procesando la cola. Probá de nuevo en un rato.");
+      } else if (res.stopped) {
         toast.warning("La IA sigue caída. Los items quedan en cola.");
       } else if (res.processed === 0 && res.failed === 0) {
         toast.success("La cola ya estaba vacía.");

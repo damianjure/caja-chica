@@ -176,6 +176,13 @@ function createSupabaseStub(
                 },
               };
             }
+            if (table === "pending_ai_queue") {
+              return {
+                single() {
+                  return Promise.resolve({ data: { id: "queue-1" }, error: null });
+                },
+              };
+            }
             return Promise.resolve({ data: rows, error: null });
           },
           single() {
@@ -2801,4 +2808,62 @@ test("PATCH /api/categorias/:id 404 si no existe en el scope", async () => {
       assert.equal(res.status, 404);
     },
   );
+});
+
+function queueApp(role: "viewer" | "editor") {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [
+      { user_id: "member-1", dashboard_id: "dashboard-1", role, status: "active" },
+    ],
+  });
+  const app = createApp({
+    supabase: supabase.client as AppDeps["supabase"],
+    genAI: {
+      models: {
+        async generateContent() {
+          return { text: '{"intent":"REGISTRAR","items":[]}' };
+        },
+      },
+    },
+    allowedOrigins: ["http://localhost:5173"],
+    botActive: false,
+    publicAppUrl: "https://app.example.com",
+    resolveSession: async () => ({ userId: "member-1", email: "member@example.com", role: "member", status: "active" }),
+  });
+  return { app, supabase };
+}
+
+async function postEnqueue(app: ReturnType<typeof createApp>) {
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const address = server.address() as AddressInfo;
+    return await fetch(`http://127.0.0.1:${address.port}/api/queue/enqueue`, {
+      method: "POST",
+      headers: { Authorization: "Bearer valid-token", "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "nafta 100" }),
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+}
+
+test("POST /api/queue/enqueue — viewer gets 403 and nothing is queued", async () => {
+  const { app, supabase } = queueApp("viewer");
+  const res = await postEnqueue(app);
+  assert.equal(res.status, 403);
+  assert.deepEqual(await res.json(), { error: "forbidden" });
+  assert.equal(supabase.callLog.some((e) => e.table === "pending_ai_queue" && e.type === "insert"), false);
+});
+
+test("POST /api/queue/enqueue — editor queues the text in its dashboard", async () => {
+  const { app, supabase } = queueApp("editor");
+  const res = await postEnqueue(app);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { id: "queue-1" });
+  const insert = supabase.callLog.find((e) => e.table === "pending_ai_queue" && e.type === "insert");
+  const payload = (insert?.args[0] as any[])[0];
+  assert.equal(payload.dashboard_id, "dashboard-1");
+  assert.equal(payload.text_content, "nafta 100");
+  assert.equal(payload.channel, "web");
 });

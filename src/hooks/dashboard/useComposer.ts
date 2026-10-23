@@ -97,7 +97,8 @@ export function useComposer(opts: ComposerOpts): ComposerResult {
           setInputText('');
           opts.onQueued?.();
         } catch {
-          setError('La IA no está disponible ahora mismo. Intentá en unos minutos.');
+          // The text stays in the input: nothing is lost.
+          setError('La IA no está disponible y no pudimos guardar tu mensaje en la cola. Tu texto sigue acá: intentá de nuevo en unos minutos.');
         }
       } else {
         setError(err instanceof Error ? err.message : 'Error al procesar.');

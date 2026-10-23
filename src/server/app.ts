@@ -677,6 +677,8 @@ export function createApp({
       file_ids: null,
       mime_types: null,
     });
+    // Never report a queued message that was not stored: the client keeps the text.
+    if (!id) return void res.status(500).json({ error: "enqueue_failed" });
     res.json({ id });
   });
 

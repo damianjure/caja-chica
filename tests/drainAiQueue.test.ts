@@ -29,6 +29,7 @@ function fakeSupabase(opts: {
   movimientosInsertError?: unknown;
   roles?: Record<string, string | null>;
 }) {
+  let movementSeq = 0;
   const queries: Query[] = [];
   const supabase = {
     from(table: string) {
@@ -39,7 +40,9 @@ function fakeSupabase(opts: {
           return { data: "expires_at" in q.lt ? opts.expired ?? [] : opts.queue ?? [], error: null };
         }
         if (table === "movimientos" && q.op === "insert") {
-          return { data: null, error: opts.movimientosInsertError ?? null };
+          if (opts.movimientosInsertError) return { data: null, error: opts.movimientosInsertError };
+          // .insert(...).select() returns the created rows (persistTelegramMovement reads data[0]).
+          return { data: [{ id: `mov-${++movementSeq}` }], error: null };
         }
         if (table === "dashboard_members" && q.op === "select") {
           const userId = String(q.eq.user_id);
@@ -299,4 +302,27 @@ test("queueAuthorId: Telegram members linked via telegram_links keep their own u
   assert.equal(queueAuthorId({ userId: "member-1", ownerUserId: null }), "member-1");
   assert.equal(queueAuthorId({ userId: null, ownerUserId: "owner-1" }), "owner-1");
   assert.equal(queueAuthorId({ userId: null, ownerUserId: null }), null);
+});
+
+// ---------------------------------------------------------------------------
+// Albums
+// ---------------------------------------------------------------------------
+
+test("drain — a queued album is reprocessed photo by photo", async () => {
+  const { bot } = fakeBot();
+  const tgBot = { api: { ...bot.api, async getFile(fileId: string) { return { file_path: `photos/${fileId}.jpg` }; } } };
+  const extracted: string[] = [];
+  const extractReceipt = async (args: any) => {
+    extracted.push(args.filePath);
+    return { result: { items: [], total: 1000, moneda: "ARS", empresa: "Kiosco" }, sourceType: "photo" } as any;
+  };
+  const album = item("al1", { channel: "telegram", kind: "album", chat_id: 77, text_content: null, file_ids: ["f1", "f2"], mime_types: ["image/jpeg", "image/jpeg"] });
+  const { supabase, queries } = fakeSupabase({ queue: [album] });
+  const result = await runDrainAiQueue({ supabase: supabase as any, genAI: genAIReturning(TWO_ITEMS_JSON), genAI2: null, bot: tgBot as any, botToken: "t", extractReceipt });
+
+  assert.deepEqual(extracted, ["photos/f1.jpg", "photos/f2.jpg"]);
+  assert.equal(result.processed, 1);
+  const final = finalStatus(queries, "al1");
+  assert.equal(final?.status, "processed");
+  assert.equal(final?.result.count, 2);
 });

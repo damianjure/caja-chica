@@ -30,6 +30,8 @@ export interface DrainAiQueueDeps {
   genAI2: GenAILike | null;
   bot: BotLike;
   botToken: string | undefined;
+  /** Receipt extractor for queued photos/PDFs (injectable for tests). */
+  extractReceipt?: typeof extractReceiptWithItems;
 }
 
 export interface DrainResult {
@@ -122,7 +124,7 @@ async function processMediaItem(
   const mimeType = item.mime_types?.[0] ?? "image/jpeg";
   const linked = linkedFromItem(item);
 
-  const { result } = await extractReceiptWithItems({
+  const { result } = await (deps.extractReceipt ?? extractReceiptWithItems)({
     genAI: deps.genAI as any,
     genAI2: deps.genAI2 as any,
     botToken: deps.botToken,
@@ -155,6 +157,37 @@ async function processMediaItem(
     originalText: `[${item.kind}] ${result.empresa ?? "ticket"}`,
   });
   return { ok: !!created?.id, description: result.empresa?.trim() || "ticket" };
+}
+
+/**
+ * A queued album is reprocessed photo by photo through the single-photo path.
+ * Photos already saved are not retried (that would duplicate them): the item
+ * counts as processed when at least one photo was saved.
+ */
+async function processAlbumItem(
+  deps: DrainAiQueueDeps,
+  item: AiQueueItem,
+): Promise<{ ok: boolean; description?: string; tipo?: string; count?: number }> {
+  const fileIds = item.file_ids ?? [];
+  const descriptions: string[] = [];
+  for (let i = 0; i < fileIds.length; i++) {
+    const photo: AiQueueItem = { ...item, kind: "photo", file_ids: [fileIds[i]], mime_types: [item.mime_types?.[i] ?? "image/jpeg"] };
+    try {
+      const outcome = await processMediaItem(deps, photo);
+      if (outcome.ok) descriptions.push(outcome.description || "foto");
+    } catch (err) {
+      if (err instanceof GeminiUnavailableError && descriptions.length === 0) throw err;
+      console.error(`[drainAiQueue] album ${item.id} photo ${i} failed:`, err);
+    }
+  }
+  if (descriptions.length === 0) return { ok: false };
+  const missing = fileIds.length - descriptions.length;
+  return {
+    ok: true,
+    description: descriptions.join(", ").slice(0, 120) + (missing > 0 ? ` (${missing} foto${missing !== 1 ? "s" : ""} sin procesar)` : ""),
+    tipo: "egreso",
+    count: descriptions.length,
+  };
 }
 
 async function processWebTextItem(
@@ -320,10 +353,12 @@ async function drainOnce(deps: DrainAiQueueDeps): Promise<DrainResult> {
         outcome = await processTextItem(deps, item);
       } else if ((item.kind === "photo" || item.kind === "pdf") && item.channel === "telegram") {
         outcome = await processMediaItem(deps, item);
+      } else if (item.kind === "album" && item.channel === "telegram") {
+        outcome = await processAlbumItem(deps, item);
       } else if (item.kind === "web_text" || item.channel === "web") {
         outcome = await processWebTextItem(deps, item);
       } else {
-        // Albums are queued but there is no batch reprocessing for them.
+        // A kind/channel combination with no reprocessing path.
         await markItemFailed(deps.supabase, item.id, "unsupported");
         failed++;
         failedForGood++;

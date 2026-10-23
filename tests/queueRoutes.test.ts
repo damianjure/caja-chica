@@ -9,14 +9,19 @@ const session: AppSession = { userId: "user-1", email: "user@example.com", role:
 type Query = { table: string; op: string; payload: unknown; eq: Record<string, unknown>; in: Record<string, unknown[]>; neq: Record<string, unknown>; is: Record<string, unknown> };
 
 /** Proxy Supabase fake: records each query and resolves canned queue rows. */
-function fakeSupabase(queueRows: unknown[]) {
+function fakeSupabase(queueRows: unknown[], opts: { insertError?: unknown } = {}) {
   const queries: Query[] = [];
   const supabase = {
     from(table: string) {
       const q: Query = { table, op: "select", payload: undefined, eq: {}, in: {}, neq: {}, is: {} };
       queries.push(q);
-      const resolve = () =>
-        table === "pending_ai_queue" && q.op === "select" ? { data: queueRows, error: null } : { data: [], error: null };
+      const resolve = () => {
+        if (table === "pending_ai_queue" && q.op === "select") return { data: queueRows, error: null };
+        if (table === "pending_ai_queue" && q.op === "insert") {
+          return opts.insertError ? { data: null, error: opts.insertError } : { data: { id: "queued-1" }, error: null };
+        }
+        return { data: [], error: null };
+      };
       const builder: any = new Proxy({}, {
         get(_t, prop: string) {
           if (prop === "then") {
@@ -100,4 +105,22 @@ test("POST /api/queue/summary/seen rejects a body without a list of ids", async 
     assert.deepEqual(await res.json(), { error: "ids_required" });
   });
   assert.equal(queries.some((q) => q.table === "pending_ai_queue" && q.op === "update"), false);
+});
+
+test("POST /api/queue/enqueue answers 500 when the message could not be queued (never a fake success)", async () => {
+  const { supabase } = fakeSupabase([], { insertError: { message: "insert failed" } });
+  await withServer(supabase, async (base) => {
+    const res = await fetch(`${base}/api/queue/enqueue`, { method: "POST", headers: H, body: JSON.stringify({ text: "nafta 100" }) });
+    assert.equal(res.status, 500);
+    assert.deepEqual(await res.json(), { error: "enqueue_failed" });
+  });
+});
+
+test("POST /api/queue/enqueue returns the queued id on success", async () => {
+  const { supabase } = fakeSupabase([]);
+  await withServer(supabase, async (base) => {
+    const res = await fetch(`${base}/api/queue/enqueue`, { method: "POST", headers: H, body: JSON.stringify({ text: "nafta 100" }) });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { id: "queued-1" });
+  });
 });

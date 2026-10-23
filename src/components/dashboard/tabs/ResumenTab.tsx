@@ -13,12 +13,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChartCard, HorizontalBarList, WaterfallChart, GroupedBarChart } from '../Charts';
 import { EmptyState, MetricCard, SectionCard } from '../primitives';
 import type { ForecastResult } from '../../../dashboard/forecast';
-import { buildCashflowBridge, getMonthlySummaries, buildMonthlyComparison, buildMonthlyChartData } from '../../../dashboard/summary';
+import { buildCashflowBridge, buildCurrentMonthComparison, buildMonthlyChartData, formatMonthName, formatNumber } from '../../../dashboard/summary';
 import type { Movimiento } from '../../../services/api';
 
 interface ResumenTabProps {
-  arsIngreso: string;
-  arsEgreso: string;
   arsNeto: string;
   usdNeto: string;
   companyCount: number;
@@ -153,10 +151,13 @@ export default function ResumenTab(props: ResumenTabProps) {
     [props.history, chartCurrency, hiddenCompanies, visibleCompanies],
   );
 
+  // The "del mes" cards are ARS like the rest of the KPI row, independent of the chart toggle.
   const comparison = useMemo(
-    () => buildMonthlyComparison(getMonthlySummaries(props.history), chartCurrency),
-    [props.history, chartCurrency],
+    () => buildCurrentMonthComparison(props.history, 'ARS'),
+    [props.history],
   );
+  const monthName = formatMonthName(comparison.period);
+  const emptyMonthSub = comparison.hasCurrentData ? undefined : 'Sin movimientos este mes';
 
   const monthlyChartData = useMemo(
     () => buildMonthlyChartData(props.history, chartCurrency, hiddenCompanies.size ? visibleCompanies : null),
@@ -277,20 +278,22 @@ export default function ResumenTab(props: ResumenTabProps) {
           navLabel="Ver todos los movimientos"
         />
         <MetricCard
-          label="Ingresos del mes"
-          value={props.arsIngreso}
+          label={`Ingresos de ${monthName}`}
+          value={formatNumber(comparison.ingresos.current)}
           tone="success"
           icon={TrendingUp}
           delta={ingDelta}
+          sub={emptyMonthSub}
           onClick={nav('ingresos')}
           navLabel="Ver ingresos en movimientos"
         />
         <MetricCard
-          label="Gastos del mes"
-          value={props.arsEgreso}
+          label={`Gastos de ${monthName}`}
+          value={formatNumber(comparison.gastos.current)}
           tone="danger"
           icon={TrendingDown}
           delta={gasDelta}
+          sub={emptyMonthSub}
           onClick={nav('gastos')}
           navLabel="Ver gastos en movimientos"
         />

@@ -277,6 +277,11 @@ export function getIncomeTagSummaries(history: Movimiento[]) {
 }
 
 export function getMonthlySummaries(history: Movimiento[]) {
+  return [...summarizeByMonth(history).values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
+}
+
+/** Totals per local-time `YYYY-MM` period (only months that have movements). */
+function summarizeByMonth(history: Movimiento[]): Map<string, MonthlySummary> {
   const map = new Map<string, MonthlySummary>();
 
   history.forEach((item) => {
@@ -316,7 +321,7 @@ export function getMonthlySummaries(history: Movimiento[]) {
     map.set(period, summary);
   });
 
-  return [...map.values()].sort((a, b) => b.period.localeCompare(a.period)).slice(0, 6);
+  return map;
 }
 
 export interface MonthlyChartPoint {
@@ -366,6 +371,43 @@ export function buildMonthlyComparison(summaries: MonthlySummary[], currency: 'A
     gastos: row('gastos'),
     utilidad: row('neto'),
   };
+}
+
+export interface CurrentMonthComparison extends MonthlyComparison {
+  /** Current calendar month, `YYYY-MM`. */
+  period: string;
+  /** Previous calendar month, `YYYY-MM`. */
+  prevPeriod: string;
+  /** false when the current month has no movements yet (explicit empty state). */
+  hasCurrentData: boolean;
+}
+
+/**
+ * Compares the current calendar month against the previous calendar month.
+ * Unlike `buildMonthlyComparison(getMonthlySummaries(...))`, it never falls back
+ * to "the latest months that have data": an empty current month is reported as
+ * such, and an empty previous month means there is no delta.
+ */
+export function buildCurrentMonthComparison(history: Movimiento[], currency: 'ARS' | 'USD', now = new Date()): CurrentMonthComparison {
+  const period = getCurrentPeriod(now);
+  const prevPeriod = getCurrentPeriod(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const byMonth = summarizeByMonth(history);
+  const current = byMonth.get(period);
+  const previous = byMonth.get(prevPeriod);
+  const empty: MonthlySummary = { period, ingresosArs: 0, gastosArs: 0, netoArs: 0, ingresosUsd: 0, gastosUsd: 0, netoUsd: 0 };
+  const summaries = previous ? [current ?? empty, previous] : [current ?? empty];
+  return {
+    ...buildMonthlyComparison(summaries, currency),
+    period,
+    prevPeriod,
+    hasCurrentData: !!current,
+  };
+}
+
+/** `YYYY-MM` → Spanish month name ("octubre"). */
+export function formatMonthName(period: string): string {
+  const [year, month] = period.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(new Date(year, month - 1, 1));
 }
 
 export interface BridgeSegment {

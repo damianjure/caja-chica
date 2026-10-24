@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { Check, Trash2 } from "lucide-react";
 import type { ImageItemsExtractionResult, SaveTicketPayload } from "../../services/api";
 import { ModalShell } from "../ui/ModalShell";
+import { ticketSaveBlockReason } from "../../dashboard/ticketSave";
 
 interface ImageTicketModalProps {
   extracted: ImageItemsExtractionResult;
@@ -74,6 +75,8 @@ export function ImageTicketModal({
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
 
   const payableLines = lines.filter((l) => l.included && Number(l.monto) > 0);
+  const anyAmountRead = extracted.total !== null || extracted.items.some((it) => it.monto !== null);
+  const saveBlockReason = ticketSaveBlockReason(lines, { anyAmountRead });
   const total = payableLines.reduce((acc, l) => acc + Math.abs(Number(l.monto)), 0);
 
   const handleSave = () => {
@@ -178,6 +181,12 @@ export function ImageTicketModal({
           Se guarda como un movimiento en <span className="font-medium text-[var(--app-text-2)]">{empresa}</span>. Podés editar cada renglón después en Movimientos.
         </p>
       </div>
+
+      {saveBlockReason && (
+        <p role="status" className="mt-4 rounded-xl border border-[var(--app-amber-border)] bg-[var(--app-amber-surface)] px-4 py-3 text-sm text-[var(--app-amber-text)]">
+          {saveBlockReason}
+        </p>
+      )}
 
       <div className="mt-5 flex justify-end gap-3">
         <button

@@ -9,6 +9,7 @@ import { CuentaSection } from "./configuracion/CuentaSection";
 import { CuentaIdentidadSection } from "./configuracion/CuentaIdentidadSection";
 import { CategoriasSection } from "./configuracion/CategoriasSection";
 import { DriveSection } from "./configuracion/DriveSection";
+import { ExportHistorySection } from "./configuracion/ExportHistorySection";
 import { SectionCard } from "../primitives";
 
 type SectionId = "perfil" | "preferencias" | "equipo" | "categorias" | "integraciones" | "seguridad";
@@ -129,9 +130,14 @@ export default function ConfiguracionTab({
         return <CategoriasSection />;
       case "integraciones":
         return (
-          <SectionCard title="Google Drive" description="Conectá Google Drive para guardar tus informes.">
-            <DriveSection />
-          </SectionCard>
+          <div className="space-y-6">
+            <SectionCard title="Google Drive" description="Conectá Google Drive para guardar tus informes.">
+              <DriveSection />
+            </SectionCard>
+            <SectionCard title="Exportaciones recientes" description="Los últimos informes que se generaron en este dashboard.">
+              <ExportHistorySection />
+            </SectionCard>
+          </div>
         );
       case "seguridad":
         return (

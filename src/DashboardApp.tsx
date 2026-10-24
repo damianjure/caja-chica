@@ -45,6 +45,7 @@ import { useDashboardData } from './hooks/dashboard/useDashboardData';
 import { useMovementsFilter } from './hooks/dashboard/useMovementsFilter';
 import { buildMovimientosCsv, shareOrDownloadCsv } from './dashboard/exportCsv';
 import { buildExportRequest } from './dashboard/reportRequest';
+import { exportPrecheck, exportResultFeedback, EMPTY_EXPORT_MESSAGE } from './dashboard/exportFeedback';
 import { useCompanyAssignment } from './hooks/dashboard/useCompanyAssignment';
 import { useCategoryAssignment } from './hooks/dashboard/useCategoryAssignment';
 import { useComposer } from './hooks/dashboard/useComposer';
@@ -597,15 +598,16 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
 
   const exportBackendReport = async (destination: 'local' | 'drive') => {
     if (exporting) return;
+    const request = buildExportRequest(exportFilters, 'pdf', destination, new Date());
+    const emptyMessage = exportPrecheck(history, request);
+    if (emptyMessage) { showToast(emptyMessage, 'warning'); return; }
     setExporting(true);
     try {
-      const res = await api.exportReport(buildExportRequest(exportFilters, 'pdf', destination, new Date()));
-      if (destination === 'drive') {
-        if (res.driveUrl) { showToast('Informe guardado en Drive.'); window.open(res.driveUrl, '_blank', 'noopener'); }
-        else showToast('No se pudo guardar en Drive.', 'warning');
-      } else if (res.contentBase64) {
-        triggerDownload(res.fileName, res.mimeType, res.contentBase64);
-      }
+      const res = await api.exportReport(request);
+      const feedback = exportResultFeedback(destination, res);
+      if (feedback) showToast(feedback.message, feedback.tone);
+      if (destination === 'drive' && res.driveUrl) window.open(res.driveUrl, '_blank', 'noopener');
+      if (destination === 'local' && res.contentBase64) triggerDownload(res.fileName, res.mimeType, res.contentBase64);
     } catch {
       showToast('No se pudo generar el informe.', 'warning');
     } finally {
@@ -893,7 +895,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
           <div key={activeTab} className={navDir === 'next' ? 'anim-slide-in-right' : 'anim-slide-in-left'}>
               <Suspense fallback={<SectionLoadingState message={`Cargando ${activeTabMeta.label.toLowerCase()}...`} />}>
                 {activeTab === 'resumen' && <ResumenTab arsNeto={formatNumber(arsTotals.neto)} usdNeto={formatNumber(usdTotals.neto)} companyCount={companySummaries.length} history={history} companiesList={companiesList} topExpenseCategories={topExpenseCategories} topCompanies={topCompanies} incomeTags={topIncomeTags} netPositive={arsTotals.neto >= 0} canWriteData={canWriteData} forecast={forecastResult} projectedArsFormatted={formatCurrency(forecastResult.projectedArs, 'ARS')} projectedUsdFormatted={formatCurrency(forecastResult.projectedUsd, 'USD')} insights={dashboardInsights} recurrentesCount={recurrentes.filter((r) => r.is_active && !r.deleted_at).length} onMetricNavigate={(m) => { if (m === 'empresas') { setActiveTab('empresas'); return; } if (m === 'recurrentes') { setActiveTab('recurrentes'); return; } setSelectedCompany('all'); setSelectedCategory('all'); setDatePeriod(m === 'ingresos' || m === 'gastos' ? 'mes' : 'all'); setMovementType(m === 'ingresos' ? 'ingreso' : m === 'gastos' ? 'egreso' : 'all'); setMovementCurrency(m === 'usd' ? 'USD' : 'all'); setActiveTab('movimientos'); }} />}
-                {activeTab === 'movimientos' && <MovimientosTab totalCount={history.length} arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} usdNeto={formatNumber(usdTotals.neto)} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} searchText={searchText} setSearchText={setSearchText} selectedSource={selectedSource} setSelectedSource={setSelectedSource} onOpenSearch={() => setIsPaletteOpen(true)} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory))} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} pendingItems={pendingQueueItems} historyCards={<>
+                {activeTab === 'movimientos' && <MovimientosTab totalCount={history.length} arsIngreso={formatNumber(arsTotals.ingreso)} arsEgreso={formatNumber(arsTotals.egreso)} usdNeto={formatNumber(usdTotals.neto)} companiesList={companiesList} categories={categories} selectedCompany={selectedCompany} setSelectedCompany={setSelectedCompany} movementType={movementType} setMovementType={setMovementType} movementCurrency={movementCurrency} setMovementCurrency={setMovementCurrency} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} datePeriod={datePeriod} setDatePeriod={setDatePeriod} customFrom={customFrom} setCustomFrom={setCustomFrom} customTo={customTo} setCustomTo={setCustomTo} searchText={searchText} setSearchText={setSearchText} selectedSource={selectedSource} setSelectedSource={setSelectedSource} onOpenSearch={() => setIsPaletteOpen(true)} hasActiveFilters={hasActiveFilters} resetFilters={resetFilters} canWriteData={canWriteData} onOpenCarga={() => setIsCargaOpen(true)} onExportCsv={() => { if (filteredHistory.length === 0) { showToast(EMPTY_EXPORT_MESSAGE, 'warning'); return; } void shareOrDownloadCsv('movimientos.csv', buildMovimientosCsv(filteredHistory)); }} onExportPdf={() => void exportBackendReport('local')} onExportDrive={() => void exportBackendReport('drive')} driveConnected={driveConnected} exporting={exporting} onboardingState={viewer.onboarding_state} onDemoDeleted={handleDemoDeleted} pendingItems={pendingQueueItems} historyCards={<>
                   <div className="lg:hidden">
                     <MovementCards filteredHistory={filteredHistory} hasActiveFilters={hasActiveFilters} onResetFilters={resetFilters} onOpenCarga={() => setIsCargaOpen(true)} canWriteData={canWriteData} hasMore={hasMore} loadingMore={loadingMore} copiedId={copiedId} page={movementsPage} onPageChange={setMovementsPage} onEdit={openMovementEditor} onCopy={copyJson} onDelete={deleteItem} onLoadMore={() => void loadData(true)} onLinesChanged={(id, total, hasLines) => patchMovement(id, { monto: total, has_lineas: hasLines })} />
                   </div>

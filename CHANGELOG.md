@@ -7,7 +7,7 @@
 
 ### Cambios 2026-10-23 (estados y errores — rama `fix/estados-y-errores`)
 
-Feature doc: `odd/tasks/estados-y-errores.md`. Requiere aplicar `db/patches/pending_ai_queue_status_phase.sql` antes de mergear.
+Feature doc: `odd/tasks/estados-y-errores.md`. SQL `db/patches/pending_ai_queue_status_phase.sql` aplicado en prod el 2026-10-23 (antes del merge, como pedía el código).
 
 **Fase A — datos y confianza**
 - **Resumen "del mes"**: las tarjetas mostraban el total histórico con etiqueta mensual y el delta comparaba los dos últimos meses con datos. Ahora: mes calendario actual (con nombre) vs mes anterior, vacío explícito, y tocarlas filtra Movimientos al mes (`buildCurrentMonthComparison`).

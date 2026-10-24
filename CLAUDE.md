@@ -331,10 +331,15 @@ Los `member` no ven:
 - acceso/admin
 
 ### Colaboración compartida
-- un `member` puede invitar gente a **su mismo dashboard**
+- invitan al dashboard **solo el `owner`** (más `admin`/`superadmin`) — `canManageDashboardMembers` en `dataScope.ts`; editor/viewer → 403. Todo member tiene dashboard propio (lo crea el onboarding), por eso el 409 `shared_dashboard_unavailable` es raro
 - los invitados comparten la misma data
 - no crean dashboard propio
 - permisos: `viewer` → solo ver / `editor` → ver + cargar datos
+- las rutas de invitación (crear y reenviar) devuelven `email_sent`; si es `false` la UI avisa que hay que compartir el link
+
+### Onboarding (primer `GET /api/me` de un `member` con `onboarding_state = pending`)
+- **cuenta propia** (no entró por invitación): `ensurePersonalDashboard` + datos demo → `seeded`. Si la carga demo falla: se purga lo parcial, alerta al superadmin y `/api/me` devuelve `demo_seed_failed: true` (el wizard ofrece empezar sin datos de ejemplo; se reintenta en el próximo ingreso)
+- **entró por invitación** (`is_dashboard_joiner`): sin demo, queda `pending` y el front muestra `WelcomeJoined`
 
 ### Permisos granulares (editor)
 JSONB en `dashboard_members.permissions`:
@@ -409,6 +414,12 @@ Archivo principal: `src/server/app.ts`
 
 ### Extracción IA
 - `POST /api/extract` — rate limit 30 req/min por usuario, input max 2000 chars
+
+### Cola de IA (cuando Gemini cae)
+- `POST /api/queue/enqueue` — encola texto web (owner/editor; viewer → 403). Si no se pudo guardar → 500 `enqueue_failed` (el texto queda en el input, nunca un falso "en cola")
+- `GET /api/queue/pending` — pendientes web del dashboard
+- `GET /api/queue/summary` + `POST /api/queue/summary/seen` — resultados (guardados / fallidos) **del autor** que todavía no vio; el dashboard los muestra en `QueueSummaryNotice` con "Cargar de nuevo" para los fallidos
+- Drain (`src/server/cronJobs/drainAiQueue.ts`, cada 5 min o "Procesar ahora" en Super Admin; lock en memoria contra corridas paralelas): cada ítem termina `processed` (con `result`) o `failed` con motivo (`processing_failed` tras 3 intentos, `expired` a las 72 h, `forbidden` si el autor ya no puede escribir — re-chequeo con `resolveDashboardRole`, `unsupported`). Nada se borra sin haberse visto (purga: vistos o > 30 días). Telegram: un resumen por chat con guardados y fallidos (texto original). Álbumes se reprocesan foto por foto. Foto sin monto legible → no guarda un movimiento de $0. Fallas definitivas → `alertSuperadmin`. El autor de un ítem de Telegram es `queueAuthorId(linked)` (los miembros de `telegram_links` tienen `ownerUserId = null`)
 - `POST /api/ask` — agente LLM de consultas sobre movimientos + recurrentes. Body `{question, history?}` (question max 500 chars; history max 10 turnos `{role: user|assistant, content}` de 1000 chars c/u — habilita preguntas de seguimiento). Rate limit 30 req/min. Read-only: loop tool-calling JSON (`get_saldos`/`get_top_categorias`/`get_movimientos`/`get_resumen_mensual`/`get_recurrentes`/`calcular`) sobre el scope del caller (`src/server/askAgent.ts`). Los números los calculan las tools en memoria, nunca el LLM (el historial es solo contexto conversacional). Detalles: las tools de filtro aceptan `buscar` (texto libre sobre descripción+categoría+empresa con stemming singular/plural, p/ ítems que viven en la descripción tipo "caramelos") además de `categoria`/`empresa` exactos; `calcular` hace porcentaje/diferencia/ratio/promedio determinístico (el modelo copia los números obtenidos por otra tool, no calcula de cabeza); `get_recurrentes` lista pagos recurrentes activos con próximo pago vía `computeNextRun` (arg `dias` = ventana de vencimiento). El prompt instruye al modelo a reintentar con sinónimos rioplatenses si una búsqueda da 0 (combustible↔nafta…) y a NO revelar sus tools; como `gemini-2.5-flash-lite` a veces ignora esa regla, `redactInternalDetails()` borra determinísticamente cualquier respuesta final que filtre nombres `get_*` y la reemplaza por una descripción de capacidades. UI: `AskChat` — chat flotante (FAB + panel) montado en `DashboardApp`, disponible en todos los tabs; historial en memoria del cliente, se manda como `history`. Telegram (`/preguntar`) sigue single-turn.
 
 ### Movimientos
@@ -482,8 +493,9 @@ Archivo principal: `src/server/app.ts`
 ### Crons (Cloud Scheduler HTTP triggers)
 Auth: header `X-Cron-Secret` con comparación timing-safe (`crypto.timingSafeEqual`). Fail-closed: si `CRON_SECRET` no está seteado, todas las peticiones son rechazadas con 401.
 
-- `POST /api/crons/reminders` — dispara `runDailyReminders`. Retorna `{ ok: true, sent: N }`
-- `POST /api/crons/recurrentes` — dispara `runRecurrentes`. Retorna `{ ok: true, processed: N }`
+- `POST /api/crons/reminders` — dispara `runDailyReminders`. Retorna `{ ok: true, sent: N }` (solo envíos aceptados; fallas → `alertSuperadmin`)
+- `POST /api/crons/recurrentes` — dispara `runRecurrentes`. Retorna `{ ok: true, processed: N, failed: N }`. Genera los movimientos aunque no haya bot; avisa por Telegram al chat del recurrente o, si no tiene, al del owner del dashboard (`resolveTelegramChatIds` en `telegramChats.ts`); fallas → `alertSuperadmin`
+- `POST /api/crons/drain-ai-queue` — dispara `runDrainAiQueue` (ver "Cola de IA")
 - `POST /api/crons/maintenance` — dispara `reconcileTransitions`. Retorna `{ ok: true }`
 - `POST /api/crons/invite-reminders` — dispara `processInviteReminders`. Retorna `{ ok: true, sent: N }`
 
@@ -614,6 +626,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 | `ai_events_phase.sql` | ✔ prod 2026-06-12 (insight de salud IA) |
 | `movement_source_phase.sql` | ✔ prod 2026-06-16 (columna `source` en movimientos: cómo se ingresó cada mov) |
 | `pending_ai_queue.sql` | ✔ prod 2026-06-24 (cola de mensajes/fotos/PDFs cuando Gemini cae; la drena `/api/crons/drain-ai-queue`) |
+| `pending_ai_queue_status_phase.sql` | ⏳ **NO aplicado** — `status`/`processed_at`/`result`/`seen_at` de la cola. **Aplicar ANTES de mergear `fix/estados-y-errores`** (sin él la cola no procesa, aunque no pierde datos) |
 | `dashboard_types_phase.sql` | ⏳ **NO aplicado** — esperando revisar el flujo del switcher personal/pyme |
 | `whatsapp_links_phase.sql` | ⏳ **NO aplicado** — va con la plomería de Meta |
 

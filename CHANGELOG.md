@@ -5,6 +5,26 @@
 
 ---
 
+### Cambios 2026-10-23 (estados y errores — rama `fix/estados-y-errores`)
+
+Feature doc: `odd/tasks/estados-y-errores.md`. Requiere aplicar `db/patches/pending_ai_queue_status_phase.sql` antes de mergear.
+
+**Fase A — datos y confianza**
+- **Resumen "del mes"**: las tarjetas mostraban el total histórico con etiqueta mensual y el delta comparaba los dos últimos meses con datos. Ahora: mes calendario actual (con nombre) vs mes anterior, vacío explícito, y tocarlas filtra Movimientos al mes (`buildCurrentMonthComparison`).
+- **Login rechazado**: se lee el `error_description` que devuelve Supabase cuando el hook rechaza un email no invitado y se muestra en el login (`getLoginErrorFromUrl`).
+- **Invitaciones**: crear/reenviar devuelven `email_sent`; la UI avisa si el email no salió. Falta de `BREVO_API_KEY` queda en el email log.
+- **Cola de IA**: estados `processed`/`failed` con resultado en vez de borrar o descartar en silencio; re-chequeo de permiso del autor; autor real para miembros de `telegram_links`; resumen al usuario en la web (`QueueSummaryNotice`) y en Telegram (incluye los fallidos); álbumes reprocesados; enqueue web nunca reporta un falso "en cola". Verificador independiente: sin blockers.
+
+**Fase B — errores silenciosos**
+- Cron de recurrentes: cuenta y alerta fallas, avisa al owner si el recurrente no tiene chat, genera aunque no haya bot (`resolveTelegramChatIds` compartido con el recordatorio).
+- Recordatorio diario: solo cuenta envíos aceptados; alerta fallas.
+- Datos demo: falla informada (`demo_seed_failed`), purga de lo parcial, wizard ofrece empezar sin datos.
+- Drive: estados de cargando / error (con reintentar) / no disponible.
+- Export: aviso de período vacío y de descarga sin archivo; historial de exportaciones en Configuración → Integraciones.
+- Realtime: banner cuando se corta la actualización en vivo y refetch al reconectar.
+- Ticket por imagen: explica por qué no deja guardar. Foto sin monto legible ya no crea un movimiento de $0 (bot y cola).
+- `ConfirmModal`: un borrado rechazado (403/404/409) muestra el motivo en vez de no hacer nada.
+
 ### Cambios 2026-10-23 (fix AI Queue + fallback Gemini — post auditoría)
 
 - **400 ya no es "key revocada"**: `isGeminiAuthError` solo matchea 401/403 o `API_KEY_INVALID`. Antes un 400 cualquiera (argumento inválido, archivo ilegible) disparaba alerta falsa al superadmin, ensuciaba `ai_events` y cortaba el drain entero en ese ítem (bloqueaba la cola).

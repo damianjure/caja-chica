@@ -82,7 +82,7 @@ Integraciones principales:
   - tabla `telegram_invite_tokens` TTL 30 min
   - `dashboard_members.permissions` JSONB con 3 toggles: `delete_any`, `export_drive`, `invite_telegram`
   - helper `can(member, action)` en `src/server/permissions.ts`
-  - `resolveViaNewLinks()` + fallback a `usuarios` para owners legacy
+  - identidad solo por `telegram_links` activo (`resolveViaNewLinks()`); la tabla legacy `usuarios` ya no se lee (2026-10-23)
   - UI: `PersonasPanel.tsx` con toggles de permisos, invitación Telegram y sección de vínculos
 - **Bot foto/tickets** — ✔ deployado (2026-05-07):
   - fotos: extracción con Gemini Vision (RECEIPT prompt → HANDWRITTEN fallback si confidence < 0.5)
@@ -233,7 +233,7 @@ Runner: Node.js nativo (`node --import tsx --test`), sin Jest/Vitest. Sweeps usa
 │   │   ├── mediaGroupBuffer.ts    ← debounce genérico para álbumes Telegram (1500ms)
 │   │   ├── recurrentes.ts         ← computeNextRun + frecuencias
 │   │   ├── reportExports.ts / reportBotHelpers.ts
-│   │   ├── telegramAccess.ts      ← resolveViaNewLinks() + fallback legacy + can*ViaTelegram
+│   │   ├── telegramAccess.ts      ← resolveViaNewLinks() (solo telegram_links) + can*ViaTelegram
 │   │   ├── telegramAudio.ts / telegramMedia.ts
 │   │   ├── telegramCompanyResolution.ts / telegramCategoryResolution.ts
 │   │   ├── botConnection.ts
@@ -305,13 +305,13 @@ Roles de dashboard:
 - callback `/api/drive/callback` no requiere sesión (redirect desde Google)
 
 ### 6.5 Telegram — modelo multiusuario (Bloque 2)
-- **Owner**: flujo legacy one-shot vía tabla `usuarios` (sin cambios)
+- **Owner**: self-link — `POST /api/telegram/self-link` (o `POST /api/bot/connection/link-token`, que emite el mismo código) genera un `telegram_invite_tokens` pre-autorizado; `/start <token>` crea su `telegram_links` activo. El flujo legacy por `usuarios` está **retirado** (2026-10-23)
 - **Editor/Viewer**: flujo doble-factor:
   1. Owner genera token de invitación dirigido (`telegram_invite_tokens`, TTL 30 min)
   2. Usuario abre deep link con token
   3. Bot crea `telegram_links` con status `pending_owner_confirm`
   4. Owner confirma desde dashboard → status `active`
-- **Resolución de identidad**: `resolveViaNewLinks()` busca en `telegram_links` primero, fallback a `usuarios` para owners
+- **Resolución de identidad**: solo `telegram_links` activo + membresía activa (`resolveViaNewLinks()`). Sin fallback: revocar un vínculo (`DELETE /api/telegram/links/:id`) siempre quita el acceso. `GET /api/bot/connection`, los crons (`resolveTelegramChatIds`) y la lista del equipo leen la misma tabla
 - **Permisos**: `requireTelegramCan(ctx, action)` reemplaza el antiguo `requireTelegramEditor`
 - **Anti-pivot**: pivot guard previene que un Telegram ya vinculado acepte otro invite
 
@@ -457,7 +457,7 @@ Archivo principal: `src/server/app.ts`
 
 ### Bot / vínculo Telegram
 - `GET /api/bot/connection`
-- `POST /api/bot/connection/link-token`
+- `POST /api/bot/connection/link-token` — emite el mismo código pre-autorizado que `/api/telegram/self-link` (requiere dashboard y permiso de escritura)
 
 ### Telegram multiusuario (nuevo)
 - `GET /api/telegram/links` — lista vínculos del dashboard
@@ -512,7 +512,7 @@ Auth: header `X-Cron-Secret` con comparación timing-safe (`crypto.timingSafeEqu
 Runtime: `src/bot/` (modularizado — `server.ts` solo construye `BotDeps` y llama `registerBotHandlers`). Entrada: `src/bot/index.ts`; el catch-all `message:text` vive en `src/bot/commands/movements-callbacks.ts` y se registra ÚLTIMO.
 
 ### Capacidades principales
-- `/start` — vinculación con token (owner: one-shot; editor/viewer: doble-factor)
+- `/start` — vinculación con token de `telegram_invite_tokens` (self-link pre-autorizado para el propio usuario; invitación con doble factor para editor/viewer). Otros códigos → "inválido o venció"
 - `/menu`
 - `/informes` / `/exportar` → flujo guiado período/formato/destino
 - `/empresas` — filtra `deleted_at` correctamente
@@ -729,7 +729,7 @@ Cloud Run cold start 2-5s. Cloud Scheduler tiene timeout de 30s — margen segur
 10. año en informes = rango `YYYY-01-01 / YYYY-12-31` (no type nativo)
 11. presupuesto: UI oculta con `{false && ...}`, datos y API intactos
 12. **no existe fallback legacy en `getScopeEntityById`** — eliminado 2026-05-03
-13. Telegram multiusuario: flujo doble-factor para editor/viewer; owner mantiene flujo legacy
+13. Telegram multiusuario: un solo modelo (`telegram_links`) para owner, editor y viewer; doble factor para invitados, self-link pre-autorizado para el propio usuario. La tabla `usuarios` quedó sin uso (no se borró)
 14. Maps en memoria (sessions, OAuth state): sweep periódico cada 5 min con `unrefInterval`. Rate limiting en módulo propio `src/server/rateLimit.ts` con mismo patrón.
 15. INSERT Telegram invite sin upsert — partial index de PostgREST es unreliable para onConflict
 16. foto → dos prompts en cascada: RECEIPT primero, HANDWRITTEN si confidence < 0.5 — no se pide al usuario que reenvíe

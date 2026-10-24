@@ -40,9 +40,9 @@ type EnqueueInput = Omit<
 >;
 
 /**
- * Author to store on a Telegram queue item. Members linked through
- * `telegram_links` have `ownerUserId = null` and their id in `userId`; legacy
- * owners (`usuarios`) have it in `ownerUserId`.
+ * Author to store on a Telegram queue item. Identities from `telegram_links`
+ * have `ownerUserId = null` and the user id in `userId`; `ownerUserId` is only
+ * a fallback for a record built without one.
  */
 export function queueAuthorId(linked: { userId: string | null; ownerUserId: string | null }): string | null {
   return linked.userId ?? linked.ownerUserId ?? null;

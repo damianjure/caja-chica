@@ -25,6 +25,10 @@ Feature doc: `odd/tasks/estados-y-errores.md`. Requiere aplicar `db/patches/pend
 - Ticket por imagen: explica por qué no deja guardar. Foto sin monto legible ya no crea un movimiento de $0 (bot y cola).
 - `ConfirmModal`: un borrado rechazado (403/404/409) muestra el motivo en vez de no hacer nada.
 
+**Fase C — identidad de Telegram**
+- Flujo legacy retirado: el bot reconoce un chat solo por un `telegram_links` activo (antes caía a `usuarios.chat_id`, así que revocar el vínculo de un owner no le quitaba el acceso). `link-token` emite el mismo código pre-autorizado que el self-link; estado de conexión web, crons y lista del equipo leen `telegram_links`. Sin migración de datos: todos los owners vinculados ya tenían su fila activa.
+- Aviso de mantenimiento por Telegram: consultaba columnas inexistentes (`telegram_chat_id`, `user_id`) y nunca llegaba; ahora usa `telegram_user_id`/`app_user_id`.
+
 ### Cambios 2026-10-23 (fix AI Queue + fallback Gemini — post auditoría)
 
 - **400 ya no es "key revocada"**: `isGeminiAuthError` solo matchea 401/403 o `API_KEY_INVALID`. Antes un 400 cualquiera (argumento inválido, archivo ilegible) disparaba alerta falsa al superadmin, ensuciaba `ai_events` y cortaba el drain entero en ese ítem (bloqueaba la cola).

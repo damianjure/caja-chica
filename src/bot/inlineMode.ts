@@ -312,9 +312,8 @@ export function shouldSaveInlineMovement(
   if (!linked) return false;
   if (maintenanceActive) return false;
 
-  // Legacy owners (pre-dashboard migration) have no dashboard_members row, so
-  // resolveRoleIfNeeded returns role=null while ownerUserId is set. Treat that as
-  // "owner" (they own their data) — otherwise a legitimate owner is silently blocked.
+  // Identities come from telegram_links, which always carry a dashboard role.
+  // The ownerUserId branch is a defensive default for a record without role.
   const effectiveRole = linked.role ?? (linked.ownerUserId ? "owner" : "viewer");
   const memberCtx = {
     role: effectiveRole,
@@ -367,9 +366,8 @@ export function registerInlineModeHandlers(bot: Bot, deps: BotDeps): void {
     const decoded = decodeResultId(resultId);
     if (!decoded) return; // unlinked prompt or unknown id — no save
 
-    // Re-resolve user identity (stateless). inline `from.id` is the Telegram USER id;
-    // in private chats it equals the chat_id the legacy `usuarios` table stores, and
-    // resolveViaNewLinks keys on telegram_user_id — so both link paths resolve correctly.
+    // Re-resolve user identity (stateless). inline `from.id` is the Telegram USER id,
+    // which is what telegram_links.telegram_user_id stores.
     const linked = await resolveTelegramIdentityByChatId(supabase, telegramUserId).catch(() => null);
 
     // Re-check gates (permission + maintenance) on the SAVE path — not inherited from inline_query.

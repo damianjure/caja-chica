@@ -326,3 +326,14 @@ test("drain — a queued album is reprocessed photo by photo", async () => {
   assert.equal(final?.status, "processed");
   assert.equal(final?.result.count, 2);
 });
+
+test("drain — a queued photo with no readable amount saves nothing (no $0 movement) and counts a retry", async () => {
+  const tgBot = { api: { async getFile() { return { file_path: "photos/x.jpg" }; }, async sendMessage() { return {}; } } };
+  const extractReceipt = async () => ({ result: { items: [], total: null, moneda: "ARS", empresa: null }, sourceType: "photo" }) as any;
+  const photo = item("ph1", { channel: "telegram", kind: "photo", chat_id: 77, text_content: null, file_ids: ["f1"], mime_types: ["image/jpeg"] });
+  const { supabase, queries } = fakeSupabase({ queue: [photo] });
+  await runDrainAiQueue({ supabase: supabase as any, genAI: genAIReturning(TWO_ITEMS_JSON), genAI2: null, bot: tgBot as any, botToken: "t", extractReceipt });
+
+  assert.equal(queries.some((q) => q.table === "movimientos" && q.op === "insert"), false);
+  assert.deepEqual(queueUpdates(queries, "ph1"), [{ retry_count: 1 }]);
+});

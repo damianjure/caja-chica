@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { confirmErrorMessage } from "../../dashboard/confirmError";
 
 export interface ConfirmModalPreview {
   title: string;
@@ -46,6 +47,7 @@ export function ConfirmModal({
   const [confirmInput, setConfirmInput] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCancelRef = useRef(onCancel);
@@ -100,8 +102,12 @@ export function ConfirmModal({
   const handleConfirm = async () => {
     if (!canConfirm) return;
     setSubmitting(true);
+    setActionError(null);
     try {
       await onConfirm(askReason ? reason.trim() || undefined : undefined);
+    } catch (err) {
+      // A failed action (no permission, already deleted…) must never be silent.
+      setActionError(confirmErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -203,6 +209,12 @@ export function ConfirmModal({
               className="w-full rounded-md border border-[var(--app-border-strong)] px-3.5 py-2.5 text-sm text-[var(--app-text-1)] outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent"
             />
           </div>
+        )}
+
+        {actionError && (
+          <p role="alert" className="mb-4 rounded-md border border-[var(--app-red-border)] bg-[var(--app-red-surface)] px-3 py-2 text-[13px] text-[var(--chart-expense)]">
+            {actionError}
+          </p>
         )}
 
         {/* Buttons */}

@@ -27,6 +27,7 @@ import { getTopEmpresasForDashboard, resolveTelegramCompany } from "../server/te
 import { getTopCategoriasForDashboard } from "../server/telegramCategoryResolution.ts";
 import { GeminiUnavailableError } from "../server/geminiWithFallback.ts";
 import { enqueueAiItem, queueAuthorId } from "../server/aiQueue.ts";
+import { hasReadableAmount } from "../server/receiptAmounts.ts";
 import { buildUndoKeyboard } from "./quickActions.ts";
 import { persistTelegramTicket, persistTelegramMovement, recomputeTelegramTicketTotal } from "./commands/movements.ts";
 import { setPendingLineMontoEdit } from "./lineMontoEdit.ts";
@@ -157,6 +158,13 @@ async function showReceiptReview(
   processingMsgId: number,
 ) {
   try { await ctx.api.deleteMessage(ctx.chat.id, processingMsgId); } catch (e) {}
+
+  if (!hasReadableAmount(result)) {
+    await ctx.reply(
+      "❌ No pude leer ningún monto en la imagen. Mandame el gasto por texto (ej: \"pagué 4500 en el kiosco\") o probá con una foto más nítida.",
+    );
+    return;
+  }
 
   const payable = result.items.filter((it) => it.monto !== null);
   if (payable.length >= 1) {

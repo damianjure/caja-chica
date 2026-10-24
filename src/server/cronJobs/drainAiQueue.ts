@@ -9,6 +9,7 @@ import {
   type AiQueueItem,
 } from "../aiQueue.ts";
 import { alertSuperadmin } from "../alertSuperadmin.ts";
+import { hasReadableAmount } from "../receiptAmounts.ts";
 import { SYSTEM_PROMPT, parseGeminiJsonResponse } from "../gemini.ts";
 import { geminiGenerateText, GeminiUnavailableError } from "../geminiWithFallback.ts";
 import { applyTelegramDataScope, resolveDashboardRole } from "../telegramAccess.ts";
@@ -131,6 +132,9 @@ async function processMediaItem(
     filePath: tgFile.file_path,
     mimeType,
   });
+
+  // Nothing readable: do not save a $0 movement; the retry/failed path tells the user.
+  if (!hasReadableAmount(result)) return { ok: false };
 
   const payable = result.items.filter((it) => it.monto !== null);
   if (payable.length >= 1) {

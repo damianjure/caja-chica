@@ -270,7 +270,7 @@ test("runRecurrentes: without chat_id, the dashboard owner's Telegram chat is no
 });
 
 test("runRecurrentes: legacy recurrente without chat_id notifies its owner's chat", async () => {
-  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null }], usuarios: [{ user_id: "user-1", chat_id: 777 }] });
+  const supabase = makeSupabase({ recurrentes: [{ ...BASE_REC, last_processed: null }], links: [{ app_user_id: "user-1", telegram_user_id: 777 }] });
   const bot = makeBot();
   await runRecurrentes({ supabase: supabase as any, bot: bot as any });
   assert.deepStrictEqual(bot.calls.map((c) => c.chatId), [777]);

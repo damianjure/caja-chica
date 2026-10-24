@@ -106,9 +106,9 @@ export async function notifyMaintenance(
   // Fetch Telegram recipients: active linked users
   const { data: telegramLinks } = await (supabase as any)
     .from("telegram_links")
-    .select("telegram_chat_id, user_id")
+    .select("telegram_user_id, app_user_id")
     .eq("status", "active")
-    .limit(500) as { data: Array<{ telegram_chat_id: string; user_id: string }> | null };
+    .limit(500) as { data: Array<{ telegram_user_id: number | string; app_user_id: string }> | null };
   warnIfListCapped(telegramLinks, "maintenanceNotify telegram recipients");
 
   const emailTasks = (emailUsers ?? []).map((u) =>
@@ -120,9 +120,9 @@ export async function notifyMaintenance(
   const telegramTasks = bot
     ? (telegramLinks ?? []).map((link) =>
         bot.api
-          .sendMessage(link.telegram_chat_id, text, { parse_mode: "Markdown" })
+          .sendMessage(link.telegram_user_id, text, { parse_mode: "Markdown" })
           .catch((err: unknown) => {
-            console.error(`[maintenanceNotify] Telegram failed for chat_id=${link.telegram_chat_id}:`, err);
+            console.error(`[maintenanceNotify] Telegram failed for chat_id=${link.telegram_user_id}:`, err);
           }),
       )
     : [];

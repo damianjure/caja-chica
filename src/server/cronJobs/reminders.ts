@@ -52,7 +52,7 @@ export async function runDailyReminders({
     .filter(Boolean) as string[];
 
   const chatByUserId = bot
-    ? await resolveTelegramChatIds(supabase, telegramUserIds, { remindersOnly: true })
+    ? await resolveTelegramChatIds(supabase, telegramUserIds)
     : new Map<string, string | number>();
 
   let sent = 0;

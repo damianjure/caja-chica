@@ -3,7 +3,6 @@ import type { BotDeps } from "./deps.ts";
 import { buildMainKeyboard, buildGestionarKeyboard } from "./keyboards.ts";
 import {
   hasTelegramAccess,
-  resolveTelegramIdentityByToken,
   resolveDashboardRole,
   type TelegramDashboardRole,
 } from "../server/telegramAccess.ts";
@@ -178,40 +177,10 @@ export function registerMenuHandlers(bot: Bot, deps: BotDeps) {
       const handledAsInvite = await handleTelegramInviteToken(supabase, ctx, bot, token);
       if (handledAsInvite) return;
 
-      let target;
-      try {
-        target = await resolveTelegramIdentityByToken(supabase, token);
-      } catch (tokenError) {
-        console.error(tokenError);
-        return ctx.reply("❌ No pude validar el código de conexión.");
-      }
-
-      const isValid =
-        hasTelegramAccess(target) &&
-        target.linkTokenExpiresAt !== null &&
-        new Date(target.linkTokenExpiresAt).getTime() > Date.now();
-
-      if (!isValid) {
-        return ctx.reply(
-          "⚠️ Ese código de vínculo es inválido o venció. Generá uno nuevo desde el dashboard.",
-        );
-      }
-
-      await supabase
-        .from("usuarios")
-        .update({
-          chat_id: ctx.chat.id,
-          username: ctx.from?.username || ctx.from?.first_name || "Usuario",
-          linked_at: new Date().toISOString(),
-          link_token: null,
-          link_token_expires_at: null,
-        })
-        .eq("id", target.id as string);
-
-      setScopedCommands(bot, ctx.chat.id, "owner").catch(() => {});
+      // Every link code is a telegram_invite_tokens token (self-link or invite);
+      // the legacy usuarios link codes are retired.
       return ctx.reply(
-        "✅ Chat sumado. A partir de ahora opera sobre tus datos.",
-        { reply_markup: mainKeyboard },
+        "⚠️ Ese código de vínculo es inválido o venció. Generá uno nuevo desde el dashboard.",
       );
     }
 

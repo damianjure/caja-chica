@@ -236,6 +236,11 @@ function createSupabaseStub(
             filteredRows = filteredRows.filter((row: any) => row[column] === value);
             return updateBuilder;
           },
+          neq(column: string, value: string) {
+            callLog.push({ table, type: "neq", args: [column, value] });
+            filteredRows = filteredRows.filter((row: any) => row[column] !== value);
+            return updateBuilder;
+          },
           select(_cols?: string) {
             return updateBuilder;
           },
@@ -600,6 +605,9 @@ test("admin puede crear invitaciones", async () => {
 test("genera token de vínculo para Telegram", async () => {
   await withServer(
     {
+      supabase: createSupabaseStub({
+        dashboardMembers: [{ user_id: "user-1", dashboard_id: "dashboard-1", role: "owner", status: "active" }],
+      }).client as AppDeps["supabase"],
       resolveSession: async () => memberSession,
       telegramBotUsername: "cajachica_bot",
     },
@@ -657,11 +665,14 @@ test("genera token de vínculo para Telegram en dashboard compartido sin depende
     assert.equal(res.status, 201);
     const body = await res.json();
     assert.equal(body.telegramDeepLink?.startsWith("https://t.me/cajachica_bot?start="), true);
-    const insertCall = supabase.callLog.find((entry) => entry.table === "usuarios" && entry.type === "insert");
-    const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : undefined;
-    assert.equal(payload?.user_id, "user-1");
-    assert.equal(payload?.owner_user_id, "user-1");
+    // Single Telegram model: the legacy usuarios table is never written.
+    assert.equal(supabase.callLog.some((entry) => entry.table === "usuarios" && (entry.type === "insert" || entry.type === "update" || entry.type === "upsert")), false);
+    const insertCall = supabase.callLog.find((entry) => entry.table === "telegram_invite_tokens" && entry.type === "insert");
+    const payload = Array.isArray(insertCall?.args[0]) ? (insertCall?.args[0] as any[])[0] : (insertCall?.args[0] as any);
+    assert.equal(payload?.target_user_id, "user-1");
     assert.equal(payload?.dashboard_id, "dashboard-1");
+    assert.equal(payload?.pre_authorized, true);
+    assert.equal(body.manualStartCode, `/start ${payload?.token}`);
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((err) => (err ? reject(err) : resolve())),
@@ -2238,7 +2249,7 @@ test("owner recibe 404 al invitar por Telegram a usuario que no pertenece al das
   }
 });
 
-test("lista links de Telegram del dashboard incluyendo owner legacy", async () => {
+test("lista links de Telegram del dashboard sin filas legacy de usuarios", async () => {
   const supabase = createSupabaseStub({
     dashboardMembers: [
       { id: "dm-owner", user_id: "owner-1", dashboard_id: "dashboard-1", role: "owner", status: "active" },
@@ -2276,11 +2287,8 @@ test("lista links de Telegram del dashboard incluyendo owner legacy", async () =
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(Array.isArray(body.links), true);
-    assert.equal(body.links.length, 3);
-    const legacyOwnerLink = body.links.find((link: any) => link.app_user_id === "owner-1");
-    assert.equal(legacyOwnerLink.status, "active");
-    assert.equal(legacyOwnerLink.legacy, true);
-    assert.equal(legacyOwnerLink.telegram_username, "damianjure");
+    assert.equal(body.links.length, 2);
+    assert.equal(body.links.some((link: any) => link.legacy === true || link.app_user_id === "owner-1"), false);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
@@ -2869,4 +2877,36 @@ test("POST /api/queue/enqueue — editor queues the text in its dashboard", asyn
   assert.equal(payload.dashboard_id, "dashboard-1");
   assert.equal(payload.text_content, "nafta 100");
   assert.equal(payload.channel, "web");
+});
+
+test("GET /api/bot/connection reports the active telegram_links row of the caller", async () => {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [{ user_id: "user-1", dashboard_id: "dashboard-1", role: "owner", status: "active" }],
+    telegramLinks: [
+      { id: "tl-old", dashboard_id: "dashboard-1", telegram_user_id: 1, telegram_username: "old", app_user_id: "user-1", status: "revoked", linked_at: "2026-01-01T00:00:00.000Z" },
+      { id: "tl-1", dashboard_id: "dashboard-1", telegram_user_id: 777, telegram_username: "owner_tg", app_user_id: "user-1", status: "active", linked_at: "2026-05-01T00:00:00.000Z" },
+    ],
+  });
+  await withServer({ supabase: supabase.client as AppDeps["supabase"], resolveSession: async () => memberSession }, async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/bot/connection`, { headers: { Authorization: "Bearer valid-token" } });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.connected, true);
+    assert.equal(body.chatId, 777);
+    assert.equal(body.telegramUsername, "owner_tg");
+    assert.equal(body.linkedAt, "2026-05-01T00:00:00.000Z");
+  });
+  assert.equal(supabase.callLog.some((entry) => entry.table === "usuarios"), false);
+});
+
+test("GET /api/bot/connection: no active link → not connected", async () => {
+  const supabase = createSupabaseStub({
+    dashboardMembers: [{ user_id: "user-1", dashboard_id: "dashboard-1", role: "owner", status: "active" }],
+    telegramLinks: [{ id: "tl-old", dashboard_id: "dashboard-1", telegram_user_id: 1, app_user_id: "user-1", status: "revoked" }],
+  });
+  await withServer({ supabase: supabase.client as AppDeps["supabase"], resolveSession: async () => memberSession }, async (baseUrl) => {
+    const body = await (await fetch(`${baseUrl}/api/bot/connection`, { headers: { Authorization: "Bearer valid-token" } })).json();
+    assert.equal(body.connected, false);
+    assert.equal(body.chatId, null);
+  });
 });

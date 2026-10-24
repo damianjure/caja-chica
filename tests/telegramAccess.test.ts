@@ -9,136 +9,7 @@ import {
   canEditMovementViaTelegram,
   hasTelegramAccess,
   resolveTelegramIdentityByChatId,
-  resolveTelegramIdentityByToken,
 } from "../src/server/telegramAccess.ts";
-
-function createSupabaseStub(seed: {
-  usuarios?: unknown[];
-  dashboardMembers?: unknown[];
-}) {
-  const callLog: Array<{ table: string; type: string; args: unknown[] }> = [];
-
-  const builder = (table: string) => {
-    let rows = [...(table === "usuarios" ? seed.usuarios ?? [] : seed.dashboardMembers ?? [])];
-
-    const api = {
-      select(...args: unknown[]) {
-        callLog.push({ table, type: "select", args });
-        return api;
-      },
-      eq(column: string, value: string | number) {
-        callLog.push({ table, type: "eq", args: [column, value] });
-        rows = rows.filter((row: any) => row[column] === value);
-        return api;
-      },
-      gt(column: string, value: string | number) {
-        callLog.push({ table, type: "gt", args: [column, value] });
-        rows = rows.filter((row: any) => row[column] > value);
-        return api;
-      },
-      limit(limit: number) {
-        callLog.push({ table, type: "limit", args: [limit] });
-        rows = rows.slice(0, limit);
-        return Promise.resolve({ data: rows, error: null });
-      },
-    };
-
-    return api;
-  };
-
-  return {
-    client: {
-      from(table: string) {
-        return builder(table);
-      },
-    },
-    callLog,
-  };
-}
-
-test("resuelve identidad de Telegram por chat hacia user_id/dashboard_id cuando existe membresía", async () => {
-  const supabase = createSupabaseStub({
-    usuarios: [
-      {
-        id: "link-1",
-        user_id: "editor-1",
-        dashboard_id: "dashboard-1",
-        owner_user_id: "legacy-owner",
-        chat_id: 123,
-        username: "editor",
-        reminders_enabled: true,
-        link_token_expires_at: null,
-      },
-    ],
-    dashboardMembers: [
-      {
-        user_id: "editor-1",
-        dashboard_id: "dashboard-1",
-        role: "editor",
-        status: "active",
-      },
-    ],
-  });
-
-  const linked = await resolveTelegramIdentityByChatId(supabase.client, 123);
-
-  assert.deepEqual(linked, {
-    id: "link-1",
-    userId: "editor-1",
-    dashboardId: "dashboard-1",
-    ownerUserId: "legacy-owner",
-    role: "editor",
-    permissions: {},
-    username: "editor",
-    remindersEnabled: true,
-    linkTokenExpiresAt: null,
-  });
-  assert.equal(hasTelegramAccess(linked), true);
-  assert.equal(canEditViaTelegram(linked), true);
-});
-
-test("cae al modelo legacy owner_user_id cuando no existe dashboard_id", async () => {
-  const supabase = createSupabaseStub({
-    usuarios: [
-      {
-        id: "link-legacy",
-        link_token: "legacy-token",
-        owner_user_id: "user-1",
-        chat_id: 999,
-        username: "legacy",
-        reminders_enabled: true,
-        link_token_expires_at: "2099-01-01T00:00:00.000Z",
-      },
-    ],
-  });
-
-  const linked = await resolveTelegramIdentityByToken(supabase.client, "legacy-token");
-  assert.deepEqual(linked, {
-    id: "link-legacy",
-    userId: null,
-    dashboardId: null,
-    ownerUserId: "user-1",
-    role: null,
-    permissions: {},
-    username: "legacy",
-    remindersEnabled: true,
-    linkTokenExpiresAt: "2099-01-01T00:00:00.000Z",
-  });
-
-  const byChat = await resolveTelegramIdentityByChatId(supabase.client, 999);
-  assert.deepEqual(byChat, {
-    id: "link-legacy",
-    userId: null,
-    dashboardId: null,
-    ownerUserId: "user-1",
-    role: null,
-    permissions: {},
-    username: "legacy",
-    remindersEnabled: true,
-    linkTokenExpiresAt: "2099-01-01T00:00:00.000Z",
-  });
-  assert.equal(canEditViaTelegram(byChat), true);
-});
 
 test("viewer puede leer por Telegram pero no editar", () => {
   const linked = {
@@ -170,43 +41,6 @@ test("viewer puede leer por Telegram pero no editar", () => {
   };
 
   applyTelegramDataScope(query, linked);
-  assert.deepEqual(eqCalls, [["dashboard_id", "dashboard-1"]]);
-});
-
-test("Telegram prioriza dashboard_id sobre owner_user_id legacy cuando ambos existen", async () => {
-  const supabase = createSupabaseStub({
-    usuarios: [
-      {
-        id: "link-1",
-        user_id: "editor-1",
-        dashboard_id: "dashboard-1",
-        owner_user_id: "legacy-owner",
-        chat_id: 555,
-        username: "editor",
-        reminders_enabled: true,
-        link_token_expires_at: null,
-      },
-    ],
-    dashboardMembers: [
-      {
-        user_id: "editor-1",
-        dashboard_id: "dashboard-1",
-        role: "editor",
-        status: "active",
-      },
-    ],
-  });
-
-  const linked = await resolveTelegramIdentityByChatId(supabase.client, 555);
-  const eqCalls: Array<[string, string]> = [];
-  const query = {
-    eq(column: string, value: string) {
-      eqCalls.push([column, value]);
-      return query;
-    },
-  };
-
-  applyTelegramDataScope(query, linked!);
   assert.deepEqual(eqCalls, [["dashboard_id", "dashboard-1"]]);
 });
 
@@ -295,14 +129,42 @@ test("resolver rechaza vínculo pending_owner_confirm — no da acceso", async (
   assert.equal(linked, null, "pending no debe dar acceso");
 });
 
-test("resolver cae a usuarios legacy cuando no hay telegram_link activo", async () => {
+test("resolver: el owner se resuelve por telegram_links con rol owner", async () => {
+  const supabase = createMultiuserSupabaseStub({
+    telegramLinks: [{
+      id: "tl-owner",
+      telegram_user_id: 444,
+      telegram_username: "owner_user",
+      dashboard_id: "dash-1",
+      app_user_id: "owner-1",
+      status: "active",
+      linked_at: "2026-01-01T00:00:00.000Z",
+    }],
+    dashboardMembers: [{ user_id: "owner-1", dashboard_id: "dash-1", role: "owner", status: "active", permissions: {} }],
+  });
+
+  const linked = await resolveTelegramIdentityByChatId(supabase.client, 444);
+  assert.ok(linked);
+  assert.equal(linked!.userId, "owner-1");
+  assert.equal(linked!.dashboardId, "dash-1");
+  assert.equal(linked!.role, "owner");
+  assert.equal(hasTelegramAccess(linked), true);
+  assert.equal(canEditViaTelegram(linked), true);
+
+  const eqCalls: Array<[string, string]> = [];
+  const query = { eq(column: string, value: string) { eqCalls.push([column, value]); return query; } };
+  applyTelegramDataScope(query, linked!);
+  assert.deepEqual(eqCalls, [["dashboard_id", "dash-1"]]);
+});
+
+test("resolver: un chat que solo existe en la tabla legacy usuarios ya no tiene acceso", async () => {
   const supabase = createMultiuserSupabaseStub({
     telegramLinks: [],
-    dashboardMembers: [],
+    dashboardMembers: [{ user_id: "owner-legacy", dashboard_id: "dash-1", role: "owner", status: "active" }],
     usuarios: [{
       id: "u-legacy",
-      user_id: null,
-      dashboard_id: null,
+      user_id: "owner-legacy",
+      dashboard_id: "dash-1",
       owner_user_id: "owner-legacy",
       chat_id: 333,
       username: "legacy_owner",
@@ -312,9 +174,17 @@ test("resolver cae a usuarios legacy cuando no hay telegram_link activo", async 
   });
 
   const linked = await resolveTelegramIdentityByChatId(supabase.client, 333);
-  assert.ok(linked, "debe resolver via legacy");
-  assert.equal(linked!.ownerUserId, "owner-legacy");
-  assert.equal(linked!.userId, null);
+  assert.equal(linked, null, "el flujo legacy está retirado: sin telegram_links activo no hay acceso");
+});
+
+test("resolver: revocar el vínculo del owner le quita el acceso aunque siga en usuarios", async () => {
+  const supabase = createMultiuserSupabaseStub({
+    telegramLinks: [{ id: "tl-owner", telegram_user_id: 555, dashboard_id: "dash-1", app_user_id: "owner-1", status: "revoked" }],
+    dashboardMembers: [{ user_id: "owner-1", dashboard_id: "dash-1", role: "owner", status: "active" }],
+    usuarios: [{ id: "u-1", user_id: "owner-1", dashboard_id: "dash-1", owner_user_id: "owner-1", chat_id: 555 }],
+  });
+
+  assert.equal(await resolveTelegramIdentityByChatId(supabase.client, 555), null);
 });
 
 test("viewer no puede editar — hasTelegramAccess true, canEditViaTelegram false", async () => {

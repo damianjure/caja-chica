@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import express, { type RequestHandler } from "express";
 import type { AppSession, DataAccessScope, SupabaseLike } from "../contracts.ts";
+import type { ActiveTelegramLink } from "../botConnection.ts";
 import { buildWelcomeMessage, fetchUserDashboards } from "../../bot/welcome.ts";
 
 export interface TelegramDeps {
@@ -9,8 +10,8 @@ export interface TelegramDeps {
   getSession: (req: express.Request) => AppSession;
   resolveDataAccessScope: (session: AppSession) => Promise<DataAccessScope>;
   canWriteToScope: (scope: DataAccessScope) => boolean;
-  getBotConnectionRecord: (session: AppSession, scope: DataAccessScope) => Promise<any>;
-  upsertBotConnectionRecord: (session: AppSession, scope: DataAccessScope, token: string, tokenExpiresAt: string) => Promise<any>;
+  getActiveTelegramLink: (session: AppSession, scope: DataAccessScope) => Promise<ActiveTelegramLink | null>;
+  issueSelfLinkToken: (session: AppSession, dashboardId: string, token: string) => Promise<{ token: string; expiresAt: string }>;
   buildTelegramDeepLink: (token: string | null) => string | null;
   randomBytes: (size: number) => { toString(encoding: string): string };
   webhookPath?: string;
@@ -27,8 +28,8 @@ export function createTelegramRouter(deps: TelegramDeps) {
     getSession,
     resolveDataAccessScope,
     canWriteToScope,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
+    getActiveTelegramLink,
+    issueSelfLinkToken,
     buildTelegramDeepLink,
     randomBytes,
     webhookPath,
@@ -38,22 +39,23 @@ export function createTelegramRouter(deps: TelegramDeps) {
   } = deps;
 
 
+  // Telegram connection state of the caller, from the single Telegram model
+  // (telegram_links). Pending link codes are issued by /link-token or /self-link.
   router.get("/api/bot/connection", requireSession, async (req, res) => {
     try {
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      const connection = await getBotConnectionRecord(session, scope);
-      const token = connection?.link_token ?? null;
+      const link = await getActiveTelegramLink(session, scope);
       res.json({
-        connected: Boolean(connection?.chat_id),
-        chatId: connection?.chat_id ?? null,
-        telegramUsername: connection?.username ?? null,
-        linkedAt: connection?.linked_at ?? null,
-        remindersEnabled: connection?.reminders_enabled ?? true,
-        pendingToken: token,
-        pendingTokenExpiresAt: connection?.link_token_expires_at ?? null,
-        telegramDeepLink: buildTelegramDeepLink(token),
-        manualStartCode: token ? `/start ${token}` : null,
+        connected: Boolean(link),
+        chatId: link?.telegram_user_id ?? null,
+        telegramUsername: link?.telegram_username ?? null,
+        linkedAt: link?.linked_at ?? null,
+        remindersEnabled: true,
+        pendingToken: null,
+        pendingTokenExpiresAt: null,
+        telegramDeepLink: null,
+        manualStartCode: null,
       });
     } catch (err) {
       console.error("Bot connection fetch error:", err);
@@ -61,27 +63,26 @@ export function createTelegramRouter(deps: TelegramDeps) {
     }
   });
 
+  // Kept for API compatibility: issues the same pre-authorized link code as
+  // /self-link (the legacy usuarios link codes are retired).
   router.post("/api/bot/connection/link-token", requireSession, async (req, res) => {
     try {
       const session = getSession(req);
       const scope = await resolveDataAccessScope(session);
-      if (!canWriteToScope(scope)) {
+      if (!canWriteToScope(scope) || !scope.dashboardId) {
         return res.status(403).json({ error: "forbidden" });
       }
-      const token = randomBytes(24).toString("hex");
-      const tokenExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-      const data = await upsertBotConnectionRecord(session, scope, token, tokenExpiresAt);
-
+      const { token, expiresAt } = await issueSelfLinkToken(session, scope.dashboardId, randomBytes(16).toString("hex"));
       res.status(201).json({
-        connected: Boolean(data?.chat_id),
-        chatId: data?.chat_id ?? null,
-        telegramUsername: data?.username ?? null,
-        linkedAt: data?.linked_at ?? null,
-        remindersEnabled: data?.reminders_enabled ?? true,
-        pendingToken: data?.link_token ?? token,
-        pendingTokenExpiresAt: data?.link_token_expires_at ?? tokenExpiresAt,
-        telegramDeepLink: buildTelegramDeepLink(data?.link_token ?? token),
-        manualStartCode: `/start ${data?.link_token ?? token}`,
+        connected: false,
+        chatId: null,
+        telegramUsername: null,
+        linkedAt: null,
+        remindersEnabled: true,
+        pendingToken: token,
+        pendingTokenExpiresAt: expiresAt,
+        telegramDeepLink: buildTelegramDeepLink(token),
+        manualStartCode: `/start ${token}`,
       });
     } catch (err) {
       console.error("Bot connection token error:", err);
@@ -95,37 +96,7 @@ export function createTelegramRouter(deps: TelegramDeps) {
       const scope = await resolveDataAccessScope(session);
       if (!scope.dashboardId) return res.status(403).json({ error: "forbidden" });
 
-      // Revoke any non-revoked telegram_links for this user+dashboard (recovery path)
-      await supabase
-        .from("telegram_links")
-        .update({ status: "revoked" })
-        .eq("app_user_id", session.userId)
-        .eq("dashboard_id", scope.dashboardId)
-        .neq("status", "revoked");
-
-      // Expire any prior pending invite tokens for this user+dashboard
-      await supabase
-        .from("telegram_invite_tokens")
-        .update({ status: "expired" })
-        .eq("target_user_id", session.userId)
-        .eq("dashboard_id", scope.dashboardId)
-        .eq("status", "pending");
-
-      const token = randomBytes(16).toString("hex");
-      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-      const { error: insertError } = await supabase
-        .from("telegram_invite_tokens")
-        .insert({
-          token,
-          dashboard_id: scope.dashboardId,
-          target_user_id: session.userId,
-          created_by_user_id: session.userId,
-          pre_authorized: true,
-          expires_at: expiresAt,
-          status: "pending",
-        });
-      if (insertError) throw insertError;
+      const { token, expiresAt } = await issueSelfLinkToken(session, scope.dashboardId, randomBytes(16).toString("hex"));
 
       return res.status(201).json({
         token,
@@ -214,38 +185,6 @@ export function createTelegramRouter(deps: TelegramDeps) {
       if (error) throw error;
 
       const links = [...(data ?? [])];
-      const hasCurrentUserActiveLink = links.some(
-        (link) => link.app_user_id === session.userId && link.status === "active",
-      );
-
-      // Owners linked before the multi-user Telegram model live in the legacy
-      // `usuarios` table. Surface that link as read-only so the team panel
-      // does not show a false "Sin Telegram" badge for the owner.
-      if (!hasCurrentUserActiveLink && scope.membershipRole === "owner") {
-        const { data: legacyRows, error: legacyError } = await supabase
-          .from("usuarios")
-          .select("id, chat_id, username, linked_at, created_at")
-          .eq("owner_user_id", session.userId)
-          .not("chat_id", "is", null)
-          .limit(1);
-        if (legacyError) throw legacyError;
-
-        const legacyLink = legacyRows?.[0];
-        if (legacyLink?.chat_id) {
-          const linkedAt = legacyLink.linked_at ?? legacyLink.created_at ?? null;
-          links.push({
-            id: `legacy-owner-${legacyLink.id}`,
-            telegram_user_id: legacyLink.chat_id,
-            telegram_username: legacyLink.username ?? null,
-            app_user_id: session.userId,
-            status: "active",
-            linked_at: linkedAt,
-            created_at: linkedAt ?? new Date(0).toISOString(),
-            legacy: true,
-          });
-        }
-      }
-
       return res.json({ links });
     } catch (err) {
       console.error("GET /api/telegram/links:", err);

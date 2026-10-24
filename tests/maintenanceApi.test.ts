@@ -332,7 +332,7 @@ test("POST /api/maintenance/activate calls bot.api.sendMessage when bot is provi
           order(..._args: unknown[]) { return api; },
           limit(_n: number) {
             if (table === "telegram_links") {
-              const p: any = Promise.resolve({ data: [{ telegram_chat_id: "12345", user_id: "u1" }], error: null });
+              const p: any = Promise.resolve({ data: [{ telegram_user_id: 12345, app_user_id: "u1" }], error: null });
               p.single = () => Promise.resolve({ data: null, error: null });
               return p;
             }

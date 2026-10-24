@@ -13,8 +13,8 @@ function makeSupabaseStub(opts: { emailUsers?: any[]; telegramLinks?: any[] } = 
     { user_id: "u2", email: "bob@example.com" },
   ];
   const telegramLinks = opts.telegramLinks ?? [
-    { telegram_chat_id: "111", user_id: "u1" },
-    { telegram_chat_id: "222", user_id: "u2" },
+    { telegram_user_id: 111, app_user_id: "u1" },
+    { telegram_user_id: 222, app_user_id: "u2" },
   ];
 
   return {
@@ -71,7 +71,7 @@ test("notifyMaintenance: Brevo failure does not throw, other channels still run"
 test("notifyMaintenance: Telegram failure does not throw", async () => {
   const supabase = makeSupabaseStub({
     emailUsers: [],
-    telegramLinks: [{ telegram_chat_id: "123", user_id: "u1" }],
+    telegramLinks: [{ telegram_user_id: 123, app_user_id: "u1" }],
   });
 
   const mockBot = {
@@ -93,8 +93,8 @@ test("notifyMaintenance: Telegram failure does not throw", async () => {
 
 test("notifyMaintenance: sends Telegram messages to all active linked users", async () => {
   const telegramLinks = [
-    { telegram_chat_id: "111", user_id: "u1" },
-    { telegram_chat_id: "222", user_id: "u2" },
+    { telegram_user_id: 111, app_user_id: "u1" },
+    { telegram_user_id: 222, app_user_id: "u2" },
   ];
   const supabase = makeSupabaseStub({ emailUsers: [], telegramLinks });
 
@@ -118,18 +118,19 @@ test("notifyMaintenance: sends Telegram messages to all active linked users", as
 
 test("notifyMaintenance: one Telegram failure does not abort other recipients", async () => {
   const telegramLinks = [
-    { telegram_chat_id: "111", user_id: "u1" },
-    { telegram_chat_id: "222", user_id: "u2" },
-    { telegram_chat_id: "333", user_id: "u3" },
+    { telegram_user_id: 111, app_user_id: "u1" },
+    { telegram_user_id: 222, app_user_id: "u2" },
+    { telegram_user_id: 333, app_user_id: "u3" },
   ];
   const supabase = makeSupabaseStub({ emailUsers: [], telegramLinks });
 
   const sentTo: string[] = [];
   const mockBot = {
     api: {
-      async sendMessage(chatId: string, _text: string) {
-        if (chatId === "222") throw new Error("Network error");
-        sentTo.push(chatId);
+      async sendMessage(chatId: number | string, _text: string) {
+        // telegram_links.telegram_user_id is a bigint: chat ids arrive as numbers.
+        if (String(chatId) === "222") throw new Error("Network error");
+        sentTo.push(String(chatId));
       },
     },
   } as any;

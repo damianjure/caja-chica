@@ -108,7 +108,7 @@ test("runDailyReminders: user with matching hour+minute receives message", async
   const currentMinute = now.getUTCMinutes();
 
   const supabase = makeSupabase({
-    telegramUsers: [{ chat_id: 12345, user_id: "user-1" }],
+    telegramLinks: [{ app_user_id: "user-1", telegram_user_id: 12345 }],
     appUsers: [{ user_id: "user-1", notification_hour: currentHour, notification_minute: currentMinute }],
   });
   const bot = makeBot();
@@ -141,7 +141,7 @@ test("runDailyReminders: user with non-matching minute is not sent", async () =>
   const differentMinute = (now.getUTCMinutes() + 5) % 60;
 
   const supabase = makeSupabase({
-    telegramUsers: [{ chat_id: 12345, user_id: "user-1" }],
+    telegramLinks: [{ app_user_id: "user-1", telegram_user_id: 12345 }],
     appUsers: [{ user_id: "user-1", notification_hour: currentHour, notification_minute: differentMinute }],
   });
   const bot = makeBot();
@@ -156,9 +156,9 @@ test("runDailyReminders: sendMessage throws is caught, loop continues, sent not 
   const currentMinute = now.getUTCMinutes();
 
   const supabase = makeSupabase({
-    telegramUsers: [
-      { chat_id: 11111, user_id: "user-1" },
-      { chat_id: 22222, user_id: "user-2" },
+    telegramLinks: [
+      { app_user_id: "user-1", telegram_user_id: 11111 },
+      { app_user_id: "user-2", telegram_user_id: 22222 },
     ],
     appUsers: [
       { user_id: "user-1", notification_hour: currentHour, notification_minute: currentMinute },
@@ -218,4 +218,17 @@ test("runDailyReminders: successful sends do not alert", async () => {
   });
   assert.deepStrictEqual(result, { sent: 1 });
   assert.strictEqual(alerts.length, 0);
+});
+
+test("runDailyReminders: a chat that only exists in the legacy usuarios table gets no reminder", async () => {
+  const now = new Date();
+  const supabase = makeSupabase({
+    telegramUsers: [{ chat_id: 12345, user_id: "user-1" }],
+    telegramLinks: [],
+    appUsers: [{ user_id: "user-1", notification_hour: now.getUTCHours(), notification_minute: now.getUTCMinutes() }],
+  });
+  const bot = makeBot();
+  const result = await runDailyReminders({ supabase: supabase as any, bot: bot as any });
+  assert.deepStrictEqual(result, { sent: 0 });
+  assert.strictEqual(bot.calls.length, 0);
 });

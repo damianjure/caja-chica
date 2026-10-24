@@ -47,32 +47,6 @@ export async function resolveDashboardRole(
   }
 }
 
-function normalizeRecord(
-  raw: any,
-  role: TelegramDashboardRole | null,
-  permissions: MemberPermissions = {},
-): TelegramLinkRecord {
-  return {
-    id: raw?.id ?? undefined,
-    userId: raw?.user_id ?? null,
-    dashboardId: raw?.dashboard_id ?? null,
-    ownerUserId: raw?.owner_user_id ?? null,
-    role,
-    permissions,
-    username: raw?.username ?? null,
-    remindersEnabled: raw?.reminders_enabled ?? true,
-    linkTokenExpiresAt: raw?.link_token_expires_at ?? null,
-  };
-}
-
-async function resolveRoleIfNeeded(
-  supabase: TelegramSupabaseLike,
-  raw: any,
-): Promise<TelegramDashboardRole | null> {
-  if (!raw?.user_id || !raw?.dashboard_id) return null;
-  return resolveDashboardRole(supabase, raw.user_id, raw.dashboard_id);
-}
-
 async function resolveViaNewLinks(
   supabase: TelegramSupabaseLike,
   telegramUserId: number,
@@ -121,71 +95,16 @@ async function resolveViaNewLinks(
   }
 }
 
+/**
+ * Identity of a Telegram chat. Single model: only an active `telegram_links`
+ * row (with an active dashboard membership) grants access. The legacy
+ * `usuarios` table is no longer read, so revoking a link always removes access.
+ */
 export async function resolveTelegramIdentityByChatId(
   supabase: TelegramSupabaseLike,
   chatId: number,
 ): Promise<TelegramLinkRecord | null> {
-  // 1. Flujo nuevo: editor/viewer via telegram_links
-  const viaNewLinks = await resolveViaNewLinks(supabase, chatId);
-  if (viaNewLinks) return viaNewLinks;
-
-  // 2. Flujo legacy: owner via usuarios (unchanged)
-  try {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select(
-        "id, user_id, dashboard_id, owner_user_id, username, reminders_enabled, link_token_expires_at",
-      )
-      .eq("chat_id", chatId)
-      .limit(1);
-    if (error) throw error;
-    const raw = data?.[0];
-    if (!raw) return null;
-    return normalizeRecord(raw, await resolveRoleIfNeeded(supabase, raw));
-  } catch (error) {
-    if (!isMissingSchemaArtifactError(error)) throw error;
-  }
-
-  const { data, error } = await supabase
-    .from("usuarios")
-    .select("id, owner_user_id, username, reminders_enabled, link_token_expires_at")
-    .eq("chat_id", chatId)
-    .limit(1);
-  if (error) throw error;
-  const raw = data?.[0];
-  return raw ? normalizeRecord(raw, null) : null;
-}
-
-export async function resolveTelegramIdentityByToken(
-  supabase: TelegramSupabaseLike,
-  token: string,
-): Promise<TelegramLinkRecord | null> {
-  try {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select(
-        "id, user_id, dashboard_id, owner_user_id, username, reminders_enabled, link_token_expires_at",
-      )
-      .eq("link_token", token)
-      .gt("link_token_expires_at", new Date().toISOString())
-      .limit(1);
-    if (error) throw error;
-    const raw = data?.[0];
-    if (!raw) return null;
-    return normalizeRecord(raw, await resolveRoleIfNeeded(supabase, raw));
-  } catch (error) {
-    if (!isMissingSchemaArtifactError(error)) throw error;
-  }
-
-  const { data, error } = await supabase
-    .from("usuarios")
-    .select("id, owner_user_id, username, reminders_enabled, link_token_expires_at")
-    .eq("link_token", token)
-    .gt("link_token_expires_at", new Date().toISOString())
-    .limit(1);
-  if (error) throw error;
-  const raw = data?.[0];
-  return raw ? normalizeRecord(raw, null) : null;
+  return resolveViaNewLinks(supabase, chatId);
 }
 
 export function hasTelegramAccess(linked: TelegramLinkRecord | null) {

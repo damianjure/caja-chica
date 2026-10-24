@@ -55,8 +55,8 @@ import {
   fetchScopedMovimientos as fetchScopedMovimientosFn,
 } from "./dataScope.ts";
 import {
-  getBotConnectionRecord as getBotConnectionRecordFn,
-  upsertBotConnectionRecord as upsertBotConnectionRecordFn,
+  getActiveTelegramLink as getActiveTelegramLinkFn,
+  issueSelfLinkToken as issueSelfLinkTokenFn,
 } from "./botConnection.ts";
 import {
   syncPendingDashboardInvitations as syncPendingDashboardInvitationsFn,
@@ -255,15 +255,11 @@ export function createApp({
   const createEmpresaDeleteBackup = (args: Parameters<typeof createEmpresaDeleteBackupFn>[1]) =>
     createEmpresaDeleteBackupFn(supabase, args);
 
-  const getBotConnectionRecord = (session: AppSession, scope: DataAccessScope) =>
-    getBotConnectionRecordFn(supabase, session, scope);
+  const getActiveTelegramLink = (session: AppSession, scope: DataAccessScope) =>
+    getActiveTelegramLinkFn(supabase, session, scope);
 
-  const upsertBotConnectionRecord = (
-    session: AppSession,
-    scope: DataAccessScope,
-    token: string,
-    tokenExpiresAt: string,
-  ) => upsertBotConnectionRecordFn(supabase, session, scope, token, tokenExpiresAt);
+  const issueSelfLinkToken = (session: AppSession, dashboardId: string, token: string) =>
+    issueSelfLinkTokenFn(supabase, session, dashboardId, token);
 
   const syncPendingDashboardInvitations = (session: AppSession) =>
     syncPendingDashboardInvitationsFn(supabase, session);
@@ -429,8 +425,8 @@ export function createApp({
     getSession,
     resolveDataAccessScope,
     canWriteToScope,
-    getBotConnectionRecord,
-    upsertBotConnectionRecord,
+    getActiveTelegramLink,
+    issueSelfLinkToken,
     buildTelegramDeepLink,
     randomBytes,
     webhookPath,

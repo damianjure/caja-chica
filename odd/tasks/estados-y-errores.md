@@ -18,7 +18,7 @@ Approved plan: `~/.claude/plans/dame-el-plan-que-generic-dijkstra.md`.
 - **S10 (B6)** Daily reminders count only real sends; failures alert the superadmin.
 - **S11 (B7)** Image ticket without readable amounts explains why it cannot be saved.
 - **S12 (B8)** Review the unverified states (bot empty photo/PDF, 403 edit/delete, 409 delete account, maintenance activation failure, empty states of ask chat, pending links, reminder) and fix only what is broken.
-- **S13 (C1)** Owner Telegram link also lives in `telegram_links` (owner, active); existing `usuarios` rows migrated; `usuarios` fallback kept during transition.
+- **S13 (C1, rewritten 2026-10-23 after L19)** Retire the legacy Telegram identity flow ("Retirar el flujo viejo (Recommended)"): the bot recognizes a chat only through an active `telegram_links` row; the legacy link-token issues the same pre-authorized code as self-link; the web connection state, the cron chat lookup and the team links list read `telegram_links`; no reader of `usuarios` remains (table kept, no destructive SQL). Consequence: revoking a link always removes access.
 - **S14 (C2)** Docs: onboarding branches and who can invite in `CLAUDE.md`; `CHANGELOG.md`; `RUNBOOK.md` for new SQL.
 - Out of scope (owner decision "Nada más por ahora"): personal/pyme switcher, WhatsApp, Presupuestos.
 
@@ -31,7 +31,7 @@ Approved plan: `~/.claude/plans/dame-el-plan-que-generic-dijkstra.md`.
 | T3 | S3 | inline | done | RED: 5 route/email tests + missing-key log test + 3 feedback tests failed; GREEN: suite 1018 pass / 0 fail, tsc + lint:arch ok. |
 | T4 | S4 | inline (high risk: persisted format + permissions → own commit + independent verifier) | done (verifier pending; SQL not applied) | RED: drain (11), queue routes (3), summary helper (3) failed first; GREEN: suite 1031 pass / 0 fail, tsc + lint:arch ok. |
 | T5 | S5–S12 | inline | pending | |
-| T6 | S13 | inline (high risk: identity + data migration → own commit + independent verifier) | pending | |
+| T6 | S13 | inline (high risk: identity/permissions → own commit + independent verifier) | done (verifier pending) | RED: 2 identity tests, 3 API tests, 1 reminder test, 2 maintenance notify tests failed; GREEN: suite 1079 pass / 0 fail, tsc + lint:arch ok. |
 | T7 | S14 | inline | pending | |
 
 Route evidence: units share files (`tests/api.test.ts`, `src/server/app.ts`) and land per phase, so no parallel writers.
@@ -56,4 +56,7 @@ Route evidence: units share files (`tests/api.test.ts`, `src/server/app.ts`) and
 - **L16 (T5):** B3 `f645704`. B7: `ticketSaveBlockReason` explains why "Guardar ticket" is disabled (nothing readable / no line selected / missing amounts). Note: for this helper the test and the code were written together, RED was not observed separately. A `Co-Authored-By` line slipped into B3's commit message and was amended away (owner rule: no AI attribution).
 - **L17 (T5):** B7 `f7aa697`; B4 `bb14246` (realtime status callback → banner + refetch on reconnect; staged as HEAD + own hunks because `useDashboardData.ts`/`DashboardApp.tsx` carry the other session's work; staged tree verified: tsc ok, 1059 pass).
 - **L18 (T5, B8 review of the ❓ states):** already fine — maintenance activation failure (`MaintenanceSection` setError), bot photo/PDF/album/statement failures (explicit replies), web image errors. Fixed — (1) a ticket photo with no readable amount was saved as a $0 movement in the bot and in the queue drain → `hasReadableAmount` (`src/server/receiptAmounts.ts`): the bot explains and saves nothing, the drain counts a retry; (2) `ConfirmModal` ran actions without catch, so a 403/404/409 on delete was silent → inline error via `confirmErrorMessage` (covers every confirmation in the app). Not applicable — the 409 of `DELETE /api/me` is not reachable from the web (no account-deletion UI). Left as advisory — empty states of the ask chat, pending Telegram links and the reminder (no failure path, low impact).
-- **Next:** T6 (Telegram identity, high risk), T7 docs.
+- **L19 (T6 mapping + data):** explorer map + live DB: owners already get active `telegram_links` rows (self-link from the web, and the multi-user migration copied old owners); the legacy `link-token` UI (`BotConnectionPanel`) is not mounted. Live: 1 `usuarios` row, its chat also active in `telegram_links`, 0 legacy-only owners; `usuarios.owner_user_id` still exists (cutover-final drop not applied). Real bugs of the dual model: revoking an owner link did not remove access (bot fell back to `usuarios.chat_id`); web "not connected" for links-only owners; legacy `/start` had no anti-pivot and ignored its update error; maintenance Telegram notices selected columns that do not exist (`telegram_chat_id`, `user_id`) so they never reached anyone. No data migration needed.
+- **L20 (2026-10-23, owner):** "Retirar el flujo viejo (Recommended)".
+- **L21 (T6):** done as S13. `/api/bot/connection` now returns pending-token fields as null (link codes come from /link-token or /self-link); `link-token` now requires a dashboard and revokes the caller's previous link like self-link (only consumer was the unmounted BotConnectionPanel). Maintenance notices fixed to `telegram_user_id`/`app_user_id`.
+- **Next:** independent verifier for T6, then T7 docs.

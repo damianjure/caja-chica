@@ -181,7 +181,7 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
     history, customCompanies, categories, recurrentes,
     dashboardAccess,
     isLoading, isLoadingCollaboration, hasMore, loadingMore,
-    apiStatus, apiErrorMessage, loadData, loadCollaboration,
+    apiStatus, apiErrorMessage, loadData, loadCollaboration, realtimeDown,
   } = useDashboardData(viewer);
 
   const {
@@ -765,6 +765,13 @@ export default function DashboardApp({ viewer, onSignOut, theme, onToggleTheme, 
             onRetry={(text) => { setInputText(text); setIsCargaOpen(true); }}
             onDismiss={dismissQueueSummary}
           />
+        )}
+        {realtimeDown && apiStatus === 'ready' && (
+          <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex flex-wrap items-center gap-3 text-[var(--app-amber-text)] text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="flex-1 min-w-0">La actualización en vivo se cortó: lo que cargues por Telegram puede no aparecer hasta que vuelva.</p>
+            <button type="button" onClick={() => loadData(false)} className="rounded-md border border-[var(--app-amber-border)] px-3 py-1.5 text-xs font-semibold">Actualizar ahora</button>
+          </div>
         )}
         {apiStatus === 'missing_url' && <div role="status" className="bg-[var(--app-amber-surface)] border border-[var(--app-amber-border)] p-4 rounded-xl flex items-center gap-3 text-[var(--app-amber-text)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0" /><p><strong>API no configurada:</strong> Los datos no se guardarán permanentemente. Configurá la variable <code>VITE_API_URL</code> con la URL del servidor.</p></div>}
         {apiStatus === 'load_error' && <div role="alert" className="bg-[var(--app-red-surface)] border border-[var(--app-red-border)] p-4 rounded-xl flex items-start gap-3 text-[var(--chart-expense)] text-sm"><AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" /><p><strong>Error al cargar datos desde la API:</strong>{' '}{apiErrorMessage ?? 'No pudimos traer la información del dashboard.'}</p></div>}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useQuery,
   useInfiniteQuery,
@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { api, type Movimiento, type Empresa, type Categoria, type Recurrente, type DashboardMembersResponse, type PaginatedMovimientos, type AppViewer } from '../../services/api';
 import { supabase } from '../../services/supabase';
+import { realtimeHealth } from '../../dashboard/realtimeStatus';
 import { fetchAllPages } from '../../dashboard/pagination';
 
 function normalizeMovement(item: Movimiento): Movimiento {
@@ -32,6 +33,8 @@ export interface DashboardDataResult {
   apiErrorMessage: string | null;
   loadData: (append?: boolean) => void;
   loadCollaboration: () => void;
+  /** True while the realtime channel is down: the data may be stale. */
+  realtimeDown: boolean;
 }
 
 export function useDashboardData(viewer: AppViewer): DashboardDataResult {
@@ -88,8 +91,11 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
   const history = movimientosQuery.data?.pages.flatMap((p) => p.items.map(normalizeMovement)) ?? [];
 
   // --- realtime channel ---
+  const [realtimeDown, setRealtimeDown] = useState(false);
+  const realtimeWasDown = useRef(false);
   useEffect(() => {
     if (!supabase) return;
+    let active = true;
 
     const channel = supabase
       .channel('realtime-movimientos')
@@ -134,9 +140,23 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
           prev.some((i) => i.id === newCat.id) ? prev : [...prev, newCat],
         );
       })
-      .subscribe();
+      .subscribe((status: string) => {
+        if (!active) return;
+        const health = realtimeHealth(status);
+        if (health === 'down') {
+          realtimeWasDown.current = true;
+          setRealtimeDown(true);
+        }
+        if (health === 'live') {
+          // Back online: refetch what may have arrived while the channel was down.
+          if (realtimeWasDown.current) void queryClient.invalidateQueries({ queryKey: ['movimientos'] });
+          realtimeWasDown.current = false;
+          setRealtimeDown(false);
+        }
+      });
 
     return () => {
+      active = false;
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -201,5 +221,6 @@ export function useDashboardData(viewer: AppViewer): DashboardDataResult {
     apiErrorMessage,
     loadData,
     loadCollaboration,
+    realtimeDown,
   };
 }
